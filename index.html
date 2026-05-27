@@ -891,7 +891,7 @@
                 <!-- meta fields + score widget -->
                 <div class="eval-hdr-body">
                   <div class="eval-meta-grid">
-                    <div class="form-group" style="margin-bottom:0">
+                    <div class="form-group" style="display:none;margin-bottom:0">
                       <label class="form-label">Evaluator</label>
                       <div class="eval-readonly" id="ef-evaluator-display">—</div>
                       <input type="hidden" id="ef-evaluator-id">
@@ -3223,7 +3223,7 @@ function renderUsers(){
     const esBadge=!es?'<span class="txt-muted">—</span>':es.status==='Regular'?`<span class="badge b-regular">Regular</span>`:`<span class="badge b-prob">Probationary</span>`;
     const statBadge=u.isActive?'<span class="badge b-active">● Active</span>':'<span class="badge b-inactive">○ Inactive</span>';
     const resetBadge=u.mustChangePassword&&u.isActive?'<span class="badge b-reset" style="font-size:10px">🔑 Pending Reset</span>':'';
-    const sup=u.supervisorId?(v=DB.byId(u.supervisorId))?Utils.esc(`${v.firstName} ${v.lastName}`):'—':'<span class="txt-muted">—</span>';
+    const _sv=u.supervisorId?DB.byId(u.supervisorId):null; const sup=_sv?Utils.esc(`${_sv.firstName} ${_sv.lastName}`):'<span class="txt-muted">—</span>';
     const pos=Sel.nameOf(Store.POS,u.positionId)||'<span class="txt-muted">—</span>';
     const adminBadge=u.isAdmin?'<span class="badge b-admin">Admin</span> ':'';
     const catBadges=Perms.catBadges(u);
