@@ -3241,7 +3241,7 @@ function renderUsers(){
 
 function populateUserDropdowns(excludeId){
   document.getElementById('mu-position').innerHTML='<option value="">— Select —</option>'+Sel.active(Store.POS).map(p=>`<option value="${p.id}">${Utils.esc(p.name)}</option>`).join('');
-  document.getElementById('mu-supervisor').innerHTML='<option value="">— None —</option>'+DB.all().filter(u=>u.isActive&&u.id!==excludeId).map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
+  document.getElementById('mu-supervisor').innerHTML='<option value="">— None —</option>'+DB.all().filter(u=>u.isActive&&u.id!==excludeId).sort((a,b)=>(a.firstName+' '+a.lastName).localeCompare(b.firstName+' '+b.lastName)).map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
   // Form access toggles are now direct — no category grid needed
 }
 
@@ -7497,10 +7497,18 @@ function afterLogin(user){
 
 function init(){
   Sel.seed(); DB.seed(); wireEvents();
-  // Patch: add Keithcorwin Sta. Barbara if not yet in the user list
+  // Patch: ensure Keithcorwin Sta. Barbara exists and is Abimelex's supervisor
   if(!DB.byEmail('kstabarbara@dermorepubliq.com')){
     DB.create({firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'kstabarbara@dermorepubliq.com',employeeId:'',positionId:'',hireDate:'',isActive:true,isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team'},true);
   }
+  // Patch: set Keithcorwin as Abimelex's supervisor
+  (()=>{
+    const keith=DB.byEmail('kstabarbara@dermorepubliq.com');
+    const abimelex=DB.byEmail('brad@dermorepubliq.com');
+    if(keith&&abimelex&&abimelex.supervisorId!==keith.id){
+      DB.update(abimelex.id,{supervisorId:keith.id});
+    }
+  })();
   if(Auth.restore()){
     Auth.user.mustChangePassword ? showScreen('chg-pass-screen') : bootApp();
   } else {
