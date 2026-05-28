@@ -1634,11 +1634,11 @@
           <div class="drawer-section">
             <div class="drawer-sec-title">Account</div>
             <div class="auth-info" id="mu-pass-info" style="margin-bottom:14px">
-              A default password <strong>Leap@2026</strong> will be assigned. The user will be required to set a new password on first login.
+              A default password will be assigned. The user will be required to set a new password on first login. The user will be required to set a new password on first login.
             </div>
             <div id="mu-reset-row" class="hidden" style="margin-bottom:14px">
               <button type="button" class="btn btn-warning btn-sm" onclick="resetUserPassword()">🔄 Reset to Default Password</button>
-              <p class="form-hint" style="margin-top:6px">Sets password back to <strong>Leap@2026</strong> and requires the user to change it on next login.</p>
+              <p class="form-hint" style="margin-top:6px">Resets to the system default password and requires the user to change it on next login.</p>
             </div>
             <div class="toggle-row" style="padding-top:2px">
               <div class="toggle-info">
@@ -1857,7 +1857,7 @@
 'use strict';
 
 /* ── CONSTANTS ────────────────────── */
-const DEFAULT_PW   = 'Leap@2026';
+const DEFAULT_PW   = 'Welcome@1';  // Change this before deploying to production
 const STORE_VER    = 'v3';
 
 const EVAL_CRITERIA = [
@@ -1990,22 +1990,22 @@ const DB = {
   seed(){
     if(this.all().length>0) return;
     const rows=[
-      {employeeId:'210916-002',firstName:'Abimelex',         lastName:'Veleña',   email:'brad@dermorepubliq.com',      positionId:'pos_1',hireDate:'2021-09-16',isAdmin:true, isExecutive:true, isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
-      {employeeId:'240301-081',firstName:'Sandra Abegail',   lastName:'Barlao',   email:'sbarlao@dermorepubliq.com',   positionId:'pos_2',hireDate:'2024-03-01',isAdmin:true, isExecutive:false,isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
-      {employeeId:'240604-111',firstName:'Joseph Kier',      lastName:'San Jose', email:'jsanjose@dermorepubliq.com',  positionId:'pos_7',hireDate:'2024-06-04',isAdmin:false,isExecutive:false,isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
-      {employeeId:'240909-130',firstName:'Princess',         lastName:'Diaz',     email:'pdiza@dermorepubliq.com',     positionId:'pos_5',hireDate:'2024-09-09',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'250922-340',firstName:'Rhenmart Neil',    lastName:'Dela Cruz',email:'rdelacruz@dermorepubliq.com', positionId:'pos_6',hireDate:'2025-09-22',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'251006-345',firstName:'Kristine Dominique',lastName:'Wong',   email:'kwong@dermorepubliq.com',     positionId:'pos_4',hireDate:'2025-10-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'251013-350',firstName:'Khim Xyrille',     lastName:'Garcia',   email:'kgarcia@dermorepubliq.com',   positionId:'pos_5',hireDate:'2025-10-13',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'260406-484',firstName:'Gemmabelle',       lastName:'Aragon',   email:'garagon@dermorepubliq.com',   positionId:'pos_5',hireDate:'2026-04-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'260504-498',firstName:'Fritzie',          lastName:'Dipon',    email:'fdipon@dermorepubliq.com',    positionId:'pos_6',hireDate:'2026-05-04',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'',firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'kstabarbara@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team',password:DEFAULT_PW}
+      {employeeId:'210916-002',firstName:'Admin',lastName:'User01',   email:'admin01@dermorepubliq.com',      positionId:'pos_1',hireDate:'2021-09-16',isAdmin:true, isExecutive:true, isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
+      {employeeId:'240301-081',firstName:'Admin',lastName:'User02',   email:'admin02@dermorepubliq.com',   positionId:'pos_2',hireDate:'2024-03-01',isAdmin:true, isExecutive:false,isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
+      {employeeId:'240604-111',firstName:'Test',lastName:'User03', email:'user03@dermorepubliq.com',  positionId:'pos_7',hireDate:'2024-06-04',isAdmin:false,isExecutive:false,isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
+      {employeeId:'240909-130',firstName:'Test',lastName:'User04',     email:'user04@dermorepubliq.com',     positionId:'pos_5',hireDate:'2024-09-09',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
+      {employeeId:'250922-340',firstName:'Test',lastName:'User05',email:'user05@dermorepubliq.com', positionId:'pos_6',hireDate:'2025-09-22',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
+      {employeeId:'251006-345',firstName:'Test',lastName:'User06',   email:'user06@dermorepubliq.com',     positionId:'pos_4',hireDate:'2025-10-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
+      {employeeId:'251013-350',firstName:'Test',lastName:'User07',   email:'user07@dermorepubliq.com',   positionId:'pos_5',hireDate:'2025-10-13',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
+      {employeeId:'260406-484',firstName:'Test',lastName:'User08',   email:'user08@dermorepubliq.com',   positionId:'pos_5',hireDate:'2026-04-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
+      {employeeId:'260504-498',firstName:'Test',lastName:'User09',    email:'user09@dermorepubliq.com',    positionId:'pos_6',hireDate:'2026-05-04',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
+      {employeeId:'',firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'user10@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team',password:DEFAULT_PW}
     ];
     rows.forEach(r=>this.create(r, true));
     // Wire supervisor chain
-    const abimelex=this.byEmail('brad@dermorepubliq.com');
-    const sandy=this.byEmail('sbarlao@dermorepubliq.com');
-    const joseph=this.byEmail('jsanjose@dermorepubliq.com');
+    const abimelex=this.byEmail('admin01@dermorepubliq.com');
+    const sandy=this.byEmail('admin02@dermorepubliq.com');
+    const joseph=this.byEmail('user03@dermorepubliq.com');
     if(abimelex&&sandy) this.update(sandy.id,{supervisorId:abimelex.id});
     if(sandy&&joseph)   this.update(joseph.id,{supervisorId:sandy.id});
     if(joseph){
@@ -2294,7 +2294,7 @@ function renderDashboard(){
   _dashDestroy();
   const bannerEl=document.getElementById('dash-banner');
   if(!Store.get(Store.FIRSTRUN)){
-    bannerEl.innerHTML=`<div class="frb"><span style="font-size:20px;flex-shrink:0;margin-top:1px">🎉</span><div><div class="frb-title">LEAP Insights is ready</div><div class="frb-body">All accounts use the default password <strong>${DEFAULT_PW}</strong>. Users will be asked to change it on first login. Your account: <strong>sbarlao@dermorepubliq.com</strong></div></div><button class="frb-close" onclick="Store.set(Store.FIRSTRUN,true);this.closest('.frb').remove()">✕</button></div>`;
+    bannerEl.innerHTML=`<div class="frb"><span style="font-size:20px;flex-shrink:0;margin-top:1px">🎉</span><div><div class="frb-title">LEAP Insights is ready</div><div class="frb-body">All accounts use the default password <strong>${DEFAULT_PW}</strong>. Users will be asked to change it on first login. Log in with your admin account.</div></div><button class="frb-close" onclick="Store.set(Store.FIRSTRUN,true);this.closest('.frb').remove()">✕</button></div>`;
   } else { bannerEl.innerHTML=''; }
   const tier=Perms.dashTier(Auth.user);
   document.getElementById('dash-body').innerHTML=`
@@ -3359,9 +3359,9 @@ function confirmToggleActive(id,makeActive){
 function downloadCSVTemplate(){
   const headers=['employee_id','first_name','last_name','email','position','supervisor_email','hire_date','is_admin','form_trainer','form_idqa','form_cqa'];
   const rows=[
-    ['EMP-007','Anna','Reyes','areyes@dermorepubliq.com','Trainer','sbarlao@dermorepubliq.com','2025-06-01','FALSE','TRUE','FALSE','FALSE'],
-    ['EMP-008','Marco','Torres','mtorres@dermorepubliq.com','Instructional Designer','sbarlao@dermorepubliq.com','2024-09-15','FALSE',''],
-    ['EMP-009','Gail','Lim','glim@dermorepubliq.com','L&D Manager','sbarlao@dermorepubliq.com','2021-03-01','FALSE','Leader']
+    ['EMP-007','Anna','Reyes','user01@example.com','Trainer','supervisor@dermorepubliq.com','2025-06-01','FALSE','TRUE','FALSE','FALSE'],
+    ['EMP-008','Marco','Torres','user02@example.com','Instructional Designer','supervisor@dermorepubliq.com','2024-09-15','FALSE',''],
+    ['EMP-009','Gail','Lim','user03@example.com','L&D Manager','supervisor@dermorepubliq.com','2021-03-01','FALSE','Leader']
   ];
   const notes=[
     '# LEAP Insights — User Import Template',
@@ -7507,7 +7507,7 @@ function init(){
       DB.update(keith.id,{isActive:true});
       keith=DB.byEmail('kstabarbara@dermorepubliq.com');
     }
-    const abimelex=DB.byEmail('brad@dermorepubliq.com');
+    const abimelex=DB.byEmail('admin01@dermorepubliq.com');
     if(keith&&abimelex&&abimelex.supervisorId!==keith.id){
       DB.update(abimelex.id,{supervisorId:keith.id});
     }
