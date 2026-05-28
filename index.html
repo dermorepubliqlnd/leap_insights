@@ -1977,6 +1977,7 @@ const DB = {
       positionId:data.positionId||'', supervisorId:data.supervisorId||'',
       hireDate:data.hireDate||'', isActive:data.isActive!==false,
       isAdmin:!!data.isAdmin, isExecutive:!!data.isExecutive, isReportsViewer:!!data.isReportsViewer, formTrainer:!!data.formTrainer, formIDQA:!!data.formIDQA, formCQA:!!data.formCQA,
+      dashScope:data.dashScope||'team',
       passwordHash:Utils.hash(data.password||DEFAULT_PW),
       mustChangePassword: skipDefaultPw ? false : true,
       createdAt:Date.now(), updatedAt:Date.now()
@@ -7497,13 +7498,15 @@ function afterLogin(user){
 
 function init(){
   Sel.seed(); DB.seed(); wireEvents();
-  // Patch: ensure Keithcorwin Sta. Barbara exists and is Abimelex's supervisor
-  if(!DB.byEmail('kstabarbara@dermorepubliq.com')){
-    DB.create({firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'kstabarbara@dermorepubliq.com',employeeId:'',positionId:'',hireDate:'',isActive:true,isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team'},true);
-  }
-  // Patch: set Keithcorwin as Abimelex's supervisor
+  // Patch: ensure Keithcorwin Sta. Barbara exists, is active, and is Abimelex's supervisor
   (()=>{
-    const keith=DB.byEmail('kstabarbara@dermorepubliq.com');
+    let keith=DB.byEmail('kstabarbara@dermorepubliq.com');
+    if(!keith){
+      keith=DB.create({firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'kstabarbara@dermorepubliq.com',employeeId:'',positionId:'',hireDate:'',isActive:true,isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team'},true);
+    } else if(!keith.isActive){
+      DB.update(keith.id,{isActive:true});
+      keith=DB.byEmail('kstabarbara@dermorepubliq.com');
+    }
     const abimelex=DB.byEmail('brad@dermorepubliq.com');
     if(keith&&abimelex&&abimelex.supervisorId!==keith.id){
       DB.update(abimelex.id,{supervisorId:keith.id});
