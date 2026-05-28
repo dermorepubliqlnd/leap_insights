@@ -1997,7 +1997,8 @@ const DB = {
       {employeeId:'251006-345',firstName:'Kristine Dominique',lastName:'Wong',   email:'kwong@dermorepubliq.com',     positionId:'pos_4',hireDate:'2025-10-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
       {employeeId:'251013-350',firstName:'Khim Xyrille',     lastName:'Garcia',   email:'kgarcia@dermorepubliq.com',   positionId:'pos_5',hireDate:'2025-10-13',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
       {employeeId:'260406-484',firstName:'Gemmabelle',       lastName:'Aragon',   email:'garagon@dermorepubliq.com',   positionId:'pos_5',hireDate:'2026-04-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'260504-498',firstName:'Fritzie',          lastName:'Dipon',    email:'fdipon@dermorepubliq.com',    positionId:'pos_6',hireDate:'2026-05-04',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW}
+      {employeeId:'260504-498',firstName:'Fritzie',          lastName:'Dipon',    email:'fdipon@dermorepubliq.com',    positionId:'pos_6',hireDate:'2026-05-04',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
+      {employeeId:'',firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'kstabarbara@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team',password:DEFAULT_PW}
     ];
     rows.forEach(r=>this.create(r, true));
     // Wire supervisor chain
@@ -7496,6 +7497,10 @@ function afterLogin(user){
 
 function init(){
   Sel.seed(); DB.seed(); wireEvents();
+  // Patch: add Keithcorwin Sta. Barbara if not yet in the user list
+  if(!DB.byEmail('kstabarbara@dermorepubliq.com')){
+    DB.create({firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'kstabarbara@dermorepubliq.com',employeeId:'',positionId:'',hireDate:'',isActive:true,isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team'},true);
+  }
   if(Auth.restore()){
     Auth.user.mustChangePassword ? showScreen('chg-pass-screen') : bootApp();
   } else {
