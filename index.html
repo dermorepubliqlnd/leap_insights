@@ -88,6 +88,11 @@
 
     /* ── TOGGLE SWITCH ── */
     .toggle-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border-lt)}
+    .seg-ctrl{display:flex;border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;flex-shrink:0}
+    .seg-btn{padding:5px 13px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;background:var(--white);color:var(--text3);transition:all .15s;line-height:1.4}
+    .seg-btn.active{background:var(--pri);color:#fff}
+    .seg-btn:not(.active):hover{background:var(--bg)}
+    .seg-btn:disabled{opacity:.45;cursor:not-allowed}
     .toggle-row:last-child{border-bottom:none}
     .toggle-info{flex:1}
     .toggle-title{font-size:13.5px;font-weight:500;color:var(--text)}
@@ -1669,6 +1674,16 @@
                 </div>
                 <label class="switch"><input type="checkbox" id="mu-reports-viewer"><span class="sw-track"></span></label>
               </div>
+              <div class="toggle-row" style="padding-top:10px;margin-top:10px;border-top:1px solid var(--border-lt)">
+                <div class="toggle-info">
+                  <div class="toggle-title">Dashboard Access</div>
+                  <div class="toggle-desc" id="mu-dashscope-desc">Controls how much data this user sees on the dashboard.</div>
+                </div>
+                <div class="seg-ctrl" id="mu-dashscope-wrap">
+                  <button type="button" class="seg-btn active" id="mu-ds-team" onclick="setDashScopeUI('team')">Team View</button>
+                  <button type="button" class="seg-btn" id="mu-ds-full" onclick="setDashScopeUI('full')">Full View</button>
+                </div>
+              </div>
               <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-lt)">
                 <div class="form-label" style="margin-bottom:10px">Form Access <span class="txt-muted txt-sm">(evaluation forms this person can conduct)</span></div>
                 <div class="toggle-row" style="padding:6px 0">
@@ -2050,8 +2065,20 @@ function _checkExecPosition(){
   const isExecPos=Perms.EXEC_KW.some(k=>n.includes(k));
   if(isExecPos) document.getElementById('mu-executive').checked=true;
 }
+function setDashScopeUI(val){
+  document.getElementById('mu-ds-team').classList.toggle('active', val==='team');
+  document.getElementById('mu-ds-full').classList.toggle('active', val==='full');
+}
+function _getDashScopeUI(){
+  return document.getElementById('mu-ds-full').classList.contains('active') ? 'full' : 'team';
+}
+
 function _onExecToggle(){
-  /* placeholder — no side-effects needed yet */
+  const isExec=document.getElementById('mu-executive').checked;
+  const isAdm=document.getElementById('mu-admin').checked;
+  const lock=isExec||isAdm;
+  if(lock) setDashScopeUI('full');
+  document.getElementById('mu-dashscope-wrap').querySelectorAll('.seg-btn').forEach(b=>b.disabled=lock);
 }
 
 /* ── DASHBOARD SCOPE & QA ─────────── */
@@ -2060,23 +2087,16 @@ function _dashScopeEvals(){
   const me=Auth.user;
   const tier=Perms.dashTier(me);
   if(tier==='admin'||tier==='executive') return all;
-  if(tier==='supervisor'){
-    const drIds=DB.all().filter(u=>u.isActive&&u.supervisorId===me.id).map(u=>u.id);
-    return all.filter(e=>e.evaluatorId===me.id||e.trainerId===me.id||drIds.includes(e.trainerId)||drIds.includes(e.evaluatorId));
-  }
+  if(me.dashScope==='full') return all;
   return all.filter(e=>e.evaluatorId===me.id||e.trainerId===me.id);
 }
 function _dashScopeIDQA(){
   const me=Auth.user; const all=IDQADB.all();
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer) return all;
-  const directIds=DB.all().filter(u=>u.isActive&&u.supervisorId===me.id).map(u=>u.id);
-  return all.filter(r=>r.reviewerId===me.id||r.designerId===me.id||directIds.includes(r.designerId));
+  if(me.isAdmin||me.isExecutive||me.isReportsViewer||me.dashScope==='full') return all;
 }
 function _dashScopeCQA(){
   const me=Auth.user; const all=ContentQADB.all();
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer) return all;
-  const directIds=DB.all().filter(u=>u.isActive&&u.supervisorId===me.id).map(u=>u.id);
-  return all.filter(r=>r.reviewerId===me.id||r.authorId===me.id||directIds.includes(r.authorId));
+  if(me.isAdmin||me.isExecutive||me.isReportsViewer||me.dashScope==='full') return all;
 }
 function _dashQAHtml(tier){
   if(tier==='executive') return '';
@@ -3212,8 +3232,9 @@ function renderUsers(){
     const pos=Sel.nameOf(Store.POS,u.positionId)||'<span class="txt-muted">—</span>';
     const adminBadge=u.isAdmin?'<span class="badge b-admin">Admin</span> ':'';
     const catBadges=Perms.catBadges(u);
+    const scopeBadge=u.isAdmin||u.isExecutive?'':(u.dashScope==='full'?'<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe" title="Full org dashboard view">⊞ Full View</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0" title="Team data only">⊟ Team View</span>');
     const toggleBtn=!isMe?(u.isActive?`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',false)">Deactivate</button>`:`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',true)">Activate</button>`):'';
-    return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}</div></td></tr>`;
+    return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}${scopeBadge}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}</div></td></tr>`;
   }).join('');
 }
 
@@ -3233,7 +3254,7 @@ function updateEmpStat(h){
 function openAddUser(){
   document.getElementById('mu-id').value='';
   ['mu-empid','mu-fname','mu-lname','mu-email','mu-hiredate'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-executive').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false;
+  document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-executive').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false; setDashScopeUI('team');
   document.getElementById('mu-title').textContent='Add New User';
   document.getElementById('mu-subtitle').textContent='Fill in the details below to create a new user account.';
   document.getElementById('mu-save').textContent='Save User';
@@ -3266,6 +3287,9 @@ function openEditUser(id){
   document.getElementById('mu-form-trainer').checked=!!u.formTrainer;
   document.getElementById('mu-form-idqa').checked=!!u.formIDQA;
   document.getElementById('mu-form-cqa').checked=!!u.formCQA;
+  setDashScopeUI(u.isAdmin||u.isExecutive?'full':(u.dashScope||'team'));
+  const dsWrap=document.getElementById('mu-dashscope-wrap');
+  if(dsWrap){dsWrap.querySelectorAll('.seg-btn').forEach(b=>b.disabled=!!(u.isAdmin||u.isExecutive));}
   updateEmpStat(u.hireDate||''); openModal('user');
 }
 
@@ -3293,6 +3317,7 @@ function saveUser(){
   const isExecutive=document.getElementById('mu-executive').checked;
   const isReportsViewer=document.getElementById('mu-reports-viewer').checked;
   const formTrainer=document.getElementById('mu-form-trainer').checked; const formIDQA=document.getElementById('mu-form-idqa').checked; const formCQA=document.getElementById('mu-form-cqa').checked;
+  const dashScope=isAdmin||isExecutive?'full':_getDashScopeUI();
   const errEl=document.getElementById('mu-error');
   const showErr=m=>{errEl.textContent=m;errEl.style.display='block';};
   errEl.style.display='none';
@@ -3304,7 +3329,7 @@ function saveUser(){
   if(isNew){
     if(DB.byEmail(email)) return showErr('A user with this email already exists.');
     if(empId&&DB.byEmpId(empId)) return showErr('This Employee ID is already in use.');
-    DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isExecutive,isReportsViewer,formTrainer,formIDQA,formCQA});
+    DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isExecutive,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
     toast(`${fname} ${lname} added. Default password: ${DEFAULT_PW}`,'success');
   } else {
     const dup=DB.byEmail(email); if(dup&&dup.id!==id) return showErr('Another user with this email already exists.');
@@ -3312,7 +3337,7 @@ function saveUser(){
     const ex=DB.byId(id);
     if(ex.isAdmin&&!isAdmin&&DB.adminCount()<=1) return showErr('Cannot remove Admin from the last administrator.');
     if(ex.isAdmin&&!isActive&&DB.adminCount()<=1) return showErr('Cannot deactivate the last administrator.');
-    DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isExecutive,isReportsViewer,formTrainer,formIDQA,formCQA});
+    DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isExecutive,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
     if(id===Auth.user.id){Auth.refresh();setupNav();}
     toast(`${fname} ${lname} updated.`,'success');
   }
@@ -7424,7 +7449,7 @@ function wireEvents(){
   document.querySelectorAll('.nav-item[data-view],.nav-sub-item[data-view]').forEach(el=>el.addEventListener('click',()=>showView(el.dataset.view)));
   document.getElementById('add-user-btn').addEventListener('click',openAddUser);
   document.getElementById('mu-save').addEventListener('click',saveUser);
-  document.getElementById('mu-admin').addEventListener('change',function(){document.getElementById('mu-perm-note').style.display=this.checked?'block':'none';});
+  document.getElementById('mu-admin').addEventListener('change',function(){document.getElementById('mu-perm-note').style.display=this.checked?'block':'none'; _onExecToggle();});
   document.getElementById('mu-hiredate').addEventListener('change',function(){updateEmpStat(this.value);});
   document.getElementById('import-csv-btn').addEventListener('click',()=>{ _csvRows=[]; document.getElementById('csv-preview').classList.add('hidden'); document.getElementById('csv-import-btn').classList.add('hidden'); document.getElementById('csv-file').value=''; openModal('csv'); });
   document.getElementById('csv-file').addEventListener('change',e=>{ if(e.target.files[0]) parseCSVFile(e.target.files[0]); });
