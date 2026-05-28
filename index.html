@@ -1479,7 +1479,6 @@
               </div>
               <div style="display:flex;gap:8px">
                 <button class="btn btn-secondary" id="import-csv-btn">⬆ Import CSV</button>
-                <button class="btn btn-secondary" id="reseed-users-btn" style="color:#dc2626;border-color:#fca5a5" title="Clears all users and reloads the default list">↺ Reset Users</button>
                 <button class="btn btn-primary" id="add-user-btn">+ Add User</button>
               </div>
             </div>
@@ -3188,20 +3187,6 @@ function thFilter(e,type,val){
 
 /* ── USER MANAGEMENT ──────────────── */
 let uF={q:'',account:'all',role:'all'};
-
-function reseedUsers(){
-  if(!confirm('This will delete all current users and reload the default list.\n\nAny evaluations linked to current users will lose their names.\n\nContinue?')) return;
-  const currentEmail=Auth.user?.email||'';
-  Store.del(Store.USERS);
-  DB.seed();
-  // Restore session so the current user stays logged in under their new ID
-  if(currentEmail){
-    const me=DB.byEmail(currentEmail);
-    if(me){ Auth._u=me; Store.set(Store.SESSION,{userId:me.id,at:Date.now()}); }
-  }
-  renderUsers();
-  toast('Users reset — 9 users loaded.','success');
-}
 
 function renderUsers(){
   const all=DB.all(), {q,account,role}=uF;
@@ -7441,7 +7426,6 @@ function wireEvents(){
   document.getElementById('mu-save').addEventListener('click',saveUser);
   document.getElementById('mu-admin').addEventListener('change',function(){document.getElementById('mu-perm-note').style.display=this.checked?'block':'none';});
   document.getElementById('mu-hiredate').addEventListener('change',function(){updateEmpStat(this.value);});
-  document.getElementById('reseed-users-btn').addEventListener('click', reseedUsers);
   document.getElementById('import-csv-btn').addEventListener('click',()=>{ _csvRows=[]; document.getElementById('csv-preview').classList.add('hidden'); document.getElementById('csv-import-btn').classList.add('hidden'); document.getElementById('csv-file').value=''; openModal('csv'); });
   document.getElementById('csv-file').addEventListener('change',e=>{ if(e.target.files[0]) parseCSVFile(e.target.files[0]); });
   document.getElementById('csv-import-btn').addEventListener('click',importCSV);
@@ -7468,6 +7452,13 @@ function wireEvents(){
 
 function bootApp(){
   showScreen('app'); setupNav();
+  // Always expand Evaluations sub-nav on login
+  const grp=document.getElementById('nav-evals-group');
+  const chv=document.getElementById('nav-evals-chevron');
+  const par=document.getElementById('nav-evals-parent');
+  if(grp){ grp.classList.add('open'); }
+  if(chv){ chv.style.transform='rotate(0deg)'; }
+  if(par){ par.classList.add('active'); }
   const lastView=localStorage.getItem('leap_view');
   const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings'];
   showView(validViews.includes(lastView)?lastView:'dashboard');
