@@ -669,12 +669,12 @@
     .r-btn.active-1{background:#fef9c3;border-color:#d97706;color:#d97706}
     .r-btn.active-0{background:#fee2e2;border-color:#dc2626;color:#dc2626}
     .cr-remarks{padding:8px 10px 8px 18px!important}
-    .cr-remarks textarea{width:100%;min-height:52px;border:1px solid var(--border);border-radius:6px;font-size:12px;padding:5px 8px;font-family:'DM Sans',var(--font);color:var(--text);resize:vertical;outline:none;transition:border .15s;line-height:1.45;background:var(--white)}
+    .cr-remarks textarea{width:100%;min-height:68px;border:1px solid var(--border);border-radius:6px;font-size:12px;padding:5px 8px;font-family:'DM Sans',var(--font);color:var(--text);resize:vertical;outline:none;transition:border .15s;line-height:1.45;background:var(--white)}
     .cr-remarks textarea:focus{border-color:var(--pri);box-shadow:0 0 0 2px rgba(99,102,241,.1)}
     .rmk-required .cr-rmk-ta{border-color:#d97706!important;background:#fffbeb!important}
     .cr-remarks textarea:read-only,.cr-remarks textarea[readonly]{background:var(--bg);color:var(--text2);cursor:default}
     /* Eval flat-grid (matches cqa-grid-table but wider rating col for 5 btns) */
-    .eval-crit-grid{display:grid;grid-template-columns:28px 1fr 206px 280px;width:100%;margin-top:0}
+    .eval-crit-grid{display:grid;grid-template-columns:28px minmax(180px,1fr) 206px minmax(300px,1.4fr);width:100%;margin-top:0}
     /* Eval rating buttons — 5-point scale */
     .eval-r-btn{width:34px;height:32px;border:1.5px solid var(--border);background:var(--white);border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--text3);transition:all .15s;font-family:'DM Mono','Courier New',monospace}
     .eval-r-btn:hover{border-color:var(--pri);color:var(--pri)}
@@ -2225,7 +2225,7 @@ function showView(id){
   }
   document.getElementById('page-title').textContent=PAGE_TITLES[id]||'';
   if(id==='dashboard')   renderDashboard();
-  if(id==='users')       renderUsers();
+  if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
   if(id==='evaluations') renderEvaluations();
   if(id==='reports')     renderReports();
   if(id==='id-qa')       renderIDQA();
