@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LEAP Insights</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2072%2072%22%3E%3Crect%20width%3D%2272%22%20height%3D%2272%22%20rx%3D%2218%22%20fill%3D%22%231e1b4b%22%2F%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2243%22%20r%3D%223.5%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.5%22%2F%3E%3Ccircle%20cx%3D%2227%22%20cy%3D%2249%22%20r%3D%222.5%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.35%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%2248%22%20r%3D%222%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.35%22%2F%3E%3Cpolyline%20points%3D%2224%2C45%2036%2C22%2048%2C45%22%20fill%3D%22none%22%20stroke%3D%22%23c7d2fe%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolyline%20points%3D%2230%2C34%2036%2C22%2042%2C34%22%20fill%3D%22%23818cf8%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Figtree:wght@400;500;600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -46,7 +47,7 @@
     .auth-screen.show{display:flex}
     .auth-card{background:var(--white);border-radius:var(--r-xl);padding:44px 40px 40px;width:100%;max-width:420px;box-shadow:var(--sh-mo)}
     .auth-logo{display:flex;align-items:center;gap:14px;margin-bottom:36px}
-    .auth-logo-icon{width:46px;height:46px;background:linear-gradient(135deg,#1e40af,#0891b2);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:800;letter-spacing:-1px;flex-shrink:0}
+    .auth-logo-icon{width:46px;height:46px;flex-shrink:0}
     .auth-logo-name{font-size:18px;font-weight:700;color:var(--text);font-family:var(--font-heading)}
     .auth-logo-sub{font-size:10.5px;color:var(--text3);margin-top:1px}
     .auth-heading{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px;font-family:var(--font-heading)}
@@ -127,7 +128,7 @@
     /* ── SIDEBAR ── */
     .sidebar{width:var(--sbw);background:var(--sb);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;overflow-y:auto}
     .sb-brand{padding:18px 16px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
-    .brand-mark{width:34px;height:34px;background:linear-gradient(135deg,#2563eb,#0891b2);border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;letter-spacing:-.5px;flex-shrink:0}
+    .brand-mark{width:34px;height:34px;flex-shrink:0}
     .brand-nt{font-size:14px;font-weight:700;color:#fff;line-height:1.25;font-family:var(--font-heading)}
     .brand-st{font-size:9.5px;color:rgba(255,255,255,.32);letter-spacing:.8px;text-transform:uppercase;margin-top:1px}
     .sb-nav{flex:1;padding:10px 0;overflow-y:auto}
@@ -717,7 +718,7 @@
 <div id="login-screen" class="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="auth-logo-icon">LI</div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" style="width:46px;height:46px;flex-shrink:0;"><rect width="72" height="72" rx="18" fill="#1e1b4b"/><circle cx="36" cy="43" r="3.5" fill="#a5b4fc" opacity="0.5"/><circle cx="27" cy="49" r="2.5" fill="#a5b4fc" opacity="0.35"/><circle cx="45" cy="48" r="2" fill="#a5b4fc" opacity="0.35"/><polyline points="24,45 36,22 48,45" fill="none" stroke="#c7d2fe" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="30,34 36,22 42,34" fill="#818cf8" stroke="none"/></svg>
       <div><div class="auth-logo-name">LEAP Insights</div><div class="auth-logo-sub">Learning Evaluation Analytics Platform</div></div>
     </div>
     <h2 class="auth-heading">Welcome back</h2>
@@ -759,7 +760,7 @@
 <div id="chg-pass-screen" class="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="auth-logo-icon">LI</div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" style="width:46px;height:46px;flex-shrink:0;"><rect width="72" height="72" rx="18" fill="#1e1b4b"/><circle cx="36" cy="43" r="3.5" fill="#a5b4fc" opacity="0.5"/><circle cx="27" cy="49" r="2.5" fill="#a5b4fc" opacity="0.35"/><circle cx="45" cy="48" r="2" fill="#a5b4fc" opacity="0.35"/><polyline points="24,45 36,22 48,45" fill="none" stroke="#c7d2fe" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="30,34 36,22 42,34" fill="#818cf8" stroke="none"/></svg>
       <div><div class="auth-logo-name">LEAP Insights</div><div class="auth-logo-sub">Learning Evaluation Analytics Platform</div></div>
     </div>
     <h2 class="auth-heading">Set Your Password</h2>
@@ -793,7 +794,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sb-brand">
-        <div class="brand-mark">LI</div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" style="width:34px;height:34px;flex-shrink:0;"><rect width="72" height="72" rx="18" fill="#1e1b4b"/><circle cx="36" cy="43" r="3.5" fill="#a5b4fc" opacity="0.5"/><circle cx="27" cy="49" r="2.5" fill="#a5b4fc" opacity="0.35"/><circle cx="45" cy="48" r="2" fill="#a5b4fc" opacity="0.35"/><polyline points="24,45 36,22 48,45" fill="none" stroke="#c7d2fe" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="30,34 36,22 42,34" fill="#818cf8" stroke="none"/></svg>
         <div><div class="brand-nt">LEAP Insights</div><div class="brand-st">L&amp;D Platform</div></div>
       </div>
       <nav class="sb-nav">
@@ -1902,9 +1903,17 @@ const FireSync = {
     FireSync._loading=true;
     try{
       const keys=this._keys();
+      // Include any IDQA seq counter keys sitting in localStorage
       for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')&&!keys.includes(k)) keys.push(k); }
       const snaps=await Promise.all(keys.map(k=>_fbDb.collection(this._col).doc(k).get()));
-      snaps.forEach((snap,i)=>{ if(snap.exists) localStorage.setItem(keys[i],JSON.stringify(snap.data().payload)); });
+      snaps.forEach((snap,i)=>{
+        if(snap.exists){
+          localStorage.setItem(keys[i],JSON.stringify(snap.data().payload));
+        } else {
+          // Firestore has no data for this key — wipe localStorage so stale test data doesn't survive
+          localStorage.removeItem(keys[i]);
+        }
+      });
     }finally{ FireSync._loading=false; }
   },
   save(k,v){ if(FireSync._loading) return; _fbDb.collection(this._col).doc(k).set({payload:v}).catch(e=>console.warn('Firestore write:',e)); }
@@ -4781,7 +4790,7 @@ function _buildEvalHTML(ev){
   }).join('');
   return `
   <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:14px;border-bottom:2.5px solid #2563eb">
-    <div style="background:linear-gradient(135deg,#1e40af,#0891b2);color:#fff;font-size:13px;font-weight:800;letter-spacing:-1px;width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">LI</div>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" style="width:40px;height:40px;flex-shrink:0;"><rect width="72" height="72" rx="18" fill="#1e1b4b"/><circle cx="36" cy="43" r="3.5" fill="#a5b4fc" opacity="0.5"/><circle cx="27" cy="49" r="2.5" fill="#a5b4fc" opacity="0.35"/><circle cx="45" cy="48" r="2" fill="#a5b4fc" opacity="0.35"/><polyline points="24,45 36,22 48,45" fill="none" stroke="#c7d2fe" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="30,34 36,22 42,34" fill="#818cf8" stroke="none"/></svg>
     <div><div style="font-size:16px;font-weight:700;color:#0f172a">Trainer Evaluation Report</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">LEAP Insights · Dermorepubliq Corporation</div></div>
     <div style="margin-left:auto;text-align:right"><div style="font-size:13px;font-weight:700;color:#2563eb;font-family:monospace;letter-spacing:.5px">${Utils.esc(ev.code||'—')}</div><div style="font-size:10.5px;color:#94a3b8">Evaluation Code</div></div>
   </div>
