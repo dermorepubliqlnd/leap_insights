@@ -1908,7 +1908,8 @@ const FireSync = {
       const snaps=await Promise.all(keys.map(k=>_fbDb.collection(this._col).doc(k).get()));
       snaps.forEach((snap,i)=>{
         if(snap.exists){
-          localStorage.setItem(keys[i],JSON.stringify(snap.data().payload));
+          const _raw=snap.data().payload;
+          localStorage.setItem(keys[i],typeof _raw==='string'?_raw:JSON.stringify(_raw));
         } else {
           // Firestore has no data for this key — wipe localStorage so stale test data doesn't survive
           localStorage.removeItem(keys[i]);
