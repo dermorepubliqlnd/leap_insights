@@ -4787,7 +4787,7 @@ function _buildEvalHTML(ev){
       <td style="padding:7px 6px;text-align:center;width:40px;vertical-align:top">
         <div style="font-size:20px;font-weight:800;color:${rating?scColor:'#cbd5e1'}">${rating||'—'}</div>
       </td>
-      <td style="padding:7px 8px;font-size:12px;color:#475569;width:220px;line-height:1.55;vertical-align:top">${remark||''}</td>
+      <td style="padding:7px 8px;font-size:12px;color:#475569;width:42%;line-height:1.55;vertical-align:top">${remark||''}</td>
     </tr>`;
   }).join('');
   return `
@@ -4800,6 +4800,7 @@ function _buildEvalHTML(ev){
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Trainer Evaluated</div><div style="font-size:13.5px;font-weight:600;color:#0f172a;margin-top:3px">${Utils.esc(tName)}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Evaluator</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(evName)}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Training Program</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(ev.trainingProgram||'—')}</div></div>
+    <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Batch No.</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(ev.batchNo||'—')}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Session Date</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.formatDate(ev.trainingDate)}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Venue</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(venue)}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Modality</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(modality)}</div></div>
@@ -4839,6 +4840,7 @@ function printEvalPDF(id){
   const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>
     *{box-sizing:border-box;margin:0;padding:0}
+    ul,ol{padding-left:18px;margin:4px 0}li{margin-bottom:2px}
     @page{size:A4 portrait;margin:15mm 15mm 15mm 15mm}
     body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#0f172a;padding:24px 28px;max-width:780px;margin:0 auto;font-size:12.5px;line-height:1.5}
     table{border-collapse:collapse}
