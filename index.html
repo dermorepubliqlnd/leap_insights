@@ -8,6 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Figtree:wght@400;500;600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <!-- MSAL.js — required for OneDrive auto-backup (Option 2). Leave in place even when backup is not yet configured. -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     /* =========================================================
        LEAP INSIGHTS  v1.2
@@ -700,7 +706,14 @@
 </head>
 <body>
 
-<!-- ══ LOGIN ══════════════════════════ -->
+<!-- ══ FIREBASE LOADING ══════════════ -->
+<div id="fs-loading" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.85);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <div style="width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite"></div>
+  <div style="color:#fff;font-size:14px;opacity:.85" id="fs-loading-msg">Connecting…</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- ══ LOGIN ══════════════════════ -->
 <div id="login-screen" class="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">
@@ -724,6 +737,21 @@
       </div>
       <button type="submit" class="btn btn-primary btn-lg btn-full" style="margin-top:6px">Sign In</button>
     </form>
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 14px">
+      <hr style="flex:1;border:none;border-top:1px solid var(--border)">
+      <span style="font-size:12px;color:var(--text3);white-space:nowrap">or</span>
+      <hr style="flex:1;border:none;border-top:1px solid var(--border)">
+    </div>
+    <button id="azure-sso-btn" type="button" onclick="loginWithAzure()"
+      style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px;border:1px solid #8c8c8c;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;font-weight:500;color:#1f1f1f;transition:background .15s"
+      onmouseover="if(!this.disabled)this.style.background='#f3f2f1'" onmouseout="this.style.background='#fff'">
+      <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Sign in with Microsoft
+    </button>
+    <div id="azure-sso-note" style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px"></div>
   </div>
 </div>
 
@@ -1658,14 +1686,7 @@
                   <div class="toggle-title">Admin</div>
                   <div class="toggle-desc">Full system access: all records, users, settings</div>
                 </div>
-                <label class="switch"><input type="checkbox" id="mu-admin"><span class="sw-track"></span></label>
-              </div>
-              <div class="toggle-row" style="padding-top:10px;margin-top:10px;border-top:1px solid var(--border-lt)">
-                <div class="toggle-info">
-                  <div class="toggle-title">Executive View <span class="qa-soon-badge" style="background:#eff6ff;color:var(--pri);border-color:#bfdbfe">Auto-detect</span></div>
-                  <div class="toggle-desc" id="mu-exec-desc">Read-only dashboard: full org data, no quick actions. Auto-set when position is Chief, Director, VP, or Head of.</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="mu-executive" onchange="_onExecToggle()"><span class="sw-track"></span></label>
+                <label class="switch"><input type="checkbox" id="mu-admin" onchange="_onAdminToggle()"><span class="sw-track"></span></label>
               </div>
               <div class="toggle-row" style="padding-top:10px;margin-top:10px;border-top:1px solid var(--border-lt)">
                 <div class="toggle-info">
@@ -1860,6 +1881,52 @@
 const DEFAULT_PW   = 'Welcome@1';  // Change this before deploying to production
 const STORE_VER    = 'v3';
 
+/* ── FIREBASE CONFIG ─────────────────────────────────────────────────────────────────────── */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAnTq2B9Tgv_cQXeFdYuAoqUyoBRbsoQ6c",
+  authDomain:        "leap-insights.firebaseapp.com",
+  projectId:         "leap-insights",
+  storageBucket:     "leap-insights.firebasestorage.app",
+  messagingSenderId: "543523779845",
+  appId:             "1:543523779845:web:2b8093e646c1392da6b36c"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const _fbAuth = firebase.auth();
+const _fbDb   = firebase.firestore();
+
+const FireSync = {
+  _loading: false,
+  _col: 'leap_data',
+  _keys(){ return [Store.USERS,Store.EVALS,Store.CQA,'leap_idqa_v1',Store.DELIVERABLES,Store.POS,Store.VENUES,Store.MODALS,Store.FIRSTRUN]; },
+  async loadAll(){
+    FireSync._loading=true;
+    try{
+      const keys=this._keys();
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')&&!keys.includes(k)) keys.push(k); }
+      const snaps=await Promise.all(keys.map(k=>_fbDb.collection(this._col).doc(k).get()));
+      snaps.forEach((snap,i)=>{ if(snap.exists) localStorage.setItem(keys[i],JSON.stringify(snap.data().payload)); });
+    }finally{ FireSync._loading=false; }
+  },
+  save(k,v){ if(FireSync._loading) return; _fbDb.collection(this._col).doc(k).set({payload:v}).catch(e=>console.warn('Firestore write:',e)); }
+};
+
+async function _createFirebaseUser(email, password){
+  try{
+    const tmp=firebase.initializeApp(FIREBASE_CONFIG,'usr_'+Date.now());
+    await tmp.auth().createUserWithEmailAndPassword(email, password);
+    await tmp.auth().signOut(); await tmp.delete();
+  }catch(e){ if(e.code!=='auth/email-already-in-use') console.warn('FB user create:',e.message); }
+}
+
+/* ── BACKUP CONFIG (IT: fill in the three placeholder values and set enabled:true) ──────── */
+const LEAP_BACKUP_CONFIG = {
+  clientId:     'YOUR_AZURE_CLIENT_ID',         // IT: Azure App Registration Client ID
+  tenantId:     'YOUR_AZURE_TENANT_ID',         // IT: Azure Tenant ID
+  backupFolder: 'YOUR_ONEDRIVE_BACKUP_FOLDER_PATH', // IT: e.g. 'LEAP Insights/Backups'
+  enabled:      false,  // IT: set to true to enable OneDrive auto-backup
+  ssoEnabled:   false   // IT: set to true to enable "Sign in with Microsoft" on the login screen
+};
+
 const EVAL_CRITERIA = [
   {id:'cri1', name:'Preparation & Organization',       focus:'Lesson plan, materials ready, flow of session',        d:{1:'Unprepared, no structure',2:'Minimal prep, disorganized',3:'Adequately prepared, follows structure',4:'Well-prepared, clear flow',5:'Extremely organized, seamless transitions'}},
   {id:'cri2', name:'Mastery of Content',               focus:'Knowledge, confidence in subject matter',              d:{1:'Lacks subject knowledge',2:'Uncertain or confused',3:'Knows topic, answers basic questions',4:'Deep understanding, confident delivery',5:'Expert-level, handles complex questions'}},
@@ -1895,7 +1962,7 @@ const Store = {
   USERS:`leap_users_${STORE_VER}`,SESSION:'leap_session_v1',FIRSTRUN:`leap_frun_${STORE_VER}`,
   DELIVERABLES:`leap_deliverables_v1`,POS:`leap_pos_v1`,VENUES:`leap_venues_v1`,MODALS:`leap_modals_v1`,EVALS:'leap_evals_v1',CQA:'leap_cqa_v1',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
-  set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
+  set(k,v){ localStorage.setItem(k,JSON.stringify(v)); const _sk=[Store.SESSION,'leap_last_export','leap_last_od_backup']; if(!_sk.includes(k)) FireSync.save(k,v); if(typeof _scheduleAutoBackup==='function'&&!_sk.includes(k)&&k!==Store.FIRSTRUN) _scheduleAutoBackup(); },
   del(k){ localStorage.removeItem(k); }
 };
 
@@ -1976,7 +2043,7 @@ const DB = {
       email:data.email.trim().toLowerCase(),
       positionId:data.positionId||'', supervisorId:data.supervisorId||'',
       hireDate:data.hireDate||'', isActive:data.isActive!==false,
-      isAdmin:!!data.isAdmin, isExecutive:!!data.isExecutive, isReportsViewer:!!data.isReportsViewer, formTrainer:!!data.formTrainer, formIDQA:!!data.formIDQA, formCQA:!!data.formCQA,
+      isAdmin:!!data.isAdmin, isReportsViewer:!!data.isReportsViewer, formTrainer:!!data.formTrainer, formIDQA:!!data.formIDQA, formCQA:!!data.formCQA,
       dashScope:data.dashScope||'team',
       passwordHash:Utils.hash(data.password||DEFAULT_PW),
       mustChangePassword: skipDefaultPw ? false : true,
@@ -1989,31 +2056,12 @@ const DB = {
 
   seed(){
     if(this.all().length>0) return;
+    // Production seed — two admin accounts only. Update emails/names via User Management after first login.
     const rows=[
-      {employeeId:'210916-002',firstName:'Admin',lastName:'User01',   email:'admin01@dermorepubliq.com',      positionId:'pos_1',hireDate:'2021-09-16',isAdmin:true, isExecutive:true, isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
-      {employeeId:'240301-081',firstName:'Admin',lastName:'User02',   email:'admin02@dermorepubliq.com',   positionId:'pos_2',hireDate:'2024-03-01',isAdmin:true, isExecutive:false,isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
-      {employeeId:'240604-111',firstName:'Test',lastName:'User03', email:'user03@dermorepubliq.com',  positionId:'pos_7',hireDate:'2024-06-04',isAdmin:false,isExecutive:false,isReportsViewer:true, formTrainer:true, formIDQA:true, formCQA:true, password:DEFAULT_PW},
-      {employeeId:'240909-130',firstName:'Test',lastName:'User04',     email:'user04@dermorepubliq.com',     positionId:'pos_5',hireDate:'2024-09-09',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'250922-340',firstName:'Test',lastName:'User05',email:'user05@dermorepubliq.com', positionId:'pos_6',hireDate:'2025-09-22',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'251006-345',firstName:'Test',lastName:'User06',   email:'user06@dermorepubliq.com',     positionId:'pos_4',hireDate:'2025-10-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'251013-350',firstName:'Test',lastName:'User07',   email:'user07@dermorepubliq.com',   positionId:'pos_5',hireDate:'2025-10-13',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'260406-484',firstName:'Test',lastName:'User08',   email:'user08@dermorepubliq.com',   positionId:'pos_5',hireDate:'2026-04-06',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'260504-498',firstName:'Test',lastName:'User09',    email:'user09@dermorepubliq.com',    positionId:'pos_6',hireDate:'2026-05-04',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,password:DEFAULT_PW},
-      {employeeId:'',firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'user10@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team',password:DEFAULT_PW}
+      {employeeId:'',firstName:'Admin',lastName:'01',email:'admin01@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,password:DEFAULT_PW},
+      {employeeId:'',firstName:'Admin',lastName:'02',email:'admin02@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,password:DEFAULT_PW}
     ];
     rows.forEach(r=>this.create(r, true));
-    // Wire supervisor chain
-    const abimelex=this.byEmail('admin01@dermorepubliq.com');
-    const sandy=this.byEmail('admin02@dermorepubliq.com');
-    const joseph=this.byEmail('user03@dermorepubliq.com');
-    if(abimelex&&sandy) this.update(sandy.id,{supervisorId:abimelex.id});
-    if(sandy&&joseph)   this.update(joseph.id,{supervisorId:sandy.id});
-    if(joseph){
-      ['pdiza','rdelacruz','kwong','kgarcia','garagon','fdipon'].forEach(k=>{
-        const u=this.all().find(x=>x.email.startsWith(k));
-        if(u) this.update(u.id,{supervisorId:joseph.id});
-      });
-    }
   }
 };
 
@@ -2024,9 +2072,31 @@ const Auth = {
   get isAdmin(){ return this._u?.isAdmin||false; },
   get canViewReports(){ return this._u?.isAdmin||this._u?.isReportsViewer||Perms.isSupervisor(this._u)||false; },
   formAccess(user){ const u=user||this._u; if(!u) return{trainerEval:false,idqa:false,cqa:false,allForms:false}; if(u.isAdmin) return{trainerEval:true,idqa:true,cqa:true,allForms:true}; const af=!!u.formTrainer&&!!u.formIDQA&&!!u.formCQA; return{trainerEval:!!u.formTrainer,idqa:!!u.formIDQA,cqa:!!u.formCQA,allForms:af}; },
-  login(email,pass){ const u=DB.byEmail(email); if(!u) return{ok:false,msg:'No account found with that email.'}; if(!u.isActive) return{ok:false,msg:'This account is inactive. Contact your administrator.'}; if(Utils.hash(pass)!==u.passwordHash) return{ok:false,msg:'Incorrect password. Please try again.'}; this._u=u; Store.set(Store.SESSION,{userId:u.id,at:Date.now()}); return{ok:true,user:u}; },
-  logout(){ this._u=null; Store.del(Store.SESSION); location.reload(); },
-  restore(){ const s=Store.get(Store.SESSION); if(!s) return false; const u=DB.byId(s.userId); if(!u||!u.isActive){Store.del(Store.SESSION);return false;} this._u=u; return true; },
+  async login(email,pass){
+    const _fail=m=>{document.getElementById('fs-loading').style.display='none';return{ok:false,msg:m};};
+    document.getElementById('fs-loading').style.display='flex';
+    document.getElementById('fs-loading-msg').textContent='Signing in…';
+    try{
+      try{ await _fbAuth.signInWithEmailAndPassword(email,pass); }
+      catch(fe){
+        if(fe.code==='auth/user-not-found'||fe.code==='auth/invalid-credential'){
+          try{ await _fbAuth.createUserWithEmailAndPassword(email,pass); }
+          catch(ce){ return _fail(ce.code==='auth/email-already-in-use'?'Incorrect password. Please try again.':(ce.message||'Sign-in failed.')); }
+        } else if(fe.code==='auth/wrong-password'){ return _fail('Incorrect password. Please try again.'); }
+        else { return _fail(fe.message||'Sign-in failed.'); }
+      }
+      document.getElementById('fs-loading-msg').textContent='Loading data…';
+      await FireSync.loadAll(); Sel.seed(); DB.seed();
+      const u=DB.byEmail(email.toLowerCase());
+      if(!u){ await _fbAuth.signOut(); return _fail('No LEAP account found for this email. Contact your administrator.'); }
+      if(!u.isActive){ await _fbAuth.signOut(); return _fail('This account is inactive. Contact your administrator.'); }
+      this._u=u; Store.set(Store.SESSION,{userId:u.id,at:Date.now()});
+      document.getElementById('fs-loading').style.display='none';
+      return{ok:true,user:u};
+    }catch(err){ await _fbAuth.signOut().catch(()=>{}); return _fail(err.message||'Sign-in failed.'); }
+  },
+  logout(){ this._u=null; Store.del(Store.SESSION); _fbAuth.signOut().finally(()=>location.reload()); },
+  restore(){ return false; },
   refresh(){ if(this._u) this._u=DB.byId(this._u.id)||this._u; }
 };
 
@@ -2035,15 +2105,6 @@ const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
   canView(v){ if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; return ['users','settings'].includes(v)?Auth.isAdmin:true; },
-  EXEC_KW:['chief','director','vp','vice president','head of'],
-  isExec(u){
-    if(!u) return false;
-    if(u.isExecutive) return true;
-    const pos=Sel.all(Store.POS).find(p=>p.id===u.positionId);
-    if(!pos) return false;
-    const n=pos.name.toLowerCase();
-    return this.EXEC_KW.some(k=>n.includes(k));
-  },
   isSupervisor(u){
     if(!u) return false;
     return DB.all().some(x=>x.isActive&&x.supervisorId===u.id);
@@ -2051,22 +2112,11 @@ const Perms = {
   dashTier(u){
     if(!u) return 'employee';
     if(u.isAdmin) return 'admin';
-    if(this.isExec(u)) return 'executive';
     if(this.isSupervisor(u)) return 'supervisor';
     return 'employee';
   }
 };
 
-/* ── EXEC AUTO-DETECT (drawer) ────── */
-function _checkExecPosition(){
-  const posId=document.getElementById('mu-position')?.value;
-  if(!posId) return;
-  const pos=Sel.all(Store.POS).find(p=>p.id===posId);
-  if(!pos) return;
-  const n=pos.name.toLowerCase();
-  const isExecPos=Perms.EXEC_KW.some(k=>n.includes(k));
-  if(isExecPos) document.getElementById('mu-executive').checked=true;
-}
 function setDashScopeUI(val){
   document.getElementById('mu-ds-team').classList.toggle('active', val==='team');
   document.getElementById('mu-ds-full').classList.toggle('active', val==='full');
@@ -2075,12 +2125,10 @@ function _getDashScopeUI(){
   return document.getElementById('mu-ds-full').classList.contains('active') ? 'full' : 'team';
 }
 
-function _onExecToggle(){
-  const isExec=document.getElementById('mu-executive').checked;
+function _onAdminToggle(){
   const isAdm=document.getElementById('mu-admin').checked;
-  const lock=isExec||isAdm;
-  if(lock) setDashScopeUI('full');
-  document.getElementById('mu-dashscope-wrap').querySelectorAll('.seg-btn').forEach(b=>b.disabled=lock);
+  if(isAdm) setDashScopeUI('full');
+  document.getElementById('mu-dashscope-wrap').querySelectorAll('.seg-btn').forEach(b=>b.disabled=isAdm);
 }
 
 /* ── DASHBOARD SCOPE & QA ─────────── */
@@ -2088,20 +2136,19 @@ function _dashScopeEvals(){
   const all=EvalDB.all();
   const me=Auth.user;
   const tier=Perms.dashTier(me);
-  if(tier==='admin'||tier==='executive') return all;
+  if(tier==='admin'||me.isReportsViewer) return all;
   if(me.dashScope==='full') return all;
   return all.filter(e=>e.evaluatorId===me.id||e.trainerId===me.id);
 }
 function _dashScopeIDQA(){
   const me=Auth.user; const all=IDQADB.all();
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer||me.dashScope==='full') return all;
+  if(me.isAdmin||me.isReportsViewer||me.dashScope==='full') return all;
 }
 function _dashScopeCQA(){
   const me=Auth.user; const all=ContentQADB.all();
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer||me.dashScope==='full') return all;
+  if(me.isAdmin||me.isReportsViewer||me.dashScope==='full') return all;
 }
 function _dashQAHtml(tier){
-  if(tier==='executive') return '';
   const me=Auth.user;
   const _fa=Auth.formAccess(me);
   const canConduct=me.isAdmin||_fa.trainerEval||_fa.idqa||_fa.cqa;
@@ -2297,6 +2344,8 @@ function renderDashboard(){
     bannerEl.innerHTML=`<div class="frb"><span style="font-size:20px;flex-shrink:0;margin-top:1px">🎉</span><div><div class="frb-title">LEAP Insights is ready</div><div class="frb-body">All accounts use the default password <strong>${DEFAULT_PW}</strong>. Users will be asked to change it on first login. Log in with your admin account.</div></div><button class="frb-close" onclick="Store.set(Store.FIRSTRUN,true);this.closest('.frb').remove()">✕</button></div>`;
   } else { bannerEl.innerHTML=''; }
   const tier=Perms.dashTier(Auth.user);
+  const _dfa=Auth.formAccess(Auth.user);
+  const me2=Auth.user; const _showAllTabs=(tier==='admin'||me2.isReportsViewer);
   document.getElementById('dash-body').innerHTML=`
     <div class="dash-topbar">
       <div>
@@ -2320,12 +2369,12 @@ function renderDashboard(){
         <button class="dash-refresh-btn" title="Refresh" onclick="_dashUpdate()">↺</button>
       </div>
     </div>
-    ${tier!=='executive'?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:0 0 8px">Quick Actions</div><div class="dash-qa-strip">${_dashQAHtml(tier)}</div>`:''}
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:0 0 8px">Quick Actions</div><div class="dash-qa-strip">${_dashQAHtml(tier)}</div>
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:16px 0 20px">
       <button id="dtab-overview" class="eval-tab active" onclick="setDashTab('overview')">📊 Overview</button>
-      <button id="dtab-idqa"     class="eval-tab"        onclick="setDashTab('idqa')">◈ ID QA</button>
-      <button id="dtab-cqa"      class="eval-tab"        onclick="setDashTab('cqa')">✦ Content Dev QA</button>
-      <button id="dtab-trainer"  class="eval-tab"        onclick="setDashTab('trainer')">◉ Trainer Eval</button>
+      ${(_showAllTabs||_dfa.idqa)?`<button id="dtab-idqa" class="eval-tab" onclick="setDashTab('idqa')">◈ ID QA</button>`:''}
+      ${(_showAllTabs||_dfa.cqa)?`<button id="dtab-cqa" class="eval-tab" onclick="setDashTab('cqa')">✦ Content Dev QA</button>`:''}
+      ${(_showAllTabs||_dfa.trainerEval)?`<button id="dtab-trainer" class="eval-tab" onclick="setDashTab('trainer')">◉ Trainer Eval</button>`:''}
     </div>
     <div id="dash-tab-content"></div>
   `;
@@ -3234,7 +3283,7 @@ function renderUsers(){
     const pos=Sel.nameOf(Store.POS,u.positionId)||'<span class="txt-muted">—</span>';
     const adminBadge=u.isAdmin?'<span class="badge b-admin">Admin</span> ':'';
     const catBadges=Perms.catBadges(u);
-    const scopeBadge=u.isAdmin||u.isExecutive?'':(u.dashScope==='full'?'<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe" title="Full org dashboard view">⊞ Full View</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0" title="Team data only">⊟ Team View</span>');
+    const scopeBadge=u.isAdmin?'':(u.dashScope==='full'?'<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe" title="Full org dashboard view">⊞ Full View</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0" title="Team data only">⊟ Team View</span>');
     const toggleBtn=!isMe?(u.isActive?`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',false)">Deactivate</button>`:`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',true)">Activate</button>`):'';
     return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}${scopeBadge}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}</div></td></tr>`;
   }).join('');
@@ -3256,7 +3305,7 @@ function updateEmpStat(h){
 function openAddUser(){
   document.getElementById('mu-id').value='';
   ['mu-empid','mu-fname','mu-lname','mu-email','mu-hiredate'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-executive').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false; setDashScopeUI('team');
+  document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false; setDashScopeUI('team');
   document.getElementById('mu-title').textContent='Add New User';
   document.getElementById('mu-subtitle').textContent='Fill in the details below to create a new user account.';
   document.getElementById('mu-save').textContent='Save User';
@@ -3274,7 +3323,7 @@ function openEditUser(id){
   document.getElementById('mu-id').value=u.id; document.getElementById('mu-empid').value=u.employeeId||'';
   document.getElementById('mu-fname').value=u.firstName; document.getElementById('mu-lname').value=u.lastName;
   document.getElementById('mu-email').value=u.email; document.getElementById('mu-hiredate').value=u.hireDate||'';
-  document.getElementById('mu-active').checked=u.isActive; document.getElementById('mu-admin').checked=u.isAdmin; document.getElementById('mu-executive').checked=u.isExecutive||false; document.getElementById('mu-reports-viewer').checked=u.isReportsViewer||false;
+  document.getElementById('mu-active').checked=u.isActive; document.getElementById('mu-admin').checked=u.isAdmin; document.getElementById('mu-reports-viewer').checked=u.isReportsViewer||false;
   document.getElementById('mu-title').textContent='Edit User';
   document.getElementById('mu-subtitle').textContent=`${u.firstName} ${u.lastName}  ·  ${u.email}`;
   document.getElementById('mu-save').textContent='Save Changes';
@@ -3289,18 +3338,19 @@ function openEditUser(id){
   document.getElementById('mu-form-trainer').checked=!!u.formTrainer;
   document.getElementById('mu-form-idqa').checked=!!u.formIDQA;
   document.getElementById('mu-form-cqa').checked=!!u.formCQA;
-  setDashScopeUI(u.isAdmin||u.isExecutive?'full':(u.dashScope||'team'));
+  setDashScopeUI(u.isAdmin?'full':(u.dashScope||'team'));
   const dsWrap=document.getElementById('mu-dashscope-wrap');
-  if(dsWrap){dsWrap.querySelectorAll('.seg-btn').forEach(b=>b.disabled=!!(u.isAdmin||u.isExecutive));}
+  if(dsWrap){dsWrap.querySelectorAll('.seg-btn').forEach(b=>b.disabled=!!u.isAdmin);}
   updateEmpStat(u.hireDate||''); openModal('user');
 }
 
 function resetUserPassword(){
   const id=document.getElementById('mu-id').value; if(!id) return;
   const u=DB.byId(id); if(!u) return;
-  confirm$('Reset Password',`Reset <strong>${Utils.esc(u.firstName+' '+u.lastName)}</strong>'s password to the default <strong>${DEFAULT_PW}</strong>? They will be required to change it on next login.`,'Reset',()=>{
-    DB.update(id,{passwordHash:Utils.hash(DEFAULT_PW),mustChangePassword:true});
-    toast(`${u.firstName}'s password has been reset.`,'info');
+  confirm$('Reset Password',`Send a password reset email to <strong>${Utils.esc(u.firstName+' '+u.lastName)}</strong> (<em>${Utils.esc(u.email)}</em>)?`,'Send Reset Email',()=>{
+    _fbAuth.sendPasswordResetEmail(u.email).catch(e=>console.warn('Reset email:',e));
+    DB.update(id,{mustChangePassword:true});
+    toast(`Password reset email sent to ${u.email}.`,'success');
     closeModal('user'); renderUsers();
   });
 }
@@ -3316,10 +3366,9 @@ function saveUser(){
   const hireDate=document.getElementById('mu-hiredate').value;
   const isActive=document.getElementById('mu-active').checked;
   const isAdmin=document.getElementById('mu-admin').checked;
-  const isExecutive=document.getElementById('mu-executive').checked;
   const isReportsViewer=document.getElementById('mu-reports-viewer').checked;
   const formTrainer=document.getElementById('mu-form-trainer').checked; const formIDQA=document.getElementById('mu-form-idqa').checked; const formCQA=document.getElementById('mu-form-cqa').checked;
-  const dashScope=isAdmin||isExecutive?'full':_getDashScopeUI();
+  const dashScope=isAdmin?'full':_getDashScopeUI();
   const errEl=document.getElementById('mu-error');
   const showErr=m=>{errEl.textContent=m;errEl.style.display='block';};
   errEl.style.display='none';
@@ -3331,7 +3380,8 @@ function saveUser(){
   if(isNew){
     if(DB.byEmail(email)) return showErr('A user with this email already exists.');
     if(empId&&DB.byEmpId(empId)) return showErr('This Employee ID is already in use.');
-    DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isExecutive,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+    DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+    _createFirebaseUser(email, DEFAULT_PW);
     toast(`${fname} ${lname} added. Default password: ${DEFAULT_PW}`,'success');
   } else {
     const dup=DB.byEmail(email); if(dup&&dup.id!==id) return showErr('Another user with this email already exists.');
@@ -3339,7 +3389,7 @@ function saveUser(){
     const ex=DB.byId(id);
     if(ex.isAdmin&&!isAdmin&&DB.adminCount()<=1) return showErr('Cannot remove Admin from the last administrator.');
     if(ex.isAdmin&&!isActive&&DB.adminCount()<=1) return showErr('Cannot deactivate the last administrator.');
-    DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isExecutive,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+    DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
     if(id===Auth.user.id){Auth.refresh();setupNav();}
     toast(`${fname} ${lname} updated.`,'success');
   }
@@ -3476,7 +3526,7 @@ function openChangePassModal(){
   openModal('chg-pass');
 }
 
-function saveChangePassword(){
+async function saveChangePassword(){
   const current=document.getElementById('mcp-current').value;
   const newPw=document.getElementById('mcp-new').value;
   const confirm=document.getElementById('mcp-confirm').value;
@@ -3484,16 +3534,17 @@ function saveChangePassword(){
   const showErr=m=>{errEl.textContent=m;errEl.style.display='block';};
   errEl.style.display='none';
   if(!current) return showErr('Current password is required.');
-  if(Utils.hash(current)!==Auth.user.passwordHash) return showErr('Current password is incorrect.');
   if(!newPw||newPw.length<8) return showErr('New password must be at least 8 characters.');
   if(newPw!==confirm) return showErr('Passwords do not match.');
-  DB.update(Auth.user.id,{passwordHash:Utils.hash(newPw),mustChangePassword:false});
-  Auth.refresh();
-  toast('Password changed successfully.','success');
-  closeModal('chg-pass');
+  try{
+    const fbUser=_fbAuth.currentUser;
+    if(fbUser){ const cred=firebase.auth.EmailAuthProvider.credential(fbUser.email,current); await fbUser.reauthenticateWithCredential(cred); await fbUser.updatePassword(newPw); }
+    DB.update(Auth.user.id,{mustChangePassword:false}); Auth.refresh();
+    toast('Password changed successfully.','success'); closeModal('chg-pass');
+  }catch(err){ if(err.code==='auth/wrong-password'||err.code==='auth/invalid-credential') showErr('Current password is incorrect.'); else showErr(err.message||'Password change failed.'); }
 }
 
-function submitFirstLoginPassword(e){
+async function submitFirstLoginPassword(e){
   e.preventDefault();
   const newPw=document.getElementById('cp-new').value;
   const confirm=document.getElementById('cp-confirm').value;
@@ -3502,10 +3553,12 @@ function submitFirstLoginPassword(e){
   if(!newPw||newPw.length<8){alertEl.textContent='Password must be at least 8 characters.';alertEl.classList.add('show');return;}
   if(newPw===DEFAULT_PW){alertEl.textContent='Please choose a different password from the default.';alertEl.classList.add('show');return;}
   if(newPw!==confirm){alertEl.textContent='Passwords do not match.';alertEl.classList.add('show');return;}
-  DB.update(Auth.user.id,{passwordHash:Utils.hash(newPw),mustChangePassword:false});
-  Auth.refresh();
-  toast('Password set successfully. Welcome!','success');
-  bootApp();
+  try{
+    const fbUser=_fbAuth.currentUser;
+    if(fbUser) await fbUser.updatePassword(newPw);
+    DB.update(Auth.user.id,{mustChangePassword:false}); Auth.refresh();
+    toast('Password set successfully. Welcome!','success'); bootApp();
+  }catch(err){ alertEl.textContent=err.message||'Password change failed.'; alertEl.classList.add('show'); }
 }
 
 /* ── SETTINGS ─────────────────────── */
@@ -3513,7 +3566,8 @@ const STABS=[
   {id:'deliverables',label:'Deliverable Types',  key:Store.DELIVERABLES, isDeliv:true},
   {id:'positions',   label:'Positions',           key:Store.POS},
   {id:'venues',      label:'Venues',              key:Store.VENUES},
-  {id:'modalities',  label:'Modalities',          key:Store.MODALS}
+  {id:'modalities',  label:'Modalities',          key:Store.MODALS},
+  {id:'backup',      label:'Data & Backup',        isBackup:true}
 ];
 let activeStab='deliverables';
 let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
@@ -3523,7 +3577,7 @@ function renderSettings(){
   document.getElementById('stabs').innerHTML=STABS.map(t=>`<div class="stab${t.id===activeStab?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
   document.querySelectorAll('.stab').forEach(el=>el.addEventListener('click',()=>{activeStab=el.dataset.stab;renderSettings();}));
   document.getElementById('stab-panes').innerHTML=STABS.map(t=>`<div class="stab-pane${t.id===activeStab?' active':''}" id="spane-${t.id}"></div>`).join('');
-  const tab=STABS.find(t=>t.id===activeStab); if(tab) renderSelList(tab);
+  const tab=STABS.find(t=>t.id===activeStab); if(tab){ if(tab.isBackup) renderBackupPane(); else renderSelList(tab); }
 }
 
 // Returns count of records referencing this item ID, per store key
@@ -3659,6 +3713,187 @@ function saveSel(){
 function toggleSel(key,id){
   const item=Sel.byId(key,id); if(!item) return;
   confirm$(`${item.isActive?'Deactivate':'Activate'} Item`,`${item.isActive?'Deactivate':'Activate'} <strong>${Utils.esc(item.name)}</strong>?`,'Confirm',()=>{Sel.toggle(key,id);renderSettings();});
+}
+
+
+/* ── DATA & BACKUP ──────────────────── */
+const BACKUP_STORE_KEYS=[
+  Store.USERS, Store.EVALS, Store.CQA, 'leap_idqa_v1',
+  Store.DELIVERABLES, Store.POS, Store.VENUES, Store.MODALS
+];
+
+function _buildBackupPayload(){
+  const data={};
+  const keys=[...BACKUP_STORE_KEYS];
+  for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')) keys.push(k); }
+  keys.forEach(k=>{ const v=Store.get(k); if(v!==null) data[k]=v; });
+  return {exportedAt:new Date().toISOString(), storeVersion:STORE_VER, data};
+}
+
+function _downloadBackup(){
+  const payload=_buildBackupPayload();
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const fname='LEAP_Backup_'+Utils.formatDate(new Date()).replace(/\//g,'')+'.json';
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
+  Store.set('leap_last_export',new Date().toISOString());
+  toast('Backup file downloaded.','success');
+  _refreshBackupPane();
+}
+
+function _restoreFromFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const payload=JSON.parse(e.target.result);
+      if(!payload.data||typeof payload.data!=='object') throw new Error('Invalid backup file format.');
+      confirm$('Restore from Backup','<strong>Warning:</strong> This will overwrite all current app data with the selected backup. This cannot be undone.<br><br>Continue?','Restore',()=>{
+        Object.entries(payload.data).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));
+        toast('Data restored. Reloading...','success');
+        setTimeout(()=>location.reload(),1500);
+      });
+    }catch(err){ toast('Could not read backup file: '+err.message,'error'); }
+  };
+  reader.readAsText(file);
+}
+
+/* --- Option 2: OneDrive via Microsoft Graph API --- */
+let _msalInstance=null;
+async function _initMSAL(){
+  if(_msalInstance) return _msalInstance;
+  if(!LEAP_BACKUP_CONFIG.enabled||LEAP_BACKUP_CONFIG.clientId==='YOUR_AZURE_CLIENT_ID') return null;
+  try{
+    _msalInstance=new msal.PublicClientApplication({
+      auth:{clientId:LEAP_BACKUP_CONFIG.clientId, tenantId:LEAP_BACKUP_CONFIG.tenantId, redirectUri:location.href.split('?')[0]},
+      cache:{cacheLocation:'localStorage', storeAuthStateInCookie:false}
+    });
+    await _msalInstance.initialize();
+  }catch(err){ console.error('MSAL init failed:',err); _msalInstance=null; }
+  return _msalInstance;
+}
+
+async function _getGraphToken(){
+  const inst=await _initMSAL(); if(!inst) return null;
+  const scopes=['Files.ReadWrite'];
+  const accounts=inst.getAllAccounts();
+  try{
+    const result=accounts.length
+      ? await inst.acquireTokenSilent({scopes, account:accounts[0]})
+      : await inst.loginPopup({scopes});
+    return result.accessToken;
+  }catch(err){ console.warn('MSAL token error:',err); return null; }
+}
+
+async function backupToOneDrive(manual=false){
+  if(!LEAP_BACKUP_CONFIG.enabled||LEAP_BACKUP_CONFIG.clientId==='YOUR_AZURE_CLIENT_ID'){
+    if(manual) toast('OneDrive backup is not configured. Contact IT to set up credentials.','info');
+    return;
+  }
+  _setODStatus('Connecting to OneDrive…');
+  const token=await _getGraphToken();
+  if(!token){ _setODStatus('Sign-in failed or was cancelled.'); return; }
+  const payload=_buildBackupPayload();
+  const fname='LEAP_Backup_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+  const folder=LEAP_BACKUP_CONFIG.backupFolder.replace(/^\/|\/$/g,'');
+  const url=`https://graph.microsoft.com/v1.0/me/drive/root:/${folder}/${fname}:/content`;
+  try{
+    const res=await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error(`Graph API responded with ${res.status}`);
+    const ts=new Date().toISOString();
+    Store.set('leap_last_od_backup',ts);
+    _setODStatus('Last backup: '+Utils.formatDate(new Date(ts)));
+    if(manual) toast('Backed up to OneDrive successfully.','success');
+    _refreshBackupPane();
+  }catch(err){
+    _setODStatus('Backup failed: '+err.message);
+    if(manual) toast('OneDrive backup failed: '+err.message,'error');
+  }
+}
+
+function _setODStatus(msg){ const el=document.getElementById('bk-od-status'); if(el) el.textContent=msg; }
+
+let _autoBackupTimer=null;
+function _scheduleAutoBackup(){
+  if(!LEAP_BACKUP_CONFIG.enabled) return;
+  clearTimeout(_autoBackupTimer);
+  _autoBackupTimer=setTimeout(()=>backupToOneDrive(false),10000);
+}
+
+function _clearEvalData(){
+  confirm$('Clear All Evaluation Data',
+    '<strong style="color:#b91c1c">This will permanently delete all Trainer Evaluations, ID QA, and Content Dev QA records from this browser.</strong><br><br>User accounts and settings lists are not affected. This cannot be undone — export a backup first if needed.',
+    'Clear All Evaluations',
+    ()=>{
+      ['leap_evals_v1','leap_cqa_v1','leap_idqa_v1'].forEach(k=>Store.del(k));
+      const toRemove=[];
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')) toRemove.push(k); }
+      toRemove.forEach(k=>localStorage.removeItem(k));
+      toast('All evaluation data cleared.','success');
+      _refreshBackupPane();
+    }
+  );
+}
+
+function _refreshBackupPane(){
+  const pane=document.getElementById('spane-backup');
+  if(!pane||!pane.classList.contains('active')) return;
+  renderBackupPane();
+}
+
+function renderBackupPane(){
+  const pane=document.getElementById('spane-backup'); if(!pane) return;
+  const lastExp=Store.get('leap_last_export');
+  const lastOD=Store.get('leap_last_od_backup');
+  const configured=LEAP_BACKUP_CONFIG.enabled && LEAP_BACKUP_CONFIG.clientId!=='YOUR_AZURE_CLIENT_ID';
+  pane.innerHTML=`
+    <div style="max-width:700px;padding-bottom:32px">
+      <div style="font-size:22px;font-weight:700;margin-bottom:4px">Data & Backup</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Protect your LEAP Insights data with manual exports or automated OneDrive backups.</div>
+
+      <div style="font-size:15px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Option 1 — Manual JSON Export / Import</div>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0 14px">Export all app data to a JSON file you can store anywhere. Use Import to restore from a previous export.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="_downloadBackup()">&#11015; Export All Data</button>
+        <label class="btn btn-secondary" style="cursor:pointer;margin:0">&#11014; Import from Backup
+          <input type="file" accept=".json" style="display:none" onchange="_restoreFromFile(this.files[0]);this.value=''">
+        </label>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px">Last export: <strong>${lastExp ? Utils.formatDate(new Date(lastExp)) : 'Never'}</strong></div>
+
+      <div style="font-size:15px;font-weight:700;margin:28px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Option 2 — OneDrive Auto-Backup</div>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0 14px">Saves a timestamped JSON backup to your organisation&#x27;s OneDrive automatically after data changes. Requires IT to configure Azure App credentials below.</p>
+
+      <div style="background:var(--bg,#f9fafb);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:13px;margin-bottom:14px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <span style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${configured ? '#22c55e' : '#f59e0b'}"></span>
+          <strong>${configured ? 'Configured and enabled' : 'Not configured — pending IT setup'}</strong>
+        </div>
+        <table style="font-size:12px;color:var(--text2);border-collapse:collapse;width:100%">
+          <tr><td style="padding:2px 10px 2px 0;white-space:nowrap;color:var(--text3)">Client ID</td><td><code>${LEAP_BACKUP_CONFIG.clientId === 'YOUR_AZURE_CLIENT_ID' ? '<em style="color:#d97706">Not set</em>' : LEAP_BACKUP_CONFIG.clientId}</code></td></tr>
+          <tr><td style="padding:2px 10px 2px 0;white-space:nowrap;color:var(--text3)">Tenant ID</td><td><code>${LEAP_BACKUP_CONFIG.tenantId === 'YOUR_AZURE_TENANT_ID' ? '<em style="color:#d97706">Not set</em>' : LEAP_BACKUP_CONFIG.tenantId}</code></td></tr>
+          <tr><td style="padding:2px 10px 2px 0;white-space:nowrap;color:var(--text3)">Backup folder</td><td><code>${LEAP_BACKUP_CONFIG.backupFolder === 'YOUR_ONEDRIVE_BACKUP_FOLDER_PATH' ? '<em style="color:#d97706">Not set</em>' : LEAP_BACKUP_CONFIG.backupFolder}</code></td></tr>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn btn-secondary" onclick="backupToOneDrive(true)" ${configured ? '' : 'disabled title="Configure credentials first"'}>&#9729; Back Up to OneDrive Now</button>
+      </div>
+      <div id="bk-od-status" style="font-size:12px;color:var(--text3)">Last OneDrive backup: <strong>${lastOD ? Utils.formatDate(new Date(lastOD)) : 'Never'}</strong></div>
+
+      ${!configured ? `<div style="margin-top:20px;padding:12px 14px;background:#fef9c3;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#713f12;line-height:1.7">
+        <strong>IT Setup Instructions</strong><br>
+        In <code>index.html</code>, find the <code>LEAP_BACKUP_CONFIG</code> constant near the top of the script and replace the three placeholder values:<br>
+        &bull; <code>clientId</code> &mdash; Client ID from your Azure App Registration<br>
+        &bull; <code>tenantId</code> &mdash; your Azure Tenant (Directory) ID<br>
+        &bull; <code>backupFolder</code> &mdash; OneDrive path, e.g. <code>LEAP Insights/Backups</code><br>
+        &bull; Set <code>enabled: true</code><br>
+        Ensure the App Registration has <code>Files.ReadWrite</code> and <code>User.Read</code> delegated permissions, and the file&#x27;s URL is a Redirect URI. Set <code>ssoEnabled: true</code> to enable Azure login, <code>enabled: true</code> for OneDrive backup.
+      </div>` : ''}
+
+      <div style="font-size:15px;font-weight:700;margin:32px 0 8px;padding-bottom:6px;border-bottom:1px solid #fca5a5;color:#b91c1c">Danger Zone</div>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0 14px">Permanently delete evaluation records from this browser. User accounts and settings lists are not affected. Export a backup first if you need to preserve records.</p>
+      <button class="btn" onclick="_clearEvalData()" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;font-weight:600">&#128465;&nbsp; Clear All Evaluation Data</button>
+    </div>`;
 }
 
 /* ── EVAL DB ──────────────────────── */
@@ -4617,7 +4852,7 @@ let _rptChart=null, _rptDistChart=null, _rptFormTab='idqa', _rptQACharts={};
 function _rptTabsVisible(){
   const me=Auth.user; if(!me) return{idqa:false,cqa:false,trainer:false};
   // Admins, Executives, and Reports Viewers see all tabs
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer||Perms.isSupervisor(me))
+  if(me.isAdmin||me.isReportsViewer||Perms.isSupervisor(me))
     return{idqa:true,cqa:true,trainer:true};
   const fa=Auth.formAccess(me);
   return{idqa:fa.idqa,cqa:fa.cqa,trainer:fa.trainerEval};
@@ -4647,7 +4882,7 @@ function setRptFormTab(tab){
 function _rptScopeEvals(){
   const me=Auth.user;
   if(!me) return [];
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer) return EvalDB.all();
+  if(me.isAdmin||me.isReportsViewer) return EvalDB.all();
   // Supervisor: own + direct reports
   const directIds=DB.all().filter(u=>u.isActive&&u.supervisorId===me.id).map(u=>u.id);
   return EvalDB.all().filter(e=>e.evaluatorId===me.id||directIds.includes(e.trainerId)||directIds.includes(e.evaluatorId));
@@ -4940,14 +5175,14 @@ function _renderCriteriaAnalysis(rows, container){
 function _rptScopeIDQARpt(){
   const me=Auth.user; if(!me) return [];
   const all=IDQADB.all();
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer) return all;
+  if(me.isAdmin||me.isReportsViewer) return all;
   const directIds=DB.all().filter(u=>u.isActive&&u.supervisorId===me.id).map(u=>u.id);
   return all.filter(r=>r.reviewerId===me.id||directIds.includes(r.designerId));
 }
 function _rptScopeCQARpt(){
   const me=Auth.user; if(!me) return [];
   const all=ContentQADB.all();
-  if(me.isAdmin||me.isExecutive||me.isReportsViewer) return all;
+  if(me.isAdmin||me.isReportsViewer) return all;
   const directIds=DB.all().filter(u=>u.isActive&&u.supervisorId===me.id).map(u=>u.id);
   return all.filter(r=>r.reviewerId===me.id||directIds.includes(r.authorId));
 }
@@ -7436,14 +7671,45 @@ function toggleNavEvals(){
   if(par) par.classList.toggle('active',open);
 }
 
+async function loginWithAzure(){
+  const btn=document.getElementById('azure-sso-btn');
+  const al=document.getElementById('login-alert');
+  if(!LEAP_BACKUP_CONFIG.ssoEnabled||LEAP_BACKUP_CONFIG.clientId==='YOUR_AZURE_CLIENT_ID'){
+    al.textContent='Azure SSO is not yet configured. Contact IT.'; al.classList.add('show'); return;
+  }
+  const origText=btn.innerHTML;
+  btn.disabled=true; btn.style.opacity='0.7';
+  btn.innerHTML='<span style="font-size:13px">Signing in…</span>';
+  try{
+    const inst=new msal.PublicClientApplication({
+      auth:{clientId:LEAP_BACKUP_CONFIG.clientId, tenantId:LEAP_BACKUP_CONFIG.tenantId, redirectUri:location.href.split('?')[0]},
+      cache:{cacheLocation:'localStorage', storeAuthStateInCookie:false}
+    });
+    await inst.initialize();
+    const result=await inst.loginPopup({scopes:['openid','profile','email','User.Read']});
+    const email=(result.account?.username||'').toLowerCase();
+    if(!email){ throw new Error('Could not read email from Microsoft account.'); }
+    const u=DB.byEmail(email);
+    if(!u) throw new Error('No LEAP Insights account found for '+email+'. Contact your administrator.');
+    if(!u.isActive) throw new Error('Your account is inactive. Contact your administrator.');
+    Store.set(Store.SESSION,{userId:u.id,at:Date.now()});
+    Auth._u=u;
+    al.classList.remove('show');
+    afterLogin(u);
+  }catch(err){
+    al.textContent=err.message||'Sign-in failed. Please try again.'; al.classList.add('show');
+    btn.innerHTML=origText; btn.disabled=false; btn.style.opacity='1';
+  }
+}
+
 function wireEvents(){
-  document.getElementById('login-form').addEventListener('submit',e=>{
+  document.getElementById('login-form').addEventListener('submit',async e=>{
     e.preventDefault();
-    const res=Auth.login(document.getElementById('f-email').value, document.getElementById('f-pass').value);
-    const al=document.getElementById('login-alert');
-    if(res.ok){ al.classList.remove('show'); afterLogin(res.user); }
-    else { al.textContent=res.msg; al.classList.add('show'); }
+    const al=document.getElementById('login-alert'); al.classList.remove('show');
+    const res=await Auth.login(document.getElementById('f-email').value.trim().toLowerCase(),document.getElementById('f-pass').value);
+    if(res.ok){ afterLogin(res.user); } else { al.textContent=res.msg; al.classList.add('show'); }
   });
+  // Azure SSO button state handled in init()
   document.getElementById('chg-pass-form').addEventListener('submit',submitFirstLoginPassword);
   document.getElementById('cp-new').addEventListener('input',()=>showPwStrength('cp-new','cp-strength-bar'));
   document.getElementById('mcp-new').addEventListener('input',()=>showPwStrength('mcp-new','mcp-strength-bar'));
@@ -7451,7 +7717,7 @@ function wireEvents(){
   document.querySelectorAll('.nav-item[data-view],.nav-sub-item[data-view]').forEach(el=>el.addEventListener('click',()=>showView(el.dataset.view)));
   document.getElementById('add-user-btn').addEventListener('click',openAddUser);
   document.getElementById('mu-save').addEventListener('click',saveUser);
-  document.getElementById('mu-admin').addEventListener('change',function(){document.getElementById('mu-perm-note').style.display=this.checked?'block':'none'; _onExecToggle();});
+  document.getElementById('mu-admin').addEventListener('change',function(){document.getElementById('mu-perm-note').style.display=this.checked?'block':'none'; _onAdminToggle();});
   document.getElementById('mu-hiredate').addEventListener('change',function(){updateEmpStat(this.value);});
   document.getElementById('import-csv-btn').addEventListener('click',()=>{ _csvRows=[]; document.getElementById('csv-preview').classList.add('hidden'); document.getElementById('csv-import-btn').classList.add('hidden'); document.getElementById('csv-file').value=''; openModal('csv'); });
   document.getElementById('csv-file').addEventListener('change',e=>{ if(e.target.files[0]) parseCSVFile(e.target.files[0]); });
@@ -7497,26 +7763,31 @@ function afterLogin(user){
 }
 
 function init(){
-  Sel.seed(); DB.seed(); wireEvents();
-  // Patch: ensure Keithcorwin Sta. Barbara exists, is active, and is Abimelex's supervisor
-  (()=>{
-    let keith=DB.byEmail('kstabarbara@dermorepubliq.com');
-    if(!keith){
-      keith=DB.create({firstName:'Keithcorwin',lastName:'Sta. Barbara',email:'kstabarbara@dermorepubliq.com',employeeId:'',positionId:'',hireDate:'',isActive:true,isAdmin:false,isExecutive:false,isReportsViewer:false,formTrainer:false,formIDQA:false,formCQA:false,dashScope:'team'},true);
-    } else if(!keith.isActive){
-      DB.update(keith.id,{isActive:true});
-      keith=DB.byEmail('kstabarbara@dermorepubliq.com');
-    }
-    const abimelex=DB.byEmail('admin01@dermorepubliq.com');
-    if(keith&&abimelex&&abimelex.supervisorId!==keith.id){
-      DB.update(abimelex.id,{supervisorId:keith.id});
-    }
+  wireEvents();
+  (function(){
+    const btn=document.getElementById('azure-sso-btn'); const note=document.getElementById('azure-sso-note'); if(!btn) return;
+    const ready=LEAP_BACKUP_CONFIG.ssoEnabled&&LEAP_BACKUP_CONFIG.clientId!=='YOUR_AZURE_CLIENT_ID';
+    if(!ready){ btn.disabled=true; btn.style.opacity='0.45'; btn.style.cursor='not-allowed'; if(note) note.textContent='Azure SSO is not yet configured. Contact IT to enable.'; }
   })();
-  if(Auth.restore()){
-    Auth.user.mustChangePassword ? showScreen('chg-pass-screen') : bootApp();
-  } else {
+  document.getElementById('fs-loading').style.display='flex';
+  document.getElementById('fs-loading-msg').textContent='Connecting…';
+  _fbAuth.onAuthStateChanged(async fbUser=>{
+    if(fbUser){
+      try{
+        document.getElementById('fs-loading-msg').textContent='Loading data…';
+        await FireSync.loadAll(); Sel.seed(); DB.seed();
+        const u=DB.byEmail(fbUser.email.toLowerCase());
+        if(u&&u.isActive){
+          Auth._u=u; Store.set(Store.SESSION,{userId:u.id,at:Date.now()});
+          document.getElementById('fs-loading').style.display='none';
+          afterLogin(u); return;
+        }
+        await _fbAuth.signOut();
+      }catch(err){ console.error('Boot error:',err); await _fbAuth.signOut().catch(()=>{}); }
+    }
+    document.getElementById('fs-loading').style.display='none';
     showScreen('login-screen');
-  }
+  });
 }
 
 /* ── PDF EXPORT ───────────────────── */
