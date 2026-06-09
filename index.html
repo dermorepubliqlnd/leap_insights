@@ -4512,6 +4512,7 @@ function openEvalForm(id){
   const evaluator=DB.byId(ev.evaluatorId);
   document.getElementById('ef-evaluator-id').value=ev.evaluatorId;
   document.getElementById('ef-evaluator-display').textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
+  const _soElF=document.getElementById('ef-signoff-evaluator');if(_soElF)_soElF.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   document.getElementById('ef-program').value=ev.trainingProgram||'';
   document.getElementById('ef-batch').value=ev.batchNo||'';
   const dateEl=document.getElementById('ef-date');
