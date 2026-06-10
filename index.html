@@ -3564,7 +3564,10 @@ async function saveChangePassword(){
   try{
     const fbUser=_fbAuth.currentUser;
     if(fbUser){ const cred=firebase.auth.EmailAuthProvider.credential(fbUser.email,current); await fbUser.reauthenticateWithCredential(cred); await fbUser.updatePassword(newPw); }
-    DB.update(Auth.user.id,{mustChangePassword:false}); Auth.refresh();
+    DB.update(Auth.user.id,{mustChangePassword:false});
+    try{ await _fbDb.collection(FireSync._col).doc(Store.USERS).set({payload:JSON.stringify(DB.all())}); }
+    catch(fe){ console.warn('Firestore sync after password change:',fe); }
+    Auth.refresh();
     toast('Password changed successfully.','success'); closeModal('chg-pass');
   }catch(err){ if(err.code==='auth/wrong-password'||err.code==='auth/invalid-credential') showErr('Current password is incorrect.'); else showErr(err.message||'Password change failed.'); }
 }
