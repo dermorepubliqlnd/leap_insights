@@ -1669,6 +1669,10 @@
               <button type="button" class="btn btn-warning btn-sm" onclick="resetUserPassword()">🔄 Reset to Default Password</button>
               <p class="form-hint" style="margin-top:6px">Resets to the system default password and requires the user to change it on next login.</p>
             </div>
+            <div id="mu-pending-reset-row" class="hidden" style="margin-bottom:14px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div style="font-size:12.5px;color:#92400e">🔑 <strong>Pending Reset</strong> — this user is being prompted to set a new password on login.</div>
+              <button type="button" class="btn btn-sm" style="background:#d97706;color:#fff;flex-shrink:0;white-space:nowrap" onclick="clearPendingReset()">Clear Flag</button>
+            </div>
             <div class="toggle-row" style="padding-top:2px">
               <div class="toggle-info">
                 <div class="toggle-title">Active Account</div>
@@ -3341,6 +3345,8 @@ function openEditUser(id){
   document.getElementById('mu-perm-note').style.display=u.isAdmin?'block':'none';
   document.getElementById('mu-pass-info').style.display='none';
   document.getElementById('mu-reset-row').classList.remove('hidden');
+  const prRow=document.getElementById('mu-pending-reset-row');
+  if(u.mustChangePassword&&u.isActive){ prRow.classList.remove('hidden'); } else { prRow.classList.add('hidden'); }
   document.getElementById('mu-active').disabled=isMe; document.getElementById('mu-admin').disabled=isMe;
   populateUserDropdowns(id);
   document.getElementById('mu-position').value=u.positionId||'';
@@ -3363,6 +3369,15 @@ function resetUserPassword(){
     toast(`Password reset email sent to ${u.email}.`,'success');
     closeModal('user'); renderUsers();
   });
+}
+
+function clearPendingReset(){
+  const id=document.getElementById('mu-id').value; if(!id) return;
+  const u=DB.byId(id); if(!u) return;
+  DB.update(id,{mustChangePassword:false});
+  document.getElementById('mu-pending-reset-row').classList.add('hidden');
+  toast(`Password reset flag cleared for ${Utils.esc(u.firstName+' '+u.lastName)}.`,'success');
+  renderUsers();
 }
 
 function saveUser(){
@@ -3566,7 +3581,13 @@ async function submitFirstLoginPassword(e){
   try{
     const fbUser=_fbAuth.currentUser;
     if(fbUser) await fbUser.updatePassword(newPw);
-    DB.update(Auth.user.id,{mustChangePassword:false}); Auth.refresh();
+    DB.update(Auth.user.id,{mustChangePassword:false});
+    // Explicitly await Firestore write so mustChangePassword:false is persisted
+    // before bootApp(). Without this, a silent network failure leaves Firestore
+    // with mustChangePassword:true and the user sees this screen again next login.
+    try{ await _fbDb.collection(FireSync._col).doc(Store.USERS).set({payload:JSON.stringify(DB.all())}); }
+    catch(fe){ console.warn('Firestore sync after password set:',fe); }
+    Auth.refresh();
     toast('Password set successfully. Welcome!','success'); bootApp();
   }catch(err){ alertEl.textContent=err.message||'Password change failed.'; alertEl.classList.add('show'); }
 }
