@@ -737,6 +737,7 @@
         </div>
       </div>
       <button type="submit" class="btn btn-primary btn-lg btn-full" style="margin-top:6px">Sign In</button>
+      <div style="text-align:center;margin-top:12px"><button type="button" class="btn btn-ghost btn-sm" onclick="sendForgotPassword()" style="font-size:13px;color:#2563eb">Forgot password?</button></div>
     </form>
     <div style="display:flex;align-items:center;gap:10px;margin:18px 0 14px">
       <hr style="flex:1;border:none;border-top:1px solid var(--border)">
@@ -3365,7 +3366,6 @@ function resetUserPassword(){
   const u=DB.byId(id); if(!u) return;
   confirm$('Reset Password',`Send a password reset email to <strong>${Utils.esc(u.firstName+' '+u.lastName)}</strong> (<em>${Utils.esc(u.email)}</em>)?`,'Send Reset Email',()=>{
     _fbAuth.sendPasswordResetEmail(u.email).catch(e=>console.warn('Reset email:',e));
-    DB.update(id,{mustChangePassword:true});
     toast(`Password reset email sent to ${u.email}.`,'success');
     closeModal('user'); renderUsers();
   });
@@ -7733,6 +7733,22 @@ async function loginWithAzure(){
   }catch(err){
     al.textContent=err.message||'Sign-in failed. Please try again.'; al.classList.add('show');
     btn.innerHTML=origText; btn.disabled=false; btn.style.opacity='1';
+  }
+}
+
+async function sendForgotPassword(){
+  const email=document.getElementById('f-email').value.trim().toLowerCase();
+  const al=document.getElementById('login-alert');
+  al.classList.remove('show');
+  if(!email){al.textContent='Enter your email address above first.';al.classList.add('show');return;}
+  try{
+    await _fbAuth.sendPasswordResetEmail(email);
+    al.style.cssText='display:block;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
+    al.textContent='Password reset email sent. Check your inbox (and spam folder).';
+  }catch(err){
+    al.style.cssText='';
+    al.textContent=err.code==='auth/user-not-found'?'No account found with that email.':'Could not send reset email. Try again.';
+    al.classList.add('show');
   }
 }
 
