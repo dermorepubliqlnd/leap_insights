@@ -2204,6 +2204,7 @@ function showPwStrength(inputId,barId){ const pw=document.getElementById(inputId
 function showScreen(id){
   ['login-screen','chg-pass-screen'].forEach(s=>{const el=document.getElementById(s);el.classList.remove('show');el.style.display='none';});
   document.getElementById('app').style.display='none';
+  if(id==='login-screen'){ document.getElementById('f-email').value=''; document.getElementById('f-pass').value=''; document.getElementById('login-alert').classList.remove('show'); document.getElementById('login-alert').style.cssText=''; }
   if(id==='app'){ document.getElementById('app').style.display='block'; }
   else{ const el=document.getElementById(id); el.style.display='flex'; el.classList.add('show'); }
 }
