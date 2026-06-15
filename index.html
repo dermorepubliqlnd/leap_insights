@@ -808,7 +808,7 @@
         <div class="nav-sub-group" id="nav-evals-group">
           <div class="nav-sub-item js-id-qa hidden" data-view="id-qa"><span>◈</span> Instructional Designer</div>
           <div class="nav-sub-item js-content-qa hidden" data-view="content-qa"><span>✦</span> Content Developer</div>
-          <div class="nav-sub-item" data-view="evaluations"><span>◉</span> Trainer</div>
+          <div class="nav-sub-item js-trainer-eval hidden" data-view="evaluations"><span>◉</span> Trainer</div>
         </div>
         <div class="nav-sec js-admin hidden">Manage</div>
         <div class="nav-item js-reports hidden" data-view="reports"><span>◎</span> Reports</div>
@@ -2243,10 +2243,12 @@ function setupNav(){
   document.querySelectorAll('.js-admin').forEach(el=>el.classList.toggle('hidden',!u.isAdmin));
   document.querySelectorAll('.js-reports').forEach(el=>el.classList.toggle('hidden',!Auth.canViewReports));
   const _fa2=Auth.formAccess(Auth.user);
-  const _idqaAccess=Auth.isAdmin||_fa2.idqa;
-  const _cqaAccess=Auth.isAdmin||_fa2.cqa;
+  const _idqaAccess=Auth.isAdmin||_fa2.idqa||IDQADB.all().some(r=>r.designerId===u.id);
+  const _cqaAccess=Auth.isAdmin||_fa2.cqa||ContentQADB.all().some(r=>r.authorId===u.id);
+  const _trainerAccess=Auth.isAdmin||_fa2.trainerEval||EvalDB.all().some(e=>e.trainerId===u.id);
   document.querySelectorAll('.js-content-qa').forEach(el=>el.classList.toggle('hidden',!_cqaAccess));
   document.querySelectorAll('.js-id-qa').forEach(el=>el.classList.toggle('hidden',!_idqaAccess));
+  document.querySelectorAll('.js-trainer-eval').forEach(el=>el.classList.toggle('hidden',!_trainerAccess));
   const name=`${u.firstName} ${u.lastName}`;
   const ava=document.getElementById('sb-ava'); ava.textContent=Utils.initials(name); ava.setAttribute('style',Utils.avatarBg(u.isAdmin));
   document.getElementById('sb-name').textContent=name;
