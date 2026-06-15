@@ -3870,6 +3870,79 @@ function _clearEvalData(){
   );
 }
 
+/* ── ORPHAN REPAIR TOOL ───────────────────── */
+function _scanOrphans(){
+  const users=DB.all().filter(u=>u.isActive);
+  const userMap=Object.fromEntries(users.map(u=>[u.id,u]));
+  const orphans=[];
+  EvalDB.all().forEach(e=>{
+    const row={id:e.id,type:'Trainer Eval',code:e.code||e.id,fields:[]};
+    if(e.trainerId&&!userMap[e.trainerId]) row.fields.push({key:'trainerId',label:'Trainer'});
+    if(e.evaluatorId&&!userMap[e.evaluatorId]) row.fields.push({key:'evaluatorId',label:'Evaluator'});
+    if(row.fields.length) orphans.push(row);
+  });
+  IDQADB.all().forEach(r=>{
+    const row={id:r.id,type:'ID QA',code:r.code||r.id,fields:[]};
+    if(r.designerId&&!userMap[r.designerId]) row.fields.push({key:'designerId',label:'Designer'});
+    if(r.reviewerId&&!userMap[r.reviewerId]) row.fields.push({key:'reviewerId',label:'Reviewer'});
+    if(row.fields.length) orphans.push(row);
+  });
+  ContentQADB.all().forEach(r=>{
+    const row={id:r.id,type:'CD QA',code:r.code||r.id,fields:[]};
+    if(r.authorId&&!userMap[r.authorId]) row.fields.push({key:'authorId',label:'Author'});
+    if(r.reviewerId&&!userMap[r.reviewerId]) row.fields.push({key:'reviewerId',label:'Reviewer'});
+    if(row.fields.length) orphans.push(row);
+  });
+  const el=document.getElementById('orphan-results');
+  if(!orphans.length){
+    el.innerHTML='<div style="padding:12px 14px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:6px;font-size:13px">&#10003; No orphaned records found. All user references are valid.</div>';
+    return;
+  }
+  const userOpts=users.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
+  const rows=orphans.map(o=>`
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 10px;font-size:12px;font-weight:600">${Utils.esc(o.code)}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--text2)">${o.type}</td>
+      <td style="padding:8px 10px">${o.fields.map(f=>`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:11px;color:var(--text3);width:64px;flex-shrink:0">${f.label}</span>
+          <select data-rec="${o.id}" data-type="${o.type}" data-key="${f.key}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg2)">
+            <option value="">-- Select user --</option>${userOpts}
+          </select>
+        </div>`).join('')}</td>
+    </tr>`).join('');
+  el.innerHTML=`
+    <div style="font-size:13px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;margin-bottom:12px">
+      Found <strong>${orphans.length}</strong> record${orphans.length!==1?'s':''} with unresolved user references. Assign replacements and click Save.
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="background:var(--bg2)">
+        <th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Code</th>
+        <th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Type</th>
+        <th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Reassign</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="_saveOrphanRepairs()">&#10003;&nbsp; Save Reassignments</button>`;
+}
+
+function _saveOrphanRepairs(){
+  const selects=document.querySelectorAll('#orphan-results select');
+  let saved=0,skipped=0;
+  selects.forEach(sel=>{
+    if(!sel.value){skipped++;return;}
+    const {rec,type,key}=sel.dataset;
+    const patch={[key]:sel.value};
+    if(type==='Trainer Eval') EvalDB.update(rec,patch);
+    else if(type==='ID QA') IDQADB.update(rec,patch);
+    else if(type==='CD QA') ContentQADB.update(rec,patch);
+    saved++;
+  });
+  if(saved===0){toast('Please select a user for at least one field.','error');return;}
+  toast(`${saved} field${saved!==1?'s':''} updated successfully.`,'success');
+  _scanOrphans();
+}
+
 function _refreshBackupPane(){
   const pane=document.getElementById('spane-backup');
   if(!pane||!pane.classList.contains('active')) return;
@@ -3925,6 +3998,11 @@ function renderBackupPane(){
         &bull; Set <code>enabled: true</code><br>
         Ensure the App Registration has <code>Files.ReadWrite</code> and <code>User.Read</code> delegated permissions, and the file&#x27;s URL is a Redirect URI. Set <code>ssoEnabled: true</code> to enable Azure login, <code>enabled: true</code> for OneDrive backup.
       </div>` : ''}
+
+      <div style="font-size:15px;font-weight:700;margin:32px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Repair Orphaned Records</div>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0 14px">Find evaluation records where the trainer, evaluator, or designer no longer matches a current user — and reassign them.</p>
+      <button class="btn btn-secondary" onclick="_scanOrphans()">&#128269;&nbsp; Scan for Orphaned Records</button>
+      <div id="orphan-results" style="margin-top:16px"></div>
 
       <div style="font-size:15px;font-weight:700;margin:32px 0 8px;padding-bottom:6px;border-bottom:1px solid #fca5a5;color:#b91c1c">Danger Zone</div>
       <p style="font-size:13px;color:var(--text2);margin:8px 0 14px">Permanently delete evaluation records from this browser. User accounts and settings lists are not affected. Export a backup first if you need to preserve records.</p>
