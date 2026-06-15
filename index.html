@@ -2156,10 +2156,12 @@ function _dashScopeEvals(){
 function _dashScopeIDQA(){
   const me=Auth.user; const all=IDQADB.all();
   if(me.isAdmin||me.isReportsViewer||me.dashScope==='full') return all;
+  return all.filter(r=>r.designerId===me.id||r.reviewerId===me.id);
 }
 function _dashScopeCQA(){
   const me=Auth.user; const all=ContentQADB.all();
   if(me.isAdmin||me.isReportsViewer||me.dashScope==='full') return all;
+  return all.filter(r=>r.authorId===me.id||r.reviewerId===me.id);
 }
 function _dashQAHtml(tier){
   const me=Auth.user;
