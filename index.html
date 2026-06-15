@@ -1884,7 +1884,7 @@
 'use strict';
 
 /* ── CONSTANTS ────────────────────── */
-const DEFAULT_PW   = 'Welcome@1';  // Change this before deploying to production
+const DEFAULT_PW   = 'LEAP2026!';  // Temporary — overwritten when user sets password via reset email
 const STORE_VER    = 'v3';
 
 /* ── FIREBASE CONFIG ─────────────────────────────────────────────────────────────────────── */
@@ -2061,7 +2061,6 @@ const DB = {
       isAdmin:!!data.isAdmin, isReportsViewer:!!data.isReportsViewer, formTrainer:!!data.formTrainer, formIDQA:!!data.formIDQA, formCQA:!!data.formCQA,
       dashScope:data.dashScope||'team',
       passwordHash:Utils.hash(data.password||DEFAULT_PW),
-      mustChangePassword: skipDefaultPw ? false : true,
       createdAt:Date.now(), updatedAt:Date.now()
     };
     const all=this.all(); all.push(u); this.save(all); return u;
@@ -2074,7 +2073,8 @@ const DB = {
     // Production seed — two admin accounts only. Update emails/names via User Management after first login.
     const rows=[
       {employeeId:'',firstName:'Admin',lastName:'01',email:'admin01@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,password:DEFAULT_PW},
-      {employeeId:'',firstName:'Admin',lastName:'02',email:'admin02@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,password:DEFAULT_PW}
+      {employeeId:'',firstName:'Admin',lastName:'02',email:'admin02@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,password:DEFAULT_PW},
+      {employeeId:'',firstName:'Sandra',lastName:'Barlao',email:'sbarlao@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,dashScope:'full',password:DEFAULT_PW}
     ];
     rows.forEach(r=>this.create(r, true));
   }
@@ -2094,10 +2094,8 @@ const Auth = {
     try{
       try{ await _fbAuth.signInWithEmailAndPassword(email,pass); }
       catch(fe){
-        if(fe.code==='auth/user-not-found'||fe.code==='auth/invalid-credential'){
-          try{ await _fbAuth.createUserWithEmailAndPassword(email,pass); }
-          catch(ce){ return _fail(ce.code==='auth/email-already-in-use'?'Incorrect password. Please try again.':(ce.message||'Sign-in failed.')); }
-        } else if(fe.code==='auth/wrong-password'){ return _fail('Incorrect password. Please try again.'); }
+        if(fe.code==='auth/wrong-password'||fe.code==='auth/invalid-credential'){ return _fail('Incorrect password. Please try again.'); }
+        else if(fe.code==='auth/user-not-found'){ return _fail('No LEAP account found for this email. Contact your administrator.'); }
         else { return _fail(fe.message||'Sign-in failed.'); }
       }
       document.getElementById('fs-loading-msg').textContent='Loading data…';
@@ -2357,7 +2355,7 @@ function renderDashboard(){
   _dashDestroy();
   const bannerEl=document.getElementById('dash-banner');
   if(!Store.get(Store.FIRSTRUN)){
-    bannerEl.innerHTML=`<div class="frb"><span style="font-size:20px;flex-shrink:0;margin-top:1px">🎉</span><div><div class="frb-title">LEAP Insights is ready</div><div class="frb-body">All accounts use the default password <strong>${DEFAULT_PW}</strong>. Users will be asked to change it on first login. Log in with your admin account.</div></div><button class="frb-close" onclick="Store.set(Store.FIRSTRUN,true);this.closest('.frb').remove()">✕</button></div>`;
+    bannerEl.innerHTML=`<div class="frb"><span style="font-size:20px;flex-shrink:0;margin-top:1px">🎉</span><div><div class="frb-title">LEAP Insights is ready</div><div class="frb-body">All accounts are ready. Users will receive a password setup email to set their own password. Log in with your admin account.</div></div><button class="frb-close" onclick="Store.set(Store.FIRSTRUN,true);this.closest('.frb').remove()">✕</button></div>`;
   } else { bannerEl.innerHTML=''; }
   const tier=Perms.dashTier(Auth.user);
   const _dfa=Auth.formAccess(Auth.user);
@@ -3408,7 +3406,8 @@ function saveUser(){
     if(empId&&DB.byEmpId(empId)) return showErr('This Employee ID is already in use.');
     DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
     _createFirebaseUser(email, DEFAULT_PW);
-    toast(`${fname} ${lname} added. Default password: ${DEFAULT_PW}`,'success');
+    _fbAuth.sendPasswordResetEmail(email).catch(e=>console.warn('Reset email:',e));
+    toast(`${fname} ${lname} added. A password setup email has been sent to ${email}.`,'success');
   } else {
     const dup=DB.byEmail(email); if(dup&&dup.id!==id) return showErr('Another user with this email already exists.');
     if(empId){const dup2=DB.byEmpId(empId);if(dup2&&dup2.id!==id) return showErr('This Employee ID is already in use.');}
@@ -3538,6 +3537,8 @@ function importCSV(){
   toImport.forEach(r=>{
     if(DB.byEmail(r.email)) return;
     DB.create({employeeId:r.employeeId,firstName:r.firstName,lastName:r.lastName,email:r.email,positionId:r.positionId,supervisorId:r.supervisorId,hireDate:r.hireDate,isActive:true,isAdmin:r.isAdmin,formTrainer:r.formTrainer,formIDQA:r.formIDQA,formCQA:r.formCQA});
+    _createFirebaseUser(r.email, DEFAULT_PW);
+    _fbAuth.sendPasswordResetEmail(r.email).catch(e=>console.warn('Reset email:',e));
     count++;
   });
   toast(`${count} user${count!==1?'s':''} imported successfully.`,'success');
@@ -7740,20 +7741,10 @@ async function loginWithAzure(){
   }
 }
 
-async function sendForgotPassword(){
-  const email=document.getElementById('f-email').value.trim().toLowerCase();
+function sendForgotPassword(){
   const al=document.getElementById('login-alert');
-  al.classList.remove('show');
-  if(!email){al.textContent='Enter your email address above first.';al.classList.add('show');return;}
-  try{
-    await _fbAuth.sendPasswordResetEmail(email);
-    al.style.cssText='display:block;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
-    al.textContent='Password reset email sent. Check your inbox (and spam folder).';
-  }catch(err){
-    al.style.cssText='';
-    al.textContent=err.code==='auth/user-not-found'?'No account found with that email.':'Could not send reset email. Try again.';
-    al.classList.add('show');
-  }
+  al.style.cssText='display:block;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
+  al.textContent='To reset your password, please contact your L\u0026D Director at sbarlao@dermorepubliq.com.';
 }
 
 function wireEvents(){
@@ -7812,8 +7803,7 @@ function bootApp(){
 }
 
 function afterLogin(user){
-  if(user.mustChangePassword){ showScreen('chg-pass-screen'); }
-  else { bootApp(); }
+  bootApp();
 }
 
 function init(){
@@ -7831,6 +7821,13 @@ function init(){
         document.getElementById('fs-loading-msg').textContent='Loading data…';
         await FireSync.loadAll(); Sel.seed(); DB.seed();
         const u=DB.byEmail(fbUser.email.toLowerCase());
+        // Bootstrap: if Sandy's profile is missing from Firestore, auto-create so she's never locked out
+        if(!u&&fbUser.email.toLowerCase()==='sbarlao@dermorepubliq.com'){
+          const bu=DB.create({employeeId:'',firstName:'Sandra',lastName:'Barlao',email:'sbarlao@dermorepubliq.com',positionId:'',hireDate:'',isActive:true,isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,dashScope:'full'});
+          Auth._u=bu; Store.set(Store.SESSION,{userId:bu.id,at:Date.now()});
+          document.getElementById('fs-loading').style.display='none';
+          afterLogin(bu); return;
+        }
         if(u&&u.isActive){
           Auth._u=u; Store.set(Store.SESSION,{userId:u.id,at:Date.now()});
           document.getElementById('fs-loading').style.display='none';
