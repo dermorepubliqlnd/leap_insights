@@ -2679,22 +2679,27 @@ function _dashFilterQA(rows,range){
   });
 }
 
-function _dashOverviewCard(icon,color,bg,title,total,submittedLabel,submitted,avg,endorse,revise,major,onclick){
-  const pct=total>0?(submitted/total*100).toFixed(0):0;
+function _dashOverviewCard(icon,color,bg,title,total,pending,avg,endorse,revise,major,onclick){
   const avgStr=avg!=null?avg.toFixed(1)+'%':'—';
-  const endorseW=submitted>0?Math.round(endorse/submitted*100):0;
-  const reviseW=submitted>0?Math.round(revise/submitted*100):0;
-  const majorW=submitted>0?Math.round(major/submitted*100):0;
+  const scored=endorse+revise+major;
+  const endorseW=scored>0?Math.round(endorse/scored*100):0;
+  const reviseW=scored>0?Math.round(revise/scored*100):0;
+  const majorW=scored>0?Math.round(major/scored*100):0;
   return `<div class="dash-card" style="cursor:pointer" onclick="${onclick}">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:36px;height:36px;border-radius:8px;background:${bg};color:${color};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
       <div><div style="font-size:13.5px;font-weight:700;color:var(--text)">${title}</div><div style="font-size:11px;color:var(--text3);margin-top:1px">${total} review${total!==1?'s':''} in period</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
       <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">${submittedLabel}</div>
-        <div style="font-size:20px;font-weight:800;color:${color};line-height:1.2;margin-top:2px">${submitted}</div>
-        <div style="font-size:10.5px;color:var(--text3)">${pct}% of total</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Total</div>
+        <div style="font-size:20px;font-weight:800;color:${color};line-height:1.2;margin-top:2px">${total}</div>
+        <div style="font-size:10.5px;color:var(--text3)">All statuses</div>
+      </div>
+      <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Pending Ack.</div>
+        <div style="font-size:20px;font-weight:800;color:#7c3aed;line-height:1.2;margin-top:2px">${pending}</div>
+        <div style="font-size:10.5px;color:var(--text3)">Awaiting ack.</div>
       </div>
       <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Avg Score</div>
@@ -2702,7 +2707,7 @@ function _dashOverviewCard(icon,color,bg,title,total,submittedLabel,submitted,av
         <div style="font-size:10.5px;color:var(--text3)">Submitted only</div>
       </div>
     </div>
-    ${submitted>0?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px">Disposition</div>
+    ${scored>0?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px">Disposition <span style="font-weight:400;text-transform:none;font-size:10px">(${scored} of ${total} scored)</span></div>
     <div style="display:flex;gap:2px;border-radius:4px;overflow:hidden;height:6px;margin-bottom:6px">
       <div style="width:${endorseW}%;background:#16a34a"></div>
       <div style="width:${reviseW}%;background:#d97706"></div>
@@ -2754,6 +2759,10 @@ function _dashRenderOverview(range,prevRange,key){
   const _rDist={1:0,2:0,3:0,4:0,5:0}; let _rTotal=0;
   evalComp.forEach(e=>{ EVAL_CRITERIA.forEach(c=>{ const v=Number((e.ratings||{})[c.id]); if(v>=1&&v<=5){_rDist[v]++;_rTotal++;} }); });
   const _rPct=(v)=>_rTotal>0?Math.round(_rDist[v]/_rTotal*100):0;
+  // Avg acknowledgement turnaround (finalizedAt → acknowledgedAt)
+  const _ackDaysArr=(recs)=>recs.filter(r=>r.status==='completed'&&r.finalizedAt&&r.acknowledgedAt).map(r=>Math.max(0,(new Date(r.acknowledgedAt)-new Date(r.finalizedAt))/864e5));
+  const _allAckDays=[..._ackDaysArr(idqaF),..._ackDaysArr(cqaF),..._ackDaysArr(evalF)];
+  const avgAckDays=_allAckDays.length?_allAckDays.reduce((s,v)=>s+v,0)/_allAckDays.length:null;
 
   el.innerHTML=`
     <div class="kpi-strip" style="margin-bottom:16px">
@@ -2781,46 +2790,81 @@ function _dashRenderOverview(range,prevRange,key){
         <div class="kpi-value" style="color:#d97706">${allDraft}</div>
         <div class="kpi-sub">In progress</div>
       </div>
-    </div>
-    <div class="dash-row" style="grid-template-columns:1fr 1fr 1fr;display:grid;gap:14px;margin-bottom:16px">
-      ${_dashOverviewCard('◈','#7c3aed','#f5f3ff','Instructional Design QA',idqaF.length,'Submitted',idqaSub.length,idqaAvg,idqaEnd,idqaRev,idqaMaj,"setDashTab('idqa')")}
-      ${_dashOverviewCard('✦','#2563eb','#eff6ff','Content Development QA',cqaF.length,'Submitted',cqaSub.length,cqaAvg,cqaEnd,cqaRev,cqaMaj,"setDashTab('cqa')")}
-      <div class="dash-card" style="cursor:pointer" onclick="setDashTab('trainer')">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div style="width:36px;height:36px;border-radius:8px;background:#f0fdf4;color:#16a34a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">◉</div>
-          <div><div style="font-size:13.5px;font-weight:700;color:var(--text)">Trainer Evaluation</div><div style="font-size:11px;color:var(--text3);margin-top:1px">${evalF.length} eval${evalF.length!==1?'s':''} in period</div></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-          <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Completed</div>
-            <div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.2;margin-top:2px">${evalComp.length}</div>
-            <div style="font-size:10.5px;color:var(--text3)">${evalF.length>0?((evalComp.length/evalF.length)*100).toFixed(0):0}% of total</div>
-          </div>
-          <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Avg Rating</div>
-            <div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.2;margin-top:2px">${evalAvg!=null?evalAvg.toFixed(1)+'/5':'—'}</div>
-            <div style="font-size:10.5px;color:var(--text3)">Completed only</div>
-          </div>
-        </div>
-        ${evalComp.length>0?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px">Rating Distribution</div>
-        <div style="display:flex;gap:2px;border-radius:4px;overflow:hidden;height:6px;margin-bottom:6px">
-          <div style="width:${_rPct(5)}%;background:#16a34a"></div>
-          <div style="width:${_rPct(4)}%;background:#84cc16"></div>
-          <div style="width:${_rPct(3)}%;background:#f59e0b"></div>
-          <div style="width:${_rPct(2)}%;background:#f97316"></div>
-          <div style="width:${_rPct(1)}%;background:#dc2626"></div>
-        </div>
-        <div style="display:flex;gap:8px;font-size:10px;flex-wrap:wrap">
-          <span style="color:#16a34a">● 5: ${_rDist[5]}</span>
-          <span style="color:#84cc16">● 4: ${_rDist[4]}</span>
-          <span style="color:#f59e0b">● 3: ${_rDist[3]}</span>
-          <span style="color:#f97316">● 2: ${_rDist[2]}</span>
-          <span style="color:#dc2626">● 1: ${_rDist[1]}</span>
-        </div>`:'<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0">No completed evaluations yet</div>'}
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#ecfdf5">⏱️</div>
+        <div class="kpi-label">Avg Ack. Time</div>
+        <div class="kpi-value" style="color:#0891b2">${avgAckDays!=null?avgAckDays.toFixed(1)+' d':'—'}</div>
+        <div class="kpi-sub">Days to acknowledge</div>
       </div>
     </div>
-
-    <div class="dash-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:14px;align-items:stretch">
+      <div class="dash-card" style="display:flex;flex-direction:column">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;flex-shrink:0">
+          <div>
+            <div class="dash-card-title">Submissions vs Acknowledgements</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">Bars = submitted for ack. · Line = acknowledged · All forms</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+              <button id="dochf-3" onclick="_dashRenderOverviewChart({months:3})" style="padding:4px 10px;font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;color:var(--text3);transition:all .15s">3M</button>
+              <button id="dochf-6" onclick="_dashRenderOverviewChart({months:6})" style="padding:4px 10px;font-size:11px;font-weight:600;background:#2563eb;border:none;cursor:pointer;color:#fff;transition:all .15s">6M</button>
+              <button id="dochf-12" onclick="_dashRenderOverviewChart({months:12})" style="padding:4px 10px;font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;color:var(--text3);transition:all .15s">12M</button>
+              <button id="dochf-custom" onclick="_dashChartToggleCustom()" style="padding:4px 10px;font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;color:var(--text3);transition:all .15s">Custom</button>
+            </div>
+            <div id="dash-chart-custom" style="display:none;align-items:center;gap:5px">
+              <input type="month" id="dash-chart-from" style="padding:3px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;color:var(--text)">
+              <span style="font-size:11px;color:var(--text3)">→</span>
+              <input type="month" id="dash-chart-to" style="padding:3px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;color:var(--text)">
+              <button onclick="_dashChartApplyCustom()" style="padding:3px 8px;font-size:11px;font-weight:600;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer">Apply</button>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;position:relative;min-height:200px"><canvas id="dash-overview-chart" style="position:absolute;top:0;left:0;width:100%!important;height:100%!important"></canvas></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${_dashOverviewCard('◈','#7c3aed','#f5f3ff','Instructional Design QA',idqaF.length,idqaF.filter(r=>r.status==='pending_ack').length,idqaAvg,idqaEnd,idqaRev,idqaMaj,"setDashTab('idqa')")}
+        ${_dashOverviewCard('✦','#2563eb','#eff6ff','Content Development QA',cqaF.length,cqaF.filter(r=>r.status==='pending_ack').length,cqaAvg,cqaEnd,cqaRev,cqaMaj,"setDashTab('cqa')")}
+        <div class="dash-card" style="cursor:pointer" onclick="setDashTab('trainer')">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="width:36px;height:36px;border-radius:8px;background:#f0fdf4;color:#16a34a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">◉</div>
+            <div><div style="font-size:13.5px;font-weight:700;color:var(--text)">Trainer Evaluation</div><div style="font-size:11px;color:var(--text3);margin-top:1px">${evalF.length} eval${evalF.length!==1?'s':''} in period</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+            <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Total</div>
+              <div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.2;margin-top:2px">${evalF.length}</div>
+              <div style="font-size:10.5px;color:var(--text3)">All statuses</div>
+            </div>
+            <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Pending Ack.</div>
+              <div style="font-size:20px;font-weight:800;color:#7c3aed;line-height:1.2;margin-top:2px">${evalPend.length}</div>
+              <div style="font-size:10.5px;color:var(--text3)">Awaiting ack.</div>
+            </div>
+            <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Avg Rating</div>
+              <div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.2;margin-top:2px">${evalAvg!=null?evalAvg.toFixed(1)+'/5':'—'}</div>
+              <div style="font-size:10.5px;color:var(--text3)">Completed only</div>
+            </div>
+          </div>
+          ${evalComp.length>0?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px">Rating Distribution <span style="font-weight:400;text-transform:none;font-size:10px">(${evalComp.length} of ${evalF.length} completed)</span></div>
+          <div style="display:flex;gap:2px;border-radius:4px;overflow:hidden;height:6px;margin-bottom:6px">
+            <div style="width:${_rPct(5)}%;background:#16a34a"></div>
+            <div style="width:${_rPct(4)}%;background:#84cc16"></div>
+            <div style="width:${_rPct(3)}%;background:#f59e0b"></div>
+            <div style="width:${_rPct(2)}%;background:#f97316"></div>
+            <div style="width:${_rPct(1)}%;background:#dc2626"></div>
+          </div>
+          <div style="display:flex;gap:8px;font-size:10px;flex-wrap:wrap">
+            <span style="color:#16a34a">● 5: ${_rDist[5]}</span>
+            <span style="color:#84cc16">● 4: ${_rDist[4]}</span>
+            <span style="color:#f59e0b">● 3: ${_rDist[3]}</span>
+            <span style="color:#f97316">● 2: ${_rDist[2]}</span>
+            <span style="color:#dc2626">● 1: ${_rDist[1]}</span>
+          </div>`:'<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0">No completed evaluations yet</div>'}
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px">
       <div class="dash-card">
         <div class="dash-card-hdr"><div class="dash-card-title">Recent Activity</div></div>
         <div id="dash-overview-recent"></div>
@@ -2851,6 +2895,54 @@ function _dashRenderOverview(range,prevRange,key){
     </tr>`).join('')}</tbody></table>`;
   }
   _dashPendingTable2('dash-overview-pending');
+  _dashRenderOverviewChart({months:6});
+}
+
+function _dashRenderOverviewChart(cfg){
+  window._overviewChartCfg=cfg;
+  [3,6,12,'custom'].forEach(k=>{
+    const b=document.getElementById('dochf-'+k);
+    if(!b) return;
+    const isActive=(typeof k==='number'&&cfg.months===k)||(k==='custom'&&!cfg.months);
+    b.style.background=isActive?'#2563eb':'transparent';
+    b.style.color=isActive?'#fff':'var(--text3)';
+  });
+  if(window._overviewChartInst){window._overviewChartInst.destroy();window._overviewChartInst=null;}
+  const _cEl=document.getElementById('dash-overview-chart');
+  if(!_cEl||typeof Chart==='undefined') return;
+  const _allRecs=[..._dashScopeIDQA(),..._dashScopeCQA(),..._dashScopeEvals()];
+  let _months=[];
+  if(cfg.from&&cfg.to){
+    let cur=new Date(cfg.from+'-01');
+    const end=new Date(cfg.to+'-01');
+    while(cur<=end){_months.push({label:cur.toLocaleString('en',{month:'short'})+' \''+String(cur.getFullYear()).slice(2),y:cur.getFullYear(),m:cur.getMonth()});cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+  } else {
+    const n=cfg.months||6; const _now=new Date();
+    for(let i=n-1;i>=0;i--){const d=new Date(_now.getFullYear(),_now.getMonth()-i,1);_months.push({label:d.toLocaleString('en',{month:'short'})+' \''+String(d.getFullYear()).slice(2),y:d.getFullYear(),m:d.getMonth()});}
+  }
+  const _subData=_months.map(mn=>_allRecs.filter(r=>{const d=r.finalizedAt?new Date(r.finalizedAt):null;return d&&d.getFullYear()===mn.y&&d.getMonth()===mn.m;}).length);
+  const _ackData=_months.map(mn=>_allRecs.filter(r=>{const d=r.acknowledgedAt?new Date(r.acknowledgedAt):null;return d&&d.getFullYear()===mn.y&&d.getMonth()===mn.m;}).length);
+  const _maxVal=Math.max(..._subData,..._ackData,0);
+  const _step=_maxVal<=10?1:_maxVal<=50?5:10;
+  const _yMax=Math.ceil((_maxVal+1)/_step)*_step||5;
+  window._overviewChartInst=new Chart(_cEl,{data:{labels:_months.map(m=>m.label),datasets:[
+    {type:'bar',label:'Submitted for Ack.',data:_subData,backgroundColor:'rgba(37,99,235,0.15)',borderColor:'#2563eb',borderWidth:1.5,borderRadius:4,yAxisID:'y'},
+    {type:'line',label:'Acknowledged',data:_ackData,borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,0.07)',tension:0.35,pointRadius:4,pointBackgroundColor:'#16a34a',fill:true,yAxisID:'y'}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:16}}},scales:{y:{beginAtZero:true,max:_yMax,ticks:{stepSize:_step,precision:0},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false},ticks:{font:{size:11}}}}}});
+}
+function _dashChartToggleCustom(){
+  const panel=document.getElementById('dash-chart-custom');
+  if(!panel) return;
+  const show=panel.style.display==='none'||!panel.style.display;
+  panel.style.display=show?'flex':'none';
+  const b=document.getElementById('dochf-custom');
+  if(b){b.style.background=show?'#2563eb':'transparent';b.style.color=show?'#fff':'var(--text3)';}
+}
+function _dashChartApplyCustom(){
+  const from=document.getElementById('dash-chart-from')?.value;
+  const to=document.getElementById('dash-chart-to')?.value;
+  if(!from||!to||from>to) return;
+  _dashRenderOverviewChart({from,to});
 }
 
 function _dashPendingTable2(elId){
