@@ -2302,11 +2302,12 @@ window.addEventListener('popstate', ()=>{
 
 function _restoreFromHash(hash){
   _routingRestore=true;
+  let landedHash=hash;
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
     const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings'];
-    if(!validViews.includes(view)){ showView('dashboard'); _lastAppHash='#dashboard'; return; }
+    if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     showView(view);
     if(view==='evaluations'){
       if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewEval(); else { const rec=EvalDB.byId(rid); if(rec) (rec.status==='draft'?openEvalForm(rid):openEvalView(rid)); else showEvalSubview('list'); } }
@@ -2318,8 +2319,13 @@ function _restoreFromHash(hash){
       if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewCQA(); else { const rec=ContentQADB.byId(rid); if(rec) openCQA(rid); else showCQASubview('list'); } }
       else showCQASubview('list');
     }
-    _lastAppHash=hash;
-  } finally { _routingRestore=false; }
+  } finally {
+    _routingRestore=false;
+    _lastAppHash=landedHash;
+    // Internal view functions suppress their own hash pushes during restore (to avoid
+    // double-history-entries) — reconcile the real address bar to match what we landed on.
+    if(location.hash!==landedHash) history.replaceState(null,'',landedHash);
+  }
 }
 
 function setupNav(){
@@ -8154,80 +8160,4 @@ function _buildCQAHTML(rec){
   const tl=_cqaTimeliness(rec);
   const tlColor=_cqaTimelinessColor(tl);
   const hasRatings=Object.values(rec.ratings||{}).some(v=>v!==undefined&&v!==null&&v!=='');
-  const GC={'Design Fidelity':'#2563eb','Content Quality':'#0891b2','Visual Quality':'#7c3aed','Audio & Video Quality':'#d97706','Interactivity & Navigation':'#ea580c','Accessibility':'#059669','Brand Alignment':'#e11d48'};
-
-  const scoreHtml=hasRatings
-    ?`<div class="doc-score"><div class="doc-score-big">${sc.pct.toFixed(1)}%</div><div class="doc-score-sub">QA Score</div>${sc.disposition?`<div class="doc-disp" style="background:${sc.dispBg};color:${sc.dispColor}">${sc.disposition}</div>`:''}</div>`
-    :'';
-
-  const groups=_buildCQAGroups(rec.contentType);
-  let criteriaHtml='';
-  let n=0;
-  groups.forEach(g=>{
-    const color=GC[g.group]||'#6366f1';
-    criteriaHtml+=`<div class="group-hdr" style="background:${color}15;color:${color}"><div class="group-bar" style="background:${color}"></div>${g.group}</div>`;
-    criteriaHtml+=`<table class="crit"><thead><tr>
-      <th class="td-num">#</th>
-      <th>Criterion</th>
-      <th class="td-rating" style="text-align:center">Rating</th>
-      <th class="td-notes">Notes</th>
-    </tr></thead><tbody>`;
-    g.params.forEach(p=>{
-      n++;
-      const val=(rec.ratings||{})[p.id];
-      const hasVal=val!==undefined&&val!==null&&val!=='';
-      const rmk=((rec.remarks||{})[p.id]||'');
-      const numVal=hasVal?Number(val):null;
-      const badgeCls=hasVal?(numVal===2?'r-2':numVal===1?'r-1':numVal===0?'r-0':'r-na'):'r-na';
-      const badgeTxt=hasVal?val:'—';
-      const rLabel=hasVal?(numVal===2?'Fully<br>Achieved':numVal===1?'Partially<br>Achieved':'Not<br>Achieved'):'Not<br>Rated';
-      criteriaHtml+=`<tr>
-        <td class="td-num">${n}</td>
-        <td class="td-crit"><span class="crit-param" style="color:${color}">${Utils.esc(p.param||'')}</span><span class="crit-text">${Utils.esc(p.text)}</span></td>
-        <td class="td-rating"><span class="r-badge ${badgeCls}">${badgeTxt}</span><span class="r-lbl">${rLabel}</span></td>
-        <td class="td-notes">${rmk?Utils.esc(rmk):'<span style="color:#cbd5e1">—</span>'}</td>
-      </tr>`;
-    });
-    criteriaHtml+=`</tbody></table>`;
-  });
-
-  const obsText=rec.observations?(rec.observations.replace?rec.observations.replace(/<[^>]*>/g,''):rec.observations):'';
-  const obsHtml=obsText?`<div class="obs"><strong>Observations / Recommendations:</strong><br>${Utils.esc(obsText)}</div>`:'';
-
-  return `<div class="doc-header">
-    <div class="doc-header-main">
-      <div class="doc-tag">Content Development QA &nbsp;&middot;&nbsp; LD-TMP-006</div>
-      <div class="doc-title">${Utils.esc(rec.projectTitle||'Content QA Review')}</div>
-      <div class="doc-sub">Form Code: ${Utils.esc(rec.code||'—')} &nbsp;&middot;&nbsp; Status: ${rec.status||'—'}</div>
-    </div>
-    ${scoreHtml}
-  </div>
-  <div class="meta-grid">
-    <div class="meta-item"><label>Assigned CD</label><span>${Utils.esc(aName)}</span></div>
-    <div class="meta-item"><label>QA Reviewer</label><span>${Utils.esc(rName)}</span></div>
-    <div class="meta-item"><label>Content Type</label><span>${Utils.esc(rec.contentType||'—')}</span></div>
-    <div class="meta-item"><label>Review Date</label><span>${rec.reviewDate||'—'}</span></div>
-    <div class="meta-item"><label>Target Alpha Completion</label><span>${rec.targetDate||'—'}</span></div>
-    <div class="meta-item"><label>Actual Alpha Completion</label><span>${rec.actualDate||'—'}</span></div>
-    <div class="meta-item"><label>Timeliness</label><span style="color:${tlColor};font-weight:700">${tl}</span></div>
-    <div class="meta-item"><label>Submitted</label><span>${rec.submittedAt?rec.submittedAt.slice(0,10):'—'}</span></div>
-  </div>
-  <div class="disp-bar">
-    <span style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-right:4px">Score Thresholds:</span>
-    <div class="disp-item"><span class="disp-pill" style="background:#dcfce7;color:#16a34a">Endorse</span> ≥85% / no 0s</div>
-    <div class="disp-item"><span class="disp-pill" style="background:#fef9c3;color:#d97706">Revise &amp; Resubmit</span> 70–84% or any 0</div>
-    <div class="disp-item"><span class="disp-pill" style="background:#fee2e2;color:#dc2626">Major Revision</span> &lt;70%</div>
-  </div>
-  ${criteriaHtml}
-  ${obsHtml}
-  ${rec.cdNotes?`<div style="margin-top:14px;padding:12px 14px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:6px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#16a34a;margin-bottom:5px">✓ Content Developer Response</div><div style="font-size:11.5px;color:#14532d;line-height:1.55">${Utils.esc(rec.cdNotes)}</div>${rec.acknowledgedAt?`<div style="font-size:9.5px;color:#15803d;margin-top:5px">Acknowledged on ${Utils.formatDate(rec.acknowledgedAt.slice(0,10))}</div>`:''}</div>`:''}
-  <div class="sig">
-    <div class="sig-box">QA Reviewer: <strong>${Utils.esc(rName)}</strong><br><br><br>Signature &amp; Date: ___________________________</div>
-    <div class="sig-box">Assigned CD: <strong>${Utils.esc(aName)}</strong><br><br><br>${rec.acknowledgedAt?`<em style="font-size:10px;color:#16a34a">Acknowledged on ${Utils.formatDate(rec.acknowledgedAt.slice(0,10))}</em>`:'Received by: ___________________________'}</div>
-  </div>`;
-}
-
-document.addEventListener('DOMContentLoaded',init);
-</script>
-</body>
-</html>
+  const GC={'D
