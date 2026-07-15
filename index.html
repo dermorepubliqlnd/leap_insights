@@ -15,6 +15,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
   <style>
     /* =========================================================
        LEAP INSIGHTS  v1.2
@@ -1884,7 +1885,6 @@
 'use strict';
 
 /* ── CONSTANTS ────────────────────── */
-const DEFAULT_PW   = 'LEAP2026!';  // Temporary — overwritten when user sets password via reset email
 const STORE_VER    = 'v3';
 
 /* ── FIREBASE CONFIG ─────────────────────────────────────────────────────────────────────── */
@@ -1897,6 +1897,10 @@ const FIREBASE_CONFIG = {
   appId:             "1:543523779845:web:2b8093e646c1392da6b36c"
 };
 firebase.initializeApp(FIREBASE_CONFIG);
+// App Check — reCAPTCHA v3. Site key only (never the Secret Key, which stays server-side with Google).
+// Enforcement for Firestore must be turned on separately in the Firebase Console > App Check
+// once this is confirmed live and working (do this after verifying login/data load still work).
+firebase.appCheck().activate('6Lfa3VQtAAAAAI_vz4dCSipOBeAY3y20HKg17S6A', true);
 const _fbAuth = firebase.auth();
 const _fbDb   = firebase.firestore();
 
@@ -1963,7 +1967,7 @@ const EVAL_CRITERIA_GROUPS={cri1:'Knowledge & Preparation',cri2:'Knowledge & Pre
 /* ── UTILS ────────────────────────── */
 const Utils = {
   uid: () => Date.now().toString(36)+Math.random().toString(36).slice(2,8),
-  hash(s){ const str=s+'::leap::v3::2026'; let h=2166136261; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);} return (h>>>0).toString(16); },
+  genTempPassword(){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%'; const arr=new Uint32Array(14); (window.crypto||window.msCrypto).getRandomValues(arr); let out=''; for(let i=0;i<arr.length;i++){ out+=chars[arr[i]%chars.length]; } return out; },
   initials: n=>(n||'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join(''),
   esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; },
   avatarBg: isAdmin=>isAdmin?'background:linear-gradient(135deg,#7c3aed,#4f46e5)':'background:linear-gradient(135deg,#2563eb,#0891b2)',
@@ -2060,7 +2064,6 @@ const DB = {
       hireDate:data.hireDate||'', isActive:data.isActive!==false,
       isAdmin:!!data.isAdmin, isReportsViewer:!!data.isReportsViewer, formTrainer:!!data.formTrainer, formIDQA:!!data.formIDQA, formCQA:!!data.formCQA,
       dashScope:data.dashScope||'team',
-      passwordHash:Utils.hash(data.password||DEFAULT_PW),
       createdAt:Date.now(), updatedAt:Date.now()
     };
     const all=this.all(); all.push(u); this.save(all); return u;
@@ -2072,9 +2075,9 @@ const DB = {
     if(this.all().length>0) return;
     // Production seed — two admin accounts only. Update emails/names via User Management after first login.
     const rows=[
-      {employeeId:'',firstName:'Admin',lastName:'01',email:'admin01@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,password:DEFAULT_PW},
-      {employeeId:'',firstName:'Admin',lastName:'02',email:'admin02@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,password:DEFAULT_PW},
-      {employeeId:'',firstName:'Sandra',lastName:'Barlao',email:'sbarlao@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,dashScope:'full',password:DEFAULT_PW}
+      {employeeId:'',firstName:'Admin',lastName:'01',email:'admin01@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true},
+      {employeeId:'',firstName:'Admin',lastName:'02',email:'admin02@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true},
+      {employeeId:'',firstName:'Sandra',lastName:'Barlao',email:'sbarlao@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,dashScope:'full'}
     ];
     rows.forEach(r=>this.create(r, true));
   }
@@ -3512,7 +3515,7 @@ function saveUser(){
     if(DB.byEmail(email)) return showErr('A user with this email already exists.');
     if(empId&&DB.byEmpId(empId)) return showErr('This Employee ID is already in use.');
     DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
-    _createFirebaseUser(email, DEFAULT_PW);
+    _createFirebaseUser(email, Utils.genTempPassword());
     _fbAuth.sendPasswordResetEmail(email).catch(e=>console.warn('Reset email:',e));
     toast(`${fname} ${lname} added. A password setup email has been sent to ${email}.`,'success');
   } else {
@@ -3644,7 +3647,7 @@ function importCSV(){
   toImport.forEach(r=>{
     if(DB.byEmail(r.email)) return;
     DB.create({employeeId:r.employeeId,firstName:r.firstName,lastName:r.lastName,email:r.email,positionId:r.positionId,supervisorId:r.supervisorId,hireDate:r.hireDate,isActive:true,isAdmin:r.isAdmin,formTrainer:r.formTrainer,formIDQA:r.formIDQA,formCQA:r.formCQA});
-    _createFirebaseUser(r.email, DEFAULT_PW);
+    _createFirebaseUser(r.email, Utils.genTempPassword());
     _fbAuth.sendPasswordResetEmail(r.email).catch(e=>console.warn('Reset email:',e));
     count++;
   });
@@ -3688,7 +3691,6 @@ async function submitFirstLoginPassword(e){
   const alertEl=document.getElementById('cp-alert');
   alertEl.classList.remove('show');
   if(!newPw||newPw.length<8){alertEl.textContent='Password must be at least 8 characters.';alertEl.classList.add('show');return;}
-  if(newPw===DEFAULT_PW){alertEl.textContent='Please choose a different password from the default.';alertEl.classList.add('show');return;}
   if(newPw!==confirm){alertEl.textContent='Passwords do not match.';alertEl.classList.add('show');return;}
   try{
     const fbUser=_fbAuth.currentUser;
