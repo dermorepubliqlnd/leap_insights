@@ -158,8 +158,11 @@
 
     /* ── MAIN ── */
     .main-wrap{margin-left:var(--sbw);flex:1;min-height:100vh;display:flex;flex-direction:column}
-    .topbar{position:sticky;top:0;z-index:100;background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;height:54px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh-xs)}
+    .topbar{position:sticky;top:0;z-index:100;background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;min-height:54px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh-xs)}
+    .topbar-title-group{display:flex;flex-direction:column;gap:1px;padding:9px 0}
     .topbar-title{font-size:16px;font-weight:600;color:var(--text);font-family:var(--font-heading)}
+    .topbar-subtitle{font-size:12px;color:var(--text3);line-height:1.3}
+    .topbar-subtitle:empty{display:none}
     .topbar-right{display:flex;align-items:center;gap:10px}
     .view-body{padding:26px 28px;flex:1}
 
@@ -832,7 +835,10 @@
 
     <div class="main-wrap">
       <header class="topbar">
-        <span class="topbar-title" id="page-title">Dashboard</span>
+        <div class="topbar-title-group">
+          <span class="topbar-title" id="page-title">Dashboard</span>
+          <span class="topbar-subtitle" id="page-subtitle"></span>
+        </div>
         <div class="topbar-right" id="topbar-acts"></div>
       </header>
       <div class="view-body">
@@ -848,10 +854,7 @@
           <div id="eval-list-view">
             <!-- page header -->
             <div class="sec-hdr" style="margin-bottom:0">
-              <div>
-                <strong style="font-size:15px;color:var(--text)">Trainer Evaluations</strong>
-                <div style="font-size:12.5px;color:var(--text3);margin-top:2px">Structured observation and rating of trainer delivery, facilitation, and learner engagement</div>
-              </div>
+              <div></div>
               <button class="btn btn-primary" id="new-eval-btn">+ New Evaluation</button>
             </div>
 
@@ -1091,10 +1094,7 @@
           <!-- ── IDQA LIST SUB-VIEW ── -->
           <div id="idqa-list-view">
             <div class="sec-hdr" style="margin-bottom:0">
-              <div>
-                <strong style="font-size:15px;color:var(--text)">Instructional Design QA</strong>
-                <div style="font-size:12.5px;color:var(--text3);margin-top:2px">Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness</div>
-              </div>
+              <div></div>
               <button class="btn btn-primary" id="new-idqa-btn">+ New Review</button>
             </div>
 
@@ -1297,10 +1297,7 @@
           <!-- ── CQA LIST SUB-VIEW ── -->
           <div id="cqa-list-view">
             <div class="sec-hdr" style="margin-bottom:0">
-              <div>
-                <strong style="font-size:15px;color:var(--text)">Content Development QA</strong>
-                <div style="font-size:12.5px;color:var(--text3);margin-top:2px">Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment</div>
-              </div>
+              <div></div>
               <button class="btn btn-primary" id="new-cqa-btn">+ New Review</button>
             </div>
             <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:14px 0 16px">
@@ -2214,6 +2211,13 @@ function showScreen(id){
 
 /* ── NAVIGATION ───────────────────── */
 const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings'};
+// Static subtitles shown under the page title in the topbar. Dashboard's subtitle is dynamic
+// (the selected date-range label) and is set by _dashUpdate() instead — left out here on purpose.
+const PAGE_SUBTITLES={
+  evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
+  'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
+  'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment'
+};
 function showView(id){
   if(!Perms.canView(id)){ toast('You do not have access to that section.','error'); return; }
   localStorage.setItem('leap_view',id);
@@ -2233,6 +2237,7 @@ function showView(id){
     if(par) par.classList.add('active');
   }
   document.getElementById('page-title').textContent=PAGE_TITLES[id]||'';
+  document.getElementById('page-subtitle').textContent=PAGE_SUBTITLES[id]||'';
   if(id==='dashboard')   renderDashboard();
   if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
   if(id==='evaluations') renderEvaluations();
@@ -2456,10 +2461,7 @@ function renderDashboard(){
   const me2=Auth.user; const _showAllTabs=(tier==='admin'||me2.isReportsViewer);
   document.getElementById('dash-body').innerHTML=`
     <div class="dash-topbar">
-      <div>
-        <div class="dash-page-title">L&D Performance Dashboard</div>
-        <div class="dash-page-sub" id="dash-period-lbl"></div>
-      </div>
+      <div></div>
       <div class="dash-controls">
         <select class="dash-date-sel" id="dash-range" onchange="onDashRangeChange()">
           <option value="all">All Time</option>
@@ -2516,7 +2518,7 @@ function _dashUpdate(){
   const range=_dashRange(key);
   const prevRange=_dashPrevRange(key);
   const lblMap={'7d':'Past 7 days','30d':'Past 30 days','90d':'Last quarter','365d':'Past year','all':'All time','custom':'Custom range'};
-  const lbl=document.getElementById('dash-period-lbl');
+  const lbl=document.getElementById('page-subtitle');
   if(lbl) lbl.textContent=lblMap[key]||'';
   _dashDestroy();
   if(_dashTab==='idqa')         _dashRenderIDQA(range,prevRange,key);
@@ -8160,4 +8162,4 @@ function _buildCQAHTML(rec){
   const tl=_cqaTimeliness(rec);
   const tlColor=_cqaTimelinessColor(tl);
   const hasRatings=Object.values(rec.ratings||{}).some(v=>v!==undefined&&v!==null&&v!=='');
-  const GC={'D
+  const GC={'Design Fidelity':'#2563eb','Content Quality':'#0891b2','Visual 
