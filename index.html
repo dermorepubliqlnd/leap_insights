@@ -2211,9 +2211,9 @@ function showScreen(id){
 
 /* ── NAVIGATION ───────────────────── */
 const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings'};
-// Static subtitles shown under the page title in the topbar. Dashboard's subtitle is dynamic
-// (the selected date-range label) and is set by _dashUpdate() instead — left out here on purpose.
+// Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
+  dashboard:'Live performance overview across Trainer Evaluation, Instructional Design QA, and Content Development QA',
   evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
   'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment'
@@ -2517,9 +2517,6 @@ function _dashUpdate(){
   const key=document.getElementById('dash-range')?.value||'all';
   const range=_dashRange(key);
   const prevRange=_dashPrevRange(key);
-  const lblMap={'7d':'Past 7 days','30d':'Past 30 days','90d':'Last quarter','365d':'Past year','all':'All time','custom':'Custom range'};
-  const lbl=document.getElementById('page-subtitle');
-  if(lbl) lbl.textContent=lblMap[key]||'';
   _dashDestroy();
   if(_dashTab==='idqa')         _dashRenderIDQA(range,prevRange,key);
   else if(_dashTab==='cqa')     _dashRenderCDQA(range,prevRange,key);
@@ -8238,4 +8235,4 @@ function _buildCQAHTML(rec){
 document.addEventListener('DOMContentLoaded',init);
 </script>
 </body>
-</html>
+</html>                                                                                                                                                                                                                                                         
