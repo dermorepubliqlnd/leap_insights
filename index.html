@@ -914,7 +914,7 @@
               <div class="eval-dark-hdr">
                 <!-- top nav -->
                 <div class="eval-hdr-top">
-                  <button class="btn btn-secondary btn-sm" onclick="showEvalSubview('list');renderEvaluations()" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0">← Back</button>
+                  <button class="btn btn-secondary btn-sm" onclick="guardedLeave(()=>{showEvalSubview('list');renderEvaluations()})" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0">← Back</button>
                   <span class="cqa-brand-tag">Trainer Evaluation</span>
                   <strong id="eval-form-title" class="cqa-hdr-title">New Trainer Evaluation</strong>
                   <span id="eval-form-status-badge"></span>
@@ -1071,7 +1071,7 @@
                   <div style="font-size:12.5px;color:var(--text2)">Evaluator: <strong id="ef-signoff-evaluator">—</strong></div>
                   <div class="modal-err hidden" id="eval-error" style="margin:0;padding:8px 12px;font-size:12.5px"></div>
                   <div style="display:flex;gap:10px;align-items:center;margin-top:auto;flex-wrap:wrap">
-                    <button class="btn btn-ghost btn-sm" onclick="showEvalSubview('list');renderEvaluations()">← Back to List</button>
+                    <button class="btn btn-ghost btn-sm" onclick="guardedLeave(()=>{showEvalSubview('list');renderEvaluations()})">← Back to List</button>
                     <div style="flex:1"></div>
                     <button class="btn btn-secondary hidden" id="eval-draft-btn">💾 Save Draft</button>
                     <button class="btn btn-primary hidden" id="eval-finalize-btn">✓ Finalize</button>
@@ -1154,7 +1154,7 @@
             <!-- teal header (Back + title + actions all inside, matching CD form) -->
             <div class="idqa-dark-hdr">
               <div class="cqa-hdr-top">
-                <button class="btn btn-secondary btn-sm" onclick="showIDQASubview('list');renderIDQA()" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0">← Back</button>
+                <button class="btn btn-secondary btn-sm" onclick="guardedLeave(()=>{showIDQASubview('list');renderIDQA()})" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0">← Back</button>
                 <span class="cqa-brand-tag">Instructional Design QA</span>
                 <strong id="idqa-form-title" class="cqa-hdr-title">New ID QA Review</strong>
                 <span id="idqa-form-status-badge"></span>
@@ -1268,7 +1268,7 @@
                 <div style="font-size:12.5px;color:var(--text2)">QA Reviewer: <strong id="idqa-signoff-reviewer">—</strong></div>
                 <div class="modal-err hidden" id="idqa-error" style="margin:0;padding:8px 12px;font-size:12.5px"></div>
                 <div style="display:flex;gap:10px;align-items:center;margin-top:auto;flex-wrap:wrap">
-                  <button class="btn btn-ghost btn-sm" onclick="showIDQASubview('list');renderIDQA()">← Back to List</button>
+                  <button class="btn btn-ghost btn-sm" onclick="guardedLeave(()=>{showIDQASubview('list');renderIDQA()})">← Back to List</button>
                   <div style="flex:1"></div>
                   <button class="btn btn-secondary hidden" id="idqa-draft-btn" onclick="saveIDQADraft()">💾 Save Draft</button>
                   <button class="btn btn-primary hidden" id="idqa-finalize-btn" onclick="submitIDQA()">✓ Submit Review</button>
@@ -1357,7 +1357,7 @@
             <div class="cqa-dark-hdr">
               <!-- top nav bar -->
               <div class="cqa-hdr-top">
-                <button class="btn btn-secondary btn-sm" onclick="showCQASubview('list');renderContentQA()" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0">← Back</button>
+                <button class="btn btn-secondary btn-sm" onclick="guardedLeave(()=>{showCQASubview('list');renderContentQA()})" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0">← Back</button>
                 <span class="cqa-brand-tag">Content Development QA</span>
                 <strong id="cqa-form-title" class="cqa-hdr-title">New Content QA Review</strong>
                 <span id="cqa-form-status-badge"></span>
@@ -1477,7 +1477,7 @@
                   <div style="font-size:12.5px;color:var(--text2)">QA Reviewer: <strong id="cqa-signoff-reviewer">—</strong></div>
                   <div class="modal-err hidden" id="cqa-error" style="margin:0;padding:8px 12px;font-size:12.5px"></div>
                   <div style="display:flex;gap:10px;align-items:center;margin-top:auto;flex-wrap:wrap">
-                    <button class="btn btn-ghost btn-sm" onclick="showCQASubview('list');renderContentQA()">← Back to List</button>
+                    <button class="btn btn-ghost btn-sm" onclick="guardedLeave(()=>{showCQASubview('list');renderContentQA()})">← Back to List</button>
                     <div style="flex:1"></div>
                     <button class="btn btn-secondary hidden" id="cqa-draft-btn">💾 Save Draft</button>
                     <button class="btn btn-primary hidden" id="cqa-finalize-btn">✓ Submit Review</button>
@@ -2240,7 +2240,88 @@ function showView(id){
   if(id==='id-qa')       renderIDQA();
   if(id==='content-qa')  renderContentQA();
   if(id==='settings')    renderSettings();
+  _syncHashForCurrentView();
 }
+
+/* ── HASH ROUTING (browser back/forward within the app) ──────────────────── */
+let _routingRestore=false;   // true while restoring state FROM a hash (popstate/initial load) — suppresses re-pushing history
+let _lastAppHash=location.hash||'#dashboard';
+let _leaveGuard=null;        // {containerId, isDirtyFn} — set while a form with unsaved-change protection is open
+
+function _formSnapshot(containerId){
+  const c=document.getElementById(containerId); if(!c) return '';
+  return Array.from(c.querySelectorAll('input,textarea,select')).map(el=>
+    (el.type==='checkbox'||el.type==='radio')?(el.id+':'+el.checked):(el.id+':'+el.value)
+  ).join('|');
+}
+function armLeaveGuard(containerId){ const s=_formSnapshot(containerId); _leaveGuard={containerId, isDirtyFn:()=>_formSnapshot(containerId)!==s}; }
+function disarmLeaveGuard(){ _leaveGuard=null; }
+function _isLeaveGuarded(){ return !!(_leaveGuard && _leaveGuard.isDirtyFn()); }
+function guardedLeave(action){
+  if(_isLeaveGuarded()){
+    confirm$('Unsaved Changes','You have unsaved changes on this form. Leave without saving?','Leave Without Saving',()=>{ disarmLeaveGuard(); action(); });
+    return;
+  }
+  action();
+}
+
+function _computeEvalHash(){ const inForm=!document.getElementById('eval-form-view')?.classList.contains('hidden'); return inForm?`#evaluations/form/${_evalId||'new'}`:'#evaluations'; }
+function _computeIDQAHash(){ const inForm=!document.getElementById('idqa-form-view')?.classList.contains('hidden'); return inForm?`#id-qa/form/${_idqaId||'new'}`:'#id-qa'; }
+function _computeCQAHash(){ const inForm=!document.getElementById('cqa-form-view')?.classList.contains('hidden'); return inForm?`#content-qa/form/${_cqaId||'new'}`:'#content-qa'; }
+function _hashForView(id){
+  if(id==='evaluations') return _computeEvalHash();
+  if(id==='id-qa')       return _computeIDQAHash();
+  if(id==='content-qa')  return _computeCQAHash();
+  return '#'+id;
+}
+function _pushAppHash(hash){
+  if(_routingRestore) return;
+  if(hash===_lastAppHash) return;
+  history.pushState(null,'',hash);
+  _lastAppHash=hash;
+}
+function _syncHashForCurrentView(){
+  const activeViewEl=document.querySelector('[id^="view-"]:not(.hidden)');
+  if(!activeViewEl) return;
+  _pushAppHash(_hashForView(activeViewEl.id.replace('view-','')));
+}
+
+window.addEventListener('popstate', ()=>{
+  const targetHash=location.hash||'#dashboard';
+  if(_isLeaveGuarded()){
+    const cameFrom=_lastAppHash;
+    history.pushState(null,'',cameFrom); // neutralize the browser nav until confirmed
+    confirm$('Unsaved Changes','You have unsaved changes on this form. Leave without saving?','Leave Without Saving',()=>{
+      disarmLeaveGuard();
+      _restoreFromHash(targetHash);
+    });
+    return;
+  }
+  _restoreFromHash(targetHash);
+});
+
+function _restoreFromHash(hash){
+  _routingRestore=true;
+  try{
+    const parts=(hash||'').replace(/^#/,'').split('/');
+    const view=parts[0]||'dashboard';
+    const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings'];
+    if(!validViews.includes(view)){ showView('dashboard'); _lastAppHash='#dashboard'; return; }
+    showView(view);
+    if(view==='evaluations'){
+      if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewEval(); else { const rec=EvalDB.byId(rid); if(rec) (rec.status==='draft'?openEvalForm(rid):openEvalView(rid)); else showEvalSubview('list'); } }
+      else showEvalSubview('list');
+    } else if(view==='id-qa'){
+      if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewIDQA(); else { const rec=IDQADB.byId(rid); if(rec) openIDQA(rid); else showIDQASubview('list'); } }
+      else showIDQASubview('list');
+    } else if(view==='content-qa'){
+      if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewCQA(); else { const rec=ContentQADB.byId(rid); if(rec) openCQA(rid); else showCQASubview('list'); } }
+      else showCQASubview('list');
+    }
+    _lastAppHash=hash;
+  } finally { _routingRestore=false; }
+}
+
 function setupNav(){
   const u=Auth.user;
   document.querySelectorAll('.js-admin').forEach(el=>el.classList.toggle('hidden',!u.isAdmin));
@@ -4276,6 +4357,8 @@ function generateEvalCode(){
 function showEvalSubview(mode){
   document.getElementById('eval-list-view').classList.toggle('hidden',mode!=='list');
   document.getElementById('eval-form-view').classList.toggle('hidden',mode!=='form');
+  if(mode==='form') armLeaveGuard('eval-form-view'); else disarmLeaveGuard();
+  _pushAppHash(_computeEvalHash());
 }
 
 /* ── Rich Text Editor helpers ── */
@@ -4951,6 +5034,7 @@ function saveEvalDraft(){
     document.getElementById('eval-form-title').textContent='Edit Trainer Evaluation';
     toast(`Draft saved — ${ev.code}.`,'success');
   }
+  armLeaveGuard('eval-form-view');
 }
 
 function finalizeEval(){
@@ -6413,6 +6497,8 @@ function _populateIDQADropdowns(rec){
 function showIDQASubview(v){
   document.getElementById('idqa-list-view').classList.toggle('hidden',v!=='list');
   document.getElementById('idqa-form-view').classList.toggle('hidden',v!=='form');
+  if(v==='form') armLeaveGuard('idqa-form-view'); else disarmLeaveGuard();
+  _pushAppHash(_computeIDQAHash());
 }
 
 function openNewIDQA(){
@@ -6562,6 +6648,7 @@ function saveIDQADraft(){
   document.getElementById('idqa-form-status-badge').innerHTML=_idqaStatusBadge('draft');
   const _idqaSOD=document.getElementById('idqa-signoff-reviewer');if(_idqaSOD&&Auth.user)_idqaSOD.textContent=Auth.user.firstName+' '+Auth.user.lastName;
   toast(`Draft saved — ${code}.`,'success');
+  armLeaveGuard('idqa-form-view');
 }
 
 function submitIDQA(){
@@ -7179,6 +7266,8 @@ function _cqaStatusBadge(status){
 function showCQASubview(v){
   document.getElementById('cqa-list-view').classList.toggle('hidden',v!=='list');
   document.getElementById('cqa-form-view').classList.toggle('hidden',v!=='form');
+  if(v==='form') armLeaveGuard('cqa-form-view'); else disarmLeaveGuard();
+  _pushAppHash(_computeCQAHash());
 }
 
 function setCQATab(tab){
@@ -7811,6 +7900,7 @@ function saveCQADraft(){
   document.getElementById('cqa-form-title').textContent=code;
   document.getElementById('cqa-form-status-badge').innerHTML=_cqaStatusBadge('draft');
   toast(`Draft saved — ${code}.`,'success');
+  armLeaveGuard('cqa-form-view');
 }
 
 function submitCQA(){
@@ -7963,7 +8053,7 @@ function wireEvents(){
   document.getElementById('cp-new').addEventListener('input',()=>showPwStrength('cp-new','cp-strength-bar'));
   document.getElementById('mcp-new').addEventListener('input',()=>showPwStrength('mcp-new','mcp-strength-bar'));
   document.getElementById('signout-btn').addEventListener('click',()=>confirm$('Sign Out','Are you sure you want to sign out?','Sign Out',()=>Auth.logout()));
-  document.querySelectorAll('.nav-item[data-view],.nav-sub-item[data-view]').forEach(el=>el.addEventListener('click',()=>showView(el.dataset.view)));
+  document.querySelectorAll('.nav-item[data-view],.nav-sub-item[data-view]').forEach(el=>el.addEventListener('click',()=>guardedLeave(()=>showView(el.dataset.view))));
   document.getElementById('add-user-btn').addEventListener('click',openAddUser);
   document.getElementById('mu-save').addEventListener('click',saveUser);
   document.getElementById('mu-admin').addEventListener('change',function(){document.getElementById('mu-perm-note').style.display=this.checked?'block':'none'; _onAdminToggle();});
@@ -8001,9 +8091,13 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const lastView=localStorage.getItem('leap_view');
   const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings'];
-  showView(validViews.includes(lastView)?lastView:'dashboard');
+  if(location.hash && location.hash.length>1){
+    _restoreFromHash(location.hash);
+  } else {
+    const lastView=localStorage.getItem('leap_view');
+    showView(validViews.includes(lastView)?lastView:'dashboard');
+  }
 }
 
 function afterLogin(user){
