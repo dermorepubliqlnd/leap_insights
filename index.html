@@ -4895,6 +4895,22 @@ function renderEvaluations(){
   setTimeout(()=>document.querySelectorAll('.eval-tbl').forEach(_initColResize),50);
 }
 
+function _evalCountCell(evs,me){
+  const submitted=evs.filter(e=>e.status==='pending_ack'||e.status==='completed');
+  if(!submitted.length) return '<span class="txt-muted" style="font-size:12px">—</span>';
+  const completed=submitted.filter(e=>e.status==='completed');
+  const pending=submitted.filter(e=>e.status==='pending_ack');
+  const nameList=(list)=>{
+    const named=list.filter(e=>e.canView).map(e=>{ const u=DB.byId(e.evaluatorId); return u?Utils.esc(`${u.firstName} ${u.lastName}`):'Evaluator'; });
+    return named.length?named.join(', '):`${list.length} evaluator${list.length!==1?'s':''} (not visible to you)`;
+  };
+  const parts=[];
+  if(completed.length) parts.push(`<strong>Completed:</strong> ${nameList(completed)}`);
+  if(pending.length) parts.push(`<strong>Pending Ack:</strong> ${nameList(pending)}`);
+  const bubbleHtml=parts.join('<br>');
+  return `<span class="df-tip-icon" style="width:auto;height:auto;border-radius:10px;padding:2px 9px;background:var(--bg);color:var(--text2);font-weight:700;font-size:12.5px;border:1px solid var(--border)">${submitted.length}<span class="df-tip-bubble" style="white-space:normal;text-align:left;min-width:180px;line-height:1.6">${bubbleHtml}</span></span>`;
+}
+
 function renderSessions(){
   const me=Auth.user, access=Auth.formAccess(me);
   const canConduct=access.trainerEval||me.isAdmin;
@@ -4968,10 +4984,11 @@ function renderSessions(){
       <td>${rec}</td>
       <td>${_sessionStatusBadge(s.status)}</td>
       <td>${evalBadge}</td>
+      <td>${_evalCountCell(evs,me)}</td>
       <td><div class="td-acts">${editBtn}${delBtn}${evalBtn}</div></td>
     </tr>`;
   }).join('');
-  const thead=`<thead><tr><th>Trainer</th><th>Training Program</th><th>Batch</th><th>Session Date</th><th>Venue</th><th>Modality</th><th>Recording</th><th>Status</th><th>Evaluated</th><th>Actions</th></tr></thead>`;
+  const thead=`<thead><tr><th>Trainer</th><th>Training Program</th><th>Batch</th><th>Session Date</th><th>Venue</th><th>Modality</th><th>Recording</th><th>Status</th><th>Evaluated</th><th>Eval Count</th><th>Actions</th></tr></thead>`;
   body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows}</tbody></table></div>`;
 }
 
