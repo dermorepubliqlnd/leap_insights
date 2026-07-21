@@ -1014,6 +1014,10 @@
                       <input type="text" id="ef-venue-other" class="form-control" placeholder="Enter venue name/location">
                     </div>
                   </div>
+                  <div class="form-group hidden" id="ef-session-code-wrap" style="margin-bottom:0">
+                    <label class="form-label">Session ID</label>
+                    <div class="eval-readonly" id="ef-session-code" style="font-family:'DM Mono','Courier New',monospace;font-weight:600"></div>
+                  </div>
                   <div class="form-group hidden" id="ef-recording-wrap" style="margin-bottom:0">
                     <label class="form-label">Session Recording</label>
                     <div class="eval-readonly"><a id="ef-recording-link" href="#" target="_blank" rel="noopener" style="color:#93c5fd">▶ View Recording</a></div>
@@ -4562,6 +4566,22 @@ function generateEvalCode(){
   return `TE-${yr}-${String(count+1).padStart(3,'0')}`;
 }
 
+function generateSessionCode(){
+  const yr=new Date().getFullYear();
+  const count=TrSessionDB.all().filter(s=>s.code&&s.code.startsWith(`TS-${yr}-`)).length;
+  return `TS-${yr}-${String(count+1).padStart(3,'0')}`;
+}
+/* Ensures a session has a human-readable code, generating+persisting one if missing
+   (covers sessions logged before this feature existed, or any other legacy gap). */
+function _ensureSessionCode(sessionId){
+  const s=TrSessionDB.byId(sessionId);
+  if(!s) return null;
+  if(s.code) return s.code;
+  const code=generateSessionCode();
+  TrSessionDB.update(sessionId,{code});
+  return code;
+}
+
 function showEvalSubview(mode){
   document.getElementById('eval-list-view').classList.toggle('hidden',mode!=='list');
   document.getElementById('eval-form-view').classList.toggle('hidden',mode!=='form');
@@ -4654,6 +4674,7 @@ function openEvalView(id){
   const _soEl2=document.getElementById('ef-signoff-evaluator');if(_soEl2)_soEl2.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   document.getElementById('ef-session-id').value=ev.sessionId||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
+  _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
   document.getElementById('ef-batch').value=ev.batchNo||'';
   const dateEl=document.getElementById('ef-date');
@@ -4961,6 +4982,7 @@ function renderEvaluations(){
 }
 
 const SESSION_COLS=[
+  {id:'code',      label:'Session ID',       sort:'code'},
   {id:'trainer',   label:'Trainer',          sort:'trainer'},
   {id:'program',   label:'Training Program', sort:'program'},
   {id:'batch',     label:'Batch',            sort:'batch'},
@@ -5025,7 +5047,7 @@ function exportSessionsCSV(){
   if(!_lastSessVisible.length){ toast('No records to export.','info'); return; }
   const esc=v=>{const s=String(v==null?'':v).replace(/"/g,'""');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s}"`:s;};
   const statusLabel=s=>s==='completed'?'Completed':s==='cancelled'?'Cancelled':'Scheduled';
-  const headers=['Trainer','Training Program','Batch No.','Session Date','Venue','Modality','Recording Link','Status','Submitted Evaluations'];
+  const headers=['Session ID','Trainer','Training Program','Batch No.','Session Date','Venue','Modality','Recording Link','Status','Submitted Evaluations'];
   const rows=[headers.map(esc).join(',')];
   const allEvalsCsv=EvalDB.all();
   _lastSessVisible.forEach(s=>{
@@ -5034,7 +5056,7 @@ function exportSessionsCSV(){
     const venue=Sel.nameOf(Store.VENUES,s.venueId)||'';
     const modality=Sel.nameOf(Store.MODALS,s.modalityId)||'';
     const submitted=allEvalsCsv.filter(e=>e.sessionId===s.id&&(e.status==='pending_ack'||e.status==='completed')).length;
-    rows.push([tName,s.trainingProgram||'',s.batchNo||'',s.trainingDate||'',venue,modality,s.recordingLink||'',statusLabel(s.status),submitted].map(esc).join(','));
+    rows.push([s.code||'',tName,s.trainingProgram||'',s.batchNo||'',s.trainingDate||'',venue,modality,s.recordingLink||'',statusLabel(s.status),submitted].map(esc).join(','));
   });
   const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -5112,6 +5134,8 @@ function _evalCountCell(evs,me){
 function renderSessions(){
   const me=Auth.user, access=Auth.formAccess(me);
   const canConduct=access.trainerEval||me.isAdmin;
+  // Backfill Session ID for any legacy sessions logged before codes existed.
+  TrSessionDB.all().filter(s=>!s.code).forEach(s=>{ TrSessionDB.update(s.id,{code:generateSessionCode()}); });
   const all=TrSessionDB.all();
   const trainerFilter=document.getElementById('sf-filter-trainer');
   if(trainerFilter){
@@ -5167,6 +5191,7 @@ function renderSessions(){
   visible=[...visible].sort((a,b)=>{
     let va,vb;
     if(col==='date'){va=a.trainingDate||'';vb=b.trainingDate||'';}
+    else if(col==='code'){va=a.code||'';vb=b.code||'';}
     else if(col==='trainer'){const u=DB.byId(a.trainerId),v=DB.byId(b.trainerId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:'';}
     else if(col==='program'){va=a.trainingProgram||'';vb=b.trainingProgram||'';}
     else if(col==='batch'){va=a.batchNo||'';vb=b.batchNo||'';}
@@ -5195,6 +5220,7 @@ function renderSessions(){
     :`<th>${c.label}</th>`
   ).join('')}</tr></thead>`;
   function cellFor(colId,s,ctx){
+    if(colId==='code')      return `<td style="white-space:nowrap;font-family:'DM Mono','Courier New',monospace;font-size:12px;font-weight:600;color:var(--text3)">${Utils.esc(s.code||'—')}</td>`;
     if(colId==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(ctx.tName)}</strong></td>`;
     if(colId==='program')   return `<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(s.trainingProgram||'—')}</td>`;
     if(colId==='batch')     return `<td>${Utils.esc(s.batchNo||'—')}</td>`;
@@ -5326,7 +5352,7 @@ function saveSessionModal(){
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
   if(id){ TrSessionDB.update(id,d); toast('Training session updated.','success'); }
-  else { const me=Auth.user; TrSessionDB.create({...d,createdById:me.id}); toast('Training session logged.','success'); }
+  else { const me=Auth.user; TrSessionDB.create({...d,createdById:me.id,code:generateSessionCode()}); toast('Training session logged.','success'); }
   closeModal('session');
   renderSessions();
 }
@@ -5349,6 +5375,13 @@ function _updateEvalRecordingDisplay(link){
   if(link){ a.href=link; wrap.classList.remove('hidden'); }
   else { wrap.classList.add('hidden'); }
 }
+function _updateEvalSessionCodeDisplay(code){
+  const wrap=document.getElementById('ef-session-code-wrap');
+  const el=document.getElementById('ef-session-code');
+  if(!wrap||!el) return;
+  if(code){ el.textContent=code; wrap.classList.remove('hidden'); }
+  else { wrap.classList.add('hidden'); }
+}
 
 function openDraftChoiceModal(onContinue,onDelete){
   document.getElementById('dc-continue-btn').onclick=()=>{ closeModal('draft-choice'); onContinue(); };
@@ -5368,10 +5401,12 @@ function _openPrefilledEval(s){
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=s.modalityId||'';
   _updateEvalRecordingDisplay(s.recordingLink);
+  _updateEvalSessionCodeDisplay(s.code);
 }
 
 function startSessionEvaluation(sessionId){
-  const s=TrSessionDB.byId(sessionId); if(!s) return;
+  let s=TrSessionDB.byId(sessionId); if(!s) return;
+  if(!s.code){ _ensureSessionCode(sessionId); s=TrSessionDB.byId(sessionId); }
   const me=Auth.user, access=Auth.formAccess(me);
   const canConduct=access.trainerEval||me.isAdmin;
   if(!canConduct){ toast("You don't have access to conduct evaluations.",'error'); return; }
@@ -5462,6 +5497,7 @@ function openNewEval(){
   const _soEl=document.getElementById('ef-signoff-evaluator');if(_soEl)_soEl.textContent=`${me.firstName} ${me.lastName}`;
   document.getElementById('ef-session-id').value='';
   _updateEvalRecordingDisplay(null);
+  _updateEvalSessionCodeDisplay(null);
   document.getElementById('ef-program').value='';
   const dateEl=document.getElementById('ef-date');
   dateEl.value='';
@@ -5491,6 +5527,7 @@ function openEvalForm(id){
   const _soElF=document.getElementById('ef-signoff-evaluator');if(_soElF)_soElF.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   document.getElementById('ef-session-id').value=ev.sessionId||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
+  _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
   document.getElementById('ef-batch').value=ev.batchNo||'';
   const dateEl=document.getElementById('ef-date');
@@ -5687,6 +5724,7 @@ function clearEvalForm(){
   document.getElementById('ef-date').value='';
   document.getElementById('ef-session-id').value='';
   _updateEvalRecordingDisplay(null);
+  _updateEvalSessionCodeDisplay(null);
   document.getElementById('eval-error').classList.add('hidden');
   updateEvalScore();
 }
