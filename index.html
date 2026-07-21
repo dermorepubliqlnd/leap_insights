@@ -4898,17 +4898,7 @@ function renderEvaluations(){
 function _evalCountCell(evs,me){
   const submitted=evs.filter(e=>e.status==='pending_ack'||e.status==='completed');
   if(!submitted.length) return '<span class="txt-muted" style="font-size:12px">—</span>';
-  const completed=submitted.filter(e=>e.status==='completed');
-  const pending=submitted.filter(e=>e.status==='pending_ack');
-  const nameList=(list)=>{
-    const named=list.filter(e=>e.canView).map(e=>{ const u=DB.byId(e.evaluatorId); return u?Utils.esc(`${u.firstName} ${u.lastName}`):'Evaluator'; });
-    return named.length?named.join(', '):`${list.length} evaluator${list.length!==1?'s':''} (not visible to you)`;
-  };
-  const parts=[];
-  if(completed.length) parts.push(`<strong>Completed:</strong> ${nameList(completed)}`);
-  if(pending.length) parts.push(`<strong>Pending Ack:</strong> ${nameList(pending)}`);
-  const bubbleHtml=parts.join('<br>');
-  return `<span class="df-tip-icon" style="width:auto;height:auto;border-radius:10px;padding:2px 9px;background:var(--bg);color:var(--text2);font-weight:700;font-size:12.5px;border:1px solid var(--border)">${submitted.length}<span class="df-tip-bubble" style="white-space:normal;text-align:left;min-width:180px;line-height:1.6">${bubbleHtml}</span></span>`;
+  return `<span style="font-weight:700;color:var(--text)">${submitted.length}</span>`;
 }
 
 function renderSessions(){
