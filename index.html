@@ -1016,7 +1016,7 @@
                   </div>
                   <div class="form-group hidden" id="ef-session-code-wrap" style="margin-bottom:0">
                     <label class="form-label">Session ID</label>
-                    <div class="eval-readonly" id="ef-session-code" style="font-family:'DM Mono','Courier New',monospace;font-weight:600"></div>
+                    <div class="eval-readonly" id="ef-session-code" style="font-weight:600"></div>
                   </div>
                   <div class="form-group hidden" id="ef-recording-wrap" style="margin-bottom:0">
                     <label class="form-label">Session Recording</label>
@@ -4433,8 +4433,9 @@ let _evalGroupCollapsed={};
 let _colWidths={};
 
 const EVAL_COLS=[
-  {id:'code',      label:'Code',             sort:'code'},
-  {id:'trainer',   label:'Trainer',          sort:'trainer'},
+  {id:'code',        label:'Code',             sort:'code'},
+  {id:'sessioncode', label:'Session ID',       sort:'sessioncode'},
+  {id:'trainer',     label:'Trainer',          sort:'trainer'},
   {id:'evaluator', label:'Evaluator',        sort:'evaluator'},
   {id:'program',   label:'Training Program', sort:'program'},
   {id:'date',      label:'Session Date',     sort:'date'},
@@ -4524,6 +4525,7 @@ function exportEvalCSV(){
     const vals=[];
     visCols.forEach(col=>{
       if(col.id==='code')      vals.push(e.code||'');
+      else if(col.id==='sessioncode') vals.push(e.sessionId?(TrSessionDB.byId(e.sessionId)?.code||''):'');
       else if(col.id==='trainer')   vals.push(trName);
       else if(col.id==='evaluator') vals.push(evName);
       else if(col.id==='program'){  vals.push(e.trainingProgram||''); vals.push(e.batchNo||''); }
@@ -4885,6 +4887,7 @@ function renderEvaluations(){
     else if(col==='evaluator'){const u=DB.byId(a.evaluatorId);const v=DB.byId(b.evaluatorId);va=(u?`${u.lastName} ${u.firstName}`:'');vb=(v?`${v.lastName} ${v.firstName}`:'');}
     else if(col==='program'){va=a.trainingProgram||'';vb=b.trainingProgram||'';}
     else if(col==='code'){va=a.code||'';vb=b.code||'';}
+    else if(col==='sessioncode'){va=(TrSessionDB.byId(a.sessionId)||{}).code||'';vb=(TrSessionDB.byId(b.sessionId)||{}).code||'';}
     else if(col==='submitted'){va=a.finalizedAt||'';vb=b.finalizedAt||'';}
     else{va='';vb='';}
     if(va<vb) return dir==='asc'?-1:1;
@@ -4907,8 +4910,9 @@ function renderEvaluations(){
     ?`<th class="${sortTh(c.sort)}" onclick="evalSortBy('${c.sort}')">${c.label}</th>`
     :`<th>${c.label}</th>`
   ).join('')}</tr></thead>`;
-  function cellFor(col,ev,tName,evName,score,submitted,canEdit,canView){
+  function cellFor(col,ev,tName,evName,score,submitted,canEdit,canView,sessCode){
     if(col==='code')      return `<td><span class="eval-code">${Utils.esc(ev.code||'—')}</span></td>`;
+    if(col==='sessioncode') return `<td>${sessCode?`<span class="eval-code">${Utils.esc(sessCode)}</span>`:'<span class="txt-muted" style="font-size:12px">—</span>'}</td>`;
     if(col==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>`;
     if(col==='evaluator') return `<td>${Utils.esc(evName)}</td>`;
     if(col==='program')   return `<td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(ev.trainingProgram||'—')}</td>`;
@@ -4945,7 +4949,8 @@ function renderEvaluations(){
     const rowClick=canEdit?`openEvalForm('${ev.id}')`:canView?`openEvalView('${ev.id}')`:null;
     const rowStyle=rowClick?'cursor:pointer;':'';
     const rowAttr=rowClick?`onclick="${rowClick}" title="Click to open"`:'';
-    return `<tr style="${rowStyle}" ${rowAttr}>${visCols.map(c=>cellFor(c.id,ev,tName,evName,score,submitted,canEdit,canView)).join('')}</tr>`;
+    const sessCode=ev.sessionId?(TrSessionDB.byId(ev.sessionId)?.code||null):null;
+    return `<tr style="${rowStyle}" ${rowAttr}>${visCols.map(c=>cellFor(c.id,ev,tName,evName,score,submitted,canEdit,canView,sessCode)).join('')}</tr>`;
   }
   function groupAccordion(groups, keyFn, headerFn){
     let html='';
@@ -5220,7 +5225,7 @@ function renderSessions(){
     :`<th>${c.label}</th>`
   ).join('')}</tr></thead>`;
   function cellFor(colId,s,ctx){
-    if(colId==='code')      return `<td style="white-space:nowrap;font-family:'DM Mono','Courier New',monospace;font-size:12px;font-weight:600;color:var(--text3)">${Utils.esc(s.code||'—')}</td>`;
+    if(colId==='code')      return `<td style="white-space:nowrap"><span class="eval-code">${Utils.esc(s.code||'—')}</span></td>`;
     if(colId==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(ctx.tName)}</strong></td>`;
     if(colId==='program')   return `<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(s.trainingProgram||'—')}</td>`;
     if(colId==='batch')     return `<td>${Utils.esc(s.batchNo||'—')}</td>`;
@@ -5751,7 +5756,7 @@ function _validateEval(forFinalize){
 }
 
 function saveEvalDraft(){
-  if(!_validateEval(false)) return;
+  document.getElementById('eval-error').classList.add('hidden');
   const d={..._getCurrentData(),status:'draft'};
   if(_evalId){
     EvalDB.update(_evalId,d);
