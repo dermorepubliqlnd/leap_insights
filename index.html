@@ -4558,12 +4558,15 @@ function _rteFmt(id,cmd){
 
 /* ── Delete Draft Eval ── */
 function deleteEval(id){
-  const ev=EvalDB.byId(id); if(!ev||ev.status!=='draft') return;
+  const ev=EvalDB.byId(id); if(!ev) return;
+  const me=Auth.user;
+  if(ev.status!=='draft'&&!me.isAdmin) return;
   const trainer=DB.byId(ev.trainerId);
   const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'this trainer';
-  confirm$('Delete Draft',
-    `Permanently delete the draft evaluation for <strong>${Utils.esc(tName)}</strong>${ev.code?` (${ev.code})`:''}?<br><br>This cannot be undone.`,
-    'Delete',()=>{ EvalDB.delete(id); toast('Draft evaluation deleted.','success'); renderEvaluations(); }
+  const nonDraftWarning=ev.status!=='draft'?`<br><br><strong style="color:#dc2626">This evaluation is ${ev.status==='completed'?'completed and has already been acknowledged by the trainee':'pending the trainee\'s acknowledgement'}. Deleting it will permanently remove this record.</strong>`:'';
+  confirm$('Delete Evaluation',
+    `Permanently delete the evaluation for <strong>${Utils.esc(tName)}</strong>${ev.code?` (${ev.code})`:''}?${nonDraftWarning}<br><br>This cannot be undone.`,
+    'Delete',()=>{ EvalDB.delete(id); toast('Evaluation deleted.','success'); renderEvaluations(); }
   );
 }
 
@@ -4863,7 +4866,7 @@ function renderEvaluations(){
       else if(canView&&!canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openEvalView('${ev.id}')" style="min-width:60px;text-align:center">View</button>`;
       if(ev.status==='completed') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();showEvalPDFPreview('${ev.id}')" style="color:var(--pri);border-color:var(--pri);min-width:60px;text-align:center" title="Download PDF">📄 PDF</button>`;
       if(me.isAdmin&&ev.status==='completed') btns+=`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();reopenEval('${ev.id}')" title="Reopen for editing" style="color:var(--text3)">↩</button>`;
-      if(canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteEval('${ev.id}')" title="Delete draft" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
+      if(canEdit||me.isAdmin) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteEval('${ev.id}')" title="${ev.status==='draft'?'Delete draft':'Admin: delete record'}" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
       return `<td><div class="td-acts">${btns||'<span class="txt-muted" style="font-size:12px">—</span>'}</div></td>`;
     }
     return '<td></td>';
@@ -7337,10 +7340,14 @@ function acknowledgeIDQA(id){
 }
 
 function deleteIDQADraft(id){
-  confirm$('Delete Draft','Delete this draft? This cannot be undone.','Delete',()=>{
+  const r=IDQADB.byId(id); if(!r) return;
+  const me=Auth.user;
+  if(r.status!=='draft'&&!me.isAdmin) return;
+  const nonDraftWarning=r.status!=='draft'?`<br><br><strong style="color:#dc2626">This review is ${r.status==='completed'?'completed and has already been acknowledged':'pending acknowledgement'}. Deleting it will permanently remove this record.</strong>`:'';
+  confirm$('Delete Review',`Permanently delete this ID QA review?${nonDraftWarning}<br><br>This cannot be undone.`,'Delete',()=>{
     IDQADB.delete(id);
     renderIDQA();
-    toast('Draft deleted.','success');
+    toast('Review deleted.','success');
   });
 }
 
@@ -7601,7 +7608,7 @@ function renderIDQA(){
       else if(!canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openIDQA('${r.id}')" style="min-width:60px;text-align:center">View</button>`;
       if(r.status==='completed') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();exportIDQAPDF('${r.id}')" style="color:var(--pri);border-color:var(--pri);min-width:60px;text-align:center" title="PDF">📄 PDF</button>`;
       if(me.isAdmin&&(r.status==='pending_ack'||r.status==='completed')) btns+=`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();reopenIDQA('${r.id}')" title="Reopen" style="color:var(--text3)">↩</button>`;
-      if(canEdit&&r.status==='draft') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteIDQADraft('${r.id}')" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
+      if(canEdit||me.isAdmin) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteIDQADraft('${r.id}')" title="${r.status==='draft'?'Delete draft':'Admin: delete record'}" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
       return `<td><div class="td-acts">${btns||'<span class="txt-muted" style="font-size:12px">—</span>'}</div></td>`;
     }
     return '<td></td>';
@@ -8299,7 +8306,7 @@ function renderContentQA(){
       else if(!canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openCQA('${r.id}')" style="min-width:60px;text-align:center">View</button>`;
       if(r.status==='completed') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();exportCQAPDF('${r.id}')" style="color:var(--pri);border-color:var(--pri);min-width:60px;text-align:center" title="PDF">📄 PDF</button>`;
       if(me.isAdmin&&(r.status==='pending_ack'||r.status==='completed')) btns+=`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();reopenCQA('${r.id}')" title="Reopen" style="color:var(--text3)">↩</button>`;
-      if(canEdit&&r.status==='draft') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteCQADraft('${r.id}')" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
+      if(canEdit||me.isAdmin) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteCQADraft('${r.id}')" title="${r.status==='draft'?'Delete draft':'Admin: delete record'}" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
       return `<td><div class="td-acts">${btns||'<span class="txt-muted" style="font-size:12px">—</span>'}</div></td>`;
     }
     return '<td></td>';
@@ -8588,10 +8595,14 @@ function acknowledgeCQA(id){
 }
 
 function deleteCQADraft(id){
-  confirm$('Delete Draft','Delete this draft review? This cannot be undone.','Delete',()=>{
+  const r=ContentQADB.byId(id); if(!r) return;
+  const me=Auth.user;
+  if(r.status!=='draft'&&!me.isAdmin) return;
+  const nonDraftWarning=r.status!=='draft'?`<br><br><strong style="color:#dc2626">This review is ${r.status==='completed'?'completed and has already been acknowledged':'pending acknowledgement'}. Deleting it will permanently remove this record.</strong>`:'';
+  confirm$('Delete Review',`Permanently delete this CD QA review?${nonDraftWarning}<br><br>This cannot be undone.`,'Delete',()=>{
     ContentQADB.delete(id);
     renderContentQA();
-    toast('Draft deleted.','success');
+    toast('Review deleted.','success');
   });
 }
 
