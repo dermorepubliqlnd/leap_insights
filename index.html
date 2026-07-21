@@ -4683,7 +4683,7 @@ function renderEvaluations(){
   document.getElementById('eval-table-block')?.classList.toggle('hidden',_evalTab==='sessions');
   document.getElementById('sessions-table-block')?.classList.toggle('hidden',_evalTab!=='sessions');
   const newSessBtn=document.getElementById('new-session-btn');
-  if(newSessBtn) newSessBtn.style.display=(_evalTab==='sessions')?'':'none';
+  if(newSessBtn) newSessBtn.classList.toggle('hidden',_evalTab!=='sessions');
   if(_evalTab==='sessions'){
     const newBtn2=document.getElementById('new-eval-btn'); if(newBtn2) newBtn2.style.display='none';
     renderSessions();
