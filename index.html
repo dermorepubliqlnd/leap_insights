@@ -4932,9 +4932,25 @@ function renderSessions(){
     const evs=evalInfoFor(s.id);
     let evalBadge='<span class="txt-muted" style="font-size:12px">Not yet evaluated</span>';
     if(evs.length){
-      const visibleNames=[...new Set(evs.filter(e=>e.canView).map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'Evaluator'; }))];
-      const label=visibleNames.length?`Evaluated by ${visibleNames.join(', ')}`:`Evaluated (${evs.length})`;
-      evalBadge=`<span class="badge" style="background:#dcfce7;color:#15803d" title="${Utils.esc(label)}">✅ ${Utils.esc(label)}</span>`;
+      const _names=(list)=>[...new Set(list.filter(e=>e.canView).map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'Evaluator'; }))];
+      const completed=evs.filter(e=>e.status==='completed');
+      const pending=evs.filter(e=>e.status==='pending_ack');
+      const drafts=evs.filter(e=>e.status==='draft');
+      const chips=[];
+      if(completed.length){
+        const names=_names(completed);
+        const label=names.length?`Completed & Acknowledged — ${names.join(', ')}`:`Completed & Acknowledged (${completed.length})`;
+        chips.push(`<span class="badge" style="background:#dcfce7;color:#15803d;display:inline-block;margin:1px 0" title="${Utils.esc(label)}">✅ ${Utils.esc(label)}</span>`);
+      }
+      if(pending.length){
+        const names=_names(pending);
+        const label=names.length?`Pending Acknowledgement — ${names.join(', ')}`:`Pending Acknowledgement (${pending.length})`;
+        chips.push(`<span class="badge" style="background:#fef9c3;color:#a16207;display:inline-block;margin:1px 0" title="${Utils.esc(label)}">🕒 ${Utils.esc(label)}</span>`);
+      }
+      if(drafts.length){
+        chips.push(`<span class="badge" style="background:#e0e7ff;color:#4338ca;display:inline-block;margin:1px 0" title="Draft — not yet submitted, not visible to others until finalized">📝 Draft In Progress${drafts.length>1?` (${drafts.length})`:''}</span>`);
+      }
+      evalBadge=`<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">${chips.join('')}</div>`;
     }
     let evalBtn='';
     if(canConduct&&s.trainerId!==me.id&&s.status==='completed'){
