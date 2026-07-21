@@ -978,11 +978,15 @@
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Venue <span style="color:#f87171">*</span></label>
-                      <select id="ef-venue" class="form-control"><option value="">— Select Venue —</option></select>
+                      <select id="ef-venue" class="form-control" onchange="_toggleVenueOtherWrap('ef')"><option value="">— Select Venue —</option></select>
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Modality <span style="color:#f87171">*</span></label>
                       <select id="ef-modality" class="form-control"><option value="">— Select Modality —</option></select>
+                    </div>
+                    <div class="form-group hidden" id="ef-venue-other-wrap" style="margin-bottom:0">
+                      <label class="form-label">Specify Venue <span style="color:#f87171">*</span></label>
+                      <input type="text" id="ef-venue-other" class="form-control" placeholder="Enter venue name/location">
                     </div>
                   </div>
                   <div class="form-group hidden" id="ef-recording-wrap" style="margin-bottom:0">
@@ -1896,7 +1900,11 @@
       </div>
       <div class="form-group">
         <label class="form-label">Venue <span class="req">*</span></label>
-        <select id="sess-venue" class="form-control"><option value="">— Select Venue —</option></select>
+        <select id="sess-venue" class="form-control" onchange="_toggleVenueOtherWrap('sess')"><option value="">— Select Venue —</option></select>
+      </div>
+      <div class="form-group hidden" id="sess-venue-other-wrap">
+        <label class="form-label">Specify Venue <span class="req">*</span></label>
+        <input type="text" id="sess-venue-other" class="form-control" placeholder="Enter venue name/location">
       </div>
       <div class="form-group">
         <label class="form-label">Modality <span class="req">*</span></label>
@@ -2125,6 +2133,24 @@ const Sel = {
   update(k,id,p){ const items=this.all(k),i=items.findIndex(x=>x.id===id); if(i<0)return null; items[i]={...items[i],...p}; this.save(k,items); return items[i]; },
   toggle(k,id){ const item=this.byId(k,id); if(item) this.update(k,id,{isActive:!item.isActive}); }
 };
+
+/* ── "Other (please specify)" venue handling ── */
+function _isOtherVenue(id){ const v=Sel.byId(Store.VENUES,id); return !!v&&v.name.trim().toLowerCase()==='other (please specify)'; }
+function _toggleVenueOtherWrap(prefix){
+  const sel=document.getElementById(`${prefix}-venue`);
+  const wrap=document.getElementById(`${prefix}-venue-other-wrap`);
+  if(!sel||!wrap) return;
+  wrap.classList.toggle('hidden',!_isOtherVenue(sel.value));
+}
+function _resolveVenueId(prefix){
+  const sel=document.getElementById(`${prefix}-venue`);
+  if(!sel) return '';
+  if(!_isOtherVenue(sel.value)) return sel.value;
+  const typed=(document.getElementById(`${prefix}-venue-other`)?.value||'').trim();
+  if(!typed) return sel.value;
+  const existing=Sel.byName(Store.VENUES,typed);
+  return existing?existing.id:Sel.add(Store.VENUES,{name:typed}).id;
+}
 
 /* ── USER DB ──────────────────────── */
 const DB = {
@@ -4557,6 +4583,8 @@ function openEvalView(id){
   _populateEvalDropdowns(ev.evaluatorId, ev.trainerId);
   document.getElementById('ef-trainer').value=ev.trainerId||'';
   document.getElementById('ef-venue').value=ev.venueId||'';
+  document.getElementById('ef-venue-other').value='';
+  _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=ev.modalityId||'';
   buildAccordion();
   const ratings=ev.ratings||{},remarks=ev.remarks||{};
@@ -4928,6 +4956,8 @@ function openSessionModal(id){
   document.getElementById('sess-batch').value=s?.batchNo||'';
   document.getElementById('sess-date').value=s?.trainingDate||'';
   document.getElementById('sess-venue').value=s?.venueId||'';
+  document.getElementById('sess-venue-other').value='';
+  _toggleVenueOtherWrap('sess');
   document.getElementById('sess-modality').value=s?.modalityId||'';
   document.getElementById('sess-recording').value=s?.recordingLink||'';
   document.getElementById('sess-status').value=s?.status||'scheduled';
@@ -4941,7 +4971,7 @@ function saveSessionModal(){
     trainingProgram:document.getElementById('sess-program').value.trim(),
     batchNo:document.getElementById('sess-batch').value.trim(),
     trainingDate:document.getElementById('sess-date').value,
-    venueId:document.getElementById('sess-venue').value,
+    venueId:_resolveVenueId('sess'),
     modalityId:document.getElementById('sess-modality').value,
     recordingLink:document.getElementById('sess-recording').value.trim(),
     status:document.getElementById('sess-status').value
@@ -4951,8 +4981,10 @@ function saveSessionModal(){
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
   if(!d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Session Date is required.');
-  if(!d.venueId) errs.push('Venue is required.');
+  if(!document.getElementById('sess-venue').value) errs.push('Venue is required.');
+  if(_isOtherVenue(document.getElementById('sess-venue').value)&&!(document.getElementById('sess-venue-other')?.value||'').trim()) errs.push('Please specify the venue name.');
   if(!d.modalityId) errs.push('Modality is required.');
+  if(d.status==='completed'&&!d.recordingLink) errs.push('A recording link is required before a session can be marked Completed.');
   const errEl=document.getElementById('sess-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); return; }
   errEl.classList.add('hidden');
@@ -4989,6 +5021,8 @@ function _openPrefilledEval(s){
   document.getElementById('ef-batch').value=s.batchNo||'';
   document.getElementById('ef-date').value=s.trainingDate||'';
   document.getElementById('ef-venue').value=s.venueId||'';
+  document.getElementById('ef-venue-other').value='';
+  _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=s.modalityId||'';
   _updateEvalRecordingDisplay(s.recordingLink);
 }
@@ -5084,6 +5118,8 @@ function openNewEval(){
   document.getElementById('eval-form-status-badge').innerHTML='';
   document.getElementById('eval-error').classList.add('hidden');
   _populateEvalDropdowns(me.id);
+  document.getElementById('ef-venue-other').value='';
+  _toggleVenueOtherWrap('ef');
   buildAccordion();
   updateEvalScore();
   showEvalSubview('form');
@@ -5114,6 +5150,8 @@ function openEvalForm(id){
   _populateEvalDropdowns(ev.evaluatorId, ev.trainerId);
   document.getElementById('ef-trainer').value=ev.trainerId||'';
   document.getElementById('ef-venue').value=ev.venueId||'';
+  document.getElementById('ef-venue-other').value='';
+  _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=ev.modalityId||'';
   buildAccordion();
   const ratings=ev.ratings||{}, remarks=ev.remarks||{};
@@ -5243,7 +5281,7 @@ function _getCurrentData(){
     trainingProgram:document.getElementById('ef-program').value.trim(),
     batchNo:document.getElementById('ef-batch').value.trim(),
     trainingDate:document.getElementById('ef-date').value,
-    venueId:document.getElementById('ef-venue').value,
+    venueId:_resolveVenueId('ef'),
     modalityId:document.getElementById('ef-modality').value,
     sessionId:document.getElementById('ef-session-id').value||null,
     observations:_rteGet('ef-observations'),
@@ -5289,6 +5327,8 @@ function updateEvalScore(){
 function clearEvalForm(){
   EVAL_CRITERIA.forEach(c=>{ [1,2,3,4,5].forEach(n=>{ const b=document.getElementById(`eval-rb-${c.id}-${n}`); if(b) b.classList.remove('sel'); }); _evalLiveRemarks[c.id]=''; const ta=document.getElementById(`eval-rmk-${c.id}`); if(ta) ta.value=''; });
   ['ef-trainer','ef-venue','ef-modality'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('ef-venue-other').value='';
+  _toggleVenueOtherWrap('ef');
   ['ef-program','ef-batch'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   _rteSet('ef-observations','');
   document.getElementById('ef-date').value='';
@@ -5305,6 +5345,7 @@ function _validateEval(forFinalize){
   if(!d.batchNo)          errs.push('Batch No. is required.');
   if(!d.trainingDate)     errs.push('Date is required.');
   if(!d.venueId)          errs.push('Venue is required.');
+  if(_isOtherVenue(document.getElementById('ef-venue').value)&&!(document.getElementById('ef-venue-other')?.value||'').trim()) errs.push('Please specify the venue name.');
   if(!d.modalityId)       errs.push('Modality is required.');
   if(!_rteGetText('ef-observations')) errs.push('General Observations / Notes is required.');
   if(forFinalize){
