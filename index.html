@@ -1931,6 +1931,23 @@
   </div>
 </div>
 
+<!-- ══ MODAL: DRAFT ALREADY EXISTS ═════════════ -->
+<div id="modal-draft-choice" class="modal-overlay" onclick="if(event.target===this)closeModal('draft-choice')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Draft Already Exists</span>
+      <button class="modal-close" onclick="closeModal('draft-choice')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">You already have a draft evaluation for this session. Continue editing it, or delete it and start a new one?</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" id="dc-delete-btn" style="color:#dc2626;border-color:#dc2626">Delete & Start New</button>
+      <button class="btn btn-primary" id="dc-continue-btn">Continue Draft</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: CONFIRM ═════════════════ -->
 <div id="modal-confirm" class="modal-overlay" onclick="if(event.target===this)closeModal('confirm')">
   <div class="modal modal-sm">
@@ -5013,6 +5030,12 @@ function _updateEvalRecordingDisplay(link){
   else { wrap.classList.add('hidden'); }
 }
 
+function openDraftChoiceModal(onContinue,onDelete){
+  document.getElementById('dc-continue-btn').onclick=()=>{ closeModal('draft-choice'); onContinue(); };
+  document.getElementById('dc-delete-btn').onclick=()=>{ closeModal('draft-choice'); onDelete(); };
+  openModal('draft-choice');
+}
+
 function _openPrefilledEval(s){
   openNewEval();
   document.getElementById('ef-session-id').value=s.id;
@@ -5038,7 +5061,7 @@ function startSessionEvaluation(sessionId){
   const mine=sessionEvals.find(e=>e.evaluatorId===me.id);
   if(mine){
     if(mine.status==='draft'){
-      confirm$('Draft Already Exists','You already have a draft evaluation for this session. Delete it and start a new one? (Cancel to keep it — you can resume it from Team Evaluations.)','Delete & Start New',()=>{ EvalDB.delete(mine.id); _openPrefilledEval(s); });
+      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id); _openPrefilledEval(s); });
       return;
     }
     if(mine.status==='pending_ack'){
