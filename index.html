@@ -1617,8 +1617,20 @@
             <button class="rpt-tab active" id="rpt-tab-idqa" onclick="setRptFormTab('idqa')">◈ ID QA</button>
             <button class="rpt-tab" id="rpt-tab-cqa" onclick="setRptFormTab('cqa')">✦ CD QA</button>
             <button class="rpt-tab" id="rpt-tab-trainer" onclick="setRptFormTab('trainer')">◉ Trainer</button>
+            <button class="rpt-tab hidden" id="rpt-tab-audit" onclick="setRptFormTab('audit')">📜 Audit Log</button>
           </div>
           <div class="rpt-filter-bar" id="rpt-filter-bar">
+            <select class="eval-select hidden" id="rpt-audit-module" onchange="renderReports()">
+              <option value="all">All Modules</option>
+            </select>
+            <select class="eval-select hidden" id="rpt-audit-action" onchange="renderReports()">
+              <option value="all">All Actions</option>
+              <option value="create">Create</option>
+              <option value="update">Update</option>
+              <option value="status_change">Status Change</option>
+              <option value="delete">Delete</option>
+              <option value="admin_change">Admin / Settings Change</option>
+            </select>
             <select class="eval-select" id="rpt-f-date" onchange="onRptDateChange()">
               <option value="all">All Time</option>
               <option value="7d">Past 7 Days</option>
@@ -2037,7 +2049,7 @@ const _fbDb   = firebase.firestore();
 const FireSync = {
   _loading: false,
   _col: 'leap_data',
-  _keys(){ return [Store.USERS,Store.EVALS,Store.CQA,'leap_idqa_v1',Store.DELIVERABLES,Store.POS,Store.VENUES,Store.MODALS,Store.FIRSTRUN,Store.TRSESSIONS]; },
+  _keys(){ return [Store.USERS,Store.EVALS,Store.CQA,'leap_idqa_v1',Store.DELIVERABLES,Store.POS,Store.VENUES,Store.MODALS,Store.FIRSTRUN,Store.TRSESSIONS,Store.AUDIT]; },
   async loadAll(){
     FireSync._loading=true;
     try{
@@ -2109,7 +2121,7 @@ const Utils = {
 /* ── STORAGE ──────────────────────── */
 const Store = {
   USERS:`leap_users_${STORE_VER}`,SESSION:'leap_session_v1',FIRSTRUN:`leap_frun_${STORE_VER}`,
-  DELIVERABLES:`leap_deliverables_v1`,POS:`leap_pos_v1`,VENUES:`leap_venues_v1`,MODALS:`leap_modals_v1`,EVALS:'leap_evals_v1',CQA:'leap_cqa_v1',TRSESSIONS:'leap_trsessions_v1',
+  DELIVERABLES:`leap_deliverables_v1`,POS:`leap_pos_v1`,VENUES:`leap_venues_v1`,MODALS:`leap_modals_v1`,EVALS:'leap_evals_v1',CQA:'leap_cqa_v1',TRSESSIONS:'leap_trsessions_v1',AUDIT:'leap_auditlog_v1',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); const _sk=[Store.SESSION,'leap_last_export','leap_last_od_backup']; if(!_sk.includes(k)) FireSync.save(k,v); if(typeof _scheduleAutoBackup==='function'&&!_sk.includes(k)&&k!==Store.FIRSTRUN) _scheduleAutoBackup(); },
   del(k){ localStorage.removeItem(k); }
@@ -2171,9 +2183,9 @@ const Sel = {
   save(k,v)   { Store.set(k,v); },
   nameOf(k,id){ const i=this.byId(k,id); return i?i.name:''; },
   seed(){ Object.entries(this._defaults).forEach(([k,v])=>{ if(!Store.get(k)) Store.set(k,v); }); },
-  add(k,d)    { const items=this.all(k),item={id:Utils.uid(),...d,isActive:true}; items.push(item); this.save(k,items); return item; },
-  update(k,id,p){ const items=this.all(k),i=items.findIndex(x=>x.id===id); if(i<0)return null; items[i]={...items[i],...p}; this.save(k,items); return items[i]; },
-  toggle(k,id){ const item=this.byId(k,id); if(item) this.update(k,id,{isActive:!item.isActive}); }
+  add(k,d)    { const items=this.all(k),item={id:Utils.uid(),...d,isActive:true}; items.push(item); this.save(k,items); if(typeof AuditLog!=='undefined') AuditLog.record('create',_selModuleLabel(k),item.id,`Added ${_selModuleLabel(k).toLowerCase()} "${item.name}"`); return item; },
+  update(k,id,p){ const items=this.all(k),i=items.findIndex(x=>x.id===id); if(i<0)return null; items[i]={...items[i],...p}; this.save(k,items); if(typeof AuditLog!=='undefined') AuditLog.record('update',_selModuleLabel(k),id,`Updated ${_selModuleLabel(k).toLowerCase()} "${items[i].name}"`); return items[i]; },
+  toggle(k,id){ const item=this.byId(k,id); if(!item) return; const items=this.all(k),i=items.findIndex(x=>x.id===id); if(i<0)return; items[i]={...items[i],isActive:!item.isActive}; this.save(k,items); if(typeof AuditLog!=='undefined') AuditLog.record('status_change',_selModuleLabel(k),id,`${items[i].isActive?'Activated':'Deactivated'} ${_selModuleLabel(k).toLowerCase()} "${items[i].name}"`); }
 };
 
 /* ── "Other (please specify)" venue handling ── */
@@ -2214,10 +2226,12 @@ const DB = {
       dashScope:data.dashScope||'team',
       createdAt:Date.now(), updatedAt:Date.now()
     };
-    const all=this.all(); all.push(u); this.save(all); return u;
+    const all=this.all(); all.push(u); this.save(all);
+    if(typeof AuditLog!=='undefined') AuditLog.record('create','User',u.id,`Created user ${u.firstName} ${u.lastName}`);
+    return u;
   },
 
-  update(id,patch){ const all=this.all(),i=all.findIndex(u=>u.id===id); if(i<0)return null; all[i]={...all[i],...patch,updatedAt:Date.now()}; this.save(all); return all[i]; },
+  update(id,patch){ const all=this.all(),i=all.findIndex(u=>u.id===id); if(i<0)return null; all[i]={...all[i],...patch,updatedAt:Date.now()}; this.save(all); if(typeof AuditLog!=='undefined') AuditLog.record(patch.isActive!==undefined?'status_change':'update','User',id,patch.isActive!==undefined?`${patch.isActive?'Activated':'Deactivated'} user ${all[i].firstName} ${all[i].lastName}`:`Updated user ${all[i].firstName} ${all[i].lastName}`); return all[i]; },
 
   seed(){
     if(this.all().length>0) return;
@@ -4361,9 +4375,9 @@ const EvalDB={
   all()    { return Store.get(Store.EVALS)||[]; },
   save(v)  { Store.set(Store.EVALS,v); },
   byId(id) { return this.all().find(e=>e.id===id)||null; },
-  create(d){ const e={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(e); this.save(a); return e; },
-  update(id,p){ const a=this.all(),i=a.findIndex(e=>e.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); return a[i]; },
-  delete(id)  { const a=this.all().filter(e=>e.id!==id); this.save(a); }
+  create(d){ const e={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(e); this.save(a); AuditLog.record('create','Trainer Evaluation',e.id,`Created evaluation ${e.code||e.id}`); return e; },
+  update(id,p){ const a=this.all(),i=a.findIndex(e=>e.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','Trainer Evaluation',id,p.status?`Status changed to ${p.status} on ${a[i].code||id}`:`Updated evaluation ${a[i].code||id}`); return a[i]; },
+  delete(id)  { const rec=this.byId(id); const a=this.all().filter(e=>e.id!==id); this.save(a); AuditLog.record('delete','Trainer Evaluation',id,`Deleted evaluation ${rec?.code||id}`); }
 };
 
 /* ── TRAINING SESSIONS ────────────── */
@@ -4371,14 +4385,37 @@ const TrSessionDB={
   all()    { return Store.get(Store.TRSESSIONS)||[]; },
   save(v)  { Store.set(Store.TRSESSIONS,v); },
   byId(id) { return this.all().find(s=>s.id===id)||null; },
-  create(d){ const s={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(s); this.save(a); return s; },
-  update(id,p){ const a=this.all(),i=a.findIndex(s=>s.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); return a[i]; },
-  delete(id)  { const a=this.all().filter(s=>s.id!==id); this.save(a); }
+  create(d){ const s={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(s); this.save(a); AuditLog.record('create','Training Session',s.id,`Logged session "${s.trainingProgram||s.id}"`); return s; },
+  update(id,p){ const a=this.all(),i=a.findIndex(s=>s.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','Training Session',id,p.status?`Status changed to ${p.status} on "${a[i].trainingProgram||id}"`:`Updated session "${a[i].trainingProgram||id}"`); return a[i]; },
+  delete(id)  { const rec=this.byId(id); const a=this.all().filter(s=>s.id!==id); this.save(a); AuditLog.record('delete','Training Session',id,`Deleted session "${rec?.trainingProgram||id}"`); }
 };
 function _sessionStatusBadge(status){
   if(status==='completed') return '<span class="badge" style="background:#dcfce7;color:#15803d">Completed</span>';
   if(status==='cancelled') return '<span class="badge" style="background:#fee2e2;color:#dc2626">Cancelled</span>';
   return '<span class="badge" style="background:#fef9c3;color:#a16207">Scheduled</span>';
+}
+
+/* ── AUDIT LOG ────────────────────── */
+const AuditLog={
+  all(){ return Store.get(Store.AUDIT)||[]; },
+  save(v){ Store.set(Store.AUDIT,v); },
+  record(action,module,entityId,summary){
+    const me=(typeof Auth!=='undefined'&&Auth.user)?Auth.user:null;
+    const entry={
+      id:Utils.uid(),
+      ts:new Date().toISOString(),
+      actorId:me?me.id:null,
+      actorName:me?`${me.firstName} ${me.lastName}`:'System',
+      action, module, entityId:entityId||null,
+      summary:summary||''
+    };
+    const a=this.all(); a.push(entry); this.save(a);
+    return entry;
+  }
+};
+function _selModuleLabel(k){
+  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Modality',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable'};
+  return map[k]||'Selection List';
 }
 
 /* ── EVALUATIONS ──────────────────── */
@@ -5813,20 +5850,22 @@ function printEvalPDF(id){
 let _rptChart=null, _rptDistChart=null, _rptFormTab='idqa', _rptQACharts={};
 
 function _rptTabsVisible(){
-  const me=Auth.user; if(!me) return{idqa:false,cqa:false,trainer:false};
+  const me=Auth.user; if(!me) return{idqa:false,cqa:false,trainer:false,audit:false};
   // Admins, Executives, and Reports Viewers see all tabs
   if(me.isAdmin||me.isReportsViewer||Perms.isSupervisor(me))
-    return{idqa:true,cqa:true,trainer:true};
+    return{idqa:true,cqa:true,trainer:true,audit:!!me.isAdmin};
   const fa=Auth.formAccess(me);
-  return{idqa:fa.idqa,cqa:fa.cqa,trainer:fa.trainerEval};
+  return{idqa:fa.idqa,cqa:fa.cqa,trainer:fa.trainerEval,audit:false};
 }
 function _applyRptTabVisibility(){
   const vis=_rptTabsVisible();
-  const tabs={idqa:'rpt-tab-idqa',cqa:'rpt-tab-cqa',trainer:'rpt-tab-trainer'};
+  const tabs={idqa:'rpt-tab-idqa',cqa:'rpt-tab-cqa',trainer:'rpt-tab-trainer',audit:'rpt-tab-audit'};
   Object.entries(tabs).forEach(([k,id])=>{
     const el=document.getElementById(id);
-    if(el) el.style.display=vis[k]?'':'none';
+    if(el) el.classList.toggle('hidden',!vis[k]);
   });
+  document.getElementById('rpt-audit-module')?.classList.toggle('hidden',_rptFormTab!=='audit');
+  document.getElementById('rpt-audit-action')?.classList.toggle('hidden',_rptFormTab!=='audit');
   // If current tab is now hidden, switch to first visible
   if(!vis[_rptFormTab]){
     const first=Object.keys(vis).find(k=>vis[k]);
@@ -5836,7 +5875,7 @@ function _applyRptTabVisibility(){
 function setRptFormTab(tab){
   _rptFormTab=tab;
   _applyRptTabVisibility();
-  ['trainer','idqa','cqa'].forEach(t=>{
+  ['trainer','idqa','cqa','audit'].forEach(t=>{
     document.getElementById('rpt-tab-'+t)?.classList.toggle('active',t===_rptFormTab);
   });
   renderReports();
@@ -5882,6 +5921,8 @@ function onRptDateChange(){
 function clearRptFilters(){
   const el=document.getElementById('rpt-f-date'); if(el) el.value='all';
   document.getElementById('rpt-custom-wrap')?.classList.add('hidden');
+  const modEl=document.getElementById('rpt-audit-module'); if(modEl) modEl.value='all';
+  const actEl=document.getElementById('rpt-audit-action'); if(actEl) actEl.value='all';
   renderReports();
 }
 
@@ -5896,7 +5937,10 @@ function renderReports(){
   const body=document.getElementById('rpt-body');
   if(!body) return;
 
-  const hasFilter=(document.getElementById('rpt-f-date')||{}).value!=='all';
+  let hasFilter=(document.getElementById('rpt-f-date')||{}).value!=='all';
+  if(_rptFormTab==='audit'){
+    hasFilter=hasFilter||(document.getElementById('rpt-audit-module')||{}).value!=='all'||(document.getElementById('rpt-audit-action')||{}).value!=='all';
+  }
   const cfBtn=document.getElementById('rpt-clear-btn');
   if(cfBtn) cfBtn.style.display=hasFilter?'':'none';
 
@@ -5921,6 +5965,12 @@ function renderReports(){
     const execEl=document.getElementById('rpt-exec-summary'); if(execEl) execEl.innerHTML='';
     body.innerHTML='';
     try{ _renderIDQAReports(rows, body); }catch(e){ body.innerHTML='<div class="rpt-empty">Error rendering ID QA report.</div>'; console.error('IDQA rpt:',e); }
+  } else if(_rptFormTab==='audit'){
+    if(!Auth.user||!Auth.user.isAdmin){ body.innerHTML='<div class="rpt-empty">Admins only.</div>'; return; }
+    if(toolbar) toolbar.innerHTML=`<button class="btn btn-sm btn-secondary" onclick="exportAuditLogCSV()">⬇ Export CSV</button>`;
+    const execEl3=document.getElementById('rpt-exec-summary'); if(execEl3) execEl3.innerHTML='';
+    body.innerHTML='';
+    try{ renderAuditLog(body); }catch(e){ body.innerHTML='<div class="rpt-empty">Error rendering audit log.</div>'; console.error('Audit rpt:',e); }
   } else {
     const all=_rptScopeCQARpt();
     const rows=_rptApplyCQAFilters(all);
@@ -5932,6 +5982,84 @@ function renderReports(){
     body.innerHTML='';
     try{ _renderCQAReports(rows, body); }catch(e){ body.innerHTML='<div class="rpt-empty">Error rendering CD QA report.</div>'; console.error('CQA rpt:',e); }
   }
+}
+
+/* ── AUDIT LOG REPORT ── */
+function _auditActionBadge(action){
+  const map={
+    create:{bg:'#dcfce7',fg:'#15803d',label:'Create'},
+    update:{bg:'#dbeafe',fg:'#1d4ed8',label:'Update'},
+    status_change:{bg:'#fef9c3',fg:'#a16207',label:'Status Change'},
+    delete:{bg:'#fee2e2',fg:'#dc2626',label:'Delete'},
+    admin_change:{bg:'#f5f3ff',fg:'#7c3aed',label:'Admin / Settings'}
+  };
+  const m=map[action]||{bg:'#f3f4f6',fg:'#374151',label:action};
+  return `<span class="badge" style="background:${m.bg};color:${m.fg}">${m.label}</span>`;
+}
+function _populateAuditModuleOptions(){
+  const sel=document.getElementById('rpt-audit-module');
+  if(!sel) return;
+  const cur=sel.value||'all';
+  const mods=Array.from(new Set(AuditLog.all().map(e=>e.module))).sort();
+  sel.innerHTML='<option value="all">All Modules</option>'+mods.map(m=>`<option value="${Utils.esc(m)}">${Utils.esc(m)}</option>`).join('');
+  if(mods.includes(cur)) sel.value=cur;
+}
+function _auditApplyFilters(all){
+  const modF=(document.getElementById('rpt-audit-module')||{}).value||'all';
+  const actF=(document.getElementById('rpt-audit-action')||{}).value||'all';
+  const dateF=(document.getElementById('rpt-f-date')||{}).value||'all';
+  let rows=all.slice();
+  if(modF!=='all') rows=rows.filter(e=>e.module===modF);
+  if(actF!=='all') rows=rows.filter(e=>e.action===actF);
+  if(dateF!=='all'&&dateF!=='custom'){
+    const now=new Date();
+    const from=new Date();
+    if(dateF==='7d') from.setDate(from.getDate()-7);
+    else if(dateF==='1m') from.setMonth(from.getMonth()-1);
+    else if(dateF==='3m') from.setMonth(from.getMonth()-3);
+    rows=rows.filter(e=>{ const d=new Date(e.ts); return d>=from&&d<=now; });
+  } else if(dateF==='custom'){
+    const fv=document.getElementById('rpt-date-from')?.value;
+    const tv=document.getElementById('rpt-date-to')?.value;
+    if(fv) rows=rows.filter(e=>e.ts.slice(0,10)>=fv);
+    if(tv) rows=rows.filter(e=>e.ts.slice(0,10)<=tv);
+  }
+  return rows.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+}
+function renderAuditLog(body){
+  _populateAuditModuleOptions();
+  const rows=_auditApplyFilters(AuditLog.all());
+  const cntEl=document.getElementById('rpt-count');
+  if(cntEl) cntEl.textContent=`${rows.length} log ${rows.length!==1?'entries':'entry'}`;
+  if(!rows.length){ body.innerHTML='<div class="rpt-empty">No audit log entries match your filters.</div>'; return; }
+  const trs=rows.map(e=>{
+    const when=new Date(e.ts).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'});
+    return `<tr>
+      <td style="white-space:nowrap;font-size:12px;color:var(--text3)">${when}</td>
+      <td>${Utils.esc(e.actorName)}</td>
+      <td>${_auditActionBadge(e.action)}</td>
+      <td>${Utils.esc(e.module)}</td>
+      <td style="font-size:13px">${Utils.esc(e.summary)}</td>
+    </tr>`;
+  }).join('');
+  body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">
+    <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Module</th><th>Details</th></tr></thead>
+    <tbody>${trs}</tbody>
+  </table></div>`;
+}
+function exportAuditLogCSV(){
+  const rows=_auditApplyFilters(AuditLog.all());
+  if(!rows.length){ toast('No audit log entries to export.','info'); return; }
+  const headers=['When','Who','Action','Module','Details'];
+  const lines=[headers.join(',')];
+  rows.forEach(e=>{
+    const when=new Date(e.ts).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'});
+    const row=[when,e.actorName,e.action,e.module,e.summary].map(v=>`"${String(v||'').replace(/"/g,'""')}"`);
+    lines.push(row.join(','));
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`LEAP_Audit_Log_${new Date().toISOString().slice(0,10)}.csv`; a.click();
 }
 
 /* ── EXECUTIVE SUMMARY ── */
@@ -6918,9 +7046,9 @@ const IDQADB={
   all(){ return Store.get('leap_idqa_v1')||[]; },
   save(v){ Store.set('leap_idqa_v1',v); },
   byId(id){ return this.all().find(r=>r.id===id)||null; },
-  create(d){ const r={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(r); this.save(a); return r; },
-  update(id,p){ const a=this.all(),i=a.findIndex(r=>r.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); return a[i]; },
-  delete(id){ this.save(this.all().filter(r=>r.id!==id)); }
+  create(d){ const r={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(r); this.save(a); AuditLog.record('create','ID QA',r.id,`Created review ${r.code||r.id}`); return r; },
+  update(id,p){ const a=this.all(),i=a.findIndex(r=>r.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','ID QA',id,p.status?`Status changed to ${p.status} on ${a[i].code||id}`:`Updated review ${a[i].code||id}`); return a[i]; },
+  delete(id){ const rec=this.byId(id); this.save(this.all().filter(r=>r.id!==id)); AuditLog.record('delete','ID QA',id,`Deleted review ${rec?.code||id}`); }
 };
 
 /* ── MODULE STATE ─────────────────── */
@@ -7837,9 +7965,9 @@ const ContentQADB={
   all(){ return Store.get(Store.CQA)||[]; },
   save(v){ Store.set(Store.CQA,v); },
   byId(id){ return this.all().find(r=>r.id===id)||null; },
-  create(d){ const r={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(r); this.save(a); return r; },
-  update(id,p){ const a=this.all(),i=a.findIndex(r=>r.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); return a[i]; },
-  delete(id){ this.save(this.all().filter(r=>r.id!==id)); }
+  create(d){ const r={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(r); this.save(a); AuditLog.record('create','CD QA',r.id,`Created review ${r.code||r.id}`); return r; },
+  update(id,p){ const a=this.all(),i=a.findIndex(r=>r.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','CD QA',id,p.status?`Status changed to ${p.status} on ${a[i].code||id}`:`Updated review ${a[i].code||id}`); return a[i]; },
+  delete(id){ const rec=this.byId(id); this.save(this.all().filter(r=>r.id!==id)); AuditLog.record('delete','CD QA',id,`Deleted review ${rec?.code||id}`); }
 };
 
 /* ── MODULE STATE ─────────────────── */
