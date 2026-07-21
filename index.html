@@ -855,57 +855,81 @@
             <!-- page header -->
             <div class="sec-hdr" style="margin-bottom:0">
               <div></div>
-              <button class="btn btn-primary" id="new-eval-btn">+ New Evaluation</button>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-primary" id="new-eval-btn">+ New Evaluation</button>
+                <button class="btn btn-primary hidden" id="new-session-btn" onclick="openSessionModal()">+ Log Training Session</button>
+              </div>
             </div>
 
             <!-- tabs -->
             <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:14px 0 16px">
-              <button id="eval-tab-my"   class="eval-tab active" onclick="setEvalTab('my')">👤 My Evaluations</button>
-              <button id="eval-tab-team" class="eval-tab"        onclick="setEvalTab('team')">👥 Team Evaluations</button>
+              <button id="eval-tab-my"       class="eval-tab active" onclick="setEvalTab('my')">👤 My Evaluations</button>
+              <button id="eval-tab-team"     class="eval-tab"        onclick="setEvalTab('team')">👥 Team Evaluations</button>
+              <button id="eval-tab-sessions" class="eval-tab"        onclick="setEvalTab('sessions')">🎥 Training Sessions</button>
             </div>
 
-            <div class="eval-controls">
-              <select class="eval-select" id="ef-filter-status" onchange="renderEvaluations()">
-                <option value="all">All Statuses</option>
-                <option value="draft">Draft</option>
-                <option value="pending_ack">Pending Acknowledgement</option>
-              </select>
-              <select class="eval-select" id="ef-filter-trainer" onchange="renderEvaluations()">
-                <option value="all">All Trainers</option>
-              </select>
-              <select class="eval-select hidden" id="ef-filter-evaluator" onchange="renderEvaluations()">
-                <option value="all">All Evaluators</option>
-              </select>
-              <span class="df-date-group">
-                <select class="eval-select" id="ef-filter-date" onchange="onDateFilterChange()">
-                  <option value="all">All Time</option>
-                  <option value="7d">Past 7 Days</option>
-                  <option value="1m">Past Month</option>
-                  <option value="3m">Last Quarter</option>
-                  <option value="custom">Custom Range</option>
+            <div id="eval-table-block">
+              <div class="eval-controls">
+                <select class="eval-select" id="ef-filter-status" onchange="renderEvaluations()">
+                  <option value="all">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="pending_ack">Pending Acknowledgement</option>
                 </select>
-                <span class="df-tip-icon">i<span class="df-tip-bubble">Filters by training session date</span></span>
-              </span>
-              <span class="df-custom-wrap hidden" id="ef-filter-custom">
-                <input type="date" class="eval-select" id="ef-date-from" onchange="renderEvaluations()">
-                <span style="font-size:12px;color:var(--text3)">to</span>
-                <input type="date" class="eval-select" id="ef-date-to" onchange="onDateToChange()">
-              </span>
-              <button class="eval-toggle-btn" id="ef-group-trainer-btn" onclick="setEvalGroupMode('trainer')">⊞ Group by Trainer</button>
-              <button class="eval-toggle-btn" id="ef-group-status-btn" onclick="setEvalGroupMode('status')">⊟ Group by Status</button>
-              <button class="eval-toggle-btn" id="ef-clear-filters-btn" onclick="clearEvalFilters()" style="display:none;color:var(--red);border-color:var(--red-lt)">✕ Clear Filters</button>
-              <span id="ef-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
-              <button class="eval-toggle-btn" onclick="exportEvalCSV()" title="Download visible columns as CSV">⬇ Export CSV</button>
-              <div class="col-picker" id="col-picker-wrap">
-                <button class="eval-toggle-btn" onclick="toggleColPicker(event)">⋮ Columns</button>
-                <div class="col-picker-dd" id="col-picker-dd">
-                  <div class="col-picker-hdr">Show / Hide Columns</div>
+                <select class="eval-select" id="ef-filter-trainer" onchange="renderEvaluations()">
+                  <option value="all">All Trainers</option>
+                </select>
+                <select class="eval-select hidden" id="ef-filter-evaluator" onchange="renderEvaluations()">
+                  <option value="all">All Evaluators</option>
+                </select>
+                <span class="df-date-group">
+                  <select class="eval-select" id="ef-filter-date" onchange="onDateFilterChange()">
+                    <option value="all">All Time</option>
+                    <option value="7d">Past 7 Days</option>
+                    <option value="1m">Past Month</option>
+                    <option value="3m">Last Quarter</option>
+                    <option value="custom">Custom Range</option>
+                  </select>
+                  <span class="df-tip-icon">i<span class="df-tip-bubble">Filters by training session date</span></span>
+                </span>
+                <span class="df-custom-wrap hidden" id="ef-filter-custom">
+                  <input type="date" class="eval-select" id="ef-date-from" onchange="renderEvaluations()">
+                  <span style="font-size:12px;color:var(--text3)">to</span>
+                  <input type="date" class="eval-select" id="ef-date-to" onchange="onDateToChange()">
+                </span>
+                <button class="eval-toggle-btn" id="ef-group-trainer-btn" onclick="setEvalGroupMode('trainer')">⊞ Group by Trainer</button>
+                <button class="eval-toggle-btn" id="ef-group-status-btn" onclick="setEvalGroupMode('status')">⊟ Group by Status</button>
+                <button class="eval-toggle-btn" id="ef-clear-filters-btn" onclick="clearEvalFilters()" style="display:none;color:var(--red);border-color:var(--red-lt)">✕ Clear Filters</button>
+                <span id="ef-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
+                <button class="eval-toggle-btn" onclick="exportEvalCSV()" title="Download visible columns as CSV">⬇ Export CSV</button>
+                <div class="col-picker" id="col-picker-wrap">
+                  <button class="eval-toggle-btn" onclick="toggleColPicker(event)">⋮ Columns</button>
+                  <div class="col-picker-dd" id="col-picker-dd">
+                    <div class="col-picker-hdr">Show / Hide Columns</div>
+                  </div>
                 </div>
               </div>
+              <div id="eval-summary-bar"></div>
+              <div class="card">
+                <div id="eval-list-body"></div>
+              </div>
             </div>
-            <div id="eval-summary-bar"></div>
-            <div class="card">
-              <div id="eval-list-body"></div>
+
+            <div id="sessions-table-block" class="hidden">
+              <div class="eval-controls">
+                <select class="eval-select" id="sf-filter-status" onchange="renderSessions()">
+                  <option value="all">All Statuses</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                <select class="eval-select" id="sf-filter-trainer" onchange="renderSessions()">
+                  <option value="all">All Trainers</option>
+                </select>
+                <span id="sf-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
+              </div>
+              <div class="card">
+                <div id="sessions-list-body"></div>
+              </div>
             </div>
           </div>
 
@@ -934,6 +958,7 @@
                       <label class="form-label">Evaluator</label>
                       <div class="eval-readonly" id="ef-evaluator-display">—</div>
                       <input type="hidden" id="ef-evaluator-id">
+                      <input type="hidden" id="ef-session-id">
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Trainer <span style="color:#f87171">*</span></label>
@@ -959,6 +984,10 @@
                       <label class="form-label">Modality <span style="color:#f87171">*</span></label>
                       <select id="ef-modality" class="form-control"><option value="">— Select Modality —</option></select>
                     </div>
+                  </div>
+                  <div class="form-group hidden" id="ef-recording-wrap" style="margin-bottom:0">
+                    <label class="form-label">Session Recording</label>
+                    <div class="eval-readonly"><a id="ef-recording-link" href="#" target="_blank" rel="noopener" style="color:#93c5fd">▶ View Recording</a></div>
                   </div>
                   <!-- score widget -->
                   <div class="cqa-score-widget" style="align-self:center">
@@ -1840,6 +1869,60 @@
   </div>
 </div>
 
+<!-- ══ MODAL: TRAINING SESSION ═════════════ -->
+<div id="modal-session" class="modal-overlay" onclick="if(event.target===this)closeModal('session')">
+  <div class="modal modal-lg">
+    <div class="modal-hdr">
+      <span class="modal-title" id="sess-modal-title">Log Training Session</span>
+      <button class="modal-close" onclick="closeModal('session')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sess-id">
+      <div class="form-group">
+        <label class="form-label">Trainer <span class="req">*</span></label>
+        <select id="sess-trainer" class="form-control"><option value="">— Select Trainer —</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Training Program / Title <span class="req">*</span></label>
+        <input type="text" id="sess-program" class="form-control" placeholder="e.g. Product Knowledge Training">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Batch No. <span class="req">*</span></label>
+        <input type="text" id="sess-batch" class="form-control" placeholder="e.g. 2026-01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Session Date <span class="req">*</span></label>
+        <input type="date" id="sess-date" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Venue <span class="req">*</span></label>
+        <select id="sess-venue" class="form-control"><option value="">— Select Venue —</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Modality <span class="req">*</span></label>
+        <select id="sess-modality" class="form-control"><option value="">— Select Modality —</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Recording Link</label>
+        <input type="url" id="sess-recording" class="form-control" placeholder="https://…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status <span class="req">*</span></label>
+        <select id="sess-status" class="form-control">
+          <option value="scheduled">Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="modal-err hidden" id="sess-error"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('session')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSessionModal()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: CONFIRM ═════════════════ -->
 <div id="modal-confirm" class="modal-overlay" onclick="if(event.target===this)closeModal('confirm')">
   <div class="modal modal-sm">
@@ -1904,7 +1987,7 @@ const _fbDb   = firebase.firestore();
 const FireSync = {
   _loading: false,
   _col: 'leap_data',
-  _keys(){ return [Store.USERS,Store.EVALS,Store.CQA,'leap_idqa_v1',Store.DELIVERABLES,Store.POS,Store.VENUES,Store.MODALS,Store.FIRSTRUN]; },
+  _keys(){ return [Store.USERS,Store.EVALS,Store.CQA,'leap_idqa_v1',Store.DELIVERABLES,Store.POS,Store.VENUES,Store.MODALS,Store.FIRSTRUN,Store.TRSESSIONS]; },
   async loadAll(){
     FireSync._loading=true;
     try{
@@ -1976,7 +2059,7 @@ const Utils = {
 /* ── STORAGE ──────────────────────── */
 const Store = {
   USERS:`leap_users_${STORE_VER}`,SESSION:'leap_session_v1',FIRSTRUN:`leap_frun_${STORE_VER}`,
-  DELIVERABLES:`leap_deliverables_v1`,POS:`leap_pos_v1`,VENUES:`leap_venues_v1`,MODALS:`leap_modals_v1`,EVALS:'leap_evals_v1',CQA:'leap_cqa_v1',
+  DELIVERABLES:`leap_deliverables_v1`,POS:`leap_pos_v1`,VENUES:`leap_venues_v1`,MODALS:`leap_modals_v1`,EVALS:'leap_evals_v1',CQA:'leap_cqa_v1',TRSESSIONS:'leap_trsessions_v1',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); const _sk=[Store.SESSION,'leap_last_export','leap_last_od_backup']; if(!_sk.includes(k)) FireSync.save(k,v); if(typeof _scheduleAutoBackup==='function'&&!_sk.includes(k)&&k!==Store.FIRSTRUN) _scheduleAutoBackup(); },
   del(k){ localStorage.removeItem(k); }
@@ -4215,6 +4298,21 @@ const EvalDB={
   delete(id)  { const a=this.all().filter(e=>e.id!==id); this.save(a); }
 };
 
+/* ── TRAINING SESSIONS ────────────── */
+const TrSessionDB={
+  all()    { return Store.get(Store.TRSESSIONS)||[]; },
+  save(v)  { Store.set(Store.TRSESSIONS,v); },
+  byId(id) { return this.all().find(s=>s.id===id)||null; },
+  create(d){ const s={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(s); this.save(a); return s; },
+  update(id,p){ const a=this.all(),i=a.findIndex(s=>s.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); return a[i]; },
+  delete(id)  { const a=this.all().filter(s=>s.id!==id); this.save(a); }
+};
+function _sessionStatusBadge(status){
+  if(status==='completed') return '<span class="badge" style="background:#dcfce7;color:#15803d">Completed</span>';
+  if(status==='cancelled') return '<span class="badge" style="background:#fee2e2;color:#dc2626">Cancelled</span>';
+  return '<span class="badge" style="background:#fef9c3;color:#a16207">Scheduled</span>';
+}
+
 /* ── EVALUATIONS ──────────────────── */
 let _evalId=null;
 let _evalReadOnly=false;
@@ -4446,6 +4544,8 @@ function openEvalView(id){
   document.getElementById('ef-evaluator-id').value=ev.evaluatorId;
   document.getElementById('ef-evaluator-display').textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   const _soEl2=document.getElementById('ef-signoff-evaluator');if(_soEl2)_soEl2.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
+  document.getElementById('ef-session-id').value=ev.sessionId||'';
+  _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
   document.getElementById('ef-batch').value=ev.batchNo||'';
   const dateEl=document.getElementById('ef-date');
@@ -4576,8 +4676,19 @@ function renderEvaluations(){
   const canConduct=access.trainerEval||me.isAdmin; // trainer eval section
   const myTabBtn=document.getElementById('eval-tab-my');
   const teamTabBtn=document.getElementById('eval-tab-team');
+  const sessTabBtn=document.getElementById('eval-tab-sessions');
   if(myTabBtn)  myTabBtn.classList.toggle('active',_evalTab==='my');
   if(teamTabBtn) teamTabBtn.classList.toggle('active',_evalTab==='team');
+  if(sessTabBtn) sessTabBtn.classList.toggle('active',_evalTab==='sessions');
+  document.getElementById('eval-table-block')?.classList.toggle('hidden',_evalTab==='sessions');
+  document.getElementById('sessions-table-block')?.classList.toggle('hidden',_evalTab!=='sessions');
+  const newSessBtn=document.getElementById('new-session-btn');
+  if(newSessBtn) newSessBtn.style.display=(_evalTab==='sessions')?'':'none';
+  if(_evalTab==='sessions'){
+    const newBtn2=document.getElementById('new-eval-btn'); if(newBtn2) newBtn2.style.display='none';
+    renderSessions();
+    return;
+  }
   const myEvals=allEvals.filter(e=>e.trainerId===me.id&&(me.isAdmin||e.status!=='draft'));
   const teamEvals=me.isAdmin?allEvals:allEvals.filter(e=>e.evaluatorId===me.id);
   const myPending=myEvals.filter(e=>e.status==='pending_ack').length;
@@ -4739,6 +4850,179 @@ function renderEvaluations(){
   setTimeout(()=>document.querySelectorAll('.eval-tbl').forEach(_initColResize),50);
 }
 
+function renderSessions(){
+  const me=Auth.user, access=Auth.formAccess(me);
+  const canConduct=access.trainerEval||me.isAdmin;
+  const all=TrSessionDB.all();
+  const trainerFilter=document.getElementById('sf-filter-trainer');
+  if(trainerFilter){
+    const trainerIds=[...new Set(all.map(s=>s.trainerId).filter(Boolean))];
+    const cur=trainerFilter.value;
+    trainerFilter.innerHTML='<option value="all">All Trainers</option>'+trainerIds.map(id=>{ const u=DB.byId(id)||{firstName:'?',lastName:'(inactive)'}; return `<option value="${id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`; }).join('');
+    if(trainerIds.includes(cur)) trainerFilter.value=cur;
+  }
+  const statusF=(document.getElementById('sf-filter-status')||{}).value||'all';
+  const trainerF=(document.getElementById('sf-filter-trainer')||{}).value||'all';
+  let visible=all;
+  if(statusF!=='all') visible=visible.filter(s=>s.status===statusF);
+  if(trainerF!=='all') visible=visible.filter(s=>s.trainerId===trainerF);
+  visible=[...visible].sort((a,b)=>(b.trainingDate||'').localeCompare(a.trainingDate||''));
+  const countEl=document.getElementById('sf-count');
+  if(countEl) countEl.textContent=`${visible.length} session${visible.length!==1?'s':''}`;
+  const body=document.getElementById('sessions-list-body');
+  if(!visible.length){
+    body.innerHTML=`<div class="empty-state"><div class="empty-ico">🎥</div><div class="empty-title">No training sessions logged</div><div style="font-size:13px;color:var(--text3);margin-top:4px">Click "+ Log Training Session" to get started.</div></div>`;
+    return;
+  }
+  const allEvals=EvalDB.all();
+  function evalInfoFor(sessId){
+    return allEvals.filter(e=>e.sessionId===sessId).map(e=>({...e,canView:e.status!=='draft'&&(e.trainerId===me.id||e.evaluatorId===me.id||me.isAdmin)}));
+  }
+  const rows=visible.map(s=>{
+    const trainer=DB.byId(s.trainerId);
+    const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'—';
+    const venue=Sel.nameOf(Store.VENUES,s.venueId)||'—';
+    const modality=Sel.nameOf(Store.MODALS,s.modalityId)||'—';
+    const rec=s.recordingLink?`<a href="${Utils.esc(s.recordingLink)}" target="_blank" rel="noopener" style="color:var(--pri)">▶ View</a>`:'<span class="txt-muted">—</span>';
+    const evs=evalInfoFor(s.id);
+    let evalBadge='<span class="txt-muted" style="font-size:12px">Not yet evaluated</span>';
+    if(evs.length){
+      const visibleNames=[...new Set(evs.filter(e=>e.canView).map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'Evaluator'; }))];
+      const label=visibleNames.length?`Evaluated by ${visibleNames.join(', ')}`:`Evaluated (${evs.length})`;
+      evalBadge=`<span class="badge" style="background:#dcfce7;color:#15803d" title="${Utils.esc(label)}">✅ ${Utils.esc(label)}</span>`;
+    }
+    let evalBtn='';
+    if(canConduct&&s.trainerId!==me.id&&s.status==='completed'){
+      evalBtn=`<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();startSessionEvaluation('${s.id}')">Evaluate</button>`;
+    }
+    const editBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openSessionModal('${s.id}')" style="min-width:60px;text-align:center">Edit</button>`;
+    const delBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteSession('${s.id}')" title="Delete session" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
+    return `<tr>
+      <td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>
+      <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(s.trainingProgram||'—')}</td>
+      <td>${Utils.esc(s.batchNo||'—')}</td>
+      <td style="white-space:nowrap">${Utils.formatDate(s.trainingDate)}</td>
+      <td>${Utils.esc(venue)}</td>
+      <td>${Utils.esc(modality)}</td>
+      <td>${rec}</td>
+      <td>${_sessionStatusBadge(s.status)}</td>
+      <td>${evalBadge}</td>
+      <td><div class="td-acts">${editBtn}${delBtn}${evalBtn}</div></td>
+    </tr>`;
+  }).join('');
+  const thead=`<thead><tr><th>Trainer</th><th>Training Program</th><th>Batch</th><th>Session Date</th><th>Venue</th><th>Modality</th><th>Recording</th><th>Status</th><th>Evaluated</th><th>Actions</th></tr></thead>`;
+  body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows}</tbody></table></div>`;
+}
+
+function openSessionModal(id){
+  document.getElementById('sess-error').classList.add('hidden');
+  const s=id?TrSessionDB.byId(id):null;
+  const eligible=DB.all().filter(u=>u.positionId==='pos_6'&&(u.isActive||u.id===(s&&s.trainerId)));
+  document.getElementById('sess-trainer').innerHTML='<option value="">— Select Trainer —</option>'+eligible.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
+  document.getElementById('sess-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  document.getElementById('sess-modality').innerHTML='<option value="">— Select Modality —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
+  document.getElementById('sess-id').value=id||'';
+  document.getElementById('sess-modal-title').textContent=id?'Edit Training Session':'Log Training Session';
+  document.getElementById('sess-trainer').value=s?.trainerId||'';
+  document.getElementById('sess-program').value=s?.trainingProgram||'';
+  document.getElementById('sess-batch').value=s?.batchNo||'';
+  document.getElementById('sess-date').value=s?.trainingDate||'';
+  document.getElementById('sess-venue').value=s?.venueId||'';
+  document.getElementById('sess-modality').value=s?.modalityId||'';
+  document.getElementById('sess-recording').value=s?.recordingLink||'';
+  document.getElementById('sess-status').value=s?.status||'scheduled';
+  openModal('session');
+}
+
+function saveSessionModal(){
+  const id=document.getElementById('sess-id').value||null;
+  const d={
+    trainerId:document.getElementById('sess-trainer').value,
+    trainingProgram:document.getElementById('sess-program').value.trim(),
+    batchNo:document.getElementById('sess-batch').value.trim(),
+    trainingDate:document.getElementById('sess-date').value,
+    venueId:document.getElementById('sess-venue').value,
+    modalityId:document.getElementById('sess-modality').value,
+    recordingLink:document.getElementById('sess-recording').value.trim(),
+    status:document.getElementById('sess-status').value
+  };
+  const errs=[];
+  if(!d.trainerId) errs.push('Please select a Trainer.');
+  if(!d.trainingProgram) errs.push('Training Program / Title is required.');
+  if(!d.batchNo) errs.push('Batch No. is required.');
+  if(!d.trainingDate) errs.push('Session Date is required.');
+  if(!d.venueId) errs.push('Venue is required.');
+  if(!d.modalityId) errs.push('Modality is required.');
+  const errEl=document.getElementById('sess-error');
+  if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  if(id){ TrSessionDB.update(id,d); toast('Training session updated.','success'); }
+  else { const me=Auth.user; TrSessionDB.create({...d,createdById:me.id}); toast('Training session logged.','success'); }
+  closeModal('session');
+  renderSessions();
+}
+
+function deleteSession(id){
+  const s=TrSessionDB.byId(id); if(!s) return;
+  const hasEvals=EvalDB.all().some(e=>e.sessionId===id);
+  const trainer=DB.byId(s.trainerId);
+  const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'this trainer';
+  confirm$('Delete Training Session',
+    `Delete the logged session for <strong>${Utils.esc(tName)}</strong>${s.trainingProgram?` (${Utils.esc(s.trainingProgram)})`:''}?${hasEvals?'<br><br><strong style="color:#dc2626">This session has evaluation(s) attached. They will NOT be deleted, but will lose their link back to this session.</strong>':''}<br><br>This cannot be undone.`,
+    'Delete',()=>{ TrSessionDB.delete(id); toast('Training session deleted.','success'); renderSessions(); }
+  );
+}
+
+function _updateEvalRecordingDisplay(link){
+  const wrap=document.getElementById('ef-recording-wrap');
+  const a=document.getElementById('ef-recording-link');
+  if(!wrap||!a) return;
+  if(link){ a.href=link; wrap.classList.remove('hidden'); }
+  else { wrap.classList.add('hidden'); }
+}
+
+function _openPrefilledEval(s){
+  openNewEval();
+  document.getElementById('ef-session-id').value=s.id;
+  document.getElementById('ef-trainer').value=s.trainerId;
+  document.getElementById('ef-program').value=s.trainingProgram||'';
+  document.getElementById('ef-batch').value=s.batchNo||'';
+  document.getElementById('ef-date').value=s.trainingDate||'';
+  document.getElementById('ef-venue').value=s.venueId||'';
+  document.getElementById('ef-modality').value=s.modalityId||'';
+  _updateEvalRecordingDisplay(s.recordingLink);
+}
+
+function startSessionEvaluation(sessionId){
+  const s=TrSessionDB.byId(sessionId); if(!s) return;
+  const me=Auth.user, access=Auth.formAccess(me);
+  const canConduct=access.trainerEval||me.isAdmin;
+  if(!canConduct){ toast("You don't have access to conduct evaluations.",'error'); return; }
+  if(s.trainerId===me.id){ toast("You can't evaluate your own session.",'error'); return; }
+  if(s.status!=='completed'){ toast('Only completed sessions can be evaluated.','info'); return; }
+  const sessionEvals=EvalDB.all().filter(e=>e.sessionId===sessionId);
+  const mine=sessionEvals.find(e=>e.evaluatorId===me.id);
+  if(mine){
+    if(mine.status==='draft'){
+      confirm$('Draft Already Exists','You already have a draft evaluation for this session. Delete it and start a new one? (Cancel to keep it — you can resume it from Team Evaluations.)','Delete & Start New',()=>{ EvalDB.delete(mine.id); _openPrefilledEval(s); });
+      return;
+    }
+    if(mine.status==='pending_ack'){
+      confirm$('Already Submitted','You already submitted an evaluation for this session — it\'s awaiting the trainer\'s acknowledgement.','View It',()=>{ showView('evaluations'); openEvalView(mine.id); },true);
+      return;
+    }
+    confirm$('Already Evaluated','You already completed an evaluation for this session. Only one evaluation per evaluator is allowed per session.','View It',()=>{ showView('evaluations'); openEvalView(mine.id); },true);
+    return;
+  }
+  const others=sessionEvals.filter(e=>e.status==='completed');
+  if(others.length){
+    const names=[...new Set(others.map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'another evaluator'; }))];
+    confirm$('Already Evaluated by Someone Else',`This session has already been evaluated by <strong>${Utils.esc(names.join(', '))}</strong>. Do you want to submit your own evaluation?`,'Submit My Own',()=>{ _openPrefilledEval(s); });
+    return;
+  }
+  _openPrefilledEval(s);
+}
+
 function _initColResize(tbl){
   if(!tbl) return;
   tbl.querySelectorAll('thead th').forEach(th=>{
@@ -4789,6 +5073,8 @@ function openNewEval(){
   document.getElementById('ef-evaluator-id').value=me.id;
   document.getElementById('ef-evaluator-display').textContent=`${me.firstName} ${me.lastName}`;
   const _soEl=document.getElementById('ef-signoff-evaluator');if(_soEl)_soEl.textContent=`${me.firstName} ${me.lastName}`;
+  document.getElementById('ef-session-id').value='';
+  _updateEvalRecordingDisplay(null);
   document.getElementById('ef-program').value='';
   const dateEl=document.getElementById('ef-date');
   dateEl.value='';
@@ -4814,6 +5100,8 @@ function openEvalForm(id){
   document.getElementById('ef-evaluator-id').value=ev.evaluatorId;
   document.getElementById('ef-evaluator-display').textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   const _soElF=document.getElementById('ef-signoff-evaluator');if(_soElF)_soElF.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
+  document.getElementById('ef-session-id').value=ev.sessionId||'';
+  _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
   document.getElementById('ef-batch').value=ev.batchNo||'';
   const dateEl=document.getElementById('ef-date');
@@ -4957,6 +5245,7 @@ function _getCurrentData(){
     trainingDate:document.getElementById('ef-date').value,
     venueId:document.getElementById('ef-venue').value,
     modalityId:document.getElementById('ef-modality').value,
+    sessionId:document.getElementById('ef-session-id').value||null,
     observations:_rteGet('ef-observations'),
     ratings, remarks, overallScore
   };
@@ -5003,6 +5292,8 @@ function clearEvalForm(){
   ['ef-program','ef-batch'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   _rteSet('ef-observations','');
   document.getElementById('ef-date').value='';
+  document.getElementById('ef-session-id').value='';
+  _updateEvalRecordingDisplay(null);
   document.getElementById('eval-error').classList.add('hidden');
   updateEvalScore();
 }
@@ -8235,4 +8526,4 @@ function _buildCQAHTML(rec){
 document.addEventListener('DOMContentLoaded',init);
 </script>
 </body>
-</html>                                                                                                                                                                                                                                                         
+</html>
