@@ -926,6 +926,12 @@
                   <option value="all">All Trainers</option>
                 </select>
                 <span id="sf-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
+                <div class="col-picker" id="sess-col-picker-wrap">
+                  <button class="eval-toggle-btn" onclick="toggleSessColPicker(event)">⋮ Columns</button>
+                  <div class="col-picker-dd" id="sess-col-picker-dd">
+                    <div class="col-picker-hdr">Show / Hide Columns</div>
+                  </div>
+                </div>
               </div>
               <div class="card">
                 <div id="sessions-list-body"></div>
@@ -4892,7 +4898,75 @@ function renderEvaluations(){
   } else {
     body.innerHTML='<div class="eval-tbl-wrap"><table class="eval-tbl">'+thead+'<tbody>'+visible.map(rowHtml).join('')+'</tbody></table></div>';
   }
-  setTimeout(()=>document.querySelectorAll('.eval-tbl').forEach(_initColResize),50);
+  setTimeout(()=>document.querySelectorAll('#eval-list-body .eval-tbl').forEach(_initColResize),50);
+}
+
+const SESSION_COLS=[
+  {id:'trainer',   label:'Trainer'},
+  {id:'program',   label:'Training Program'},
+  {id:'batch',     label:'Batch'},
+  {id:'date',      label:'Session Date'},
+  {id:'venue',     label:'Venue'},
+  {id:'modality',  label:'Modality'},
+  {id:'recording', label:'Recording'},
+  {id:'status',    label:'Status'},
+  {id:'evaluated', label:'Evaluated'},
+  {id:'evalcount', label:'Eval Count'},
+  {id:'actions',   label:'Actions'},
+];
+let _sessCols={};
+let _sessColWidths={};
+let _lastSessVisible=[];
+
+function _getVisibleSessCols(){ return SESSION_COLS.filter(c=>_sessCols[c.id]!==false); }
+
+function toggleSessColPicker(e){
+  e.stopPropagation();
+  const dd=document.getElementById('sess-col-picker-dd');
+  if(!dd) return;
+  dd.innerHTML='<div class="col-picker-hdr">Show / Hide Columns</div>'+
+    SESSION_COLS.map(c=>{
+      const locked=c.id==='actions';
+      return `<div class="col-picker-item${locked?' locked':''}">
+        <input type="checkbox" id="scp-${c.id}" ${locked||_sessCols[c.id]!==false?'checked':''} ${locked?'disabled':''} onchange="toggleSessCol('${c.id}',this.checked)" onclick="event.stopPropagation()">
+        <label for="scp-${c.id}">${c.label}${locked?' <span style="font-size:10px;color:var(--text3)">(always on)</span>':''}</label>
+      </div>`;
+    }).join('');
+  dd.classList.toggle('open');
+}
+
+function toggleSessCol(colId,visible){
+  _sessCols[colId]=visible;
+  renderSessions();
+}
+
+function _initSessColResize(tbl){
+  if(!tbl) return;
+  tbl.querySelectorAll('thead th').forEach(th=>{
+    const idx=th.cellIndex;
+    if(_sessColWidths[idx]) th.style.width=_sessColWidths[idx];
+    if(th.querySelector('.col-rsz')) return;
+    const r=document.createElement('div'); r.className='col-rsz'; th.appendChild(r);
+    r.addEventListener('mousedown',e=>{
+      const startX=e.pageX, startW=th.offsetWidth;
+      let dragged=false;
+      r.classList.add('rsz-active');
+      const onMove=ev=>{ dragged=true; th.style.width=Math.max(48,startW+ev.pageX-startX)+'px'; };
+      const onUp=()=>{
+        r.classList.remove('rsz-active');
+        _sessColWidths[idx]=th.style.width;
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+        if(dragged){
+          const noClick=ev=>{ ev.stopImmediatePropagation(); th.removeEventListener('click',noClick,true); };
+          th.addEventListener('click',noClick,true);
+        }
+      };
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+      e.preventDefault(); e.stopPropagation();
+    });
+  });
 }
 
 function _evalCountCell(evs,me){
@@ -4921,6 +4995,7 @@ function renderSessions(){
   const countEl=document.getElementById('sf-count');
   if(countEl) countEl.textContent=`${visible.length} session${visible.length!==1?'s':''}`;
   const body=document.getElementById('sessions-list-body');
+  _lastSessVisible=visible;
   if(!visible.length){
     body.innerHTML=`<div class="empty-state"><div class="empty-ico">🎥</div><div class="empty-title">No training sessions logged</div><div style="font-size:13px;color:var(--text3);margin-top:4px">Click "+ Log Training Session" to get started.</div></div>`;
     return;
@@ -4928,6 +5003,21 @@ function renderSessions(){
   const allEvals=EvalDB.all();
   function evalInfoFor(sessId){
     return allEvals.filter(e=>e.sessionId===sessId).map(e=>({...e,canView:e.status!=='draft'&&(e.trainerId===me.id||e.evaluatorId===me.id||me.isAdmin)}));
+  }
+  const visCols=_getVisibleSessCols();
+  function cellFor(colId,s,ctx){
+    if(colId==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(ctx.tName)}</strong></td>`;
+    if(colId==='program')   return `<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(s.trainingProgram||'—')}</td>`;
+    if(colId==='batch')     return `<td>${Utils.esc(s.batchNo||'—')}</td>`;
+    if(colId==='date')      return `<td style="white-space:nowrap">${Utils.formatDate(s.trainingDate)}</td>`;
+    if(colId==='venue')     return `<td>${Utils.esc(ctx.venue)}</td>`;
+    if(colId==='modality')  return `<td>${Utils.esc(ctx.modality)}</td>`;
+    if(colId==='recording') return `<td>${ctx.rec}</td>`;
+    if(colId==='status')    return `<td>${_sessionStatusBadge(s.status)}</td>`;
+    if(colId==='evaluated') return `<td>${ctx.evalBadge}</td>`;
+    if(colId==='evalcount') return `<td>${_evalCountCell(ctx.evs,me)}</td>`;
+    if(colId==='actions')   return `<td><div class="td-acts">${ctx.editBtn}${ctx.delBtn}${ctx.evalBtn}</div></td>`;
+    return '<td></td>';
   }
   const rows=visible.map(s=>{
     const trainer=DB.byId(s.trainerId);
@@ -4964,22 +5054,12 @@ function renderSessions(){
     }
     const editBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openSessionModal('${s.id}')" style="min-width:60px;text-align:center">Edit</button>`;
     const delBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteSession('${s.id}')" title="Delete session" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
-    return `<tr>
-      <td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>
-      <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(s.trainingProgram||'—')}</td>
-      <td>${Utils.esc(s.batchNo||'—')}</td>
-      <td style="white-space:nowrap">${Utils.formatDate(s.trainingDate)}</td>
-      <td>${Utils.esc(venue)}</td>
-      <td>${Utils.esc(modality)}</td>
-      <td>${rec}</td>
-      <td>${_sessionStatusBadge(s.status)}</td>
-      <td>${evalBadge}</td>
-      <td>${_evalCountCell(evs,me)}</td>
-      <td><div class="td-acts">${editBtn}${delBtn}${evalBtn}</div></td>
-    </tr>`;
+    const ctx={tName,venue,modality,rec,evalBadge,evs,evalBtn,editBtn,delBtn};
+    return `<tr>${visCols.map(c=>cellFor(c.id,s,ctx)).join('')}</tr>`;
   }).join('');
-  const thead=`<thead><tr><th>Trainer</th><th>Training Program</th><th>Batch</th><th>Session Date</th><th>Venue</th><th>Modality</th><th>Recording</th><th>Status</th><th>Evaluated</th><th>Eval Count</th><th>Actions</th></tr></thead>`;
+  const thead=`<thead><tr>${visCols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>`;
   body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows}</tbody></table></div>`;
+  setTimeout(()=>document.querySelectorAll('#sessions-list-body .eval-tbl').forEach(t=>_initSessColResize(t)),50);
 }
 
 function openSessionModal(id){
@@ -8453,6 +8533,8 @@ function wireEvents(){
     document.querySelectorAll('.th-dd').forEach(d=>d.classList.remove('open'));
     const cpdd=document.getElementById('col-picker-dd');
     if(cpdd) cpdd.classList.remove('open');
+    const scpdd=document.getElementById('sess-col-picker-dd');
+    if(scpdd) scpdd.classList.remove('open');
   });
   document.getElementById('new-eval-btn').addEventListener('click',openNewEval);
   document.getElementById('eval-draft-btn').addEventListener('click',saveEvalDraft);
