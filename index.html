@@ -925,7 +925,26 @@
                 <select class="eval-select" id="sf-filter-trainer" onchange="renderSessions()">
                   <option value="all">All Trainers</option>
                 </select>
+                <span class="df-date-group">
+                  <select class="eval-select" id="sf-filter-date" onchange="onSessDateFilterChange()">
+                    <option value="all">All Time</option>
+                    <option value="7d">Past 7 Days</option>
+                    <option value="1m">Past Month</option>
+                    <option value="3m">Last Quarter</option>
+                    <option value="custom">Custom Range</option>
+                  </select>
+                  <span class="df-tip-icon">i<span class="df-tip-bubble">Filters by session date</span></span>
+                </span>
+                <span class="df-custom-wrap hidden" id="sf-filter-custom">
+                  <input type="date" class="eval-select" id="sf-date-from" onchange="renderSessions()">
+                  <span style="font-size:12px;color:var(--text3)">to</span>
+                  <input type="date" class="eval-select" id="sf-date-to" onchange="onSessDateToChange()">
+                </span>
+                <button class="eval-toggle-btn" id="sf-group-trainer-btn" onclick="setSessGroupMode('trainer')">⊞ Group by Trainer</button>
+                <button class="eval-toggle-btn" id="sf-group-status-btn" onclick="setSessGroupMode('status')">⊟ Group by Status</button>
+                <button class="eval-toggle-btn" id="sf-clear-filters-btn" onclick="clearSessFilters()" style="display:none;color:var(--red);border-color:var(--red-lt)">✕ Clear Filters</button>
                 <span id="sf-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
+                <button class="eval-toggle-btn" onclick="exportSessionsCSV()" title="Download visible columns as CSV">⬇ Export CSV</button>
                 <div class="col-picker" id="sess-col-picker-wrap">
                   <button class="eval-toggle-btn" onclick="toggleSessColPicker(event)">⋮ Columns</button>
                   <div class="col-picker-dd" id="sess-col-picker-dd">
@@ -4902,21 +4921,86 @@ function renderEvaluations(){
 }
 
 const SESSION_COLS=[
-  {id:'trainer',   label:'Trainer'},
-  {id:'program',   label:'Training Program'},
-  {id:'batch',     label:'Batch'},
-  {id:'date',      label:'Session Date'},
-  {id:'venue',     label:'Venue'},
-  {id:'modality',  label:'Modality'},
-  {id:'recording', label:'Recording'},
-  {id:'status',    label:'Status'},
-  {id:'evaluated', label:'Evaluated'},
-  {id:'evalcount', label:'Eval Count'},
-  {id:'actions',   label:'Actions'},
+  {id:'trainer',   label:'Trainer',          sort:'trainer'},
+  {id:'program',   label:'Training Program', sort:'program'},
+  {id:'batch',     label:'Batch',            sort:'batch'},
+  {id:'date',      label:'Session Date',     sort:'date'},
+  {id:'venue',     label:'Venue',            sort:'venue'},
+  {id:'modality',  label:'Modality',         sort:'modality'},
+  {id:'recording', label:'Recording',        sort:null},
+  {id:'status',    label:'Status',           sort:'status'},
+  {id:'evaluated', label:'Evaluated',        sort:'evalrank'},
+  {id:'evalcount', label:'Eval Count',       sort:'evalcount'},
+  {id:'actions',   label:'Actions',          sort:null},
 ];
 let _sessCols={};
 let _sessColWidths={};
 let _lastSessVisible=[];
+let _sessSort={col:'date',dir:'desc'};
+let _sessGroupMode='none';
+let _sessGroupCollapsed={};
+
+function sessSortBy(col){
+  if(_sessSort.col===col){ _sessSort.dir=_sessSort.dir==='asc'?'desc':'asc'; }
+  else { _sessSort={col,dir:col==='date'?'desc':'asc'}; }
+  renderSessions();
+}
+function setSessGroupMode(mode){
+  _sessGroupMode=_sessGroupMode===mode?'none':mode;
+  document.getElementById('sf-group-trainer-btn')?.classList.toggle('on',_sessGroupMode==='trainer');
+  document.getElementById('sf-group-status-btn')?.classList.toggle('on',_sessGroupMode==='status');
+  renderSessions();
+}
+function toggleSessGroupRow(tid){
+  _sessGroupCollapsed[tid]=!_sessGroupCollapsed[tid];
+  renderSessions();
+}
+function onSessDateFilterChange(){
+  const val=(document.getElementById('sf-filter-date')||{}).value||'all';
+  const wrap=document.getElementById('sf-filter-custom');
+  if(wrap) wrap.classList.toggle('hidden', val!=='custom');
+  renderSessions();
+}
+function onSessDateToChange(){
+  const fromEl=document.getElementById('sf-date-from');
+  const toEl=document.getElementById('sf-date-to');
+  if(fromEl&&toEl&&fromEl.value&&toEl.value){
+    const d1=new Date(fromEl.value+'T00:00:00');
+    const d2=new Date(toEl.value+'T00:00:00');
+    if(d2<d1){ toast('End date cannot be before start date.','error'); toEl.value=fromEl.value; }
+  }
+  renderSessions();
+}
+function clearSessFilters(){
+  ['sf-filter-status','sf-filter-trainer','sf-filter-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='all'; });
+  document.getElementById('sf-filter-custom')?.classList.add('hidden');
+  const dfFrom=document.getElementById('sf-date-from'); if(dfFrom) dfFrom.value='';
+  const dfTo=document.getElementById('sf-date-to'); if(dfTo) dfTo.value='';
+  _sessGroupMode='none'; _sessGroupCollapsed={};
+  document.getElementById('sf-group-trainer-btn')?.classList.remove('on');
+  document.getElementById('sf-group-status-btn')?.classList.remove('on');
+  renderSessions();
+}
+function exportSessionsCSV(){
+  if(!_lastSessVisible.length){ toast('No records to export.','info'); return; }
+  const esc=v=>{const s=String(v==null?'':v).replace(/"/g,'""');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s}"`:s;};
+  const statusLabel=s=>s==='completed'?'Completed':s==='cancelled'?'Cancelled':'Scheduled';
+  const headers=['Trainer','Training Program','Batch No.','Session Date','Venue','Modality','Recording Link','Status','Submitted Evaluations'];
+  const rows=[headers.map(esc).join(',')];
+  const allEvalsCsv=EvalDB.all();
+  _lastSessVisible.forEach(s=>{
+    const trainer=DB.byId(s.trainerId);
+    const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'';
+    const venue=Sel.nameOf(Store.VENUES,s.venueId)||'';
+    const modality=Sel.nameOf(Store.MODALS,s.modalityId)||'';
+    const submitted=allEvalsCsv.filter(e=>e.sessionId===s.id&&(e.status==='pending_ack'||e.status==='completed')).length;
+    rows.push([tName,s.trainingProgram||'',s.batchNo||'',s.trainingDate||'',venue,modality,s.recordingLink||'',statusLabel(s.status),submitted].map(esc).join(','));
+  });
+  const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`LEAP_TrainingSessions_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  toast(`Exported ${_lastSessVisible.length} record${_lastSessVisible.length!==1?'s':''}.`,'success');
+}
 
 function _getVisibleSessCols(){ return SESSION_COLS.filter(c=>_sessCols[c.id]!==false); }
 
@@ -4942,7 +5026,8 @@ function toggleSessCol(colId,visible){
 
 function _initSessColResize(tbl){
   if(!tbl) return;
-  tbl.querySelectorAll('thead th').forEach(th=>{
+  const ths=[...tbl.querySelectorAll('thead th')];
+  ths.forEach(th=>{
     const idx=th.cellIndex;
     if(_sessColWidths[idx]) th.style.width=_sessColWidths[idx];
     if(th.querySelector('.col-rsz')) return;
@@ -4954,10 +5039,13 @@ function _initSessColResize(tbl){
       const onMove=ev=>{ dragged=true; th.style.width=Math.max(48,startW+ev.pageX-startX)+'px'; };
       const onUp=()=>{
         r.classList.remove('rsz-active');
-        _sessColWidths[idx]=th.style.width;
         document.removeEventListener('mousemove',onMove);
         document.removeEventListener('mouseup',onUp);
         if(dragged){
+          tbl.style.tableLayout='fixed';
+          let total=0;
+          ths.forEach(t2=>{ const w=t2.offsetWidth; t2.style.width=w+'px'; _sessColWidths[t2.cellIndex]=w+'px'; total+=w; });
+          tbl.style.width=total+'px';
           const noClick=ev=>{ ev.stopImmediatePropagation(); th.removeEventListener('click',noClick,true); };
           th.addEventListener('click',noClick,true);
         }
@@ -4967,6 +5055,12 @@ function _initSessColResize(tbl){
       e.preventDefault(); e.stopPropagation();
     });
   });
+  if(ths.some(t=>_sessColWidths[t.cellIndex])){
+    tbl.style.tableLayout='fixed';
+    let total=0;
+    ths.forEach(t=>{ total+=t.offsetWidth; });
+    tbl.style.width=total+'px';
+  }
 }
 
 function _evalCountCell(evs,me){
@@ -4988,10 +5082,64 @@ function renderSessions(){
   }
   const statusF=(document.getElementById('sf-filter-status')||{}).value||'all';
   const trainerF=(document.getElementById('sf-filter-trainer')||{}).value||'all';
+  const dateF=(document.getElementById('sf-filter-date')||{}).value||'all';
+  const _hasActiveFilter=statusF!=='all'||trainerF!=='all'||dateF!=='all'||_sessGroupMode!=='none';
+  const _cfBtn=document.getElementById('sf-clear-filters-btn');
+  if(_cfBtn) _cfBtn.style.display=_hasActiveFilter?'':'none';
   let visible=all;
   if(statusF!=='all') visible=visible.filter(s=>s.status===statusF);
   if(trainerF!=='all') visible=visible.filter(s=>s.trainerId===trainerF);
-  visible=[...visible].sort((a,b)=>(b.trainingDate||'').localeCompare(a.trainingDate||''));
+  if(dateF!=='all'){
+    const now=new Date(); now.setHours(23,59,59,999);
+    let fromDate=null, toDate=now;
+    if(dateF==='7d'){ fromDate=new Date(); fromDate.setDate(fromDate.getDate()-7); fromDate.setHours(0,0,0,0); }
+    else if(dateF==='1m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-1); fromDate.setHours(0,0,0,0); }
+    else if(dateF==='3m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-3); fromDate.setHours(0,0,0,0); }
+    else if(dateF==='custom'){
+      const fv=(document.getElementById('sf-date-from')||{}).value;
+      const tv=(document.getElementById('sf-date-to')||{}).value;
+      if(fv) fromDate=new Date(fv+'T00:00:00');
+      if(tv) toDate=new Date(tv+'T23:59:59');
+    }
+    visible=visible.filter(s=>{
+      if(!s.trainingDate) return false;
+      const d=new Date(s.trainingDate+'T00:00:00');
+      if(fromDate&&d<fromDate) return false;
+      if(d>toDate) return false;
+      return true;
+    });
+  }
+  const allEvals=EvalDB.all();
+  function evalInfoFor(sessId){
+    return allEvals.filter(e=>e.sessionId===sessId).map(e=>({...e,canView:e.status!=='draft'&&(e.trainerId===me.id||e.evaluatorId===me.id||me.isAdmin)}));
+  }
+  function _evalRank(sessId){
+    const evs=allEvals.filter(e=>e.sessionId===sessId);
+    if(evs.some(e=>e.status==='completed')) return 3;
+    if(evs.some(e=>e.status==='pending_ack')) return 2;
+    if(evs.some(e=>e.status==='draft')) return 1;
+    return 0;
+  }
+  function _evalSubmittedCount(sessId){
+    return allEvals.filter(e=>e.sessionId===sessId&&(e.status==='pending_ack'||e.status==='completed')).length;
+  }
+  const {col,dir}=_sessSort;
+  visible=[...visible].sort((a,b)=>{
+    let va,vb;
+    if(col==='date'){va=a.trainingDate||'';vb=b.trainingDate||'';}
+    else if(col==='trainer'){const u=DB.byId(a.trainerId),v=DB.byId(b.trainerId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:'';}
+    else if(col==='program'){va=a.trainingProgram||'';vb=b.trainingProgram||'';}
+    else if(col==='batch'){va=a.batchNo||'';vb=b.batchNo||'';}
+    else if(col==='venue'){va=Sel.nameOf(Store.VENUES,a.venueId)||'';vb=Sel.nameOf(Store.VENUES,b.venueId)||'';}
+    else if(col==='modality'){va=Sel.nameOf(Store.MODALS,a.modalityId)||'';vb=Sel.nameOf(Store.MODALS,b.modalityId)||'';}
+    else if(col==='status'){va=a.status||'';vb=b.status||'';}
+    else if(col==='evalrank'){va=_evalRank(a.id);vb=_evalRank(b.id);}
+    else if(col==='evalcount'){va=_evalSubmittedCount(a.id);vb=_evalSubmittedCount(b.id);}
+    else{va='';vb='';}
+    if(va<vb) return dir==='asc'?-1:1;
+    if(va>vb) return dir==='asc'?1:-1;
+    return 0;
+  });
   const countEl=document.getElementById('sf-count');
   if(countEl) countEl.textContent=`${visible.length} session${visible.length!==1?'s':''}`;
   const body=document.getElementById('sessions-list-body');
@@ -5000,11 +5148,12 @@ function renderSessions(){
     body.innerHTML=`<div class="empty-state"><div class="empty-ico">🎥</div><div class="empty-title">No training sessions logged</div><div style="font-size:13px;color:var(--text3);margin-top:4px">Click "+ Log Training Session" to get started.</div></div>`;
     return;
   }
-  const allEvals=EvalDB.all();
-  function evalInfoFor(sessId){
-    return allEvals.filter(e=>e.sessionId===sessId).map(e=>({...e,canView:e.status!=='draft'&&(e.trainerId===me.id||e.evaluatorId===me.id||me.isAdmin)}));
-  }
   const visCols=_getVisibleSessCols();
+  function sortTh(s){ const a=_sessSort.col===s; return a?(_sessSort.dir==='asc'?'sort-asc':'sort-desc'):''; }
+  const thead=`<thead><tr>${visCols.map(c=>c.sort
+    ?`<th class="${sortTh(c.sort)}" onclick="sessSortBy('${c.sort}')">${c.label}</th>`
+    :`<th>${c.label}</th>`
+  ).join('')}</tr></thead>`;
   function cellFor(colId,s,ctx){
     if(colId==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(ctx.tName)}</strong></td>`;
     if(colId==='program')   return `<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(s.trainingProgram||'—')}</td>`;
@@ -5013,13 +5162,13 @@ function renderSessions(){
     if(colId==='venue')     return `<td>${Utils.esc(ctx.venue)}</td>`;
     if(colId==='modality')  return `<td>${Utils.esc(ctx.modality)}</td>`;
     if(colId==='recording') return `<td>${ctx.rec}</td>`;
-    if(colId==='status')    return `<td>${_sessionStatusBadge(s.status)}</td>`;
+    if(colId==='status')    return `<td>${_sessionStatusBadge(s.status)}${ctx.overdue?' <span class="badge" style="background:#fee2e2;color:#dc2626" title="Session date has passed — mark Completed and add the recording link">⚠ Overdue</span>':''}</td>`;
     if(colId==='evaluated') return `<td>${ctx.evalBadge}</td>`;
     if(colId==='evalcount') return `<td>${_evalCountCell(ctx.evs,me)}</td>`;
     if(colId==='actions')   return `<td><div class="td-acts">${ctx.editBtn}${ctx.delBtn}${ctx.evalBtn}</div></td>`;
     return '<td></td>';
   }
-  const rows=visible.map(s=>{
+  function rowHtml(s){
     const trainer=DB.byId(s.trainerId);
     const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'—';
     const venue=Sel.nameOf(Store.VENUES,s.venueId)||'—';
@@ -5054,11 +5203,39 @@ function renderSessions(){
     }
     const editBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openSessionModal('${s.id}')" style="min-width:60px;text-align:center">Edit</button>`;
     const delBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteSession('${s.id}')" title="Delete session" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
-    const ctx={tName,venue,modality,rec,evalBadge,evs,evalBtn,editBtn,delBtn};
+    const overdue=s.status==='scheduled'&&s.trainingDate&&s.trainingDate<_todayStr();
+    const ctx={tName,venue,modality,rec,evalBadge,evs,evalBtn,editBtn,delBtn,overdue};
     return `<tr>${visCols.map(c=>cellFor(c.id,s,ctx)).join('')}</tr>`;
-  }).join('');
-  const thead=`<thead><tr>${visCols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>`;
-  body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows}</tbody></table></div>`;
+  }
+  function groupAccordion(groups,headerFn){
+    let html='';
+    Object.entries(groups).forEach(([key,rows])=>{
+      const collapsed=!!_sessGroupCollapsed[key];
+      html+=`<div style="margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+        <div class="eval-group-hdr" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:${collapsed?'none':'1px solid var(--border)'}" onclick="toggleSessGroupRow('${key}')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:13px">${collapsed?'▶':'▼'}</span>
+            ${headerFn(key)}
+            <span style="font-weight:400;color:var(--text3)">${rows.length} session${rows.length!==1?'s':''}</span>
+          </div>
+        </div>
+        ${collapsed?'':`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`}
+      </div>`;
+    });
+    return html||'<div class="empty-state"><div class="empty-ico">🎥</div><div class="empty-title">No training sessions found</div></div>';
+  }
+  if(_sessGroupMode==='trainer'){
+    const groups={};
+    visible.forEach(s=>{ const id=s.trainerId||'__none__'; if(!groups[id]) groups[id]=[]; groups[id].push(s); });
+    body.innerHTML=groupAccordion(groups,(k)=>{ const u=DB.byId(k); return `<span>👤 ${Utils.esc(u?`${u.firstName} ${u.lastName}`:'Unknown')}</span>`; });
+  } else if(_sessGroupMode==='status'){
+    const order=['scheduled','completed','cancelled'];
+    const groups={};
+    order.forEach(st=>{ const rows=visible.filter(s=>s.status===st); if(rows.length) groups[st]=rows; });
+    body.innerHTML=groupAccordion(groups,(k)=>_sessionStatusBadge(k));
+  } else {
+    body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${visible.map(rowHtml).join('')}</tbody></table></div>`;
+  }
   setTimeout(()=>document.querySelectorAll('#sessions-list-body .eval-tbl').forEach(t=>_initSessColResize(t)),50);
 }
 
@@ -5185,7 +5362,8 @@ function startSessionEvaluation(sessionId){
 
 function _initColResize(tbl){
   if(!tbl) return;
-  tbl.querySelectorAll('thead th').forEach(th=>{
+  const ths=[...tbl.querySelectorAll('thead th')];
+  ths.forEach(th=>{
     const idx=th.cellIndex;
     if(_colWidths[idx]) th.style.width=_colWidths[idx];
     if(th.querySelector('.col-rsz')) return;
@@ -5197,10 +5375,13 @@ function _initColResize(tbl){
       const onMove=ev=>{ dragged=true; th.style.width=Math.max(48,startW+ev.pageX-startX)+'px'; };
       const onUp=()=>{
         r.classList.remove('rsz-active');
-        _colWidths[idx]=th.style.width;
         document.removeEventListener('mousemove',onMove);
         document.removeEventListener('mouseup',onUp);
         if(dragged){
+          tbl.style.tableLayout='fixed';
+          let total=0;
+          ths.forEach(t2=>{ const w=t2.offsetWidth; t2.style.width=w+'px'; _colWidths[t2.cellIndex]=w+'px'; total+=w; });
+          tbl.style.width=total+'px';
           const noClick=ev=>{ ev.stopImmediatePropagation(); th.removeEventListener('click',noClick,true); };
           th.addEventListener('click',noClick,true);
         }
@@ -5210,6 +5391,12 @@ function _initColResize(tbl){
       e.preventDefault(); e.stopPropagation();
     });
   });
+  if(ths.some(t=>_colWidths[t.cellIndex])){
+    tbl.style.tableLayout='fixed';
+    let total=0;
+    ths.forEach(t=>{ total+=t.offsetWidth; });
+    tbl.style.width=total+'px';
+  }
 }
 
 function evalSortBy(col){
@@ -8536,7 +8723,7 @@ function wireEvents(){
     const scpdd=document.getElementById('sess-col-picker-dd');
     if(scpdd) scpdd.classList.remove('open');
   });
-  document.getElementById('new-eval-btn').addEventListener('click',openNewEval);
+  document.getElementById('new-eval-btn').addEventListener('click',()=>setEvalTab('sessions'));
   document.getElementById('eval-draft-btn').addEventListener('click',saveEvalDraft);
   document.getElementById('eval-finalize-btn').addEventListener('click',finalizeEval);
   document.getElementById('new-idqa-btn').addEventListener('click',openNewIDQA);
