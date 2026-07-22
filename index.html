@@ -1956,6 +1956,16 @@
         <input type="url" id="sess-recording" class="form-control" placeholder="https://…">
       </div>
       <div class="form-group">
+        <label class="form-label">Number of Participants</label>
+        <input type="number" id="sess-participants" class="form-control" min="1" step="1" placeholder="e.g. 25">
+        <div class="form-hint">Required once the session is marked Completed.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Session Duration (hh:mm)</label>
+        <input type="text" id="sess-duration" class="form-control" placeholder="e.g. 02:30" pattern="^\d{1,3}:[0-5]\d$">
+        <div class="form-hint">Required once the session is marked Completed.</div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Status <span class="req">*</span></label>
         <select id="sess-status" class="form-control">
           <option value="scheduled">Scheduled</option>
@@ -4393,6 +4403,12 @@ const TrSessionDB={
   update(id,p){ const a=this.all(),i=a.findIndex(s=>s.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','Training Session',id,p.status?`Status changed to ${p.status} on "${a[i].trainingProgram||id}"`:`Updated session "${a[i].trainingProgram||id}"`); return a[i]; },
   delete(id)  { const rec=this.byId(id); const a=this.all().filter(s=>s.id!==id); this.save(a); AuditLog.record('delete','Training Session',id,`Deleted session "${rec?.trainingProgram||id}"`); }
 };
+function _durationToMinutes(str){
+  if(!str) return -1;
+  const m=String(str).match(/^(\d{1,3}):([0-5]\d)$/);
+  if(!m) return -1;
+  return parseInt(m[1],10)*60+parseInt(m[2],10);
+}
 function _sessionStatusBadge(status){
   if(status==='completed') return '<span class="badge" style="background:#dcfce7;color:#15803d">Completed</span>';
   if(status==='cancelled') return '<span class="badge" style="background:#fee2e2;color:#dc2626">Cancelled</span>';
@@ -4995,6 +5011,8 @@ const SESSION_COLS=[
   {id:'venue',     label:'Venue',            sort:'venue'},
   {id:'modality',  label:'Modality',         sort:'modality'},
   {id:'recording', label:'Recording',        sort:null},
+  {id:'participants', label:'Participants',  sort:'participants'},
+  {id:'duration',  label:'Duration',         sort:'duration'},
   {id:'status',    label:'Status',           sort:'status'},
   {id:'evaluated', label:'Evaluated',        sort:'evalrank'},
   {id:'evalcount', label:'Eval Count',       sort:'evalcount'},
@@ -5052,7 +5070,7 @@ function exportSessionsCSV(){
   if(!_lastSessVisible.length){ toast('No records to export.','info'); return; }
   const esc=v=>{const s=String(v==null?'':v).replace(/"/g,'""');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s}"`:s;};
   const statusLabel=s=>s==='completed'?'Completed':s==='cancelled'?'Cancelled':'Scheduled';
-  const headers=['Session ID','Trainer','Training Program','Batch No.','Session Date','Venue','Modality','Recording Link','Status','Submitted Evaluations'];
+  const headers=['Session ID','Trainer','Training Program','Batch No.','Session Date','Venue','Modality','Recording Link','Participants','Duration (hh:mm)','Status','Submitted Evaluations'];
   const rows=[headers.map(esc).join(',')];
   const allEvalsCsv=EvalDB.all();
   _lastSessVisible.forEach(s=>{
@@ -5061,7 +5079,7 @@ function exportSessionsCSV(){
     const venue=Sel.nameOf(Store.VENUES,s.venueId)||'';
     const modality=Sel.nameOf(Store.MODALS,s.modalityId)||'';
     const submitted=allEvalsCsv.filter(e=>e.sessionId===s.id&&(e.status==='pending_ack'||e.status==='completed')).length;
-    rows.push([s.code||'',tName,s.trainingProgram||'',s.batchNo||'',s.trainingDate||'',venue,modality,s.recordingLink||'',statusLabel(s.status),submitted].map(esc).join(','));
+    rows.push([s.code||'',tName,s.trainingProgram||'',s.batchNo||'',s.trainingDate||'',venue,modality,s.recordingLink||'',s.numParticipants!=null?s.numParticipants:'',s.duration||'',statusLabel(s.status),submitted].map(esc).join(','));
   });
   const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -5202,6 +5220,8 @@ function renderSessions(){
     else if(col==='batch'){va=a.batchNo||'';vb=b.batchNo||'';}
     else if(col==='venue'){va=Sel.nameOf(Store.VENUES,a.venueId)||'';vb=Sel.nameOf(Store.VENUES,b.venueId)||'';}
     else if(col==='modality'){va=Sel.nameOf(Store.MODALS,a.modalityId)||'';vb=Sel.nameOf(Store.MODALS,b.modalityId)||'';}
+    else if(col==='participants'){va=a.numParticipants??-1;vb=b.numParticipants??-1;}
+    else if(col==='duration'){va=_durationToMinutes(a.duration);vb=_durationToMinutes(b.duration);}
     else if(col==='status'){va=a.status||'';vb=b.status||'';}
     else if(col==='evalrank'){va=_evalRank(a.id);vb=_evalRank(b.id);}
     else if(col==='evalcount'){va=_evalSubmittedCount(a.id);vb=_evalSubmittedCount(b.id);}
@@ -5233,6 +5253,8 @@ function renderSessions(){
     if(colId==='venue')     return `<td>${Utils.esc(ctx.venue)}</td>`;
     if(colId==='modality')  return `<td>${Utils.esc(ctx.modality)}</td>`;
     if(colId==='recording') return `<td>${ctx.rec}</td>`;
+    if(colId==='participants') return `<td style="text-align:center">${s.numParticipants!=null?s.numParticipants:'<span class="txt-muted">—</span>'}</td>`;
+    if(colId==='duration')  return `<td style="white-space:nowrap">${s.duration?Utils.esc(s.duration):'<span class="txt-muted">—</span>'}</td>`;
     if(colId==='status')    return `<td>${_sessionStatusBadge(s.status)}${ctx.overdue?' <span class="badge" style="background:#fee2e2;color:#dc2626" title="Session date has passed — mark Completed and add the recording link">⚠ Overdue</span>':''}</td>`;
     if(colId==='evaluated') return `<td>${ctx.evalBadge}</td>`;
     if(colId==='evalcount') return `<td>${_evalCountCell(ctx.evs,me)}</td>`;
@@ -5328,12 +5350,16 @@ function openSessionModal(id){
   _toggleVenueOtherWrap('sess');
   document.getElementById('sess-modality').value=s?.modalityId||'';
   document.getElementById('sess-recording').value=s?.recordingLink||'';
+  document.getElementById('sess-participants').value=s?.numParticipants??'';
+  document.getElementById('sess-duration').value=s?.duration||'';
   document.getElementById('sess-status').value=s?.status||'scheduled';
   openModal('session');
 }
 
 function saveSessionModal(){
   const id=document.getElementById('sess-id').value||null;
+  const participantsRaw=document.getElementById('sess-participants').value.trim();
+  const durationRaw=document.getElementById('sess-duration').value.trim();
   const d={
     trainerId:document.getElementById('sess-trainer').value,
     trainingProgram:document.getElementById('sess-program').value.trim(),
@@ -5342,6 +5368,8 @@ function saveSessionModal(){
     venueId:_resolveVenueId('sess'),
     modalityId:document.getElementById('sess-modality').value,
     recordingLink:document.getElementById('sess-recording').value.trim(),
+    numParticipants:participantsRaw?parseInt(participantsRaw,10):null,
+    duration:durationRaw,
     status:document.getElementById('sess-status').value
   };
   const errs=[];
@@ -5353,6 +5381,9 @@ function saveSessionModal(){
   if(_isOtherVenue(document.getElementById('sess-venue').value)&&!(document.getElementById('sess-venue-other')?.value||'').trim()) errs.push('Please specify the venue name.');
   if(!d.modalityId) errs.push('Modality is required.');
   if(d.status==='completed'&&!d.recordingLink) errs.push('A recording link is required before a session can be marked Completed.');
+  if(d.status==='completed'&&(!participantsRaw||isNaN(d.numParticipants)||d.numParticipants<=0)) errs.push('Number of Participants is required (greater than 0) before a session can be marked Completed.');
+  if(d.status==='completed'&&!durationRaw) errs.push('Session Duration is required before a session can be marked Completed.');
+  else if(durationRaw&&!/^\d{1,3}:[0-5]\d$/.test(durationRaw)) errs.push('Session Duration must be in hh:mm format (e.g. 02:30).');
   const errEl=document.getElementById('sess-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
