@@ -65,6 +65,8 @@
     .form-control.err{border-color:var(--red)}
     select.form-control{cursor:pointer}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+    .form-row-3 .form-group{margin-bottom:0}
     .form-hint{font-size:11.5px;color:var(--text3);margin-top:4px}
     .input-wrap{position:relative}
     .input-wrap .form-control{padding-right:40px}
@@ -286,6 +288,7 @@
     .modal-overlay.open{display:flex}
     .modal{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--sh-mo);width:100%;max-width:560px;max-height:92vh;overflow-y:auto}
     .modal-lg{max-width:720px}
+    .modal-xl{max-width:900px}
     .modal-sm{max-width:420px}
     .modal-hdr{padding:20px 22px 18px;border-bottom:1px solid var(--border-lt);display:flex;align-items:center;justify-content:space-between}
     .modal-title{font-size:15.5px;font-weight:600;color:var(--text);font-family:var(--font-heading)}
@@ -1916,7 +1919,7 @@
 
 <!-- ══ MODAL: TRAINING SESSION ═════════════ -->
 <div id="modal-session" class="modal-overlay" onclick="if(event.target===this)closeModal('session')">
-  <div class="modal modal-lg">
+  <div class="modal modal-xl">
     <div class="modal-hdr">
       <span class="modal-title" id="sess-modal-title">Log Training Session</span>
       <button class="modal-close" onclick="closeModal('session')">✕</button>
@@ -1927,51 +1930,57 @@
         <label class="form-label">Trainer <span class="req">*</span></label>
         <select id="sess-trainer" class="form-control"><option value="">— Select Trainer —</option></select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Training Program / Title <span class="req">*</span></label>
-        <input type="text" id="sess-program" class="form-control" placeholder="e.g. Product Knowledge Training">
+      <div class="form-row-3">
+        <div class="form-group" style="grid-column:span 2">
+          <label class="form-label">Training Program / Title <span class="req">*</span></label>
+          <input type="text" id="sess-program" class="form-control" placeholder="e.g. Product Knowledge Training">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Batch No. <span class="req">*</span></label>
+          <input type="text" id="sess-batch" class="form-control" placeholder="e.g. 2026-01">
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Batch No. <span class="req">*</span></label>
-        <input type="text" id="sess-batch" class="form-control" placeholder="e.g. 2026-01">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Session Date <span class="req">*</span></label>
-        <input type="date" id="sess-date" class="form-control">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Venue <span class="req">*</span></label>
-        <select id="sess-venue" class="form-control" onchange="_toggleVenueOtherWrap('sess')"><option value="">— Select Venue —</option></select>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Session Date <span class="req">*</span></label>
+          <input type="date" id="sess-date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Venue <span class="req">*</span></label>
+          <select id="sess-venue" class="form-control" onchange="_toggleVenueOtherWrap('sess')"><option value="">— Select Venue —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modality <span class="req">*</span></label>
+          <select id="sess-modality" class="form-control"><option value="">— Select Modality —</option></select>
+        </div>
       </div>
       <div class="form-group hidden" id="sess-venue-other-wrap">
         <label class="form-label">Specify Venue <span class="req">*</span></label>
         <input type="text" id="sess-venue-other" class="form-control" placeholder="Enter venue name/location">
       </div>
       <div class="form-group">
-        <label class="form-label">Modality <span class="req">*</span></label>
-        <select id="sess-modality" class="form-control"><option value="">— Select Modality —</option></select>
-      </div>
-      <div class="form-group">
         <label class="form-label">Recording Link</label>
         <input type="url" id="sess-recording" class="form-control" placeholder="https://…">
       </div>
-      <div class="form-group">
-        <label class="form-label">Number of Participants</label>
-        <input type="number" id="sess-participants" class="form-control" min="1" step="1" placeholder="e.g. 25">
-        <div class="form-hint">Required once the session is marked Completed.</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Session Duration (hh:mm)</label>
-        <input type="text" id="sess-duration" class="form-control" placeholder="e.g. 02:30" pattern="^\d{1,3}:[0-5]\d$">
-        <div class="form-hint">Required once the session is marked Completed.</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Status <span class="req">*</span></label>
-        <select id="sess-status" class="form-control">
-          <option value="scheduled">Scheduled</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Number of Participants</label>
+          <input type="number" id="sess-participants" class="form-control" min="1" step="1" placeholder="e.g. 25">
+          <div class="form-hint">Required if Completed.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Session Duration (hh:mm)</label>
+          <input type="text" id="sess-duration" class="form-control" placeholder="e.g. 02:30" pattern="^\d{1,3}:[0-5]\d$">
+          <div class="form-hint">Required if Completed.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status <span class="req">*</span></label>
+          <select id="sess-status" class="form-control">
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
       </div>
       <div class="modal-err hidden" id="sess-error"></div>
     </div>
