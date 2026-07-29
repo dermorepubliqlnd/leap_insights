@@ -2244,6 +2244,13 @@ const Sel = {
     const saved=await this._write(k,id,{isActive:!item.isActive});
     if(typeof AuditLog!=='undefined') await AuditLog.record('status_change',_selModuleLabel(k),id,`${saved.isActive?'Activated':'Deactivated'} ${_selModuleLabel(k).toLowerCase()} "${saved.name}"`);
     return saved;
+  },
+  async remove(k,id){
+    const item=this.byId(k,id);
+    const {error}=await sb.from(k).delete().eq('id',id);
+    if(error){ _surfaceDbError(error,'Delete item'); throw error; }
+    Cache.data[k]=Cache.data[k].filter(i=>i.id!==id);
+    if(typeof AuditLog!=='undefined'&&item) await AuditLog.record('delete',_selModuleLabel(k),id,`Deleted ${_selModuleLabel(k).toLowerCase()} "${item.name}"`);
   }
 };
 
@@ -4060,11 +4067,12 @@ function deleteSel(key,id){
     confirm$('Cannot Delete',`<strong>${Utils.esc(item.name)}</strong> is used in <strong>${refs} existing record${refs!==1?'s':''}</strong>. Deleting it would break those records.<br><br>To stop it appearing in new forms, <strong>Deactivate</strong> it instead.`,'OK',()=>{},true);
     return;
   }
-  confirm$('Delete Item',`Permanently delete <strong>${Utils.esc(item.name)}</strong>? This cannot be undone.`,'Delete',()=>{
-    const all=Sel.all(key).filter(i=>i.id!==id);
-    Store.set(key,all);
-    toast(`${item.name} deleted.`,'info');
-    renderSettings();
+  confirm$('Delete Item',`Permanently delete <strong>${Utils.esc(item.name)}</strong>? This cannot be undone.`,'Delete',async()=>{
+    try{
+      await Sel.remove(key,id);
+      toast(`${item.name} deleted.`,'info');
+      renderSettings();
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
