@@ -4152,7 +4152,7 @@ function openEditSel(key,id){
   document.getElementById('ms-save').onclick=saveSel; openModal('sel');
 }
 
-function saveSel(){
+async function saveSel(){
   const key=document.getElementById('ms-type').value, id=document.getElementById('ms-id').value;
   const name=document.getElementById('ms-name').value.trim();
   const tab=STABS.find(t=>t.key===key);
@@ -4163,29 +4163,37 @@ function saveSel(){
   const data={name};
   const tab2=STABS.find(t=>t.key===key);
   if(tab2?.isDeliv){data.isID=document.getElementById('ms-deliv-id').checked;data.isCD=document.getElementById('ms-deliv-cd').checked;}
-  if(!id) Sel.add(key,data); else Sel.update(key,id,data);
-  toast(`${name} ${id?'updated':'added'}.`,'success'); closeModal('sel'); renderSettings();
+  const saveBtn=document.getElementById('ms-save'); const origTxt=saveBtn?saveBtn.textContent:'';
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+  try{
+    if(!id) await Sel.add(key,data); else await Sel.update(key,id,data);
+    toast(`${name} ${id?'updated':'added'}.`,'success'); closeModal('sel'); renderSettings();
+  }catch(e){ /* error already surfaced */ }
+  finally{ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} }
 }
 
 function toggleSel(key,id){
   const item=Sel.byId(key,id); if(!item) return;
-  confirm$(`${item.isActive?'Deactivate':'Activate'} Item`,`${item.isActive?'Deactivate':'Activate'} <strong>${Utils.esc(item.name)}</strong>?`,'Confirm',()=>{Sel.toggle(key,id);renderSettings();});
+  confirm$(`${item.isActive?'Deactivate':'Activate'} Item`,`${item.isActive?'Deactivate':'Activate'} <strong>${Utils.esc(item.name)}</strong>?`,'Confirm',async()=>{
+    try{ await Sel.toggle(key,id); renderSettings(); }catch(e){ /* error already surfaced */ }
+  });
 }
 
 
 /* ── DATA & BACKUP ──────────────────── */
+// Data now lives in Supabase (source of truth), not localStorage. This list drives a
+// read-only JSON export of whatever is currently in the in-memory Cache — useful as a manual
+// point-in-time snapshot, but no longer the app's actual persistence mechanism.
 const BACKUP_STORE_KEYS=[
-  Store.USERS, Store.EVALS, Store.CQA, 'leap_idqa_v1',
-  Store.DELIVERABLES, Store.POS, Store.VENUES, Store.MODALS,
-  Store.TRSESSIONS, Store.AUDIT
+  'profiles','evaluations','cdqa_reviews','idqa_reviews',
+  'deliverables','positions','venues','modalities',
+  'training_sessions','audit_log'
 ];
 
 function _buildBackupPayload(){
   const data={};
-  const keys=[...BACKUP_STORE_KEYS];
-  for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')) keys.push(k); }
-  keys.forEach(k=>{ const v=Store.get(k); if(v!==null) data[k]=v; });
-  return {exportedAt:new Date().toISOString(), storeVersion:STORE_VER, data};
+  BACKUP_STORE_KEYS.forEach(k=>{ data[k]=Cache.data[k]||[]; });
+  return {exportedAt:new Date().toISOString(), storeVersion:STORE_VER, source:'supabase', data};
 }
 
 function _downloadBackup(){
@@ -4199,20 +4207,13 @@ function _downloadBackup(){
 }
 
 function _restoreFromFile(file){
+  // Restoring used to mean "overwrite these localStorage keys" — that doesn't apply anymore
+  // since Supabase is the source of truth. Bulk-restoring a JSON export back into Supabase
+  // safely (respecting RLS, foreign keys, and without clobbering newer data) needs a proper
+  // admin tool/Edge Function, not a client-side overwrite. Stubbed rather than silently
+  // corrupting data.
   if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const payload=JSON.parse(e.target.result);
-      if(!payload.data||typeof payload.data!=='object') throw new Error('Invalid backup file format.');
-      confirm$('Restore from Backup','<strong>Warning:</strong> This will overwrite all current app data with the selected backup. This cannot be undone.<br><br>Continue?','Restore',()=>{
-        Object.entries(payload.data).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));
-        toast('Data restored. Reloading...','success');
-        setTimeout(()=>location.reload(),1500);
-      });
-    }catch(err){ toast('Could not read backup file: '+err.message,'error'); }
-  };
-  reader.readAsText(file);
+  toast('Restoring from a backup file is temporarily unavailable during the Supabase migration. Contact IT if you need to restore data — it must be done directly against the Supabase database.','warning');
 }
 
 /* --- Option 2: OneDrive via Microsoft Graph API --- */
@@ -4277,17 +4278,26 @@ function _scheduleAutoBackup(){
   _autoBackupTimer=setTimeout(()=>backupToOneDrive(false),10000);
 }
 
-function _clearEvalData(){
+async function _clearEvalData(){
   confirm$('Clear All Evaluation Data',
-    '<strong style="color:#b91c1c">This will permanently delete all Trainer Evaluations, ID QA, and Content Dev QA records from this browser.</strong><br><br>User accounts and settings lists are not affected. This cannot be undone — export a backup first if needed.',
+    '<strong style="color:#b91c1c">This will permanently delete all Trainer Evaluations, ID QA, and Content Dev QA records from Supabase.</strong><br><br>User accounts and settings lists are not affected. This cannot be undone — export a backup first if needed.',
     'Clear All Evaluations',
-    ()=>{
-      ['leap_evals_v1','leap_cqa_v1','leap_idqa_v1'].forEach(k=>Store.del(k));
-      const toRemove=[];
-      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')) toRemove.push(k); }
-      toRemove.forEach(k=>localStorage.removeItem(k));
-      toast('All evaluation data cleared.','success');
-      _refreshBackupPane();
+    async()=>{
+      try{
+        const results=await Promise.all([
+          sb.from('evaluations').delete().not('id','is',null),
+          sb.from('cdqa_reviews').delete().not('id','is',null),
+          sb.from('idqa_reviews').delete().not('id','is',null)
+        ]);
+        const err=results.find(r=>r.error);
+        if(err) throw err.error;
+        Cache.data.evaluations=[]; Cache.data.cdqa_reviews=[]; Cache.data.idqa_reviews=[];
+        const toRemove=[];
+        for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')) toRemove.push(k); }
+        toRemove.forEach(k=>localStorage.removeItem(k));
+        toast('All evaluation data cleared.','success');
+        _refreshBackupPane();
+      }catch(e){ _surfaceDbError(e,'Clear evaluation data'); }
     }
   );
 }
@@ -4348,21 +4358,23 @@ function _scanOrphans(){
     <button class="btn btn-primary" style="margin-top:14px" onclick="_saveOrphanRepairs()">&#10003;&nbsp; Save Reassignments</button>`;
 }
 
-function _saveOrphanRepairs(){
-  const selects=document.querySelectorAll('#orphan-results select');
-  let saved=0,skipped=0;
-  selects.forEach(sel=>{
-    if(!sel.value){skipped++;return;}
-    const {rec,type,key}=sel.dataset;
-    const patch={[key]:sel.value};
-    if(type==='Trainer Eval') EvalDB.update(rec,patch);
-    else if(type==='ID QA') IDQADB.update(rec,patch);
-    else if(type==='CD QA') ContentQADB.update(rec,patch);
-    saved++;
-  });
-  if(saved===0){toast('Please select a user for at least one field.','error');return;}
-  toast(`${saved} field${saved!==1?'s':''} updated successfully.`,'success');
-  _scanOrphans();
+async function _saveOrphanRepairs(){
+  const selects=Array.from(document.querySelectorAll('#orphan-results select')).filter(sel=>sel.value);
+  if(!selects.length){toast('Please select a user for at least one field.','error');return;}
+  let saved=0;
+  try{
+    await Promise.all(selects.map(sel=>{
+      const {rec,type,key}=sel.dataset;
+      const patch={[key]:sel.value};
+      saved++;
+      if(type==='Trainer Eval') return EvalDB.update(rec,patch);
+      if(type==='ID QA') return IDQADB.update(rec,patch);
+      if(type==='CD QA') return ContentQADB.update(rec,patch);
+      return Promise.resolve();
+    }));
+    toast(`${saved} field${saved!==1?'s':''} updated successfully.`,'success');
+    _scanOrphans();
+  }catch(e){ /* error already surfaced by the underlying .update() call */ }
 }
 
 function _refreshBackupPane(){
@@ -4433,24 +4445,47 @@ function renderBackupPane(){
 }
 
 /* ── EVAL DB ──────────────────────── */
-const EvalDB={
-  all()    { return Store.get(Store.EVALS)||[]; },
-  save(v)  { Store.set(Store.EVALS,v); },
-  byId(id) { return this.all().find(e=>e.id===id)||null; },
-  create(d){ const e={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(e); this.save(a); AuditLog.record('create','Trainer Evaluation',e.id,`Created evaluation ${e.code||e.id}`); return e; },
-  update(id,p){ const a=this.all(),i=a.findIndex(e=>e.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','Trainer Evaluation',id,p.status?`Status changed to ${p.status} on ${a[i].code||id}`:`Updated evaluation ${a[i].code||id}`); return a[i]; },
-  delete(id)  { const rec=this.byId(id); const a=this.all().filter(e=>e.id!==id); this.save(a); AuditLog.record('delete','Trainer Evaluation',id,`Deleted evaluation ${rec?.code||id}`); }
-};
+// Generic async CRUD factory for the "record" tables (evaluations / idqa_reviews /
+// cdqa_reviews / training_sessions), which all shared the exact same localStorage-array
+// pattern before. Reads stay synchronous against Cache.data[table]; writes are async, hit
+// Supabase first, and only patch the cache (and write an audit-log entry) on success.
+function _makeRecordDB(table, moduleLabel, labelOf){
+  return {
+    all()    { return Cache.data[table].slice(); },
+    byId(id) { return this.all().find(r=>r.id===id)||null; },
+    async create(d){
+      const row={ id:Utils.uid(), ...d };
+      const dbRow=patchToSnake(table,row);
+      const {data,error}=await sb.from(table).insert(dbRow).select().single();
+      if(error){ _surfaceDbError(error,`Create ${moduleLabel.toLowerCase()}`); throw error; }
+      const saved=rowToCamel(table,data);
+      Cache.data[table].push(saved);
+      await AuditLog.record('create',moduleLabel,saved.id,`Created ${moduleLabel.toLowerCase()} ${labelOf(saved)}`);
+      return saved;
+    },
+    async update(id,p){
+      const dbRow=patchToSnake(table,p);
+      const {data,error}=await sb.from(table).update(dbRow).eq('id',id).select().single();
+      if(error){ _surfaceDbError(error,`Update ${moduleLabel.toLowerCase()}`); throw error; }
+      const saved=rowToCamel(table,data);
+      const a=Cache.data[table], i=a.findIndex(r=>r.id===id); if(i>=0) a[i]=saved; else a.push(saved);
+      await AuditLog.record(p.status?'status_change':'update',moduleLabel,id,p.status?`Status changed to ${p.status} on ${labelOf(saved)}`:`Updated ${moduleLabel.toLowerCase()} ${labelOf(saved)}`);
+      return saved;
+    },
+    async delete(id){
+      const rec=this.byId(id);
+      const {error}=await sb.from(table).delete().eq('id',id);
+      if(error){ _surfaceDbError(error,`Delete ${moduleLabel.toLowerCase()}`); throw error; }
+      Cache.data[table]=Cache.data[table].filter(r=>r.id!==id);
+      await AuditLog.record('delete',moduleLabel,id,`Deleted ${moduleLabel.toLowerCase()} ${labelOf(rec)}`);
+    }
+  };
+}
+
+const EvalDB=_makeRecordDB('evaluations','Trainer Evaluation',r=>r?.code||r?.id||'');
 
 /* ── TRAINING SESSIONS ────────────── */
-const TrSessionDB={
-  all()    { return Store.get(Store.TRSESSIONS)||[]; },
-  save(v)  { Store.set(Store.TRSESSIONS,v); },
-  byId(id) { return this.all().find(s=>s.id===id)||null; },
-  create(d){ const s={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(s); this.save(a); AuditLog.record('create','Training Session',s.id,`Logged session "${s.trainingProgram||s.id}"`); return s; },
-  update(id,p){ const a=this.all(),i=a.findIndex(s=>s.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','Training Session',id,p.status?`Status changed to ${p.status} on "${a[i].trainingProgram||id}"`:`Updated session "${a[i].trainingProgram||id}"`); return a[i]; },
-  delete(id)  { const rec=this.byId(id); const a=this.all().filter(s=>s.id!==id); this.save(a); AuditLog.record('delete','Training Session',id,`Deleted session "${rec?.trainingProgram||id}"`); }
-};
+const TrSessionDB=_makeRecordDB('training_sessions','Training Session',r=>`"${r?.trainingProgram||r?.id||''}"`);
 function _durationToMinutes(str){
   if(!str) return -1;
   const m=String(str).match(/^(\d{1,3}):([0-5]\d)$/);
@@ -4463,22 +4498,31 @@ function _sessionStatusBadge(status){
   return '<span class="badge" style="background:#fef9c3;color:#a16207">Scheduled</span>';
 }
 
-/* ── AUDIT LOG ────────────────────── */
+/* ── AUDIT LOG (Supabase `audit_log` table — id/ts are DB-generated; actorName is not a
+   column, so it is computed at read-time by joining against Cache.data.profiles) ─────────── */
 const AuditLog={
-  all(){ return Store.get(Store.AUDIT)||[]; },
-  save(v){ Store.set(Store.AUDIT,v); },
-  record(action,module,entityId,summary){
+  all(){
+    const users=Cache.data.profiles;
+    return Cache.data.audit_log.map(e=>{
+      const u=users.find(p=>p.id===e.actorId);
+      return {...e, actorName:u?`${u.firstName} ${u.lastName}`:(e.actorId?'Unknown user':'System')};
+    });
+  },
+  async record(action,module,entityId,summary){
     const me=(typeof Auth!=='undefined'&&Auth.user)?Auth.user:null;
-    const entry={
-      id:Utils.uid(),
-      ts:new Date().toISOString(),
-      actorId:me?me.id:null,
-      actorName:me?`${me.firstName} ${me.lastName}`:'System',
-      action, module, entityId:entityId||null,
-      summary:summary||''
-    };
-    const a=this.all(); a.push(entry); this.save(a);
-    return entry;
+    const row={ ts:new Date().toISOString(), actorId:me?me.id:null, action, module, entityId:entityId||null, summary:summary||'' };
+    const dbRow=patchToSnake('audit_log',row);
+    try{
+      const {data,error}=await sb.from('audit_log').insert(dbRow).select().single();
+      if(error) throw error;
+      const saved=rowToCamel('audit_log',data);
+      Cache.data.audit_log.push(saved);
+      return saved;
+    }catch(e){
+      // Non-fatal: don't let an audit-log write failure block the underlying user action.
+      console.warn('Audit log insert failed:',e.message||e);
+      return null;
+    }
   }
 };
 function _selModuleLabel(k){
@@ -7164,14 +7208,7 @@ const IDA_CRITERIA=[
 const IDA_GROUP_COLORS={'Learning Design Quality':'#2563eb','Content Accuracy & Sourcing':'#0891b2','Writing Quality':'#7c3aed','Deliverable Completeness':'#d97706'};
 
 /* ── DATA LAYER ───────────────────── */
-const IDQADB={
-  all(){ return Store.get('leap_idqa_v1')||[]; },
-  save(v){ Store.set('leap_idqa_v1',v); },
-  byId(id){ return this.all().find(r=>r.id===id)||null; },
-  create(d){ const r={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(r); this.save(a); AuditLog.record('create','ID QA',r.id,`Created review ${r.code||r.id}`); return r; },
-  update(id,p){ const a=this.all(),i=a.findIndex(r=>r.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','ID QA',id,p.status?`Status changed to ${p.status} on ${a[i].code||id}`:`Updated review ${a[i].code||id}`); return a[i]; },
-  delete(id){ const rec=this.byId(id); this.save(this.all().filter(r=>r.id!==id)); AuditLog.record('delete','ID QA',id,`Deleted review ${rec?.code||id}`); }
-};
+const IDQADB=_makeRecordDB('idqa_reviews','ID QA',r=>r?.code||r?.id||'');
 
 /* ── MODULE STATE ─────────────────── */
 let _idqaId=null, _idqaReadOnly=false;
@@ -8083,14 +8120,7 @@ function _buildCQAGroups(contentType){
 }
 
 /* ── DATA LAYER ───────────────────── */
-const ContentQADB={
-  all(){ return Store.get(Store.CQA)||[]; },
-  save(v){ Store.set(Store.CQA,v); },
-  byId(id){ return this.all().find(r=>r.id===id)||null; },
-  create(d){ const r={id:Utils.uid(),...d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}; const a=this.all(); a.push(r); this.save(a); AuditLog.record('create','CD QA',r.id,`Created review ${r.code||r.id}`); return r; },
-  update(id,p){ const a=this.all(),i=a.findIndex(r=>r.id===id); if(i<0)return null; a[i]={...a[i],...p,updatedAt:new Date().toISOString()}; this.save(a); AuditLog.record(p.status?'status_change':'update','CD QA',id,p.status?`Status changed to ${p.status} on ${a[i].code||id}`:`Updated review ${a[i].code||id}`); return a[i]; },
-  delete(id){ const rec=this.byId(id); this.save(this.all().filter(r=>r.id!==id)); AuditLog.record('delete','CD QA',id,`Deleted review ${rec?.code||id}`); }
-};
+const ContentQADB=_makeRecordDB('cdqa_reviews','CD QA',r=>r?.code||r?.id||'');
 
 /* ── MODULE STATE ─────────────────── */
 let _cqaId=null, _cqaReadOnly=false, _cqaTab='my';
