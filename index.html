@@ -2022,6 +2022,51 @@
   </div>
 </div>
 
+<!-- ══ MODAL: TEMP PASSWORD REVEAL ═════════════ -->
+<div id="modal-pw-reveal" class="modal-overlay" onclick="if(event.target===this)closeModal('pw-reveal')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title" id="pwr-title">Temporary Password</span>
+      <button class="modal-close" onclick="closeModal('pw-reveal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="pwr-name" style="font-size:14px;color:var(--text2);line-height:1.65"></p>
+      <div class="form-group" style="margin-top:10px">
+        <label class="form-label">Temporary Password</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="pwr-value" class="form-control txt-mono" readonly style="font-size:15px;letter-spacing:.5px" onclick="this.select()">
+          <button class="btn btn-secondary btn-sm" onclick="_copyPwReveal()">Copy</button>
+        </div>
+      </div>
+      <p style="font-size:12.5px;color:var(--text3);line-height:1.6;margin-top:10px">Share this password with the user directly. They'll be asked to set their own password on next login.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="closeModal('pw-reveal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: BULK USER IMPORT RESULTS ═════════════ -->
+<div id="modal-import-results" class="modal-overlay" onclick="if(event.target===this)closeModal('import-results')">
+  <div class="modal modal-lg">
+    <div class="modal-hdr">
+      <span class="modal-title">Import Results</span>
+      <button class="modal-close" onclick="closeModal('import-results')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13.5px;color:var(--text2);margin-bottom:12px">New accounts were created with random temporary passwords. Download the list below to securely distribute credentials — this password list will not be shown again.</p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Name</th><th>Email</th><th>Password / Error</th></tr></thead>
+        <tbody id="import-results-tbody"></tbody>
+      </table></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('import-results')">Close</button>
+      <button class="btn btn-primary" id="import-results-dl-btn" onclick="_downloadImportResultsCSV()">⬇ Download as CSV</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: PDF PREVIEW ═════════════ -->
 <div id="modal-pdf-preview" class="modal-overlay" onclick="if(event.target===this)closeModal('pdf-preview')">
   <div class="modal" style="width:min(800px,96vw);max-height:92vh;display:flex;flex-direction:column">
@@ -2294,11 +2339,26 @@ const DB = {
 
   // Creating a brand-new user requires a Supabase Auth account to exist first (profiles.id is
   // a foreign key to auth.users.id), which the anon/public API key used by this client cannot
-  // do. This must go through a Supabase Edge Function using the service-role key, or an admin
-  // creating the account directly in the Supabase dashboard (Authentication > Users), followed
-  // by inserting the matching profiles row. Left as a stub — see callers (saveUser, importCSV).
-  async create(){
-    throw new Error('Creating new users from the app is not available yet. Ask IT to add the account in the Supabase dashboard (Authentication > Users), or wait for the admin Edge Function to be built.');
+  // do. This goes through the admin-user-actions Edge Function (service-role key server-side),
+  // which creates both the auth.users row and the matching profiles row and returns a random
+  // temp password. Returns {profile, password}.
+  async create(p){
+    const body={action:'create_user', email:p.email, firstName:p.firstName, lastName:p.lastName,
+      employeeId:p.employeeId, positionId:p.positionId||null, supervisorId:p.supervisorId||null,
+      hireDate:p.hireDate||null, isAdmin:!!p.isAdmin, isReportsViewer:!!p.isReportsViewer,
+      formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA, dashScope:p.dashScope};
+    const {data,error}=await sb.functions.invoke('admin-user-actions',{body});
+    if(error){ _surfaceDbError(error,'Create user'); throw error; }
+    if(data?.error){ const e=new Error(data.error); _surfaceDbError(e,'Create user'); throw e; }
+    const now=new Date().toISOString();
+    const profile={ id:data.id, email:p.email, firstName:p.firstName, lastName:p.lastName,
+      employeeId:p.employeeId||'', positionId:p.positionId||'', supervisorId:p.supervisorId||'',
+      hireDate:p.hireDate||'', isAdmin:!!p.isAdmin, isReportsViewer:!!p.isReportsViewer,
+      formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA, dashScope:p.dashScope,
+      isActive:true, mustChangePassword:true, createdAt:now, updatedAt:now };
+    Cache.data.profiles.push(profile);
+    if(typeof AuditLog!=='undefined') await AuditLog.record('create','User',profile.id,`Added user "${profile.firstName} ${profile.lastName}"`);
+    return {profile, password:data.password};
   },
 
   async update(id,patch){
@@ -3794,14 +3854,31 @@ function openEditUser(id){
 function resetUserPassword(){
   const id=document.getElementById('mu-id').value; if(!id) return;
   const u=DB.byId(id); if(!u) return;
-  confirm$('Reset Password',`Send a password reset email to <strong>${Utils.esc(u.firstName+' '+u.lastName)}</strong> (<em>${Utils.esc(u.email)}</em>)?`,'Send Reset Email',async()=>{
+  confirm$('Reset Password',`Reset the password for <strong>${Utils.esc(u.firstName+' '+u.lastName)}</strong> (<em>${Utils.esc(u.email)}</em>)? A random temporary password will be generated.`,'Reset Password',async()=>{
     try{
-      const {error}=await sb.auth.resetPasswordForEmail(u.email);
+      const {data,error}=await sb.functions.invoke('admin-user-actions',{body:{action:'reset_password',userId:id}});
       if(error) throw error;
-      toast(`Password reset email sent to ${u.email}.`,'success');
-    }catch(e){ _surfaceDbError(e,'Send reset email'); }
-    closeModal('user'); renderUsers();
+      if(data?.error) throw new Error(data.error);
+      const i=Cache.data.profiles.findIndex(p=>p.id===id);
+      if(i>=0) Cache.data.profiles[i]={...Cache.data.profiles[i], mustChangePassword:true};
+      if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','User',id,`Reset password for ${u.firstName} ${u.lastName}`);
+      closeModal('user'); renderUsers();
+      _showPwReveal(`${u.firstName} ${u.lastName}`,data.password);
+    }catch(e){ _surfaceDbError(e,'Reset password'); }
   });
+}
+
+function _showPwReveal(name,password){
+  document.getElementById('pwr-title').textContent='Temporary Password';
+  document.getElementById('pwr-name').innerHTML=`New temporary password for <strong>${Utils.esc(name)}</strong>:`;
+  document.getElementById('pwr-value').value=password;
+  openModal('pw-reveal');
+}
+async function _copyPwReveal(){
+  const el=document.getElementById('pwr-value');
+  el.select();
+  try{ await navigator.clipboard.writeText(el.value); toast('Copied to clipboard.','success'); }
+  catch(e){ /* clipboard API unavailable — text is selected for manual Ctrl+C */ }
 }
 
 async function clearPendingReset(){
@@ -3838,11 +3915,19 @@ async function saveUser(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('Please enter a valid email address.');
   const isNew=!id;
   if(isNew){
-    // New-user creation needs a Supabase Auth account first (profiles.id references
-    // auth.users.id). The anon-key client can't create arbitrary auth users — this requires
-    // a service-role Edge Function or an admin using the Supabase dashboard. Stubbed here
-    // rather than silently failing; see DB.create().
-    return showErr('Adding new users from this screen is temporarily unavailable during the Supabase migration. Ask IT to create the account in the Supabase dashboard (Authentication > Users + a matching profiles row), then it will appear here for editing.');
+    const dup=DB.byEmail(email); if(dup) return showErr('Another user with this email already exists.');
+    if(empId){const dup2=DB.byEmpId(empId);if(dup2) return showErr('This Employee ID is already in use.');}
+    const saveBtn=document.getElementById('mu-save'); const origTxt=saveBtn?saveBtn.textContent:'';
+    if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+    let result;
+    try{
+      result=await DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+    }catch(e){ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} return; }
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;}
+    closeModal('user'); renderUsers();
+    toast(`${fname} ${lname} added.`,'success');
+    _showPwReveal(`${fname} ${lname}`,result.password);
+    return;
   } else {
     const dup=DB.byEmail(email); if(dup&&dup.id!==id) return showErr('Another user with this email already exists.');
     if(empId){const dup2=DB.byEmpId(empId);if(dup2&&dup2.id!==id) return showErr('This Employee ID is already in use.');}
@@ -3972,13 +4057,43 @@ function renderCSVPreview(rows){
   else importBtn.classList.add('hidden');
 }
 
-function importCSV(){
-  // Bulk user creation is temporarily unavailable: each row needs a Supabase Auth account
-  // created first (profiles.id references auth.users.id), which the anon-key client used by
-  // this app cannot do. This needs a service-role Edge Function (recommended for bulk import)
-  // or manual creation per-user in the Supabase dashboard. Stubbed rather than silently
-  // failing — see DB.create().
-  toast('Bulk CSV import is temporarily unavailable during the Supabase migration. New user accounts must be created via the Supabase dashboard (or a future admin import tool) until then.','warning');
+let _importResults=[];
+async function importCSV(){
+  const rows=_csvRows.filter(r=>r.status==='ok'||r.status==='warn');
+  if(!rows.length){ toast('No importable rows found.','info'); return; }
+  const importBtn=document.getElementById('csv-import-btn'); const origTxt=importBtn?importBtn.textContent:'';
+  if(importBtn){importBtn.disabled=true;importBtn.textContent='Importing…';}
+  const results=[];
+  for(const row of rows){
+    try{
+      const {profile,password}=await DB.create({employeeId:row.employeeId,firstName:row.firstName,lastName:row.lastName,email:row.email,positionId:row.positionId,supervisorId:row.supervisorId,hireDate:row.hireDate,isAdmin:row.isAdmin,isReportsViewer:false,formTrainer:row.formTrainer,formIDQA:row.formIDQA,formCQA:row.formCQA,dashScope:'team'});
+      results.push({name:`${profile.firstName} ${profile.lastName}`,email:profile.email,password,error:null});
+    }catch(e){
+      results.push({name:`${row.firstName} ${row.lastName}`,email:row.email,password:null,error:e.message||'Failed to create user'});
+    }
+  }
+  if(importBtn){importBtn.disabled=false;importBtn.textContent=origTxt;}
+  _importResults=results;
+  renderUsers();
+  closeModal('csv');
+  _showImportResults(results);
+}
+
+function _showImportResults(results){
+  const tbody=document.getElementById('import-results-tbody');
+  tbody.innerHTML=results.map(r=>`<tr><td>${Utils.esc(r.name)}</td><td style="font-size:12px">${Utils.esc(r.email)}</td><td>${r.error?`<span style="color:#dc2626">${Utils.esc(r.error)}</span>`:`<span class="txt-mono">${Utils.esc(r.password)}</span>`}</td></tr>`).join('');
+  openModal('import-results');
+}
+
+function _downloadImportResultsCSV(){
+  if(!_importResults.length){ toast('No results to export.','info'); return; }
+  const esc=v=>{const s=String(v==null?'':v).replace(/"/g,'""');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s}"`:s;};
+  const headers=['Name','Email','Temporary Password','Error'];
+  const rows=[headers.map(esc).join(',')];
+  _importResults.forEach(r=>{ rows.push([r.name,r.email,r.password||'',r.error||''].map(esc).join(',')); });
+  const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`LEAP_UserImport_Passwords_${new Date().toISOString().slice(0,10)}.csv`; a.click();
 }
 
 /* ── CHANGE PASSWORD ──────────────── */
