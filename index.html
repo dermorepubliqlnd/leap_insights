@@ -2051,9 +2051,7 @@ const STORE_VER    = 'v3';
 
 /* ── SUPABASE CLIENT ─────────────────────────────────────────────────────────────────────── */
 const SUPABASE_URL = 'https://catvpurbyvsnijxpzwoh.supabase.co';
-// !!! PLACEHOLDER — a human must paste the real anon/public key here before this branch will run.
-// Find it in the Supabase dashboard: Project Settings > API > Project API keys > anon/public.
-const SUPABASE_ANON_KEY = 'REPLACE_WITH_ANON_KEY_FROM_SUPABASE_DASHBOARD_SETTINGS_API';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhdHZwdXJieXZzbmlqeHB6d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MDM5ODgsImV4cCI6MjEwMDE3OTk4OH0.PQVc0ku3jnb3Z87SUPaP37_20pOZIfpXvQDjnAeHvbc';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ── FIELD MAPPING HELPERS (snake_case columns <-> camelCase app objects) ─────────────────── */
