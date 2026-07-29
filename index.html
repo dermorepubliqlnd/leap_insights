@@ -3782,23 +3782,28 @@ function openEditUser(id){
 function resetUserPassword(){
   const id=document.getElementById('mu-id').value; if(!id) return;
   const u=DB.byId(id); if(!u) return;
-  confirm$('Reset Password',`Send a password reset email to <strong>${Utils.esc(u.firstName+' '+u.lastName)}</strong> (<em>${Utils.esc(u.email)}</em>)?`,'Send Reset Email',()=>{
-    _fbAuth.sendPasswordResetEmail(u.email).catch(e=>console.warn('Reset email:',e));
-    toast(`Password reset email sent to ${u.email}.`,'success');
+  confirm$('Reset Password',`Send a password reset email to <strong>${Utils.esc(u.firstName+' '+u.lastName)}</strong> (<em>${Utils.esc(u.email)}</em>)?`,'Send Reset Email',async()=>{
+    try{
+      const {error}=await sb.auth.resetPasswordForEmail(u.email);
+      if(error) throw error;
+      toast(`Password reset email sent to ${u.email}.`,'success');
+    }catch(e){ _surfaceDbError(e,'Send reset email'); }
     closeModal('user'); renderUsers();
   });
 }
 
-function clearPendingReset(){
+async function clearPendingReset(){
   const id=document.getElementById('mu-id').value; if(!id) return;
   const u=DB.byId(id); if(!u) return;
-  DB.update(id,{mustChangePassword:false});
-  document.getElementById('mu-pending-reset-row').classList.add('hidden');
-  toast(`Password reset flag cleared for ${Utils.esc(u.firstName+' '+u.lastName)}.`,'success');
-  renderUsers();
+  try{
+    await DB.update(id,{mustChangePassword:false});
+    document.getElementById('mu-pending-reset-row').classList.add('hidden');
+    toast(`Password reset flag cleared for ${Utils.esc(u.firstName+' '+u.lastName)}.`,'success');
+    renderUsers();
+  }catch(e){ /* error already surfaced by DB.update */ }
 }
 
-function saveUser(){
+async function saveUser(){
   const id=document.getElementById('mu-id').value;
   const empId=document.getElementById('mu-empid').value.trim();
   const fname=document.getElementById('mu-fname').value.trim();
@@ -3821,31 +3826,36 @@ function saveUser(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('Please enter a valid email address.');
   const isNew=!id;
   if(isNew){
-    if(DB.byEmail(email)) return showErr('A user with this email already exists.');
-    if(empId&&DB.byEmpId(empId)) return showErr('This Employee ID is already in use.');
-    DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
-    _createFirebaseUser(email, Utils.genTempPassword());
-    _fbAuth.sendPasswordResetEmail(email).catch(e=>console.warn('Reset email:',e));
-    toast(`${fname} ${lname} added. A password setup email has been sent to ${email}.`,'success');
+    // New-user creation needs a Supabase Auth account first (profiles.id references
+    // auth.users.id). The anon-key client can't create arbitrary auth users — this requires
+    // a service-role Edge Function or an admin using the Supabase dashboard. Stubbed here
+    // rather than silently failing; see DB.create().
+    return showErr('Adding new users from this screen is temporarily unavailable during the Supabase migration. Ask IT to create the account in the Supabase dashboard (Authentication > Users + a matching profiles row), then it will appear here for editing.');
   } else {
     const dup=DB.byEmail(email); if(dup&&dup.id!==id) return showErr('Another user with this email already exists.');
     if(empId){const dup2=DB.byEmpId(empId);if(dup2&&dup2.id!==id) return showErr('This Employee ID is already in use.');}
     const ex=DB.byId(id);
     if(ex.isAdmin&&!isAdmin&&DB.adminCount()<=1) return showErr('Cannot remove Admin from the last administrator.');
     if(ex.isAdmin&&!isActive&&DB.adminCount()<=1) return showErr('Cannot deactivate the last administrator.');
-    DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
-    if(id===Auth.user.id){Auth.refresh();setupNav();}
-    toast(`${fname} ${lname} updated.`,'success');
+    const saveBtn=document.getElementById('mu-save'); const origTxt=saveBtn?saveBtn.textContent:'';
+    if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+    try{
+      await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+      if(id===Auth.user.id){Auth.refresh();setupNav();}
+      toast(`${fname} ${lname} updated.`,'success');
+    }catch(e){ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} return; }
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;}
   }
   closeModal('user'); renderUsers();
 }
 
-function confirmToggleActive(id,makeActive){
+async function confirmToggleActive(id,makeActive){
   const u=DB.byId(id); if(!u) return;
   const name=`${u.firstName} ${u.lastName}`;
   if(!makeActive&&u.isAdmin&&DB.adminCount()<=1){toast('Cannot deactivate the last administrator.','error');return;}
-  confirm$(makeActive?'Activate User':'Deactivate User',makeActive?`Activate <strong>${Utils.esc(name)}</strong>? They will be able to log in again.`:`Deactivate <strong>${Utils.esc(name)}</strong>? They will no longer be able to log in.`,makeActive?'Activate':'Deactivate',()=>{
-    DB.update(id,{isActive:makeActive}); toast(`${name} ${makeActive?'activated':'deactivated'}.`,'info'); renderUsers();
+  confirm$(makeActive?'Activate User':'Deactivate User',makeActive?`Activate <strong>${Utils.esc(name)}</strong>? They will be able to log in again.`:`Deactivate <strong>${Utils.esc(name)}</strong>? They will no longer be able to log in.`,makeActive?'Activate':'Deactivate',async()=>{
+    try{ await DB.update(id,{isActive:makeActive}); toast(`${name} ${makeActive?'activated':'deactivated'}.`,'info'); renderUsers(); }
+    catch(e){ /* error already surfaced by DB.update */ }
   });
 }
 
@@ -3951,17 +3961,12 @@ function renderCSVPreview(rows){
 }
 
 function importCSV(){
-  const toImport=_csvRows.filter(r=>r.status==='ok'||r.status==='warn');
-  let count=0;
-  toImport.forEach(r=>{
-    if(DB.byEmail(r.email)) return;
-    DB.create({employeeId:r.employeeId,firstName:r.firstName,lastName:r.lastName,email:r.email,positionId:r.positionId,supervisorId:r.supervisorId,hireDate:r.hireDate,isActive:true,isAdmin:r.isAdmin,formTrainer:r.formTrainer,formIDQA:r.formIDQA,formCQA:r.formCQA});
-    _createFirebaseUser(r.email, Utils.genTempPassword());
-    _fbAuth.sendPasswordResetEmail(r.email).catch(e=>console.warn('Reset email:',e));
-    count++;
-  });
-  toast(`${count} user${count!==1?'s':''} imported successfully.`,'success');
-  closeModal('csv'); renderUsers(); _csvRows=[];
+  // Bulk user creation is temporarily unavailable: each row needs a Supabase Auth account
+  // created first (profiles.id references auth.users.id), which the anon-key client used by
+  // this app cannot do. This needs a service-role Edge Function (recommended for bulk import)
+  // or manual creation per-user in the Supabase dashboard. Stubbed rather than silently
+  // failing — see DB.create().
+  toast('Bulk CSV import is temporarily unavailable during the Supabase migration. New user accounts must be created via the Supabase dashboard (or a future admin import tool) until then.','warning');
 }
 
 /* ── CHANGE PASSWORD ──────────────── */
@@ -3973,24 +3978,24 @@ function openChangePassModal(){
 }
 
 async function saveChangePassword(){
-  const current=document.getElementById('mcp-current').value;
+  // NOTE (Phase 3 UX simplification): Supabase Auth's updateUser() does not require
+  // re-entering the current password the way Firebase's reauthenticateWithCredential did.
+  // The "Current Password" field is kept in the UI for now but is no longer verified here —
+  // a stronger flow (e.g. forcing recent re-login) can be added later if needed.
   const newPw=document.getElementById('mcp-new').value;
   const confirm=document.getElementById('mcp-confirm').value;
   const errEl=document.getElementById('mcp-error');
   const showErr=m=>{errEl.textContent=m;errEl.style.display='block';};
   errEl.style.display='none';
-  if(!current) return showErr('Current password is required.');
   if(!newPw||newPw.length<8) return showErr('New password must be at least 8 characters.');
   if(newPw!==confirm) return showErr('Passwords do not match.');
   try{
-    const fbUser=_fbAuth.currentUser;
-    if(fbUser){ const cred=firebase.auth.EmailAuthProvider.credential(fbUser.email,current); await fbUser.reauthenticateWithCredential(cred); await fbUser.updatePassword(newPw); }
-    DB.update(Auth.user.id,{mustChangePassword:false});
-    try{ await _fbDb.collection(FireSync._col).doc(Store.USERS).set({payload:JSON.stringify(DB.all())}); }
-    catch(fe){ console.warn('Firestore sync after password change:',fe); }
+    const {error}=await sb.auth.updateUser({password:newPw});
+    if(error) throw error;
+    await DB.update(Auth.user.id,{mustChangePassword:false});
     Auth.refresh();
     toast('Password changed successfully.','success'); closeModal('chg-pass');
-  }catch(err){ if(err.code==='auth/wrong-password'||err.code==='auth/invalid-credential') showErr('Current password is incorrect.'); else showErr(err.message||'Password change failed.'); }
+  }catch(err){ showErr(err.message||'Password change failed.'); }
 }
 
 async function submitFirstLoginPassword(e){
@@ -4002,14 +4007,12 @@ async function submitFirstLoginPassword(e){
   if(!newPw||newPw.length<8){alertEl.textContent='Password must be at least 8 characters.';alertEl.classList.add('show');return;}
   if(newPw!==confirm){alertEl.textContent='Passwords do not match.';alertEl.classList.add('show');return;}
   try{
-    const fbUser=_fbAuth.currentUser;
-    if(fbUser) await fbUser.updatePassword(newPw);
-    DB.update(Auth.user.id,{mustChangePassword:false});
-    // Explicitly await Firestore write so mustChangePassword:false is persisted
-    // before bootApp(). Without this, a silent network failure leaves Firestore
-    // with mustChangePassword:true and the user sees this screen again next login.
-    try{ await _fbDb.collection(FireSync._col).doc(Store.USERS).set({payload:JSON.stringify(DB.all())}); }
-    catch(fe){ console.warn('Firestore sync after password set:',fe); }
+    const {error}=await sb.auth.updateUser({password:newPw});
+    if(error) throw error;
+    // Explicitly await the profiles update so mustChangePassword:false is persisted before
+    // bootApp(). Without this, a network failure could leave the flag true and the user would
+    // see this screen again next login.
+    await DB.update(Auth.user.id,{mustChangePassword:false});
     Auth.refresh();
     toast('Password set successfully. Welcome!','success'); bootApp();
   }catch(err){ alertEl.textContent=err.message||'Password change failed.'; alertEl.classList.add('show'); }
@@ -8913,10 +8916,15 @@ async function loginWithAzure(){
     const result=await inst.loginPopup({scopes:['openid','profile','email','User.Read']});
     const email=(result.account?.username||'').toLowerCase();
     if(!email){ throw new Error('Could not read email from Microsoft account.'); }
+    // NOTE: Azure SSO is not wired to Supabase Auth. Even once Azure credentials are set,
+    // this only verifies the user's Microsoft identity locally — it does NOT create an
+    // authenticated Supabase session, so any Supabase/RLS-protected read or write after this
+    // point will fail. Wiring this up properly requires configuring Azure as a Supabase Auth
+    // OIDC provider (sb.auth.signInWithOAuth) rather than using MSAL directly. Left disabled
+    // (ssoEnabled:false) pending that work.
     const u=DB.byEmail(email);
     if(!u) throw new Error('No LEAP Insights account found for '+email+'. Contact your administrator.');
     if(!u.isActive) throw new Error('Your account is inactive. Contact your administrator.');
-    Store.set(Store.SESSION,{userId:u.id,at:Date.now()});
     Auth._u=u;
     al.classList.remove('show');
     afterLogin(u);
@@ -8926,7 +8934,7 @@ async function loginWithAzure(){
   }
 }
 
-function sendForgotPassword(){
+async function sendForgotPassword(){
   const al=document.getElementById('login-alert');
   const email=document.getElementById('f-email').value.trim().toLowerCase();
   if(!email){
@@ -8934,19 +8942,15 @@ function sendForgotPassword(){
     al.textContent='Please enter your email address first, then click Forgot password.';
     return;
   }
-  _fbAuth.sendPasswordResetEmail(email)
-    .then(()=>{
-      al.style.cssText='display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
-      al.textContent='Password reset email sent to '+email+'. Check your inbox (and spam folder).';
-    })
-    .catch(err=>{
-      al.style.cssText='display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
-      if(err.code==='auth/user-not-found'){
-        al.textContent='No account found for that email address.';
-      } else {
-        al.textContent='Could not send reset email. Please try again or contact sbarlao@dermorepubliq.com.';
-      }
-    });
+  try{
+    const {error}=await sb.auth.resetPasswordForEmail(email);
+    if(error) throw error;
+    al.style.cssText='display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
+    al.textContent='Password reset email sent to '+email+'. Check your inbox (and spam folder).';
+  }catch(err){
+    al.style.cssText='display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
+    al.textContent='Could not send reset email. Please try again or contact sbarlao@dermorepubliq.com.';
+  }
 }
 
 function wireEvents(){
@@ -9014,6 +9018,7 @@ function afterLogin(user){
   bootApp();
 }
 
+let _bootHandled=false;
 function init(){
   wireEvents();
   (function(){
@@ -9023,27 +9028,26 @@ function init(){
   })();
   document.getElementById('fs-loading').style.display='flex';
   document.getElementById('fs-loading-msg').textContent='Connecting…';
-  _fbAuth.onAuthStateChanged(async fbUser=>{
-    if(fbUser){
+  // Supabase fires onAuthStateChange once immediately with the restored session (if any) on
+  // page load, then again on future sign-in/sign-out — this replaces both the old
+  // _fbAuth.onAuthStateChanged listener and the manual Store.SESSION localStorage restore.
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(_bootHandled&&event!=='SIGNED_IN'&&event!=='SIGNED_OUT') return;
+    if(session&&session.user){
       try{
         document.getElementById('fs-loading-msg').textContent='Loading data…';
-        await FireSync.loadAll(); Sel.seed(); DB.seed();
-        const u=DB.byEmail(fbUser.email.toLowerCase());
-        // Bootstrap: if Sandy's profile is missing from Firestore, auto-create so she's never locked out
-        if(!u&&fbUser.email.toLowerCase()==='sbarlao@dermorepubliq.com'){
-          const bu=DB.create({employeeId:'',firstName:'Sandra',lastName:'Barlao',email:'sbarlao@dermorepubliq.com',positionId:'',hireDate:'',isActive:true,isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,dashScope:'full'});
-          Auth._u=bu; Store.set(Store.SESSION,{userId:bu.id,at:Date.now()});
-          document.getElementById('fs-loading').style.display='none';
-          afterLogin(bu); return;
-        }
+        await Cache.loadAll();
+        const u=DB.byId(session.user.id)||DB.byEmail((session.user.email||'').toLowerCase());
         if(u&&u.isActive){
-          Auth._u=u; Store.set(Store.SESSION,{userId:u.id,at:Date.now()});
+          Auth._u=u; _bootHandled=true;
           document.getElementById('fs-loading').style.display='none';
           afterLogin(u); return;
         }
-        await _fbAuth.signOut();
-      }catch(err){ console.error('Boot error:',err); await _fbAuth.signOut().catch(()=>{}); }
+        console.warn('No active LEAP profile found for signed-in Supabase user:',session.user.email);
+        await sb.auth.signOut();
+      }catch(err){ console.error('Boot error:',err); await sb.auth.signOut().catch(()=>{}); }
     }
+    _bootHandled=true;
     document.getElementById('fs-loading').style.display='none';
     showScreen('login-screen');
   });
