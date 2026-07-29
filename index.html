@@ -711,7 +711,7 @@
 </head>
 <body>
 
-<!-- ══ FIREBASE LOADING ══════════════ -->
+<!-- ══ AUTH / DATA LOADING OVERLAY ══════════════ -->
 <div id="fs-loading" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.85);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
   <div style="width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite"></div>
   <div style="color:#fff;font-size:14px;opacity:.85" id="fs-loading-msg">Connecting…</div>
@@ -9133,6 +9133,11 @@ function init(){
   // _fbAuth.onAuthStateChanged listener and the manual Store.SESSION localStorage restore.
   sb.auth.onAuthStateChange(async(event,session)=>{
     if(_bootHandled&&event!=='SIGNED_IN'&&event!=='SIGNED_OUT') return;
+    // Auth.login() (called from the login form submit handler) already loads the cache,
+    // validates the profile, and calls afterLogin() itself for a snappier login — so if that
+    // already happened for this exact user, skip redoing all of it here when Supabase fires
+    // its own SIGNED_IN event for the same sign-in.
+    if(session&&session.user&&Auth.user&&Auth.user.id===session.user.id){ _bootHandled=true; return; }
     if(session&&session.user){
       try{
         document.getElementById('fs-loading-msg').textContent='Loading data…';
