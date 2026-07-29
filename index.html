@@ -11,11 +11,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <!-- MSAL.js — required for OneDrive auto-backup (Option 2). Leave in place even when backup is not yet configured. -->
   <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
-  <!-- Firebase SDK (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
+  <!-- Supabase JS client (Phase 3: replaces Firebase Auth + Firestore) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     /* =========================================================
        LEAP INSIGHTS  v1.2
@@ -2052,55 +2049,104 @@
 /* ── CONSTANTS ────────────────────── */
 const STORE_VER    = 'v3';
 
-/* ── FIREBASE CONFIG ─────────────────────────────────────────────────────────────────────── */
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyAnTq2B9Tgv_cQXeFdYuAoqUyoBRbsoQ6c",
-  authDomain:        "leap-insights.firebaseapp.com",
-  projectId:         "leap-insights",
-  storageBucket:     "leap-insights.firebasestorage.app",
-  messagingSenderId: "543523779845",
-  appId:             "1:543523779845:web:2b8093e646c1392da6b36c"
-};
-firebase.initializeApp(FIREBASE_CONFIG);
-// App Check — reCAPTCHA v3. Site key only (never the Secret Key, which stays server-side with Google).
-// Enforcement for Firestore must be turned on separately in the Firebase Console > App Check
-// once this is confirmed live and working (do this after verifying login/data load still work).
-firebase.appCheck().activate('6Lfa3VQtAAAAAI_vz4dCSipOBeAY3y20HKg17S6A', true);
-const _fbAuth = firebase.auth();
-const _fbDb   = firebase.firestore();
+/* ── SUPABASE CLIENT ─────────────────────────────────────────────────────────────────────── */
+const SUPABASE_URL = 'https://catvpurbyvsnijxpzwoh.supabase.co';
+// !!! PLACEHOLDER — a human must paste the real anon/public key here before this branch will run.
+// Find it in the Supabase dashboard: Project Settings > API > Project API keys > anon/public.
+const SUPABASE_ANON_KEY = 'REPLACE_WITH_ANON_KEY_FROM_SUPABASE_DASHBOARD_SETTINGS_API';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const FireSync = {
-  _loading: false,
-  _col: 'leap_data',
-  _keys(){ return [Store.USERS,Store.EVALS,Store.CQA,'leap_idqa_v1',Store.DELIVERABLES,Store.POS,Store.VENUES,Store.MODALS,Store.FIRSTRUN,Store.TRSESSIONS,Store.AUDIT]; },
-  async loadAll(){
-    FireSync._loading=true;
-    try{
-      const keys=this._keys();
-      // Include any IDQA seq counter keys sitting in localStorage
-      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('leap_idqa_seq_')&&!keys.includes(k)) keys.push(k); }
-      const snaps=await Promise.all(keys.map(k=>_fbDb.collection(this._col).doc(k).get()));
-      snaps.forEach((snap,i)=>{
-        if(snap.exists){
-          const _raw=snap.data().payload;
-          localStorage.setItem(keys[i],typeof _raw==='string'?_raw:JSON.stringify(_raw));
-        } else {
-          // Firestore has no data for this key — wipe localStorage so stale test data doesn't survive
-          localStorage.removeItem(keys[i]);
-        }
-      });
-    }finally{ FireSync._loading=false; }
-  },
-  save(k,v){ if(FireSync._loading) return; _fbDb.collection(this._col).doc(k).set({payload:v}).catch(e=>console.warn('Firestore write:',e)); }
-};
-
-async function _createFirebaseUser(email, password){
-  try{
-    const tmp=firebase.initializeApp(FIREBASE_CONFIG,'usr_'+Date.now());
-    await tmp.auth().createUserWithEmailAndPassword(email, password);
-    await tmp.auth().signOut(); await tmp.delete();
-  }catch(e){ if(e.code!=='auth/email-already-in-use') console.warn('FB user create:',e.message); }
+/* ── FIELD MAPPING HELPERS (snake_case columns <-> camelCase app objects) ─────────────────── */
+// Explicit per-table maps are used (rather than a generic snake<->camel converter) because a
+// few columns don't follow simple casing rules (form_idqa -> formIDQA, deliv_type -> delivType).
+function _mapRow(row, map){
+  if(!row) return row;
+  const out={};
+  Object.keys(map).forEach(camel=>{ const col=map[camel]; if(col in row) out[camel]=row[col]; });
+  return out;
 }
+function _mapPatch(patch, map){
+  // Only forwards keys that are present in `map` (i.e. known DB columns) — silently drops
+  // any legacy/client-only fields (e.g. createdById) that have no column in the new schema.
+  const out={};
+  Object.keys(patch||{}).forEach(camel=>{ if(map[camel]) out[map[camel]]=patch[camel]; });
+  return out;
+}
+const _FIELD_MAPS = {
+  profiles:{
+    id:'id', email:'email', firstName:'first_name', lastName:'last_name', employeeId:'employee_id',
+    positionId:'position_id', supervisorId:'supervisor_id', hireDate:'hire_date', dashScope:'dash_scope',
+    isActive:'is_active', isAdmin:'is_admin', isReportsViewer:'is_reports_viewer',
+    formTrainer:'form_trainer', formIDQA:'form_idqa', formCQA:'form_cqa',
+    mustChangePassword:'must_change_password', createdAt:'created_at', updatedAt:'updated_at'
+  },
+  positions:{ id:'id', name:'name', isActive:'is_active' },
+  venues:{ id:'id', name:'name', isActive:'is_active' },
+  modalities:{ id:'id', name:'name', isActive:'is_active' },
+  deliverables:{ id:'id', name:'name', isID:'is_id', isCD:'is_cd', isDefault:'is_default', isActive:'is_active' },
+  training_sessions:{
+    id:'id', code:'code', trainerId:'trainer_id', trainingProgram:'training_program', batchNo:'batch_no',
+    trainingDate:'training_date', venueId:'venue_id', modalityId:'modality_id', recordingLink:'recording_link',
+    status:'status', numParticipants:'num_participants', duration:'duration',
+    createdAt:'created_at', updatedAt:'updated_at'
+  },
+  evaluations:{
+    id:'id', code:'code', status:'status', batchNo:'batch_no', trainingDate:'training_date',
+    venueId:'venue_id', modalityId:'modality_id', trainerId:'trainer_id', evaluatorId:'evaluator_id',
+    trainingProgram:'training_program', overallScore:'overall_score', ratings:'ratings', remarks:'remarks',
+    observations:'observations', traineeResponse:'trainee_response', finalizedAt:'finalized_at',
+    acknowledgedAt:'acknowledged_at', createdAt:'created_at', updatedAt:'updated_at'
+  },
+  idqa_reviews:{
+    id:'id', code:'code', status:'status', projectTitle:'project_title', delivType:'deliv_type',
+    designerId:'designer_id', reviewerId:'reviewer_id', reviewDate:'review_date', targetDate:'target_date',
+    actualDate:'actual_date', ratings:'ratings', remarks:'remarks', observations:'observations',
+    designerNotes:'designer_notes', finalizedAt:'finalized_at', acknowledgedAt:'acknowledged_at',
+    createdAt:'created_at', updatedAt:'updated_at'
+  },
+  cdqa_reviews:{
+    id:'id', code:'code', status:'status', projectTitle:'project_title', contentType:'content_type',
+    authorId:'author_id', reviewerId:'reviewer_id', reviewDate:'review_date', targetDate:'target_date',
+    actualDate:'actual_date', ratings:'ratings', remarks:'remarks', observations:'observations',
+    cdNotes:'cd_notes', finalizedAt:'finalized_at', acknowledgedAt:'acknowledged_at',
+    createdAt:'created_at', updatedAt:'updated_at'
+  },
+  audit_log:{ id:'id', ts:'ts', actorId:'actor_id', action:'action', module:'module', entityId:'entity_id', summary:'summary' }
+};
+function rowToCamel(table,row){ return _mapRow(row,_FIELD_MAPS[table]); }
+function rowsToCamel(table,rows){ return (rows||[]).map(r=>rowToCamel(table,r)); }
+function patchToSnake(table,patch){ return _mapPatch(patch,_FIELD_MAPS[table]); }
+
+function _surfaceDbError(err,action){
+  console.error(action+' failed:', err);
+  const msg=(err&&err.message)?err.message:'Something went wrong.';
+  if(typeof toast==='function') toast(`${action} failed: ${msg}`,'error');
+  else alert(`${action} failed: ${msg}`);
+}
+
+/* ── IN-MEMORY CACHE ──────────────────────────────────────────────────────────────────────
+   Reads throughout the app (Sel/DB/EvalDB/IDQADB/ContentQADB/TrSessionDB/AuditLog `.all()` /
+   `.byId()` / etc.) stay SYNCHRONOUS against this cache, to avoid converting the ~300 render
+   call-sites that read data across the app to async. The cache is the read model; Supabase is
+   the source of truth. It is populated in full on login (Cache.loadAll) and every mutating
+   call (create/update/delete/toggle) is async, hits Supabase first, and only updates the local
+   cache after a successful write — so a failed write cannot leave the UI showing stale-looking
+   "saved" data. ───────────────────────────────────────────────────────────────────────────── */
+const Cache = {
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[] },
+  loaded:false,
+  async loadAll(){
+    const tables=Object.keys(this.data);
+    const results=await Promise.all(tables.map(t=>sb.from(t).select('*')));
+    let firstErr=null;
+    results.forEach((res,i)=>{
+      if(res.error){ if(!firstErr) firstErr=res.error; this.data[tables[i]]=[]; }
+      else this.data[tables[i]]=rowsToCamel(tables[i],res.data);
+    });
+    this.loaded=true;
+    if(firstErr) throw firstErr;
+  }
+};
 
 /* ── BACKUP CONFIG (IT: fill in the three placeholder values and set enabled:true) ──────── */
 const LEAP_BACKUP_CONFIG = {
@@ -2141,77 +2187,64 @@ const Utils = {
   formatDate(s){ if(!s) return '—'; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}); }
 };
 
-/* ── STORAGE ──────────────────────── */
+/* ── STORAGE (small localStorage-only flags; all real app data now lives in Supabase — see
+   Cache above) ───────────────────── */
 const Store = {
-  USERS:`leap_users_${STORE_VER}`,SESSION:'leap_session_v1',FIRSTRUN:`leap_frun_${STORE_VER}`,
-  DELIVERABLES:`leap_deliverables_v1`,POS:`leap_pos_v1`,VENUES:`leap_venues_v1`,MODALS:`leap_modals_v1`,EVALS:'leap_evals_v1',CQA:'leap_cqa_v1',TRSESSIONS:'leap_trsessions_v1',AUDIT:'leap_auditlog_v1',
+  SESSION:'leap_session_v1', FIRSTRUN:`leap_frun_${STORE_VER}`,
+  POS:'positions', VENUES:'venues', MODALS:'modalities', DELIVERABLES:'deliverables',
+  EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
-  set(k,v){ localStorage.setItem(k,JSON.stringify(v)); const _sk=[Store.SESSION,'leap_last_export','leap_last_od_backup']; if(!_sk.includes(k)) FireSync.save(k,v); if(typeof _scheduleAutoBackup==='function'&&!_sk.includes(k)&&k!==Store.FIRSTRUN) _scheduleAutoBackup(); },
+  set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
   del(k){ localStorage.removeItem(k); }
 };
 
-/* ── SELECTION DATA ───────────────── */
+/* ── SELECTION DATA (positions / venues / modalities / deliverables) ─────────────────────────
+   Reads are synchronous against Cache.data (populated at login). Mutations are async and hit
+   Supabase directly, then patch the cache on success. ───────────────────────────────────── */
 const Sel = {
-  _defaults:{
-
-    [Store.DELIVERABLES]:[
-      {id:'dlv_01', name:'Assessment',           isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_02', name:'Assessment Blueprint', isID:true, isCD:false,isActive:true,isDefault:true},
-      {id:'dlv_03', name:'Activity',             isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_04', name:'Audio',                isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_05', name:'Course Design Document',isID:true,isCD:false,isActive:true,isDefault:true},
-      {id:'dlv_06', name:'Facilitator Guide',    isID:true, isCD:false,isActive:true,isDefault:true},
-      {id:'dlv_07', name:'Handout',              isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_08', name:'Infographic',          isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_09', name:'Job Aid',              isID:true, isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_10', name:'Learning Journey Map', isID:true, isCD:false,isActive:true,isDefault:true},
-      {id:'dlv_11', name:'Lesson Plan',          isID:true, isCD:false,isActive:true,isDefault:true},
-      {id:'dlv_12', name:'Participant Workbook', isID:true, isCD:false,isActive:true,isDefault:true},
-      {id:'dlv_13', name:'Rise',                 isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_14', name:'Slide Deck',           isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_15', name:'StoryLine',            isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_16', name:'Storyboard',           isID:true, isCD:false,isActive:true,isDefault:true},
-      {id:'dlv_17', name:'Survey',               isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_18', name:'Video',                isID:false,isCD:true, isActive:true,isDefault:true},
-      {id:'dlv_19', name:'Worksheet',            isID:false,isCD:true, isActive:true,isDefault:true}
-    ],
-    [Store.POS]:[
-      {id:'pos_1',name:'Chief',                 isActive:true},
-      {id:'pos_2',name:'L&D Director',          isActive:true},
-      {id:'pos_3',name:'L&D Manager',           isActive:true},
-      {id:'pos_4',name:'Instructional Designer',isActive:true},
-      {id:'pos_5',name:'Content Developer',     isActive:true},
-      {id:'pos_6',name:'Trainer',               isActive:true},
-      {id:'pos_7',name:'L&D Supervisor',         isActive:true}
-    ],
-    [Store.VENUES]:[
-      {id:'v1',name:'Eastwood 6th Flr – Training Room',   isActive:true},
-      {id:'v2',name:'Eastwood 6th Flr – Meeting Room',    isActive:true},
-      {id:'v3',name:'Eastwood 15th Flr – Conference Room',isActive:true},
-      {id:'v4',name:'San Roque',                          isActive:true},
-      {id:'v5',name:'Mayamot',                            isActive:true},
-      {id:'v6',name:'MS Teams (Online)',                  isActive:true},
-      {id:'v7',name:'Other (please specify)',             isActive:true}
-    ],
-    [Store.MODALS]:[
-      {id:'m1',name:'In-Person',isActive:true},
-      {id:'m2',name:'Online',   isActive:true},
-      {id:'m3',name:'Hybrid',   isActive:true}
-    ]
-  },
-  all(k)      { return Store.get(k)||[]; },
+  all(k)      { return (Cache.data[k]||[]).slice(); },
   active(k)   { return this.all(k).filter(i=>i.isActive); },
   byId(k,id)  { return this.all(k).find(i=>i.id===id)||null; },
   byName(k,n) { return this.all(k).find(i=>i.name.trim().toLowerCase()===n.trim().toLowerCase())||null; },
-  save(k,v)   { Store.set(k,v); },
   nameOf(k,id){ const i=this.byId(k,id); return i?i.name:''; },
-  seed(){ Object.entries(this._defaults).forEach(([k,v])=>{ if(!Store.get(k)) Store.set(k,v); }); },
-  add(k,d)    { const items=this.all(k),item={id:Utils.uid(),...d,isActive:true}; items.push(item); this.save(k,items); if(typeof AuditLog!=='undefined') AuditLog.record('create',_selModuleLabel(k),item.id,`Added ${_selModuleLabel(k).toLowerCase()} "${item.name}"`); return item; },
-  update(k,id,p){ const items=this.all(k),i=items.findIndex(x=>x.id===id); if(i<0)return null; items[i]={...items[i],...p}; this.save(k,items); if(typeof AuditLog!=='undefined') AuditLog.record('update',_selModuleLabel(k),id,`Updated ${_selModuleLabel(k).toLowerCase()} "${items[i].name}"`); return items[i]; },
-  toggle(k,id){ const item=this.byId(k,id); if(!item) return; const items=this.all(k),i=items.findIndex(x=>x.id===id); if(i<0)return; items[i]={...items[i],isActive:!item.isActive}; this.save(k,items); if(typeof AuditLog!=='undefined') AuditLog.record('status_change',_selModuleLabel(k),id,`${items[i].isActive?'Activated':'Deactivated'} ${_selModuleLabel(k).toLowerCase()} "${items[i].name}"`); }
+  seed(){ /* no-op — lookup tables are pre-seeded in Supabase (Phase 2 migration) */ },
+  async _write(k,id,patch){
+    const row=patchToSnake(k,patch);
+    const {data,error}=await sb.from(k).update(row).eq('id',id).select().single();
+    if(error){ _surfaceDbError(error,'Save'); throw error; }
+    const saved=rowToCamel(k,data);
+    const items=Cache.data[k]; const i=items.findIndex(x=>x.id===id); if(i>=0) items[i]=saved; else items.push(saved);
+    return saved;
+  },
+  async add(k,d){
+    const item={ id:Utils.uid(), name:d.name, isActive:true };
+    if(k===Store.DELIVERABLES){ item.isID=!!d.isID; item.isCD=!!d.isCD; item.isDefault=!!d.isDefault; }
+    const row=patchToSnake(k,item);
+    const {data,error}=await sb.from(k).insert(row).select().single();
+    if(error){ _surfaceDbError(error,'Add item'); throw error; }
+    const saved=rowToCamel(k,data);
+    Cache.data[k].push(saved);
+    if(typeof AuditLog!=='undefined') await AuditLog.record('create',_selModuleLabel(k),saved.id,`Added ${_selModuleLabel(k).toLowerCase()} "${saved.name}"`);
+    return saved;
+  },
+  async update(k,id,p){
+    const saved=await this._write(k,id,p);
+    if(typeof AuditLog!=='undefined') await AuditLog.record('update',_selModuleLabel(k),id,`Updated ${_selModuleLabel(k).toLowerCase()} "${saved.name}"`);
+    return saved;
+  },
+  async toggle(k,id){
+    const item=this.byId(k,id); if(!item) return;
+    const saved=await this._write(k,id,{isActive:!item.isActive});
+    if(typeof AuditLog!=='undefined') await AuditLog.record('status_change',_selModuleLabel(k),id,`${saved.isActive?'Activated':'Deactivated'} ${_selModuleLabel(k).toLowerCase()} "${saved.name}"`);
+    return saved;
+  }
 };
 
-/* ── "Other (please specify)" venue handling ── */
+/* ── "Other (please specify)" venue handling ──────────────────────────────────────────────
+   _resolveVenueId stays SYNCHRONOUS (called on every keystroke/render in the eval & session
+   forms) — if the user typed a brand-new venue name it returns the "Other" option's own id as
+   a placeholder so live validation still passes. The placeholder is swapped for a real,
+   persisted venue id by _ensureVenueId (async), called once at actual save/finalize time. */
 function _isOtherVenue(id){ const v=Sel.byId(Store.VENUES,id); return !!v&&v.name.trim().toLowerCase()==='other (please specify)'; }
 function _toggleVenueOtherWrap(prefix){
   const sel=document.getElementById(`${prefix}-venue`);
@@ -2226,49 +2259,50 @@ function _resolveVenueId(prefix){
   const typed=(document.getElementById(`${prefix}-venue-other`)?.value||'').trim();
   if(!typed) return sel.value;
   const existing=Sel.byName(Store.VENUES,typed);
-  return existing?existing.id:Sel.add(Store.VENUES,{name:typed}).id;
+  return existing?existing.id:sel.value;
+}
+async function _ensureVenueId(prefix,venueId){
+  const sel=document.getElementById(`${prefix}-venue`);
+  if(!sel||!_isOtherVenue(sel.value)) return venueId;
+  const typed=(document.getElementById(`${prefix}-venue-other`)?.value||'').trim();
+  if(!typed) return venueId;
+  const existing=Sel.byName(Store.VENUES,typed);
+  if(existing) return existing.id;
+  const created=await Sel.add(Store.VENUES,{name:typed});
+  return created.id;
 }
 
-/* ── USER DB ──────────────────────── */
+/* ── USER DB (Supabase `profiles` table, keyed by Supabase Auth user id) ──────────────────── */
 const DB = {
-  all()      { return Store.get(Store.USERS)||[]; },
-  save(u)    { Store.set(Store.USERS,u); },
+  all()      { return Cache.data.profiles.slice(); },
   byId(id)   { return this.all().find(u=>u.id===id)||null; },
   byEmail(e) { return this.all().find(u=>u.email===e.trim().toLowerCase())||null; },
   byEmpId(id){ return this.all().find(u=>u.employeeId&&u.employeeId.toLowerCase()===id.trim().toLowerCase())||null; },
   adminCount(){ return this.all().filter(u=>u.isAdmin&&u.isActive).length; },
 
-  create(data, skipDefaultPw=false) {
-    const u = {
-      id:Utils.uid(), employeeId:(data.employeeId||'').trim(),
-      firstName:data.firstName.trim(), lastName:data.lastName.trim(),
-      email:data.email.trim().toLowerCase(),
-      positionId:data.positionId||'', supervisorId:data.supervisorId||'',
-      hireDate:data.hireDate||'', isActive:data.isActive!==false,
-      isAdmin:!!data.isAdmin, isReportsViewer:!!data.isReportsViewer, formTrainer:!!data.formTrainer, formIDQA:!!data.formIDQA, formCQA:!!data.formCQA,
-      dashScope:data.dashScope||'team',
-      createdAt:Date.now(), updatedAt:Date.now()
-    };
-    const all=this.all(); all.push(u); this.save(all);
-    if(typeof AuditLog!=='undefined') AuditLog.record('create','User',u.id,`Created user ${u.firstName} ${u.lastName}`);
-    return u;
+  // Creating a brand-new user requires a Supabase Auth account to exist first (profiles.id is
+  // a foreign key to auth.users.id), which the anon/public API key used by this client cannot
+  // do. This must go through a Supabase Edge Function using the service-role key, or an admin
+  // creating the account directly in the Supabase dashboard (Authentication > Users), followed
+  // by inserting the matching profiles row. Left as a stub — see callers (saveUser, importCSV).
+  async create(){
+    throw new Error('Creating new users from the app is not available yet. Ask IT to add the account in the Supabase dashboard (Authentication > Users), or wait for the admin Edge Function to be built.');
   },
 
-  update(id,patch){ const all=this.all(),i=all.findIndex(u=>u.id===id); if(i<0)return null; all[i]={...all[i],...patch,updatedAt:Date.now()}; this.save(all); if(typeof AuditLog!=='undefined') AuditLog.record(patch.isActive!==undefined?'status_change':'update','User',id,patch.isActive!==undefined?`${patch.isActive?'Activated':'Deactivated'} user ${all[i].firstName} ${all[i].lastName}`:`Updated user ${all[i].firstName} ${all[i].lastName}`); return all[i]; },
+  async update(id,patch){
+    const row=patchToSnake('profiles',{...patch, updatedAt:new Date().toISOString()});
+    const {data,error}=await sb.from('profiles').update(row).eq('id',id).select().single();
+    if(error){ _surfaceDbError(error,'Update user'); throw error; }
+    const saved=rowToCamel('profiles',data);
+    const all=Cache.data.profiles, i=all.findIndex(u=>u.id===id); if(i>=0) all[i]=saved; else all.push(saved);
+    if(typeof AuditLog!=='undefined') await AuditLog.record(patch.isActive!==undefined?'status_change':'update','User',id,patch.isActive!==undefined?`${patch.isActive?'Activated':'Deactivated'} user ${saved.firstName} ${saved.lastName}`:`Updated user ${saved.firstName} ${saved.lastName}`);
+    return saved;
+  },
 
-  seed(){
-    if(this.all().length>0) return;
-    // Production seed — two admin accounts only. Update emails/names via User Management after first login.
-    const rows=[
-      {employeeId:'',firstName:'Admin',lastName:'01',email:'admin01@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true},
-      {employeeId:'',firstName:'Admin',lastName:'02',email:'admin02@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true},
-      {employeeId:'',firstName:'Sandra',lastName:'Barlao',email:'sbarlao@dermorepubliq.com',positionId:'',hireDate:'',isAdmin:true,isReportsViewer:true,formTrainer:true,formIDQA:true,formCQA:true,dashScope:'full'}
-    ];
-    rows.forEach(r=>this.create(r, true));
-  }
+  seed(){ /* no-op — profiles are pre-seeded in Supabase (Phase 2 migration) */ }
 };
 
-/* ── AUTH ─────────────────────────── */
+/* ── AUTH (Supabase Auth) ─────────────────────────────────────────────────────────────────── */
 const Auth = {
   _u:null,
   get user(){ return this._u; },
@@ -2280,26 +2314,27 @@ const Auth = {
     document.getElementById('fs-loading').style.display='flex';
     document.getElementById('fs-loading-msg').textContent='Signing in…';
     try{
-      try{ await _fbAuth.signInWithEmailAndPassword(email,pass); }
-      catch(fe){
-        if(fe.code==='auth/wrong-password'||fe.code==='auth/invalid-credential'){ return _fail('Incorrect password. Please try again.'); }
-        else if(fe.code==='auth/user-not-found'){ return _fail('No LEAP account found for this email. Contact your administrator.'); }
-        else { return _fail(fe.message||'Sign-in failed.'); }
+      const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error){
+        const m=(error.message||'').toLowerCase();
+        if(m.includes('invalid login credentials')||m.includes('invalid email or password')) return _fail('Incorrect email or password. Please try again.');
+        return _fail(error.message||'Sign-in failed.');
       }
       document.getElementById('fs-loading-msg').textContent='Loading data…';
-      await FireSync.loadAll(); Sel.seed(); DB.seed();
-      const u=DB.byEmail(email.toLowerCase());
-      if(!u){ await _fbAuth.signOut(); return _fail('No LEAP account found for this email. Contact your administrator.'); }
-      if(!u.isActive){ await _fbAuth.signOut(); return _fail('This account is inactive. Contact your administrator.'); }
-      this._u=u; Store.set(Store.SESSION,{userId:u.id,at:Date.now()});
+      try{ await Cache.loadAll(); }catch(loadErr){ await sb.auth.signOut().catch(()=>{}); return _fail('Signed in, but could not load app data: '+(loadErr.message||'Unknown error')+'. Please try again.'); }
+      const u=DB.byEmail(email.toLowerCase())||DB.byId(data.user.id);
+      if(!u){ await sb.auth.signOut(); return _fail('No LEAP account found for this email. Contact your administrator.'); }
+      if(!u.isActive){ await sb.auth.signOut(); return _fail('This account is inactive. Contact your administrator.'); }
+      this._u=u;
       document.getElementById('fs-loading').style.display='none';
       return{ok:true,user:u};
-    }catch(err){ await _fbAuth.signOut().catch(()=>{}); return _fail(err.message||'Sign-in failed.'); }
+    }catch(err){ await sb.auth.signOut().catch(()=>{}); return _fail(err.message||'Sign-in failed.'); }
   },
-  logout(){ this._u=null; Store.del(Store.SESSION); _fbAuth.signOut().finally(()=>location.reload()); },
+  logout(){ this._u=null; sb.auth.signOut().finally(()=>location.reload()); },
   restore(){ return false; },
   refresh(){ if(this._u) this._u=DB.byId(this._u.id)||this._u; }
 };
+
 
 /* ── PERMISSIONS ──────────────────── */
 const Perms = {
