@@ -2163,9 +2163,28 @@ const _FIELD_MAPS = {
   },
   audit_log:{ id:'id', ts:'ts', actorId:'actor_id', action:'action', module:'module', entityId:'entity_id', summary:'summary' }
 };
-function rowToCamel(table,row){ return _mapRow(row,_FIELD_MAPS[table]); }
+function rowToCamel(table,row){
+  const out=_mapRow(row,_FIELD_MAPS[table]);
+  // idqa_reviews.deliv_type / cdqa_reviews.content_type are FKs to deliverables.id in the DB
+  // (Phase 2 migration remapped them), but the rest of the app's UI logic (dropdowns, filters,
+  // CSV export, criteria-applicability rules) expects the deliverable's display NAME. Resolve
+  // id -> name here, at the single read choke point, so nothing else in the app needs to change.
+  if(out){
+    if(table==='idqa_reviews' && out.delivType) out.delivType=Sel.nameOf(Store.DELIVERABLES,out.delivType)||out.delivType;
+    if(table==='cdqa_reviews' && out.contentType) out.contentType=Sel.nameOf(Store.DELIVERABLES,out.contentType)||out.contentType;
+  }
+  return out;
+}
 function rowsToCamel(table,rows){ return (rows||[]).map(r=>rowToCamel(table,r)); }
-function patchToSnake(table,patch){ return _mapPatch(patch,_FIELD_MAPS[table]); }
+function patchToSnake(table,patch){
+  const out=_mapPatch(patch,_FIELD_MAPS[table]);
+  // Mirror of the id<->name resolution in rowToCamel, but in reverse: the app sends the
+  // deliverable's display NAME (matching its own in-memory model), so resolve name -> id
+  // here before it hits Supabase, since deliv_type/content_type are FK columns to deliverables.id.
+  if(table==='idqa_reviews' && out.deliv_type){ const d=Sel.byName(Store.DELIVERABLES,out.deliv_type); if(d) out.deliv_type=d.id; }
+  if(table==='cdqa_reviews' && out.content_type){ const d=Sel.byName(Store.DELIVERABLES,out.content_type); if(d) out.content_type=d.id; }
+  return out;
+}
 
 function _surfaceDbError(err,action){
   console.error(action+' failed:', err);
