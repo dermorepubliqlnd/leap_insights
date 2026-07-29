@@ -2095,7 +2095,14 @@ const _FIELD_MAPS = {
     venueId:'venue_id', modalityId:'modality_id', trainerId:'trainer_id', evaluatorId:'evaluator_id',
     trainingProgram:'training_program', overallScore:'overall_score', ratings:'ratings', remarks:'remarks',
     observations:'observations', traineeResponse:'trainee_response', finalizedAt:'finalized_at',
-    acknowledgedAt:'acknowledged_at', createdAt:'created_at', updatedAt:'updated_at'
+    acknowledgedAt:'acknowledged_at', createdAt:'created_at', updatedAt:'updated_at',
+    // NOTE: sessionId is used extensively by the app (links an evaluation back to the
+    // training_sessions row it was created from) but was NOT in the Phase 2 schema list this
+    // migration was scoped against. Mapped here to session_id by convention with the other
+    // *_id columns — MUST be verified against the live Supabase schema before go-live. If the
+    // column doesn't exist, evaluation create/update calls that carry a sessionId will fail
+    // loudly via the existing error Toast rather than silently, but this needs a real test.
+    sessionId:'session_id'
   },
   idqa_reviews:{
     id:'id', code:'code', status:'status', projectTitle:'project_title', delivType:'deliv_type',
@@ -4688,7 +4695,7 @@ function _ensureSessionCode(sessionId){
   if(!s) return null;
   if(s.code) return s.code;
   const code=generateSessionCode();
-  TrSessionDB.update(sessionId,{code});
+  TrSessionDB.update(sessionId,{code}).catch(()=>{});
   return code;
 }
 
@@ -4733,7 +4740,10 @@ function deleteEval(id){
   const nonDraftWarning=ev.status!=='draft'?`<br><br><strong style="color:#dc2626">This evaluation is ${ev.status==='completed'?'completed and has already been acknowledged by the trainee':'pending the trainee\'s acknowledgement'}. Deleting it will permanently remove this record.</strong>`:'';
   confirm$('Delete Evaluation',
     `Permanently delete the evaluation for <strong>${Utils.esc(tName)}</strong>${ev.code?` (${ev.code})`:''}?${nonDraftWarning}<br><br>This cannot be undone.`,
-    'Delete',()=>{ EvalDB.delete(id); toast('Evaluation deleted.','success'); renderEvaluations(); }
+    'Delete',async()=>{
+      try{ await EvalDB.delete(id); toast('Evaluation deleted.','success'); renderEvaluations(); }
+      catch(e){ /* error already surfaced by EvalDB.delete */ }
+    }
   );
 }
 
@@ -4745,10 +4755,12 @@ function reopenEval(id){
   const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'the trainer';
   confirm$('Reopen Evaluation',
     `Reopen <strong>${ev.code||'this evaluation'}</strong> for <strong>${Utils.esc(tName)}</strong>?<br><br>The status will be reset to <strong>Draft</strong>. Any acknowledgement and trainer response will be cleared.`,
-    'Reopen',()=>{
-      EvalDB.update(id,{status:'draft',finalizedAt:null,acknowledgedAt:null,traineeResponse:''});
-      toast('Evaluation reopened and set to Draft.','success');
-      openEvalForm(id);
+    'Reopen',async()=>{
+      try{
+        await EvalDB.update(id,{status:'draft',finalizedAt:null,acknowledgedAt:null,traineeResponse:''});
+        toast('Evaluation reopened and set to Draft.','success');
+        openEvalForm(id);
+      }catch(e){ /* error already surfaced by EvalDB.update */ }
     }
   );
 }
@@ -4852,12 +4864,14 @@ function acknowledgeEval(id){
   const evName=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'your evaluator';
   confirm$('Acknowledge Evaluation',
     `You are confirming that you have reviewed the evaluation submitted by <strong>${Utils.esc(evName)}</strong>.<br><br>Your response has been noted and will be saved on record.<br><br>Once acknowledged, this evaluation will be marked as <strong>Completed</strong>. This action cannot be undone.`,
-    'Yes, Acknowledge',()=>{
-      EvalDB.update(id,{status:'completed',acknowledgedAt:new Date().toISOString(),traineeResponse:trResponseHtml});
-      toast('Evaluation acknowledged and marked Completed.','success');
-      _evalId=null; _evalReadOnly=false;
-      showEvalSubview('list');
-      renderEvaluations();
+    'Yes, Acknowledge',async()=>{
+      try{
+        await EvalDB.update(id,{status:'completed',acknowledgedAt:new Date().toISOString(),traineeResponse:trResponseHtml});
+        toast('Evaluation acknowledged and marked Completed.','success');
+        _evalId=null; _evalReadOnly=false;
+        showEvalSubview('list');
+        renderEvaluations();
+      }catch(e){ /* error already surfaced by EvalDB.update */ }
     }
   );
 }
@@ -5250,7 +5264,11 @@ function renderSessions(){
   const me=Auth.user, access=Auth.formAccess(me);
   const canConduct=access.trainerEval||me.isAdmin;
   // Backfill Session ID for any legacy sessions logged before codes existed.
-  TrSessionDB.all().filter(s=>!s.code).forEach(s=>{ TrSessionDB.update(s.id,{code:generateSessionCode()}); });
+  TrSessionDB.all().filter(s=>!s.code).forEach(s=>{
+    const code=generateSessionCode();
+    s.code=code; // reflect immediately in this render pass; persisted in the background below
+    TrSessionDB.update(s.id,{code}).catch(()=>{});
+  });
   const all=TrSessionDB.all();
   const trainerFilter=document.getElementById('sf-filter-trainer');
   if(trainerFilter){
@@ -5448,7 +5466,7 @@ function openSessionModal(id){
   openModal('session');
 }
 
-function saveSessionModal(){
+async function saveSessionModal(){
   const id=document.getElementById('sess-id').value||null;
   const participantsRaw=document.getElementById('sess-participants').value.trim();
   const durationRaw=document.getElementById('sess-duration').value.trim();
@@ -5479,10 +5497,16 @@ function saveSessionModal(){
   const errEl=document.getElementById('sess-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
-  if(id){ TrSessionDB.update(id,d); toast('Training session updated.','success'); }
-  else { const me=Auth.user; TrSessionDB.create({...d,createdById:me.id,code:generateSessionCode()}); toast('Training session logged.','success'); }
-  closeModal('session');
-  renderSessions();
+  const saveBtn=document.querySelector('#modal-session .btn-primary'); const origTxt=saveBtn?saveBtn.textContent:'';
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+  try{
+    d.venueId=await _ensureVenueId('sess',d.venueId);
+    if(id){ await TrSessionDB.update(id,d); toast('Training session updated.','success'); }
+    else { const me=Auth.user; await TrSessionDB.create({...d,code:generateSessionCode()}); toast('Training session logged.','success'); }
+    closeModal('session');
+    renderSessions();
+  }catch(e){ /* error already surfaced */ }
+  finally{ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} }
 }
 
 function deleteSession(id){
@@ -5492,7 +5516,10 @@ function deleteSession(id){
   const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'this trainer';
   confirm$('Delete Training Session',
     `Delete the logged session for <strong>${Utils.esc(tName)}</strong>${s.trainingProgram?` (${Utils.esc(s.trainingProgram)})`:''}?${hasEvals?'<br><br><strong style="color:#dc2626">This session has evaluation(s) attached. They will NOT be deleted, but will lose their link back to this session.</strong>':''}<br><br>This cannot be undone.`,
-    'Delete',()=>{ TrSessionDB.delete(id); toast('Training session deleted.','success'); renderSessions(); }
+    'Delete',async()=>{
+      try{ await TrSessionDB.delete(id); toast('Training session deleted.','success'); renderSessions(); }
+      catch(e){ /* error already surfaced by TrSessionDB.delete */ }
+    }
   );
 }
 
@@ -5544,7 +5571,7 @@ function startSessionEvaluation(sessionId){
   const mine=sessionEvals.find(e=>e.evaluatorId===me.id);
   if(mine){
     if(mine.status==='draft'){
-      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id); _openPrefilledEval(s); });
+      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id).then(()=>_openPrefilledEval(s)).catch(()=>{}); });
       return;
     }
     if(mine.status==='pending_ack'){
@@ -5878,19 +5905,25 @@ function _validateEval(forFinalize){
   errEl.classList.add('hidden'); return true;
 }
 
-function saveEvalDraft(){
+async function saveEvalDraft(){
   document.getElementById('eval-error').classList.add('hidden');
   const d={..._getCurrentData(),status:'draft'};
-  if(_evalId){
-    EvalDB.update(_evalId,d);
-    toast('Draft saved.','success');
-  } else {
-    const ev=EvalDB.create({...d,code:generateEvalCode()});
-    _evalId=ev.id;
-    document.getElementById('eval-form-title').textContent='Edit Trainer Evaluation';
-    toast(`Draft saved — ${ev.code}.`,'success');
-  }
-  armLeaveGuard('eval-form-view');
+  const btn=document.getElementById('eval-draft-btn'); const origTxt=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  try{
+    d.venueId=await _ensureVenueId('ef',d.venueId);
+    if(_evalId){
+      await EvalDB.update(_evalId,d);
+      toast('Draft saved.','success');
+    } else {
+      const ev=await EvalDB.create({...d,code:generateEvalCode()});
+      _evalId=ev.id;
+      document.getElementById('eval-form-title').textContent='Edit Trainer Evaluation';
+      toast(`Draft saved — ${ev.code}.`,'success');
+    }
+    armLeaveGuard('eval-form-view');
+  }catch(e){ /* error already surfaced */ }
+  finally{ if(btn){btn.disabled=false;btn.textContent=origTxt;} }
 }
 
 function finalizeEval(){
@@ -5898,15 +5931,18 @@ function finalizeEval(){
   const d=_getCurrentData();
   const trainer=DB.byId(d.trainerId);
   const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'this trainer';
-  confirm$('Finalize Evaluation',`You are about to finalize the evaluation for <strong>${Utils.esc(tName)}</strong>.<br><br>Once finalized, this evaluation will be sent for <em>employee acknowledgement</em> and can no longer be edited. Are you sure?`,'Yes, Finalize',()=>{
-    const data={..._getCurrentData(),status:'pending_ack',finalizedAt:new Date().toISOString()};
-    let code;
-    if(_evalId){ const existing=EvalDB.byId(_evalId); code=existing?.code||generateEvalCode(); EvalDB.update(_evalId,{...data,code}); }
-    else { code=generateEvalCode(); EvalDB.create({...data,code}); }
-    toast(`Evaluation ${code} finalized — pending acknowledgement.`,'success');
-    _evalId=null;
-    showEvalSubview('list');
-    renderEvaluations();
+  confirm$('Finalize Evaluation',`You are about to finalize the evaluation for <strong>${Utils.esc(tName)}</strong>.<br><br>Once finalized, this evaluation will be sent for <em>employee acknowledgement</em> and can no longer be edited. Are you sure?`,'Yes, Finalize',async()=>{
+    try{
+      const data={..._getCurrentData(),status:'pending_ack',finalizedAt:new Date().toISOString()};
+      data.venueId=await _ensureVenueId('ef',data.venueId);
+      let code;
+      if(_evalId){ const existing=EvalDB.byId(_evalId); code=existing?.code||generateEvalCode(); await EvalDB.update(_evalId,{...data,code}); }
+      else { code=generateEvalCode(); await EvalDB.create({...data,code}); }
+      toast(`Evaluation ${code} finalized — pending acknowledgement.`,'success');
+      _evalId=null;
+      showEvalSubview('list');
+      renderEvaluations();
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
@@ -7579,37 +7615,46 @@ function _validateIDQA(forSubmit){
 }
 
 /* ── SAVE / SUBMIT ─────────────────── */
-function saveIDQADraft(){
+async function saveIDQADraft(){
   const d=_validateIDQA(false); if(!d) return;
-  const code=_idqaId?IDQADB.byId(_idqaId)?.code||generateIDQACode():generateIDQACode();
-  if(_idqaId){ IDQADB.update(_idqaId,{...d,status:'draft',code}); }
-  else { const rec=IDQADB.create({...d,status:'draft',code}); _idqaId=rec.id; }
-  document.getElementById('idqa-form-title').textContent=code;
-  document.getElementById('idqa-form-status-badge').innerHTML=_idqaStatusBadge('draft');
-  const _idqaSOD=document.getElementById('idqa-signoff-reviewer');if(_idqaSOD&&Auth.user)_idqaSOD.textContent=Auth.user.firstName+' '+Auth.user.lastName;
-  toast(`Draft saved — ${code}.`,'success');
-  armLeaveGuard('idqa-form-view');
+  const btn=document.getElementById('idqa-draft-btn'); const origTxt=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  try{
+    const code=_idqaId?IDQADB.byId(_idqaId)?.code||generateIDQACode():generateIDQACode();
+    if(_idqaId){ await IDQADB.update(_idqaId,{...d,status:'draft',code}); }
+    else { const rec=await IDQADB.create({...d,status:'draft',code}); _idqaId=rec.id; }
+    document.getElementById('idqa-form-title').textContent=code;
+    document.getElementById('idqa-form-status-badge').innerHTML=_idqaStatusBadge('draft');
+    const _idqaSOD=document.getElementById('idqa-signoff-reviewer');if(_idqaSOD&&Auth.user)_idqaSOD.textContent=Auth.user.firstName+' '+Auth.user.lastName;
+    toast(`Draft saved — ${code}.`,'success');
+    armLeaveGuard('idqa-form-view');
+  }catch(e){ /* error already surfaced */ }
+  finally{ if(btn){btn.disabled=false;btn.textContent=origTxt;} }
 }
 
 function submitIDQA(){
   const d=_validateIDQA(true); if(!d) return;
-  confirm$('Submit Review','Once submitted, this review record is locked. Proceed?','Submit',()=>{
-    const code=_idqaId?IDQADB.byId(_idqaId)?.code||generateIDQACode():generateIDQACode();
-    const payload={...d,status:'pending_ack',code,finalizedAt:new Date().toISOString()};
-    if(_idqaId){ IDQADB.update(_idqaId,payload); }
-    else { const rec=IDQADB.create(payload); _idqaId=rec.id; }
-    toast(`Review ${code} submitted — awaiting designer acknowledgement.`,'success');
-    showIDQASubview('list');
-    renderIDQA();
+  confirm$('Submit Review','Once submitted, this review record is locked. Proceed?','Submit',async()=>{
+    try{
+      const code=_idqaId?IDQADB.byId(_idqaId)?.code||generateIDQACode():generateIDQACode();
+      const payload={...d,status:'pending_ack',code,finalizedAt:new Date().toISOString()};
+      if(_idqaId){ await IDQADB.update(_idqaId,payload); }
+      else { const rec=await IDQADB.create(payload); _idqaId=rec.id; }
+      toast(`Review ${code} submitted — awaiting designer acknowledgement.`,'success');
+      showIDQASubview('list');
+      renderIDQA();
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
 function reopenIDQA(id){
-  confirm$('Reopen Review','Revert to Draft so it can be edited? The designer acknowledgement (if any) will be cleared.','Reopen',()=>{
-    IDQADB.update(id||_idqaId,{status:'draft',finalizedAt:null,acknowledgedAt:null,designerNotes:''});
-    if(_idqaId) openIDQA(_idqaId);
-    else renderIDQA();
-    toast('Review reopened as draft.','info');
+  confirm$('Reopen Review','Revert to Draft so it can be edited? The designer acknowledgement (if any) will be cleared.','Reopen',async()=>{
+    try{
+      await IDQADB.update(id||_idqaId,{status:'draft',finalizedAt:null,acknowledgedAt:null,designerNotes:''});
+      if(_idqaId) openIDQA(_idqaId);
+      else renderIDQA();
+      toast('Review reopened as draft.','info');
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
@@ -7618,11 +7663,13 @@ function acknowledgeIDQA(id){
   const ta=document.getElementById('idqa-designer-response');
   const notes=(ta?ta.value:'').trim();
   if(!notes){ toast('Please enter your response before acknowledging.','error'); if(ta) ta.focus(); return; }
-  confirm$('Acknowledge Review','Confirm you have read and acknowledged this review. This action is final.','Acknowledge',()=>{
-    IDQADB.update(rid,{status:'completed',acknowledgedAt:new Date().toISOString(),designerNotes:notes});
-    toast('Review acknowledged and marked Completed.','success');
-    showIDQASubview('list');
-    renderIDQA();
+  confirm$('Acknowledge Review','Confirm you have read and acknowledged this review. This action is final.','Acknowledge',async()=>{
+    try{
+      await IDQADB.update(rid,{status:'completed',acknowledgedAt:new Date().toISOString(),designerNotes:notes});
+      toast('Review acknowledged and marked Completed.','success');
+      showIDQASubview('list');
+      renderIDQA();
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
@@ -7631,10 +7678,12 @@ function deleteIDQADraft(id){
   const me=Auth.user;
   if(r.status!=='draft'&&!me.isAdmin) return;
   const nonDraftWarning=r.status!=='draft'?`<br><br><strong style="color:#dc2626">This review is ${r.status==='completed'?'completed and has already been acknowledged':'pending acknowledgement'}. Deleting it will permanently remove this record.</strong>`:'';
-  confirm$('Delete Review',`Permanently delete this ID QA review?${nonDraftWarning}<br><br>This cannot be undone.`,'Delete',()=>{
-    IDQADB.delete(id);
-    renderIDQA();
-    toast('Review deleted.','success');
+  confirm$('Delete Review',`Permanently delete this ID QA review?${nonDraftWarning}<br><br>This cannot be undone.`,'Delete',async()=>{
+    try{
+      await IDQADB.delete(id);
+      renderIDQA();
+      toast('Review deleted.','success');
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
@@ -8829,35 +8878,44 @@ function _validateCQA(forSubmit){
 }
 
 /* ── SAVE / SUBMIT ──────────────────── */
-function saveCQADraft(){
+async function saveCQADraft(){
   const d=_validateCQA(false); if(!d) return;
-  const code=_cqaId?ContentQADB.byId(_cqaId)?.code||generateCQACode():generateCQACode();
-  if(_cqaId){ ContentQADB.update(_cqaId,{...d,status:'draft',code}); }
-  else { const rec=ContentQADB.create({...d,status:'draft',code}); _cqaId=rec.id; }
-  document.getElementById('cqa-form-title').textContent=code;
-  document.getElementById('cqa-form-status-badge').innerHTML=_cqaStatusBadge('draft');
-  toast(`Draft saved — ${code}.`,'success');
-  armLeaveGuard('cqa-form-view');
+  const btn=document.getElementById('cqa-draft-btn'); const origTxt=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  try{
+    const code=_cqaId?ContentQADB.byId(_cqaId)?.code||generateCQACode():generateCQACode();
+    if(_cqaId){ await ContentQADB.update(_cqaId,{...d,status:'draft',code}); }
+    else { const rec=await ContentQADB.create({...d,status:'draft',code}); _cqaId=rec.id; }
+    document.getElementById('cqa-form-title').textContent=code;
+    document.getElementById('cqa-form-status-badge').innerHTML=_cqaStatusBadge('draft');
+    toast(`Draft saved — ${code}.`,'success');
+    armLeaveGuard('cqa-form-view');
+  }catch(e){ /* error already surfaced */ }
+  finally{ if(btn){btn.disabled=false;btn.textContent=origTxt;} }
 }
 
 function submitCQA(){
   const d=_validateCQA(true); if(!d) return;
-  confirm$('Submit Review','Once submitted, this review record is locked and cannot be edited. Proceed?','Submit',()=>{
-    const code=_cqaId?ContentQADB.byId(_cqaId)?.code||generateCQACode():generateCQACode();
-    const payload={...d,status:'pending_ack',code,finalizedAt:new Date().toISOString()};
-    if(_cqaId){ ContentQADB.update(_cqaId,payload); }
-    else { const rec=ContentQADB.create(payload); _cqaId=rec.id; }
-    toast(`Review ${code} submitted — awaiting Content Developer acknowledgement.`,'success');
-    showCQASubview('list');
-    renderContentQA();
+  confirm$('Submit Review','Once submitted, this review record is locked and cannot be edited. Proceed?','Submit',async()=>{
+    try{
+      const code=_cqaId?ContentQADB.byId(_cqaId)?.code||generateCQACode():generateCQACode();
+      const payload={...d,status:'pending_ack',code,finalizedAt:new Date().toISOString()};
+      if(_cqaId){ await ContentQADB.update(_cqaId,payload); }
+      else { const rec=await ContentQADB.create(payload); _cqaId=rec.id; }
+      toast(`Review ${code} submitted — awaiting Content Developer acknowledgement.`,'success');
+      showCQASubview('list');
+      renderContentQA();
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
 function reopenCQA(id){
-  confirm$('Reopen Review','This will revert the review to Draft status so it can be edited. Continue?','Reopen',()=>{
-    ContentQADB.update(id||_cqaId,{status:'draft',finalizedAt:null,acknowledgedAt:null,cdNotes:''});
-    if(_cqaId) openCQA(_cqaId);
-    toast('Review reopened.','info');
+  confirm$('Reopen Review','This will revert the review to Draft status so it can be edited. Continue?','Reopen',async()=>{
+    try{
+      await ContentQADB.update(id||_cqaId,{status:'draft',finalizedAt:null,acknowledgedAt:null,cdNotes:''});
+      if(_cqaId) openCQA(_cqaId);
+      toast('Review reopened.','info');
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
@@ -8866,11 +8924,13 @@ function acknowledgeCQA(id){
   const ta=document.getElementById('cqa-cd-response');
   const notes=(ta?ta.value:'').trim();
   if(!notes){ toast('Please enter your response before acknowledging.','error'); if(ta) ta.focus(); return; }
-  confirm$('Acknowledge Review','Confirm you have read and acknowledged this review. This action is final.','Acknowledge',()=>{
-    ContentQADB.update(rid,{status:'completed',acknowledgedAt:new Date().toISOString(),cdNotes:notes});
-    toast('Review acknowledged and marked Completed.','success');
-    showCQASubview('list');
-    renderContentQA();
+  confirm$('Acknowledge Review','Confirm you have read and acknowledged this review. This action is final.','Acknowledge',async()=>{
+    try{
+      await ContentQADB.update(rid,{status:'completed',acknowledgedAt:new Date().toISOString(),cdNotes:notes});
+      toast('Review acknowledged and marked Completed.','success');
+      showCQASubview('list');
+      renderContentQA();
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
@@ -8879,10 +8939,12 @@ function deleteCQADraft(id){
   const me=Auth.user;
   if(r.status!=='draft'&&!me.isAdmin) return;
   const nonDraftWarning=r.status!=='draft'?`<br><br><strong style="color:#dc2626">This review is ${r.status==='completed'?'completed and has already been acknowledged':'pending acknowledgement'}. Deleting it will permanently remove this record.</strong>`:'';
-  confirm$('Delete Review',`Permanently delete this CD QA review?${nonDraftWarning}<br><br>This cannot be undone.`,'Delete',()=>{
-    ContentQADB.delete(id);
-    renderContentQA();
-    toast('Review deleted.','success');
+  confirm$('Delete Review',`Permanently delete this CD QA review?${nonDraftWarning}<br><br>This cannot be undone.`,'Delete',async()=>{
+    try{
+      await ContentQADB.delete(id);
+      renderContentQA();
+      toast('Review deleted.','success');
+    }catch(e){ /* error already surfaced */ }
   });
 }
 
