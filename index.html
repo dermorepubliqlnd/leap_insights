@@ -814,6 +814,8 @@
           <div class="nav-sub-item js-content-qa hidden" data-view="content-qa"><span>✦</span> Content Developer</div>
           <div class="nav-sub-item js-trainer-eval hidden" data-view="evaluations"><span>◉</span> Trainer</div>
         </div>
+        <div class="nav-sec">Training Operations</div>
+        <div class="nav-item" data-view="training-implementations"><span>🗂</span> Training Implementations <span style="font-size:9px;opacity:.6;margin-left:auto;font-weight:600">NEW</span></div>
         <div class="nav-sec js-admin hidden">Manage</div>
         <div class="nav-item js-reports hidden" data-view="reports"><span>◎</span> Reports</div>
         <div class="nav-item js-admin hidden" data-view="users"><span>⊕</span> User Management</div>
@@ -1563,6 +1565,14 @@
 
         </div>
 
+        <div id="view-training-implementations" class="hidden">
+          <div style="margin:0 0 14px;padding:14px 18px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:var(--r-lg)">
+            <div style="font-weight:600;color:#3730a3;font-size:13px">Foundation build — more coming</div>
+            <div style="font-size:12.5px;color:#4338ca;margin-top:2px">This is a first look at the new Training Implementations module. Delivery Type, Participants &amp; Attendance, Assessment setup, and the structured Training Report are being built next. Existing Training Sessions keeps working exactly as-is in the meantime.</div>
+          </div>
+          <div id="ti-list-body"></div>
+        </div>
+
         <div id="view-users" class="hidden">
           <div class="card">
             <div class="card-header">
@@ -2131,7 +2141,21 @@ const _FIELD_MAPS = {
     id:'id', code:'code', trainerId:'trainer_id', trainingProgram:'training_program', batchNo:'batch_no',
     trainingDate:'training_date', venueId:'venue_id', modalityId:'modality_id', recordingLink:'recording_link',
     status:'status', numParticipants:'num_participants', duration:'duration',
-    createdAt:'created_at', updatedAt:'updated_at'
+    createdAt:'created_at', updatedAt:'updated_at',
+    // Phase 5 (Training Implementations) foundation columns -- additive, existing Training
+    // Sessions module/UI does not read or write these yet.
+    deliveryType:'delivery_type', coFacilitatorId:'co_facilitator_id', audience:'audience',
+    expectedParticipants:'expected_participants', assessmentType:'assessment_type',
+    passingScore:'passing_score', reportStatus:'report_status'
+  },
+  session_participants:{
+    id:'id', sessionId:'session_id', profileId:'profile_id', externalName:'external_name',
+    attended:'attended', notes:'notes', createdAt:'created_at', updatedAt:'updated_at'
+  },
+  training_reports:{
+    id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
+    submittedAt:'submitted_at', approvedBy:'approved_by', approvedAt:'approved_at',
+    returnReason:'return_reason', createdAt:'created_at', updatedAt:'updated_at'
   },
   evaluations:{
     id:'id', code:'code', status:'status', batchNo:'batch_no', trainingDate:'training_date',
@@ -2202,7 +2226,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -2524,13 +2548,14 @@ function showScreen(id){
 }
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings'};
+const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-implementations':'Training Implementations'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   dashboard:'Live performance overview across Trainer Evaluation, Instructional Design QA, and Content Development QA',
   evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
-  'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment'
+  'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment',
+  'training-implementations':'Centralized view of all training delivery — ILT, VILT, self-led, and external — reading the same sessions as Training Sessions with no duplicate data entry'
 };
 function showView(id){
   if(!Perms.canView(id)){ toast('You do not have access to that section.','error'); return; }
@@ -2559,6 +2584,7 @@ function showView(id){
   if(id==='id-qa')       renderIDQA();
   if(id==='content-qa')  renderContentQA();
   if(id==='settings')    renderSettings();
+  if(id==='training-implementations') renderTrainingImplementations();
   _syncHashForCurrentView();
 }
 
@@ -4334,7 +4360,7 @@ function toggleSel(key,id){
 const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities',
-  'training_sessions','audit_log'
+  'training_sessions','audit_log','session_participants','training_reports'
 ];
 
 function _buildBackupPayload(){
@@ -4633,6 +4659,44 @@ const EvalDB=_makeRecordDB('evaluations','Trainer Evaluation',r=>r?.code||r?.id|
 
 /* ── TRAINING SESSIONS ────────────── */
 const TrSessionDB=_makeRecordDB('training_sessions','Training Session',r=>`"${r?.trainingProgram||r?.id||''}"`);
+
+// Phase 5 Foundation -- new record DBs for the Training Implementations module.
+// Not yet wired into any UI beyond the basic list shell (renderTrainingImplementations).
+const SessionParticipantsDB=_makeRecordDB('session_participants','Session Participant',r=>r?.id||'');
+const TrainingReportsDB=_makeRecordDB('training_reports','Training Report',r=>r?.id||'');
+
+/* ── TRAINING IMPLEMENTATIONS (Phase 5 foundation -- basic list shell) ──────────────────────
+   Reads the SAME training_sessions records as the existing Training Sessions module (no
+   duplicate data store). This is intentionally minimal for now: a read-only list surfacing
+   the new delivery_type field alongside the existing session data. Participants/Attendance,
+   Assessment, Training Report, and recording-gated Evaluate are later build stages. ────────── */
+function renderTrainingImplementations(){
+  const body=document.getElementById('ti-list-body');
+  if(!body) return;
+  const rows=TrSessionDB.all().slice().sort((a,b)=>(b.trainingDate||'').localeCompare(a.trainingDate||''));
+  if(!rows.length){
+    body.innerHTML='<div class="empty-state"><div class="empty-ico">🗂</div><div class="empty-title">No training sessions found</div></div>';
+    return;
+  }
+  const rowHtml=(s)=>{
+    const t=DB.byId(s.trainerId);
+    const tName=t?`${t.firstName} ${t.lastName}`:'—';
+    const dt=s.deliveryType?`<span class="badge" style="background:#eef2ff;color:#4338ca">${Utils.esc(s.deliveryType)}</span>`:'<span style="color:var(--text3)">— not set —</span>';
+    return `<tr>
+      <td class="mono">${Utils.esc(s.code||s.id||'')}</td>
+      <td>${Utils.esc(tName)}</td>
+      <td>${Utils.esc(s.trainingProgram||'—')}</td>
+      <td>${Utils.esc(s.batchNo||'—')}</td>
+      <td>${Utils.esc(s.trainingDate||'—')}</td>
+      <td>${dt}</td>
+      <td>${_sessionStatusBadge(s.status)}</td>
+    </tr>`;
+  };
+  body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">
+    <thead><tr><th>Session ID</th><th>Trainer</th><th>Training Program</th><th>Batch No.</th><th>Session Date</th><th>Delivery Type</th><th>Status</th></tr></thead>
+    <tbody>${rows.map(rowHtml).join('')}</tbody>
+  </table></div>`;
+}
 function _durationToMinutes(str){
   if(!str) return -1;
   const m=String(str).match(/^(\d{1,3}):([0-5]\d)$/);
