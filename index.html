@@ -413,6 +413,10 @@
     .kpi-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .kpi-value{font-family:var(--font-heading);font-size:22px;font-weight:700;color:var(--text);line-height:1.15;margin-top:3px}
     .kpi-sub{font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* Training Report Summary rich-text callouts (bold + bullets only) */
+    .tdr-rt-view ul,.tdr-rt-edit ul{margin:2px 0;padding-left:18px}
+    .tdr-rt-view li,.tdr-rt-edit li{margin:1px 0}
+    .tdr-rt-edit:focus{box-shadow:0 0 0 2px rgba(255,255,255,.85) inset}
     .kpi-trend{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;margin-top:6px;padding:2px 7px;border-radius:10px}
     .kpi-up{background:var(--green-lt);color:var(--green)}
     .kpi-down{background:var(--red-lt);color:var(--red)}
@@ -5275,6 +5279,43 @@ let _tdPartAddPickerOpen=false;
 let _tdrReport=null;
 let _tdrLoadedFor=null;
 let _tdrPreviewMode=false;
+let _tdrSummaryEditing={};
+
+// Minimal allow-listed rich-text sanitizer for the Summary callout fields (2026-07-30) --
+// only Bold and Bullet List formatting is supported, matching Sandra's ask for "rich text...
+// bold and bullets only." Anything else contenteditable/execCommand might produce (font-size,
+// color, div/p wrappers, etc.) is stripped down to plain text; DIV/P line-wrappers (what
+// contenteditable inserts on Enter) are converted to a trailing <br> so line breaks survive.
+function _tdrSanitizeRich(html){
+  const allowed={B:1,STRONG:1,UL:1,LI:1,BR:1};
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html||'';
+  function walk(node){
+    let out='';
+    node.childNodes.forEach(child=>{
+      if(child.nodeType===3){ out+=Utils.esc(child.nodeValue); }
+      else if(child.nodeType===1){
+        const tag=child.tagName;
+        if(tag==='BR'){ out+='<br>'; }
+        else if(tag==='DIV'||tag==='P'){ out+=walk(child)+'<br>'; }
+        else if(allowed[tag]){ out+=`<${tag.toLowerCase()}>${walk(child)}</${tag.toLowerCase()}>`; }
+        else { out+=walk(child); }
+      }
+    });
+    return out;
+  }
+  return walk(tmp).replace(/(<br>)+$/,'');
+}
+function _tdrToggleSummaryEdit(key,on){
+  _tdrSummaryEditing[key]=on;
+  renderTrainingDetail();
+}
+function _tdrCommitRich(key,el){
+  const clean=_tdrSanitizeRich(el.innerHTML);
+  _tdrReport.content[key]=clean;
+  _tdrSummaryEditing[key]=false;
+  renderTrainingDetail();
+}
 
 const TD_DETAIL_TABS=[
   {id:'overview',label:'Overview'},
@@ -5434,8 +5475,16 @@ const _TDA_ICON_PATHS={
   filetext:'<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 3.5V8h4M9 12.5h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
   filecheck:'<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 3.5V8h4M9.3 14l1.8 1.8L14.8 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
   award:'<circle cx="12" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 13.5L7.5 21l4.5-2 4.5 2-1.5-7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
-  target:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>'
+  target:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>',
+  'alert-triangle':'<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 9.5v4M12 17h.01" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  bulb:'<path d="M9 18.5h6M10 21.5h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 2.5a6.5 6.5 0 0 0-3.7 11.8c.6.4.9 1.1.9 1.9h5.6c0-.8.3-1.5.9-1.9A6.5 6.5 0 0 0 12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  flag:'<path d="M5 21V4M5 15s1.2-1 4.5-1 5 2 8 2 3.5-1 3.5-1V5s-.5 1-3.5 1-5-2-8-2-4.5 1-4.5 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  edit3:'<path d="M12 20.5h9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  list:'<line x1="8" y1="6.5" x2="20.5" y2="6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8" y1="17.5" x2="20.5" y2="17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="3.7" cy="6.5" r="1.1" fill="currentColor"/><circle cx="3.7" cy="12" r="1.1" fill="currentColor"/><circle cx="3.7" cy="17.5" r="1.1" fill="currentColor"/>'
 };
+function _tdIconSvg(name,color,size){
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="color:${color};flex-shrink:0" >${_TDA_ICON_PATHS[name]||''}</svg>`;
+}
 function _tdaIcon(name,color){
   return `<svg width="42" height="42" viewBox="0 0 24 24" style="color:${color};flex-shrink:0;margin-top:1px">${_TDA_ICON_PATHS[name]||''}</svg>`;
 }
@@ -5809,9 +5858,9 @@ function _tdrNpsLabel(v){
   return 'Detractor';
 }
 
-function _tdrMetricCard(icon,iconBg,label,value,sub){
+function _tdrMetricCard(iconName,iconColor,label,value,sub){
   return `<div class="kpi-card">
-    <div class="kpi-icon" style="background:${iconBg}">${icon}</div>
+    <div style="margin-bottom:10px">${_tdIconSvg(iconName,iconColor,20)}</div>
     <div class="kpi-label">${label}</div>
     <div class="kpi-value">${value}</div>
     ${sub?`<div class="kpi-sub">${sub}</div>`:''}
@@ -5847,24 +5896,24 @@ function _tdrRenderTab(s){
 
   const l1Metrics=`
     <div class="kpi-strip" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));margin-bottom:14px">
-      ${_tdrMetricCard('👥','#f0f9ff','Responses',`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:14px;text-align:center;display:inline-block" min="0" placeholder="—" value="${c.responses??''}" ${dis} onblur="_tdrSetField('responses',this.value)"> / ${totalParticipants}`)}
-      ${_tdrMetricCard('◔','var(--sky-lt)','Response Rate',responseRate!=null?responseRate+'%':'—')}
-      ${_tdrMetricCard('★','#fff7ed','Content Rating',ratingInput('contentRating',c.contentRating),'/ 5')}
-      ${_tdrMetricCard('📘','var(--sky-lt)','Materials Rating',ratingInput('materialsRating',c.materialsRating),'/ 5')}
-      ${_tdrMetricCard('👤','#f5f3ff','Facilitation Rating',ratingInput('facilitationRating',c.facilitationRating),'/ 5')}
-      ${_tdrMetricCard('♥','var(--red-lt)','Overall Satisfaction',ratingInput('overallSatisfaction',c.overallSatisfaction),'/ 5')}
-      ${_tdrMetricCard('☺','var(--green-lt)','CSAT',ratingInput('csat',c.csat),'/ 5')}
-      ${_tdrMetricCard('📈','#f5f3ff','NPS',`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:14px;text-align:center;display:inline-block" min="-100" max="100" placeholder="—" value="${c.nps??''}" ${dis} onblur="_tdrSetField('nps',this.value)">`,npsLbl)}
+      ${_tdrMetricCard('users','#0369a1','Responses',`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:14px;text-align:center;display:inline-block" min="0" placeholder="—" value="${c.responses??''}" ${dis} onblur="_tdrSetField('responses',this.value)"> / ${totalParticipants}`)}
+      ${_tdrMetricCard('target','var(--sky)','Response Rate',responseRate!=null?responseRate+'%':'—')}
+      ${_tdrMetricCard('award','#c2410c','Content Rating',ratingInput('contentRating',c.contentRating),'/ 5')}
+      ${_tdrMetricCard('filetext','var(--sky)','Materials Rating',ratingInput('materialsRating',c.materialsRating),'/ 5')}
+      ${_tdrMetricCard('users','#7c3aed','Facilitation Rating',ratingInput('facilitationRating',c.facilitationRating),'/ 5')}
+      ${_tdrMetricCard('check','var(--red)','Overall Satisfaction',ratingInput('overallSatisfaction',c.overallSatisfaction),'/ 5')}
+      ${_tdrMetricCard('check','var(--green)','CSAT',ratingInput('csat',c.csat),'/ 5')}
+      ${_tdrMetricCard('trend','#7c3aed','NPS',`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:14px;text-align:center;display:inline-block" min="-100" max="100" placeholder="—" value="${c.nps??''}" ${dis} onblur="_tdrSetField('nps',this.value)">`,npsLbl)}
     </div>`;
 
   const feedbackBoxes=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="card" style="padding:16px 18px;background:var(--green-lt)">
-        <div style="font-weight:700;font-size:13.5px;color:var(--green);margin-bottom:8px">👍 What learners found most valuable</div>
+        <div style="display:flex;align-items:center;gap:7px;font-weight:700;font-size:13.5px;color:var(--green);margin-bottom:8px">${_tdIconSvg('check','var(--green)',16)}What learners found most valuable</div>
         <textarea class="form-control" rows="3" style="background:var(--white)" placeholder="e.g. practical frameworks, role-play exercises..." ${dis} onblur="_tdrSetField('learnersValued',this.value)">${Utils.esc(c.learnersValued)}</textarea>
       </div>
       <div class="card" style="padding:16px 18px;background:var(--amber-lt)">
-        <div style="font-weight:700;font-size:13.5px;color:var(--amber);margin-bottom:8px">⚠ What can be improved</div>
+        <div style="display:flex;align-items:center;gap:7px;font-weight:700;font-size:13.5px;color:var(--amber);margin-bottom:8px">${_tdIconSvg('alert-triangle','var(--amber)',16)}What can be improved</div>
         <textarea class="form-control" rows="3" style="background:var(--white)" placeholder="e.g. more practice time, more examples..." ${dis} onblur="_tdrSetField('learnersImprove',this.value)">${Utils.esc(c.learnersImprove)}</textarea>
       </div>
     </div>`;
@@ -5898,19 +5947,33 @@ function _tdrRenderTab(s){
       ${c.agendaDelivery.length?`<div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>Agenda Item</th><th>Facilitator</th><th>Delivery Status</th><th>Remarks</th><th></th></tr>${agendaRows}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No agenda items yet. Click "+ Add Agenda Item" to list what was covered.</div>'}
     </div>`;
 
-  const summaryField=(key,label,icon,bg,fg,placeholder)=>`
-    <div style="background:${bg};border-radius:8px;padding:12px 14px;margin-bottom:10px">
-      <div style="font-weight:700;font-size:12.5px;color:${fg};margin-bottom:6px">${icon} ${label}</div>
-      <textarea class="form-control" rows="2" style="background:var(--white)" placeholder="${placeholder}" ${dis} onblur="_tdrSetField('${key}',this.value)">${Utils.esc(c[key])}</textarea>
+  const _rtToolbarBtn=(cmd,inner,title)=>`<button type="button" title="${title}" onmousedown="event.preventDefault()" onclick="document.execCommand('${cmd}')" style="border:none;background:rgba(255,255,255,.55);border-radius:5px;width:26px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:inherit">${inner}</button>`;
+  const summaryField=(key,label,iconName,bg,fg,placeholder)=>{
+    const editing=!readOnly && !!_tdrSummaryEditing[key];
+    const raw=c[key]||'';
+    const headerRow=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px;color:${fg}">${_tdIconSvg(iconName,fg,16)}${label}</div>
+      ${readOnly?'':editing?'':`<button type="button" title="Edit" onclick="_tdrToggleSummaryEdit('${key}',true)" style="border:none;background:transparent;cursor:pointer;color:${fg};opacity:.75;padding:2px" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.75">${_tdIconSvg('edit3',fg,14)}</button>`}
     </div>`;
+    let body;
+    if(editing){
+      body=`<div style="display:flex;gap:4px;margin-bottom:6px">${_rtToolbarBtn('bold',`<span style="font-weight:800;font-size:12px">B</span>`,'Bold')}${_rtToolbarBtn('insertUnorderedList',_tdIconSvg('list',fg,14),'Bullet list')}</div>
+        <div contenteditable="true" class="tdr-rt-edit" style="min-height:44px;font-size:13px;line-height:1.45;outline:none;padding:6px 8px;background:rgba(255,255,255,.5);border-radius:6px" onblur="_tdrCommitRich('${key}',this)">${raw||''}</div>`;
+    } else if(raw){
+      body=`<div class="tdr-rt-view" style="font-size:13px;line-height:1.45">${raw}</div>`;
+    } else {
+      body=`<div style="font-size:12.5px;color:${fg};opacity:.6;font-style:italic">${placeholder}</div>`;
+    }
+    return `<div style="background:${bg};color:${fg};border-radius:8px;padding:12px 14px;margin-bottom:10px">${headerRow}${body}</div>`;
+  };
   const summaryCard=`
     <div class="card" style="padding:18px 20px">
       <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Summary</div>
-      ${summaryField('winsHighlights','Wins & Highlights','✓','var(--green-lt)','var(--green)','Notable wins from this session...')}
-      ${summaryField('challengesImprovement','Challenges & Areas for Improvement','⚠','var(--amber-lt)','var(--amber)','What could be better next time...')}
-      ${summaryField('recommendations','Recommendations','💡','var(--sky-lt)','var(--sky)','Suggestions for future runs...')}
-      ${summaryField('pendingActions','Pending Actions','📌','#f5f3ff','#7c3aed','Anything still outstanding...')}
-      ${summaryField('additionalRemarks','Additional Remarks','✎','#f1f5f9','#64748b','Anything else worth noting...')}
+      ${summaryField('winsHighlights','Wins & Highlights','check','var(--green-lt)','var(--green)','Notable wins from this session...')}
+      ${summaryField('challengesImprovement','Challenges & Areas for Improvement','alert-triangle','var(--amber-lt)','var(--amber)','What could be better next time...')}
+      ${summaryField('recommendations','Recommendations','bulb','var(--sky-lt)','var(--sky)','Suggestions for future runs...')}
+      ${summaryField('pendingActions','Pending Actions','flag','#f5f3ff','#7c3aed','Anything still outstanding...')}
+      ${summaryField('additionalRemarks','Additional Remarks','edit3','#f1f5f9','#64748b','Anything else worth noting...')}
     </div>`;
 
   const agendaSummaryRow=`
