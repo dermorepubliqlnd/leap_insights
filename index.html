@@ -7821,6 +7821,12 @@ function toggleEvalGroupRow(tid){
 }
 
 function openNewEval(){
+  // Bug fix (2026-07-31): when invoked from outside the Evaluations page (e.g. "Evaluate This
+  // Training" on a Training Calendar session's Overview tab via startSessionEvaluation ->
+  // _openPrefilledEval), this populated the eval form fields but never switched the visible
+  // app view to 'evaluations' -- the view-evaluations container stayed display:none, so nothing
+  // appeared to happen. showView() is idempotent/harmless when already on the Evaluations page.
+  showView('evaluations');
   _evalId=null;
   _setEvalFormReadOnly(false);
   document.getElementById('eval-ack-btn').classList.add('hidden');
@@ -7851,6 +7857,9 @@ function openNewEval(){
 
 function openEvalForm(id){
   const ev=EvalDB.byId(id); if(!ev) return;
+  // Same view-switch fix as openNewEval() above -- needed for the "resume draft" path reached
+  // from startSessionEvaluation() on the Training Calendar Detail page.
+  showView('evaluations');
   _evalId=id;
   _setEvalFormReadOnly(false);
   document.getElementById('eval-ack-btn').classList.add('hidden');
