@@ -5948,7 +5948,7 @@ function _tdrRenderTab(s){
   const agendaRows=c.agendaDelivery.map((a,i)=>{
     const st=AGENDA_STATUS[a.status]||AGENDA_STATUS.covered;
     return `<tr>
-      <td><input type="text" class="form-control" style="min-width:140px" placeholder="Agenda item" value="${Utils.esc(a.item||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'item',this.value)"></td>
+      <td><input type="text" class="form-control" style="min-width:220px" placeholder="Topic" value="${Utils.esc(a.item||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'item',this.value)"></td>
       <td><input type="text" class="form-control" style="min-width:110px" placeholder="Facilitator" value="${Utils.esc(a.facilitator||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'facilitator',this.value)"></td>
       <td><select class="form-control" style="background:${st.bg};color:${st.fg};font-weight:600" ${dis} onchange="_tdrSetAgendaField(${i},'status',this.value)">
         ${Object.keys(AGENDA_STATUS).map(k=>`<option value="${k}" ${a.status===k?'selected':''}>${AGENDA_STATUS[k].label}</option>`).join('')}
@@ -5959,11 +5959,11 @@ function _tdrRenderTab(s){
   }).join('');
   const agendaCard=`
     <div class="card" style="padding:18px 20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:700;font-size:14.5px">2. Agenda Delivery</div>
-        ${readOnly?'':'<button class="btn btn-sm btn-secondary" onclick="_tdrAddAgendaRow()">+ Add Agenda Item</button>'}
-      </div>
-      ${c.agendaDelivery.length?`<div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>Agenda Item</th><th>Facilitator</th><th>Delivery Status</th><th>Remarks</th><th></th></tr>${agendaRows}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No agenda items yet. Click "+ Add Agenda Item" to list what was covered.</div>'}
+      <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Agenda Delivery</div>
+      ${c.agendaDelivery.length?`<div class="eval-tbl-wrap"><table class="eval-tbl" style="table-layout:fixed">
+        <colgroup><col style="width:34%"><col style="width:16%"><col style="width:16%"><col style="width:28%"><col style="width:6%"></colgroup>
+        <tr><th>Topics</th><th>Facilitator</th><th>Delivery Status</th><th>Remarks</th><th></th></tr>${agendaRows}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No agenda items yet. Click "+ Add Agenda Item" below to list what was covered.</div>'}
+      ${readOnly?'':'<div style="margin-top:12px"><button class="btn btn-sm btn-secondary" onclick="_tdrAddAgendaRow()">+ Add Agenda Item</button></div>'}
     </div>`;
 
   const summaryCard=`
