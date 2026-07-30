@@ -6305,7 +6305,7 @@ function _tdOverviewStageDot(state){
    intent (conduct session -> upload recording -> evaluate trainer -> submit report) as a real,
    data-driven status strip. Stages support 3 states -- pending/in_progress/done -- so partial
    completion (e.g. half the roster assessed) shows as in_progress rather than a binary toggle. */
-function _tdOverviewJourneyBlock(s,ownerType){
+function _tdOverviewJourneySteps(s,ownerType){
   const partRows=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
   const totalP=partRows.length;
   const pendingP=partRows.filter(r=>!r.attendanceStatus||r.attendanceStatus==='pending').length;
@@ -6347,27 +6347,34 @@ function _tdOverviewJourneyBlock(s,ownerType){
     steps.push({label:'Evaluated',state:evalState});
   }
 
-  const stepsHtml=steps.map(st=>`<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0">
-    ${_tdOverviewStageDot(st.state)}
-    <div style="font-size:11.5px;font-weight:600;margin-top:6px;text-align:center;color:var(--text)">${st.label}</div>
-    ${st.sub?`<div style="font-size:10px;color:var(--text3);margin-top:1px">${st.sub}</div>`:''}
-  </div>`).join('');
+  return steps;
+}
 
-  return `<div class="card" style="padding:16px 20px 14px;margin-bottom:16px">
-    <div style="position:relative">
-      <div style="position:absolute;top:15px;left:8%;right:8%;height:2px;background:var(--border);z-index:0"></div>
-      <div style="display:flex;position:relative;z-index:1">${stepsHtml}</div>
+function _tdOverviewJourneyBlockVertical(s,ownerType){
+  const steps=_tdOverviewJourneySteps(s,ownerType);
+  const rowsHtml=steps.map((st,i)=>`<div style="display:flex;gap:12px;position:relative">
+    ${i<steps.length-1?`<div style="position:absolute;left:14px;top:30px;bottom:-18px;width:2px;background:var(--border)"></div>`:''}
+    <div style="position:relative;z-index:1;flex-shrink:0">${_tdOverviewStageDot(st.state)}</div>
+    <div style="padding-top:4px;padding-bottom:18px;min-width:0">
+      <div style="font-size:12.5px;font-weight:600;color:var(--text)">${st.label}</div>
+      ${st.sub?`<div style="font-size:10.5px;color:var(--text3);margin-top:1px">${st.sub}</div>`:''}
     </div>
+  </div>`).join('');
+  return `<div class="card" style="padding:18px 20px">
+    <div style="font-weight:700;font-size:13.5px;margin-bottom:14px">Progress</div>
+    ${rowsHtml}
   </div>`;
 }
 
 function _tddOverviewView(s,ownerType,personLabel,personName){
   const {l1, summary}=_tdOverviewReportBlocks(s);
   return `
-    <div class="card" id="tdd-session-info-card" style="padding:18px 20px;margin-bottom:16px">
-      ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
+    <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-bottom:16px">
+      <div class="card" id="tdd-session-info-card" style="padding:18px 20px">
+        ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
+      </div>
+      ${_tdOverviewJourneyBlockVertical(s,ownerType)}
     </div>
-    ${_tdOverviewJourneyBlock(s,ownerType)}
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
       <div>
         <div class="card" style="padding:18px 20px;margin-bottom:16px">
