@@ -820,7 +820,7 @@
         </div>
         <div class="nav-sec">Training Operations</div>
         <div class="nav-item" data-view="training-dashboard"><span>◫</span> Training Dashboard</div>
-        <div class="nav-item" data-view="training-delivery"><span>🗂</span> Training Delivery <span style="font-size:9px;opacity:.6;margin-left:auto;font-weight:600">NEW</span></div>
+        <div class="nav-item" data-view="training-delivery"><span>🗂</span> Training Calendar <span style="font-size:9px;opacity:.6;margin-left:auto;font-weight:600">NEW</span></div>
         <div class="nav-sec js-admin hidden">Manage</div>
         <div class="nav-item js-reports hidden" data-view="reports"><span>◎</span> Reports</div>
         <div class="nav-item js-admin hidden" data-view="users"><span>⊕</span> User Management</div>
@@ -1574,7 +1574,7 @@
           <div class="empty-state" style="padding:60px 20px">
             <div class="empty-ico">◫</div>
             <div class="empty-title">Training Dashboard — coming soon</div>
-            <div style="font-size:13px;color:var(--text3);margin-top:4px">A rolled-up view of training delivery health across the org will live here. Use Training Delivery for now.</div>
+            <div style="font-size:13px;color:var(--text3);margin-top:4px">A rolled-up view of training delivery health across the org will live here. Use Training Calendar for now.</div>
           </div>
         </div>
 
@@ -2046,9 +2046,21 @@
           <label class="form-label">Owner <span class="req">*</span></label>
           <select id="td-owner" class="form-control"><option value="">— Select Owner —</option></select>
         </div>
+        <div class="form-group hidden" id="td-facilitator-wrap">
+          <label class="form-label">Facilitator Name <span class="req">*</span></label>
+          <input type="text" id="td-facilitator" class="form-control" placeholder="e.g. Jane Dela Cruz">
+        </div>
+        <div class="form-group hidden" id="td-provider-wrap">
+          <label class="form-label">Training Provider <span class="req">*</span></label>
+          <input type="text" id="td-provider" class="form-control" placeholder="e.g. ACME Learning Solutions">
+        </div>
         <div class="form-group">
-          <label class="form-label">Venue</label>
-          <select id="td-venue" class="form-control"><option value="">— Select Venue —</option></select>
+          <label class="form-label" id="td-venue-label">Venue</label>
+          <select id="td-venue" class="form-control" onchange="_toggleVenueOtherWrap('td')"><option value="">— Select Venue —</option></select>
+        </div>
+        <div class="form-group hidden" id="td-venue-other-wrap">
+          <label class="form-label" id="td-venue-other-label">Specify Venue</label>
+          <input type="text" id="td-venue-other" class="form-control" placeholder="Enter venue/platform name">
         </div>
         <div class="form-group">
           <label class="form-label">Audience</label>
@@ -2307,7 +2319,7 @@ const _FIELD_MAPS = {
     mustChangePassword:'must_change_password', createdAt:'created_at', updatedAt:'updated_at'
   },
   positions:{ id:'id', name:'name', isActive:'is_active' },
-  venues:{ id:'id', name:'name', isActive:'is_active' },
+  venues:{ id:'id', name:'name', isActive:'is_active', type:'type' },
   modalities:{ id:'id', name:'name', isActive:'is_active' },
   deliverables:{ id:'id', name:'name', isID:'is_id', isCD:'is_cd', isDefault:'is_default', isActive:'is_active' },
   training_sessions:{
@@ -2323,7 +2335,10 @@ const _FIELD_MAPS = {
     // Overview redesign (2026-07-30): duration in decimal hours (distinct from the legacy
     // free-text "duration" HH:MM column above, which the original Training Sessions module
     // still owns -- kept separate to avoid format collisions), and a training category.
-    durationHours:'duration_hours', category:'category'
+    durationHours:'duration_hours', category:'category',
+    // External Facilitator/Provider split (2026-07-31): free-text fields used only when
+    // deliveryType==='External' (replaces sharing the Owner field with Self-led).
+    facilitatorName:'facilitator_name', trainingProvider:'training_provider'
   },
   session_participants:{
     id:'id', sessionId:'session_id', profileId:'profile_id', externalName:'external_name',
@@ -2495,6 +2510,7 @@ const Sel = {
   async add(k,d){
     const item={ id:Utils.uid(), name:d.name, isActive:true };
     if(k===Store.DELIVERABLES){ item.isID=!!d.isID; item.isCD=!!d.isCD; item.isDefault=!!d.isDefault; }
+    if(k===Store.VENUES){ item.type=d.type==='platform'?'platform':'physical'; }
     const row=patchToSnake(k,item);
     const {data,error}=await sb.from(k).insert(row).select().single();
     if(error){ _surfaceDbError(error,'Add item'); throw error; }
@@ -2544,14 +2560,14 @@ function _resolveVenueId(prefix){
   const existing=Sel.byName(Store.VENUES,typed);
   return existing?existing.id:sel.value;
 }
-async function _ensureVenueId(prefix,venueId){
+async function _ensureVenueId(prefix,venueId,venueType){
   const sel=document.getElementById(`${prefix}-venue`);
   if(!sel||!_isOtherVenue(sel.value)) return venueId;
   const typed=(document.getElementById(`${prefix}-venue-other`)?.value||'').trim();
   if(!typed) return venueId;
   const existing=Sel.byName(Store.VENUES,typed);
   if(existing) return existing.id;
-  const created=await Sel.add(Store.VENUES,{name:typed});
+  const created=await Sel.add(Store.VENUES,{name:typed,type:venueType||'physical'});
   return created.id;
 }
 
@@ -2731,7 +2747,7 @@ function showScreen(id){
 }
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Delivery'};
+const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   dashboard:'Live performance overview across Trainer Evaluation, Instructional Design QA, and Content Development QA',
@@ -4877,12 +4893,46 @@ const TD_TYPE_COLORS={
 
 function renderTrainingDashboard(){ /* placeholder — see #view-training-dashboard */ }
 
+// _tdIsOwnerType groups Self-led + External together for the things they still share (no
+// co-facilitator, no recording link/eval, endDate/date-range support). The person-FIELD itself
+// (Owner dropdown vs Trainer/Co-Facilitator vs free-text Facilitator+Provider) is a 3-way split
+// -- see _tdFieldGroup below (2026-07-31, External Facilitator/Provider split).
 function _tdIsOwnerType(deliveryType){ return deliveryType==='Self-led'||deliveryType==='External'; }
 
+function _tdFieldGroup(deliveryType){
+  if(deliveryType==='Self-led') return 'owner';
+  if(deliveryType==='External') return 'external';
+  return 'trainer';
+}
+
+function _tdVenueTypeFor(deliveryType){ return deliveryType==='Self-led'?'platform':'physical'; }
+
+// Populates a Venue/Platform <select id="{prefix}-venue"> filtered by delivery type -- ILT/VILT/
+// External see physical venues, Self-led sees platform entries (relabelled "Platform" in the UI).
+// The "Other (please specify)" sentinel venue is always included regardless of its own type so
+// the existing Other-specify flow keeps working for both groups.
+function _tdPopulateVenueOptions(prefix,deliveryType,selectedId){
+  const sel=document.getElementById(`${prefix}-venue`); if(!sel) return;
+  const wantType=_tdVenueTypeFor(deliveryType);
+  const isPlatform=wantType==='platform';
+  const opts=Sel.active(Store.VENUES).filter(v=>v.type===wantType||_isOtherVenue(v.id));
+  const cur=selectedId!==undefined?selectedId:sel.value;
+  sel.innerHTML=`<option value="">— Select ${isPlatform?'Platform':'Venue'} —</option>`+opts.map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  if(cur) sel.value=cur;
+  const lbl=document.getElementById(`${prefix}-venue-label`);
+  if(lbl) lbl.textContent=isPlatform?'Platform':'Venue';
+  const otherLbl=document.getElementById(`${prefix}-venue-other-label`);
+  if(otherLbl) otherLbl.textContent=isPlatform?'Specify Platform':'Specify Venue';
+}
+
 function _tdPersonName(s){
-  if(_tdIsOwnerType(s.deliveryType)){
+  const grp=_tdFieldGroup(s.deliveryType);
+  if(grp==='owner'){
     const o=s.ownerId?DB.byId(s.ownerId):null;
     return o?`${o.firstName} ${o.lastName}`:'—';
+  }
+  if(grp==='external'){
+    return s.facilitatorName||'—';
   }
   const t=s.trainerId?DB.byId(s.trainerId):null;
   return t?`${t.firstName} ${t.lastName}`:'—';
@@ -4955,7 +5005,8 @@ function _tdFilteredRows(){
     if(tdF.type!=='all' && (s.deliveryType||'')!==tdF.type) return false;
     if(tdF.program && !(s.trainingProgram||'').toLowerCase().includes(tdF.program.toLowerCase())) return false;
     if(tdF.person!=='all'){
-      const pid=_tdIsOwnerType(s.deliveryType)?s.ownerId:s.trainerId;
+      const grp=_tdFieldGroup(s.deliveryType);
+      const pid=grp==='owner'?s.ownerId:(grp==='trainer'?s.trainerId:null);
       if(pid!==tdF.person) return false;
     }
     if(tdF.audience!=='all' && (s.audience||'')!==tdF.audience) return false;
@@ -5009,11 +5060,11 @@ function renderTDMetrics(){
     return !rep || rep.status!=='approved';
   }).length;
   document.getElementById('td-kpis').innerHTML=`
-    <div class="kpi-card"><div class="kpi-icon" style="background:#f0f9ff">🗂</div><div class="kpi-label">Total Implementations</div><div class="kpi-value" style="color:#0369a1">${total}</div><div class="kpi-sub">All delivery types</div></div>
-    <div class="kpi-card"><div class="kpi-icon" style="background:#fef9c3">📅</div><div class="kpi-label">Upcoming</div><div class="kpi-value" style="color:#a16207">${upcoming}</div><div class="kpi-sub">Next 30 days</div></div>
-    <div class="kpi-card"><div class="kpi-icon" style="background:#dcfce7">✅</div><div class="kpi-label">Completed</div><div class="kpi-value" style="color:#16a34a">${completed}</div><div class="kpi-sub">All time</div></div>
-    <div class="kpi-card"><div class="kpi-icon" style="background:#dbeafe">▶</div><div class="kpi-label">In Progress</div><div class="kpi-value" style="color:#1d4ed8">${inProgress}</div><div class="kpi-sub">Currently running</div></div>
-    <div class="kpi-card"><div class="kpi-icon" style="background:#fff7ed">📋</div><div class="kpi-label">Report Pending</div><div class="kpi-value" style="color:#c2410c">${reportPending}</div><div class="kpi-sub">Awaiting submission</div></div>
+    ${_tdaKpiCard('clipboard','#0369a1','Total Implementations',total,'All delivery types')}
+    ${_tdaKpiCard('calendar','#a16207','Upcoming',upcoming,'Next 30 days')}
+    ${_tdaKpiCard('check','var(--green)','Completed',completed,'All time')}
+    ${_tdaKpiCard('clock','#1d4ed8','In Progress',inProgress,'Currently running')}
+    ${_tdaKpiCard('alert-triangle','#c2410c','Report Pending',reportPending,'Awaiting submission')}
   `;
 }
 
@@ -5022,7 +5073,7 @@ function _tdPopulateFilterOptions(){
   const personSel=document.getElementById('td-f-person');
   if(personSel && personSel.options.length<=1){
     const ids=new Set();
-    all.forEach(s=>{ const pid=_tdIsOwnerType(s.deliveryType)?s.ownerId:s.trainerId; if(pid) ids.add(pid); });
+    all.forEach(s=>{ const grp=_tdFieldGroup(s.deliveryType); const pid=grp==='owner'?s.ownerId:(grp==='trainer'?s.trainerId:null); if(pid) ids.add(pid); });
     const people=[...ids].map(id=>DB.byId(id)).filter(Boolean).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
     personSel.innerHTML='<option value="all">All</option>'+people.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
     personSel.value=tdF.person;
@@ -5084,7 +5135,7 @@ function renderTDList(rows){
       </div>
     </div>`;
   wrap.innerHTML=`<div class="card"><div class="eval-tbl-wrap"><table class="eval-tbl">
-    <thead><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
     <tbody>${pageRows.map(rowHtml).join('')}</tbody>
   </table></div>${pager}</div>`;
 }
@@ -5095,39 +5146,103 @@ function tdCalPrev(){ tdCalCursor.setMonth(tdCalCursor.getMonth()-1); renderTDCa
 function tdCalNext(){ tdCalCursor.setMonth(tdCalCursor.getMonth()+1); renderTDCalendar(_tdFilteredRows()); }
 function tdCalToday(){ tdCalCursor=new Date(); tdCalCursor.setDate(1); renderTDCalendar(_tdFilteredRows()); }
 
+// Duration text for the calendar chip/tooltip -- "N days (start – end)" for date-range entries,
+// otherwise just the single date (2026-07-31, richer pill content + SLT continuous bar work).
+function _tdCalDuration(s){
+  if(s.endDate && s.endDate!==s.trainingDate){
+    const start=new Date(s.trainingDate+'T00:00:00'), end=new Date(s.endDate+'T00:00:00');
+    const days=Math.round((end-start)/86400000)+1;
+    return `${days} days (${s.trainingDate} – ${s.endDate})`;
+  }
+  return s.trainingDate||'—';
+}
+function _tdCalTitle(s){
+  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+  const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
+  const grp=_tdFieldGroup(s.deliveryType);
+  const personLabel=grp==='owner'?'Owner':(grp==='external'?'Facilitator':'Trainer');
+  return [
+    s.trainingProgram||s.code||'Untitled',
+    `${personLabel}: ${_tdPersonName(s)||'—'}`,
+    `${venueLabel}: ${venueName||'—'}`,
+    `Duration: ${_tdCalDuration(s)}`,
+    `Status: ${_tdStatus(s)}`
+  ].join('\n');
+}
+// Single-day chip: program + trainer/owner/facilitator + venue/platform + date, with a full
+// native title tooltip (program + person + venue + duration + status).
+function _tdCalChipHtml(s){
+  const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
+  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+  const person=_tdPersonName(s);
+  return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3;overflow:hidden">
+    <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
+    <div style="font-size:9px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(person)}${venueName?' · '+Utils.esc(venueName):''}</div>
+    <div style="font-size:9px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(_tdCalDuration(s))}</div>
+  </div>`;
+}
+
+// Calendar grid is built week-by-week (7-cell rows) rather than one flat 42-cell grid so that
+// multi-day (date-range) Self-led/External sessions can be overlaid as a single continuous bar
+// spanning the correct day-cell columns for that week, instead of an identical chip repeated in
+// every day cell across the range (2026-07-31, SLT continuous calendar bar).
 function renderTDCalendar(rows){
   const wrap=document.getElementById('td-cal-wrap');
   const year=tdCalCursor.getFullYear(), month=tdCalCursor.getMonth();
   const monthLabel=tdCalCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
   const firstDow=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
-  const byDay={};
-  rows.forEach(s=>{
-    if(!s.trainingDate) return;
-    const start=new Date(s.trainingDate+'T00:00:00');
-    const end=s.endDate?new Date(s.endDate+'T00:00:00'):start;
-    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-      if(d.getFullYear()===year && d.getMonth()===month){
-        const key=d.getDate();
-        (byDay[key]=byDay[key]||[]).push(s);
-      }
-    }
-  });
-  let cells='';
-  for(let i=0;i<firstDow;i++) cells+='<div style="background:#f8fafc;border:1px solid var(--border);min-height:92px"></div>';
+  const numWeeks=Math.ceil((firstDow+daysInMonth)/7);
+  const monthStart=new Date(year,month,1);
   const todayStr=new Date().toISOString().slice(0,10);
-  for(let day=1; day<=daysInMonth; day++){
-    const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const isToday=dateStr===todayStr;
-    const evs=(byDay[day]||[]).slice(0,3);
-    const more=(byDay[day]||[]).length-evs.length;
-    const chips=evs.map(s=>{
-      const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b',dot:'#94a3b8'};
-      return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(s.trainingProgram||'')}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10.5px;padding:2px 5px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
+
+  // Split into single-day chips (rendered per day cell, cap 2 + "N more") vs genuine multi-day
+  // date-range entries (rendered as an overlay bar across their week rows).
+  const singleDay=[], multiDay=[];
+  rows.forEach(s=>{ if(s.endDate && s.endDate!==s.trainingDate) multiDay.push(s); else singleDay.push(s); });
+
+  const byDay={};
+  singleDay.forEach(s=>{
+    if(!s.trainingDate) return;
+    const d=new Date(s.trainingDate+'T00:00:00');
+    if(d.getFullYear()===year && d.getMonth()===month) (byDay[d.getDate()]=byDay[d.getDate()]||[]).push(s);
+  });
+
+  const CHIP_CAP=2;
+  let weeksHtml='';
+  for(let w=0; w<numWeeks; w++){
+    let dayCellsHtml='';
+    for(let c=0;c<7;c++){
+      const idx=w*7+c;
+      const day=idx-firstDow+1;
+      if(day<1||day>daysInMonth){ dayCellsHtml+='<div style="background:#f8fafc;border:1px solid var(--border);min-height:132px"></div>'; continue; }
+      const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isToday=dateStr===todayStr;
+      const dayEvs=byDay[day]||[];
+      const shown=dayEvs.slice(0,CHIP_CAP);
+      const more=dayEvs.length-shown.length;
+      dayCellsHtml+=`<div style="background:var(--white);border:1px solid var(--border);min-height:132px;padding:5px;box-sizing:border-box;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
+        <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
+        <div style="margin-top:22px">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
+      </div>`;
+    }
+    const weekStartIdx=w*7, weekEndIdx=w*7+6;
+    const barsHtml=multiDay.map(s=>{
+      if(!s.trainingDate||!s.endDate) return '';
+      const sStart=new Date(s.trainingDate+'T00:00:00'), sEnd=new Date(s.endDate+'T00:00:00');
+      const startIdx=Math.round((sStart-monthStart)/86400000)+firstDow;
+      const endIdx=Math.round((sEnd-monthStart)/86400000)+firstDow;
+      if(endIdx<weekStartIdx||startIdx>weekEndIdx) return '';
+      const clampedStart=Math.max(startIdx,weekStartIdx), clampedEnd=Math.min(endIdx,weekEndIdx);
+      const colStart=(clampedStart-weekStartIdx)+1, colEnd=(clampedEnd-weekStartIdx)+2;
+      const isStartCapped=clampedStart===startIdx, isEndCapped=clampedEnd===endIdx;
+      const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
+      const radius=`${isStartCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isStartCapped?'10px':'0'}`;
+      return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="grid-column:${colStart} / ${colEnd};pointer-events:auto;cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:${radius};box-sizing:border-box">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
     }).join('');
-    cells+=`<div style="background:var(--white);border:1px solid var(--border);min-height:92px;padding:5px;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5':''}">
-      <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
-      ${chips}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}
+    weeksHtml+=`<div style="position:relative">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0">${dayCellsHtml}</div>
+      ${barsHtml?`<div style="position:absolute;top:20px;left:0;right:0;display:grid;grid-template-columns:repeat(7,1fr);gap:0;pointer-events:none">${barsHtml}</div>`:''}
     </div>`;
   }
   const legend=Object.entries(TD_TYPE_COLORS).map(([k,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${c.dot};display:inline-block"></span>${k}</span>`).join('');
@@ -5141,9 +5256,11 @@ function renderTDCalendar(rows){
       </div>
       <div>${legend}</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;border-top:1px solid var(--border);border-left:1px solid var(--border)">
-      ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div style="background:#f8fafc;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3)">${d}</div>`).join('')}
-      ${cells}
+    <div style="border-top:1px solid var(--border);border-left:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0">
+        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div style="background:#f8fafc;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3)">${d}</div>`).join('')}
+      </div>
+      ${weeksHtml}
     </div>
   </div>`;
 }
@@ -5152,10 +5269,15 @@ function renderTDCalendar(rows){
 function _tdToggleTypeFields(){
   const dt=document.getElementById('td-type').value;
   const ownerType=_tdIsOwnerType(dt);
-  document.getElementById('td-trainer-wrap').classList.toggle('hidden',ownerType);
-  document.getElementById('td-owner-wrap').classList.toggle('hidden',!ownerType);
+  const grp=_tdFieldGroup(dt);
+  document.getElementById('td-trainer-wrap').classList.toggle('hidden',grp!=='trainer');
+  document.getElementById('td-owner-wrap').classList.toggle('hidden',grp!=='owner');
+  document.getElementById('td-facilitator-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('td-provider-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('td-enddate-wrap').classList.toggle('hidden',!ownerType);
   document.getElementById('td-recording-wrap').classList.toggle('hidden',ownerType);
+  _tdPopulateVenueOptions('td',dt);
+  _toggleVenueOtherWrap('td');
 }
 
 function openTrainingModal(id){
@@ -5165,7 +5287,7 @@ function openTrainingModal(id){
   document.getElementById('td-trainer').innerHTML='<option value="">— Select Trainer —</option>'+eligibleTrainers.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
   const activeUsers=DB.all().filter(u=>u.isActive||u.id===(s&&s.ownerId)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
   document.getElementById('td-owner').innerHTML='<option value="">— Select Owner —</option>'+activeUsers.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
-  document.getElementById('td-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  _tdPopulateVenueOptions('td',s?.deliveryType||'',s?.venueId||'');
 
   document.getElementById('td-id').value=id||'';
   document.getElementById('td-modal-title').textContent=id?'Edit Training':'Add Training';
@@ -5176,7 +5298,10 @@ function openTrainingModal(id){
   document.getElementById('td-enddate').value=s?.endDate||'';
   document.getElementById('td-trainer').value=s?.trainerId||'';
   document.getElementById('td-owner').value=s?.ownerId||'';
+  document.getElementById('td-facilitator').value=s?.facilitatorName||'';
+  document.getElementById('td-provider').value=s?.trainingProvider||'';
   document.getElementById('td-venue').value=s?.venueId||'';
+  document.getElementById('td-venue-other').value='';
   document.getElementById('td-audience').value=s?.audience||'';
   document.getElementById('td-expected').value=s?.expectedParticipants??'';
   document.getElementById('td-recording').value=s?.recordingLink||'';
@@ -5191,6 +5316,7 @@ async function saveTrainingModal(){
   const id=document.getElementById('td-id').value||null;
   const deliveryType=document.getElementById('td-type').value;
   const ownerType=_tdIsOwnerType(deliveryType);
+  const grp=_tdFieldGroup(deliveryType);
   const expectedRaw=document.getElementById('td-expected').value.trim();
   const passingRaw=document.getElementById('td-passing').value.trim();
   const d={
@@ -5199,9 +5325,11 @@ async function saveTrainingModal(){
     batchNo:document.getElementById('td-batch').value.trim(),
     trainingDate:document.getElementById('td-date').value,
     endDate:ownerType?(document.getElementById('td-enddate').value||null):null,
-    trainerId:ownerType?null:(document.getElementById('td-trainer').value||null),
-    ownerId:ownerType?(document.getElementById('td-owner').value||null):null,
-    venueId:document.getElementById('td-venue').value||null,
+    trainerId:grp==='trainer'?(document.getElementById('td-trainer').value||null):null,
+    ownerId:grp==='owner'?(document.getElementById('td-owner').value||null):null,
+    facilitatorName:grp==='external'?document.getElementById('td-facilitator').value.trim():null,
+    trainingProvider:grp==='external'?document.getElementById('td-provider').value.trim():null,
+    venueId:_resolveVenueId('td')||null,
     audience:document.getElementById('td-audience').value.trim(),
     expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
     recordingLink:ownerType?'':document.getElementById('td-recording').value.trim(),
@@ -5214,15 +5342,20 @@ async function saveTrainingModal(){
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
   if(!d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
-  if(!ownerType && !d.trainerId) errs.push('Please select a Trainer.');
-  if(ownerType && !d.ownerId) errs.push('Please select an Owner.');
+  if(grp==='trainer' && !d.trainerId) errs.push('Please select a Trainer.');
+  if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
+  if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
+  if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
   if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
+  if(_isOtherVenue(document.getElementById('td-venue').value)&&!(document.getElementById('td-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
+  if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
   const errEl=document.getElementById('td-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
   const saveBtn=document.querySelector('#modal-training .btn-primary'); const origTxt=saveBtn?saveBtn.textContent:'';
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
+    d.venueId=await _ensureVenueId('td',d.venueId,_tdVenueTypeFor(deliveryType));
     if(id){
       await TrSessionDB.update(id,d); toast('Training updated.','success');
       closeModal('training');
@@ -5378,6 +5511,7 @@ async function tdDetailSave(){
   const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
   const deliveryType=document.getElementById('tdd-type').value;
   const ownerType=_tdIsOwnerType(deliveryType);
+  const grp=_tdFieldGroup(deliveryType);
   const expectedRaw=document.getElementById('tdd-expected').value.trim();
   const passingRaw=document.getElementById('tdd-passing').value.trim();
   const durationRaw=document.getElementById('tdd-duration').value.trim();
@@ -5387,10 +5521,12 @@ async function tdDetailSave(){
     batchNo:document.getElementById('tdd-batch').value.trim(),
     trainingDate:document.getElementById('tdd-date').value,
     endDate:ownerType?(document.getElementById('tdd-enddate').value||null):null,
-    trainerId:ownerType?null:(document.getElementById('tdd-trainer').value||null),
-    ownerId:ownerType?(document.getElementById('tdd-owner').value||null):null,
-    coFacilitatorId:ownerType?null:(document.getElementById('tdd-cofacilitator').value||null),
-    venueId:document.getElementById('tdd-venue').value||null,
+    trainerId:grp==='trainer'?(document.getElementById('tdd-trainer').value||null):null,
+    ownerId:grp==='owner'?(document.getElementById('tdd-owner').value||null):null,
+    facilitatorName:grp==='external'?document.getElementById('tdd-facilitator').value.trim():null,
+    trainingProvider:grp==='external'?document.getElementById('tdd-provider').value.trim():null,
+    coFacilitatorId:grp==='trainer'?(document.getElementById('tdd-cofacilitator').value||null):null,
+    venueId:_resolveVenueId('tdd')||null,
     audience:document.getElementById('tdd-audience').value.trim(),
     expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
     durationHours:durationRaw?parseFloat(durationRaw):null,
@@ -5406,15 +5542,20 @@ async function tdDetailSave(){
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
   if(!d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
-  if(!ownerType && !d.trainerId) errs.push('Please select a Trainer.');
-  if(ownerType && !d.ownerId) errs.push('Please select an Owner.');
+  if(grp==='trainer' && !d.trainerId) errs.push('Please select a Trainer.');
+  if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
+  if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
+  if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
   if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
+  if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
+  if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
   const errEl=document.getElementById('tdd-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
   const saveBtn=document.getElementById('tdd-save-btn'); const origTxt=saveBtn?saveBtn.textContent:'';
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
+    d.venueId=await _ensureVenueId('tdd',d.venueId,_tdVenueTypeFor(deliveryType));
     await TrSessionDB.update(_tdDetailId,d);
     toast('Training updated.','success');
     disarmLeaveGuard();
@@ -6022,7 +6163,23 @@ async function _tdrSaveDraft(){
   }catch(e){ /* error already surfaced */ }
 }
 
+function _tdrValidateForSubmit(){
+  const c=_tdrReport.content||{};
+  const missing=[];
+  const metricLabels={responses:'Responses',contentRating:'Content Rating',materialsRating:'Materials Rating',facilitationRating:'Facilitation Rating',overallSatisfaction:'Overall Satisfaction',csat:'CSAT',nps:'NPS'};
+  Object.keys(metricLabels).forEach(k=>{ if(c[k]===null||c[k]===undefined||c[k]==='') missing.push(metricLabels[k]); });
+  if(!c.agendaDelivery||!c.agendaDelivery.length) missing.push('at least one Agenda Delivery row');
+  const summaryLabels={winsHighlights:'Wins & Highlights',challengesImprovement:'Challenges & Areas for Improvement',recommendations:'Recommendations',pendingActions:'Pending Actions',additionalRemarks:'Additional Remarks'};
+  Object.keys(summaryLabels).forEach(k=>{ if(!c[k]||!String(c[k]).trim()) missing.push(summaryLabels[k]); });
+  return missing;
+}
+
 function _tdrSubmitReport(){
+  const missing=_tdrValidateForSubmit();
+  if(missing.length){
+    toast(`Please complete the following before submitting: ${missing.join(', ')}.`,'error');
+    return;
+  }
   confirm$('Submit Report','Once submitted, you will not be able to edit this report. Continue?','Submit Report',async()=>{
     try{
       // createdBy repurposed here as "prepared by" -- captured at submit time (not draft creation)
@@ -6041,7 +6198,8 @@ function renderTrainingDetail(){
   const wrap=document.getElementById('td-detail-wrap');
   if(!s){ closeTrainingDetail(); return; }
   const ownerType=_tdIsOwnerType(s.deliveryType);
-  const personLabel=ownerType?'Owner':'Trainer';
+  const _tdGrp=_tdFieldGroup(s.deliveryType);
+  const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'Facilitator':'Trainer');
   const personName=Utils.esc(_tdPersonName(s));
   const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, _tdDateCell(s), s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
 
@@ -6064,7 +6222,7 @@ function renderTrainingDetail(){
 
   wrap.innerHTML=`
     <div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">
-      <a href="javascript:void(0)" onclick="closeTrainingDetail()" style="color:var(--pri);text-decoration:none">Training Delivery</a>
+      <a href="javascript:void(0)" onclick="closeTrainingDetail()" style="color:var(--pri);text-decoration:none">Training Calendar</a>
       &nbsp;›&nbsp; ${Utils.esc(s.code||s.id||'')}
     </div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
@@ -6111,7 +6269,9 @@ function _tddAssessmentDisplay(s){
 
 function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
   const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null;
+  const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
   const coFac=s.coFacilitatorId?DB.byId(s.coFacilitatorId):null;
+  const grp=_tdFieldGroup(s.deliveryType);
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const preparedBy=(report&&report.status==='submitted'&&report.createdBy)?DB.byId(report.createdBy):null;
   const modalityLabel=_TD_MODALITY_LABEL[s.deliveryType]||s.deliveryType||'—';
@@ -6125,13 +6285,13 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     <div style="${gridStyle}">
       ${_tddInfoBlock('filetext','var(--sky)','Program',Utils.esc(s.trainingProgram||'—'))}
       ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
-      ${!ownerType?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3);font-weight:400">— none —</span>'):_tddInfoBlock('users','#7c3aed','Co-Facilitator',naVal)}
+      ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3);font-weight:400">— none —</span>'):(grp==='external'?_tddInfoBlock('filetext','#7c3aed','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):_tddInfoBlock('users','#7c3aed','Co-Facilitator',naVal))}
       ${_tddInfoBlock('calendar','var(--amber)','Date'+(ownerType?' / Period':'')+' & Time',_tdDateCell(s))}
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
       ${_tddInfoBlock('target','#64748b','Modality',Utils.esc(modalityLabel))}
-      ${_tddInfoBlock('mappin','var(--red)','Venue',venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('users','var(--sky)','Participants (Expected)',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
     <div style="${gridStyle};margin-top:18px">
@@ -6417,7 +6577,9 @@ function _tddSessionInfoEditContent(s,ownerType){
       ${_tddInfoBlockEdit('filetext','var(--sky)','Program',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
       ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control" ${smallInput}><option value="">— Select Trainer —</option></select>`,'tdd-trainer-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`,'tdd-owner-wrap')}
+      ${_tddInfoBlockEdit('user','var(--sky)','Facilitator Name',`<input type="text" id="tdd-facilitator" class="form-control" ${smallInput} value="${Utils.esc(s.facilitatorName||'')}">`,'tdd-facilitator-wrap')}
       ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput}><option value="">— None —</option></select>`,'tdd-cofacilitator-wrap')}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;gap:6px;align-items:center"><input type="date" id="tdd-date" class="form-control" ${smallInput} value="${s.trainingDate||''}"><span ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;align-items:center;gap:6px">→<input type="date" id="tdd-enddate" class="form-control" ${smallInput} value="${s.endDate||''}"></span></div>`)}
@@ -6428,7 +6590,7 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Self-led" ${s.deliveryType==='Self-led'?'selected':''}>Self-led</option>
         <option value="External" ${s.deliveryType==='External'?'selected':''}>External</option>
       </select>`)}
-      ${_tddInfoBlockEdit('mappin','var(--red)','Venue',`<select id="tdd-venue" class="form-control" ${smallInput}><option value="">— Select Venue —</option></select>`)}
+      ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('users','var(--sky)','Participants (Expected)',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
@@ -6478,20 +6640,23 @@ function _tddPopulateEditDropdowns(s,ownerType){
     const activeUsers=DB.all().filter(u=>u.isActive||u.id===s.ownerId).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
     ownerSel.innerHTML='<option value="">— Select Owner —</option>'+activeUsers.map(u=>`<option value="${u.id}" ${u.id===s.ownerId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
   }
-  const venueSel=document.getElementById('tdd-venue');
-  if(venueSel){
-    venueSel.innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).map(v=>`<option value="${v.id}" ${v.id===s.venueId?'selected':''}>${Utils.esc(v.name)}</option>`).join('');
-  }
+  _tdPopulateVenueOptions('tdd',s.deliveryType,s.venueId);
+  _toggleVenueOtherWrap('tdd');
 }
 
 function _tddToggleTypeFields(){
   const dt=document.getElementById('tdd-type').value;
   const ownerType=_tdIsOwnerType(dt);
-  document.getElementById('tdd-trainer-wrap').classList.toggle('hidden',ownerType);
-  document.getElementById('tdd-cofacilitator-wrap').classList.toggle('hidden',ownerType);
-  document.getElementById('tdd-owner-wrap').classList.toggle('hidden',!ownerType);
+  const grp=_tdFieldGroup(dt);
+  document.getElementById('tdd-trainer-wrap').classList.toggle('hidden',grp!=='trainer');
+  document.getElementById('tdd-cofacilitator-wrap').classList.toggle('hidden',grp!=='trainer');
+  document.getElementById('tdd-owner-wrap').classList.toggle('hidden',grp!=='owner');
+  document.getElementById('tdd-facilitator-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('tdd-provider-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!ownerType);
   document.getElementById('tdd-recording-wrap').classList.toggle('hidden',ownerType);
+  _tdPopulateVenueOptions('tdd',dt);
+  _toggleVenueOtherWrap('tdd');
 }
 
 function _durationToMinutes(str){
@@ -7462,7 +7627,7 @@ function openSessionModal(id){
   const s=id?TrSessionDB.byId(id):null;
   const eligible=DB.all().filter(u=>u.positionId==='pos_6'&&(u.isActive||u.id===(s&&s.trainerId)));
   document.getElementById('sess-trainer').innerHTML='<option value="">— Select Trainer —</option>'+eligible.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
-  document.getElementById('sess-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  document.getElementById('sess-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
   document.getElementById('sess-modality').innerHTML='<option value="">— Select Modality —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
   document.getElementById('sess-id').value=id||'';
   document.getElementById('sess-modal-title').textContent=id?'Edit Training Session':'Log Training Session';
@@ -7730,7 +7895,7 @@ function _populateEvalDropdowns(evaluatorId, currentTrainerId){
     const label=u.isActive?Utils.esc(u.firstName+' '+u.lastName):Utils.esc(u.firstName+' '+u.lastName)+' (inactive)';
     return `<option value="${u.id}">${label}</option>`;
   }).join('');
-  document.getElementById('ef-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  document.getElementById('ef-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
   document.getElementById('ef-modality').innerHTML='<option value="">— Select Modality —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
 }
 
