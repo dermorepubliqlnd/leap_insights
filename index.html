@@ -5369,7 +5369,7 @@ function renderTrainingDetail(){
 
   let tabBody='';
   if(_tdDetailTab==='overview'){
-    tabBody=_tdDetailEditing ? _tddOverviewEdit(s,ownerType) : _tddOverviewView(s,ownerType,personLabel,personName);
+    tabBody=_tddOverviewView(s,ownerType,personLabel,personName);
   } else if(_tdDetailTab==='participants'){
     tabBody=_tddPlaceholderPanel('👥','Participants & Attendance','Attendee rosters and attendance tracking will live here, backed by the session_participants table already in place.');
   } else if(_tdDetailTab==='report'){
@@ -5414,29 +5414,35 @@ function _tddInfoRow(label,value){
   </div>`;
 }
 
-function _tddOverviewView(s,ownerType,personLabel,personName){
+function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
   const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null;
   const coFac=s.coFacilitatorId?DB.byId(s.coFacilitatorId):null;
   return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-weight:700;font-size:14.5px">Session Information</div>
+      <a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>
+    </div>
+    ${_tddInfoRow('Program', Utils.esc(s.trainingProgram||'—'))}
+    ${_tddInfoRow('Batch', Utils.esc(s.batchNo||'—'))}
+    ${_tddInfoRow('Delivery Type', _tdTypeBadge(s.deliveryType))}
+    ${_tddInfoRow(personLabel, personName)}
+    ${!ownerType?_tddInfoRow('Co-Facilitator', coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3)">— none —</span>'):''}
+    ${_tddInfoRow('Date'+(ownerType?' / Period':''), _tdDateCell(s))}
+    ${_tddInfoRow('Venue', venueName?Utils.esc(venueName):'<span style="color:var(--text3)">— not set —</span>')}
+    ${_tddInfoRow('Audience', Utils.esc(s.audience||'—'))}
+    ${_tddInfoRow('Expected Participants', s.expectedParticipants??'<span style="color:var(--text3)">— not set —</span>')}
+    ${!ownerType?_tddInfoRow('Recording Link', s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener">▶ View recording</a>`:'<span style="color:var(--text3)">— none —</span>'):''}
+    ${_tddInfoRow('Assessment Type', Utils.esc(s.assessmentType||'None'))}
+    ${s.assessmentType&&s.assessmentType!=='None'?_tddInfoRow('Passing Score', s.passingScore!=null?s.passingScore+'%':'<span style="color:var(--text3)">— not set —</span>'):''}
+    ${_tddInfoRow('Status', _tdStatusBadge(_tdStatus(s)))}
+  `;
+}
+
+function _tddOverviewView(s,ownerType,personLabel,personName){
+  return `
     <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:16px;align-items:start">
       <div class="card" id="tdd-session-info-card" style="padding:18px 20px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <div style="font-weight:700;font-size:14.5px">Session Information</div>
-          <a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>
-        </div>
-        ${_tddInfoRow('Program', Utils.esc(s.trainingProgram||'—'))}
-        ${_tddInfoRow('Batch', Utils.esc(s.batchNo||'—'))}
-        ${_tddInfoRow('Delivery Type', _tdTypeBadge(s.deliveryType))}
-        ${_tddInfoRow(personLabel, personName)}
-        ${!ownerType?_tddInfoRow('Co-Facilitator', coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3)">— none —</span>'):''}
-        ${_tddInfoRow('Date'+(ownerType?' / Period':''), _tdDateCell(s))}
-        ${_tddInfoRow('Venue', venueName?Utils.esc(venueName):'<span style="color:var(--text3)">— not set —</span>')}
-        ${_tddInfoRow('Audience', Utils.esc(s.audience||'—'))}
-        ${_tddInfoRow('Expected Participants', s.expectedParticipants??'<span style="color:var(--text3)">— not set —</span>')}
-        ${!ownerType?_tddInfoRow('Recording Link', s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener">▶ View recording</a>`:'<span style="color:var(--text3)">— none —</span>'):''}
-        ${_tddInfoRow('Assessment Type', Utils.esc(s.assessmentType||'None'))}
-        ${s.assessmentType&&s.assessmentType!=='None'?_tddInfoRow('Passing Score', s.passingScore!=null?s.passingScore+'%':'<span style="color:var(--text3)">— not set —</span>'):''}
-        ${_tddInfoRow('Status', _tdStatusBadge(_tdStatus(s)))}
+        ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
       </div>
       <div class="card" style="padding:18px 20px">
         <div style="font-weight:700;font-size:14.5px;margin-bottom:4px">Session Summary</div>
@@ -5468,9 +5474,8 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
   `;
 }
 
-function _tddOverviewEdit(s,ownerType){
+function _tddSessionInfoEditContent(s,ownerType){
   return `
-    <div class="card" id="tdd-session-info-card" style="padding:16px 18px;max-width:760px">
       <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">Edit Session Information</div>
       <div class="form-row-3">
         <div class="form-group">
@@ -5565,7 +5570,6 @@ function _tddOverviewEdit(s,ownerType){
         <button class="btn btn-primary btn-sm" id="tdd-save-btn" onclick="tdDetailSave()">Save</button>
         <button class="btn btn-secondary btn-sm" onclick="tdDetailCancelEdit()">Cancel</button>
       </div>
-    </div>
   `;
 }
 
