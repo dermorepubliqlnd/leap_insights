@@ -6116,28 +6116,31 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
   const preparedBy=(report&&report.status==='submitted'&&report.createdBy)?DB.byId(report.createdBy):null;
   const modalityLabel=_TD_MODALITY_LABEL[s.deliveryType]||s.deliveryType||'—';
   const naVal='<span style="color:var(--text3);font-weight:400">— n/a —</span>';
+  const gridStyle='display:grid;grid-template-columns:repeat(4,1fr);gap:18px 12px';
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
       <a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:18px 12px">
+    <div style="${gridStyle}">
       ${_tddInfoBlock('filetext','var(--sky)','Program',Utils.esc(s.trainingProgram||'—'))}
       ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
       ${!ownerType?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3);font-weight:400">— none —</span>'):_tddInfoBlock('users','#7c3aed','Co-Facilitator',naVal)}
       ${_tddInfoBlock('calendar','var(--amber)','Date'+(ownerType?' / Period':'')+' & Time',_tdDateCell(s))}
-      ${_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:18px 12px;margin-top:18px">
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
       ${_tddInfoBlock('target','#64748b','Modality',Utils.esc(modalityLabel))}
       ${_tddInfoBlock('mappin','var(--red)','Venue',venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('users','var(--sky)','Participants (Expected)',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:18px 12px;margin-top:18px">
       ${_tddInfoBlock('clipboard','var(--sky)','Assessment',_tddAssessmentDisplay(s))}
       ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('users','var(--sky)','Audience',Utils.esc(s.audience||'—'))}
       ${_tddInfoBlock('edit3','#64748b','Report Prepared By',preparedBy?Utils.esc(preparedBy.firstName+' '+preparedBy.lastName):'<span style="color:var(--text3);font-weight:400">— not yet —</span>')}
     </div>
@@ -6286,12 +6289,85 @@ function _tdOverviewActionsBlock(s,ownerType){
   </div>`;
 }
 
+const _TD_STAGE_STYLE={
+  done:{bg:'var(--green)',icon:'check'},
+  in_progress:{bg:'var(--amber)',icon:'clock'},
+  pending:{bg:'#cbd5e1',icon:'question'},
+  cancelled:{bg:'var(--red)',icon:'x'}
+};
+
+function _tdOverviewStageDot(state){
+  const cfg=_TD_STAGE_STYLE[state]||_TD_STAGE_STYLE.pending;
+  return `<div style="width:30px;height:30px;border-radius:50%;background:${cfg.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${_tdIconSvg(cfg.icon,'#fff',15)}</div>`;
+}
+
+/* Journey/progress stepper (2026-07-30) -- resurrects the original "Next Step" placeholder's
+   intent (conduct session -> upload recording -> evaluate trainer -> submit report) as a real,
+   data-driven status strip. Stages support 3 states -- pending/in_progress/done -- so partial
+   completion (e.g. half the roster assessed) shows as in_progress rather than a binary toggle. */
+function _tdOverviewJourneyBlock(s,ownerType){
+  const partRows=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
+  const totalP=partRows.length;
+  const pendingP=partRows.filter(r=>!r.attendanceStatus||r.attendanceStatus==='pending').length;
+  const markedP=totalP-pendingP;
+  const computedStatus=_tdStatus(s);
+
+  const steps=[{label:'Scheduled',state:'done'}];
+
+  if(computedStatus==='Cancelled'){
+    steps.push({label:'Delivered',state:'cancelled',sub:'Cancelled'});
+  } else {
+    steps.push({label:'Delivered',state:s.status==='completed'?'done':'pending',sub:s.status==='completed'?null:computedStatus});
+  }
+
+  let attState='pending', attSub=totalP?`0 of ${totalP}`:null;
+  if(totalP>0){
+    if(pendingP===0){ attState='done'; attSub=`${totalP} of ${totalP}`; }
+    else if(markedP>0){ attState='in_progress'; attSub=`${markedP} of ${totalP}`; }
+  }
+  steps.push({label:'Attendance Recorded',state:attState,sub:attSub});
+
+  if(s.assessmentType && s.assessmentType!=='None'){
+    const assessedRows=partRows.filter(r=>r.preTestScore!=null&&r.postTestScore!=null);
+    let assessState='pending';
+    if(totalP>0 && assessedRows.length===totalP) assessState='done';
+    else if(assessedRows.length>0) assessState='in_progress';
+    steps.push({label:'Assessed',state:assessState,sub:totalP?`${assessedRows.length} of ${totalP}`:null});
+  }
+
+  const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const reportState=report?(report.status==='submitted'?'done':'in_progress'):'pending';
+  steps.push({label:'Report Submitted',state:reportState});
+
+  if(!ownerType){
+    const evals=EvalDB.all().filter(e=>e.sessionId===s.id);
+    let evalState='pending';
+    if(evals.some(e=>e.status==='completed')) evalState='done';
+    else if(evals.length) evalState='in_progress';
+    steps.push({label:'Evaluated',state:evalState});
+  }
+
+  const stepsHtml=steps.map(st=>`<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0">
+    ${_tdOverviewStageDot(st.state)}
+    <div style="font-size:11.5px;font-weight:600;margin-top:6px;text-align:center;color:var(--text)">${st.label}</div>
+    ${st.sub?`<div style="font-size:10px;color:var(--text3);margin-top:1px">${st.sub}</div>`:''}
+  </div>`).join('');
+
+  return `<div class="card" style="padding:16px 20px 14px;margin-bottom:16px">
+    <div style="position:relative">
+      <div style="position:absolute;top:15px;left:8%;right:8%;height:2px;background:var(--border);z-index:0"></div>
+      <div style="display:flex;position:relative;z-index:1">${stepsHtml}</div>
+    </div>
+  </div>`;
+}
+
 function _tddOverviewView(s,ownerType,personLabel,personName){
   const {l1, summary}=_tdOverviewReportBlocks(s);
   return `
     <div class="card" id="tdd-session-info-card" style="padding:18px 20px;margin-bottom:16px">
       ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
     </div>
+    ${_tdOverviewJourneyBlock(s,ownerType)}
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
       <div>
         <div class="card" style="padding:18px 20px;margin-bottom:16px">
@@ -6324,19 +6400,20 @@ function _tddInfoBlockEdit(iconName,color,label,inputHtml,wrapId){
 
 function _tddSessionInfoEditContent(s,ownerType){
   const smallInput='style="font-size:13px;padding:5px 8px"';
+  const gridStyle='display:grid;grid-template-columns:repeat(4,1fr);gap:18px 12px';
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
       <span style="font-size:11.5px;color:var(--text3)">Editing…</span>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:18px 12px">
+    <div style="${gridStyle}">
       ${_tddInfoBlockEdit('filetext','var(--sky)','Program',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
       ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control" ${smallInput}><option value="">— Select Trainer —</option></select>`,'tdd-trainer-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`,'tdd-owner-wrap')}
       ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput}><option value="">— None —</option></select>`,'tdd-cofacilitator-wrap')}
-      ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;gap:6px;align-items:center"><input type="date" id="tdd-date" class="form-control" ${smallInput} value="${s.trainingDate||''}"><span ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;align-items:center;gap:6px">→<input type="date" id="tdd-enddate" class="form-control" ${smallInput} value="${s.endDate||''}"></span></div>`)}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:18px 12px;margin-top:18px">
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;gap:6px;align-items:center"><input type="date" id="tdd-date" class="form-control" ${smallInput} value="${s.trainingDate||''}"><span ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;align-items:center;gap:6px">→<input type="date" id="tdd-enddate" class="form-control" ${smallInput} value="${s.endDate||''}"></span></div>`)}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`)}
       ${_tddInfoBlockEdit('target','#64748b','Modality',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
         <option value="ILT" ${s.deliveryType==='ILT'?'selected':''}>ILT</option>
@@ -6345,10 +6422,10 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="External" ${s.deliveryType==='External'?'selected':''}>External</option>
       </select>`)}
       ${_tddInfoBlockEdit('mappin','var(--red)','Venue',`<select id="tdd-venue" class="form-control" ${smallInput}><option value="">— Select Venue —</option></select>`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('users','var(--sky)','Participants (Expected)',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
       ${_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`)}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:18px 12px;margin-top:18px">
       ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${CATEGORY_OPTIONS.map(c=>`<option value="${c}" ${s.category===c?'selected':''}>${c}</option>`).join('')}</select>`)}
       ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:6px"><select id="tdd-assessment" class="form-control" ${smallInput}>
         <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
@@ -6356,6 +6433,8 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
       </select><input type="number" id="tdd-passing" class="form-control" style="width:56px;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="Pass %" value="${s.passingScore??''}"></div>`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
         <option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>
