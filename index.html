@@ -4914,6 +4914,7 @@ function _tdDocStatus(s){
   if(rep.status==='approved') return '<span class="badge" style="background:#dcfce7;color:#15803d">Report Approved</span>';
   if(rep.status==='submitted') return '<span class="badge" style="background:#dbeafe;color:#1d4ed8">Report Submitted</span>';
   if(rep.status==='returned') return '<span class="badge" style="background:#fee2e2;color:#dc2626">Report Returned</span>';
+  if(rep.status==='draft') return '<span class="badge" style="background:#fef9c3;color:#a16207">Report Draft</span>';
   return '<span class="badge" style="background:#fef9c3;color:#a16207">Report Pending</span>';
 }
 
@@ -5265,6 +5266,12 @@ let _tdPartLoadedFor=null;
 let _tdPartSelected=new Set();
 let _tdPartFilterPending=false;
 let _tdPartAddPickerOpen=false;
+
+// Training Report tab working state (2026-07-30) -- one report per session, simple save-as-you-go
+// draft (no submit/approve workflow for v1). Edited as an in-memory working copy, same pattern as
+// the Attendance & Performance tab, so keystrokes don't round-trip to Supabase on every character.
+let _tdrReport=null;
+let _tdrLoadedFor=null;
 
 const TD_DETAIL_TABS=[
   {id:'overview',label:'Overview'},
@@ -5723,6 +5730,153 @@ async function _tdaMarkCompleted(){
   });
 }
 
+/* ── TRAINING REPORT TAB (2026-07-30) ──────────────────────────────────────────────────────
+   One report per session, simple save-as-you-go draft (no submit/approve workflow for v1, per
+   Sandra's explicit decision -- can layer that on later using the idqa/cdqa lifecycle pattern
+   without changing this content shape). Everything lives in training_reports.content (jsonb):
+   csatScore/csatRespondents (ILT/VILT only), agenda[] (topic+duration), highlights/challenges
+   (free text), actionItems[] (description/owner/dueDate/status). ─────────────────────────── */
+
+function _tdrEnsureLoaded(sessionId){
+  if(_tdrLoadedFor!==sessionId){
+    const existing=TrainingReportsDB.all().find(r=>r.sessionId===sessionId);
+    const baseContent=existing&&existing.content?{...existing.content}:{};
+    _tdrReport=existing
+      ?{...existing, content:baseContent, _isNew:false}
+      :{id:Utils.uid(), sessionId, status:'draft', content:{}, _isNew:true};
+    _tdrReport.content.agenda=_tdrReport.content.agenda||[];
+    _tdrReport.content.actionItems=_tdrReport.content.actionItems||[];
+    _tdrReport.content.highlights=_tdrReport.content.highlights||'';
+    _tdrReport.content.challenges=_tdrReport.content.challenges||'';
+    _tdrReport.content.csatScore=_tdrReport.content.csatScore??null;
+    _tdrReport.content.csatRespondents=_tdrReport.content.csatRespondents??null;
+    _tdrLoadedFor=sessionId;
+  }
+}
+
+function _tdrRenderTab(s){
+  _tdrEnsureLoaded(s.id);
+  const c=_tdrReport.content;
+  const showCSAT=(s.deliveryType==='ILT'||s.deliveryType==='VILT');
+  const savedNote=_tdrReport._isNew?'Not saved yet.':`Last saved ${Utils.esc(Utils.fmtDateTime?Utils.fmtDateTime(_tdrReport.updatedAt):new Date(_tdrReport.updatedAt).toLocaleString())}`;
+
+  const csatBox=showCSAT?`
+    <div class="card" style="padding:18px 20px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">CSAT (Participant Satisfaction)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:480px">
+        <div class="form-group">
+          <label>CSAT Score (%)</label>
+          <input type="number" class="form-control" min="0" max="100" placeholder="e.g. 92" value="${c.csatScore??''}" onblur="_tdrSetField('csatScore',this.value)">
+        </div>
+        <div class="form-group">
+          <label>Respondents</label>
+          <input type="number" class="form-control" min="0" placeholder="e.g. 24" value="${c.csatRespondents??''}" onblur="_tdrSetField('csatRespondents',this.value)">
+        </div>
+      </div>
+    </div>`:'';
+
+  const agendaRows=c.agenda.map((a,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <span style="width:20px;color:var(--text3);font-size:12.5px">${i+1}.</span>
+      <input type="text" class="form-control" style="flex:2" placeholder="Topic" value="${Utils.esc(a.topic||'')}" onblur="_tdrSetAgendaField(${i},'topic',this.value)">
+      <input type="text" class="form-control" style="flex:1;max-width:140px" placeholder="Duration (e.g. 30 min)" value="${Utils.esc(a.duration||'')}" onblur="_tdrSetAgendaField(${i},'duration',this.value)">
+      <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveAgendaRow(${i})" title="Remove">✕</button>
+    </div>`).join('');
+  const agendaBox=`
+    <div class="card" style="padding:18px 20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:700;font-size:14.5px">Agenda</div>
+        <button class="btn btn-sm btn-secondary" onclick="_tdrAddAgendaRow()">+ Add Topic</button>
+      </div>
+      ${c.agenda.length?agendaRows:'<div style="font-size:12.5px;color:var(--text3)">No agenda items yet. Click "+ Add Topic" to start listing what was covered.</div>'}
+    </div>`;
+
+  const highlightsChallengesBox=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card" style="padding:18px 20px">
+        <div style="font-weight:700;font-size:14.5px;margin-bottom:8px">Highlights</div>
+        <textarea class="form-control" rows="5" placeholder="What went well? Notable wins, engagement, feedback..." onblur="_tdrSetField('highlights',this.value)">${Utils.esc(c.highlights)}</textarea>
+      </div>
+      <div class="card" style="padding:18px 20px">
+        <div style="font-weight:700;font-size:14.5px;margin-bottom:8px">Challenges</div>
+        <textarea class="form-control" rows="5" placeholder="What didn't go as planned? Logistics issues, gaps, blockers..." onblur="_tdrSetField('challenges',this.value)">${Utils.esc(c.challenges)}</textarea>
+      </div>
+    </div>`;
+
+  const actionRows=c.actionItems.map((a,i)=>`
+    <tr>
+      <td style="color:var(--text3)">${i+1}</td>
+      <td><input type="text" class="form-control" style="min-width:200px" placeholder="Action item" value="${Utils.esc(a.description||'')}" onblur="_tdrSetActionField(${i},'description',this.value)"></td>
+      <td><input type="text" class="form-control" style="min-width:140px" placeholder="Owner" value="${Utils.esc(a.owner||'')}" onblur="_tdrSetActionField(${i},'owner',this.value)"></td>
+      <td><input type="date" class="form-control" value="${a.dueDate||''}" onblur="_tdrSetActionField(${i},'dueDate',this.value)"></td>
+      <td><select class="form-control" onchange="_tdrSetActionField(${i},'status',this.value)">
+        <option value="open" ${(!a.status||a.status==='open')?'selected':''}>Open</option>
+        <option value="done" ${a.status==='done'?'selected':''}>Done</option>
+      </select></td>
+      <td><button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveActionRow(${i})" title="Remove">✕</button></td>
+    </tr>`).join('');
+  const actionBox=`
+    <div class="card" style="padding:18px 20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:700;font-size:14.5px">Action Items</div>
+        <button class="btn btn-sm btn-secondary" onclick="_tdrAddActionRow()">+ Add Action Item</button>
+      </div>
+      ${c.actionItems.length?`<div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>#</th><th>Action Item</th><th>Owner</th><th>Due Date</th><th>Status</th><th></th></tr>${actionRows}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No action items yet. Click "+ Add Action Item" to track follow-ups.</div>'}
+    </div>`;
+
+  const footer=`
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:11.5px;color:var(--text3)">${savedNote}</div>
+      <button class="btn btn-primary" onclick="_tdrSaveDraft()">Save Draft</button>
+    </div>`;
+
+  return `${csatBox}${agendaBox}${highlightsChallengesBox}${actionBox}${footer}`;
+}
+
+function _tdrSetField(field,value){
+  _tdrReport.content[field]=(field==='csatScore'||field==='csatRespondents')?(value===''?null:Number(value)):value;
+}
+
+function _tdrAddAgendaRow(){
+  _tdrReport.content.agenda.push({topic:'',duration:''});
+  renderTrainingDetail();
+}
+function _tdrSetAgendaField(i,field,value){
+  if(_tdrReport.content.agenda[i]) _tdrReport.content.agenda[i][field]=value;
+}
+function _tdrRemoveAgendaRow(i){
+  _tdrReport.content.agenda.splice(i,1);
+  renderTrainingDetail();
+}
+
+function _tdrAddActionRow(){
+  _tdrReport.content.actionItems.push({description:'',owner:'',dueDate:'',status:'open'});
+  renderTrainingDetail();
+}
+function _tdrSetActionField(i,field,value){
+  if(_tdrReport.content.actionItems[i]) _tdrReport.content.actionItems[i][field]=value;
+  if(field==='status') renderTrainingDetail();
+}
+function _tdrRemoveActionRow(i){
+  _tdrReport.content.actionItems.splice(i,1);
+  renderTrainingDetail();
+}
+
+async function _tdrSaveDraft(){
+  try{
+    const patch={sessionId:_tdrReport.sessionId, status:_tdrReport.status||'draft', content:_tdrReport.content};
+    if(_tdrReport._isNew){
+      const saved=await TrainingReportsDB.create({...patch, id:_tdrReport.id});
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+    } else {
+      const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+    }
+    renderTrainingDetail();
+    toast('Training report draft saved.','success');
+  }catch(e){ /* error already surfaced */ }
+}
+
 function renderTrainingDetail(){
   const s=TrSessionDB.byId(_tdDetailId);
   const wrap=document.getElementById('td-detail-wrap');
@@ -5740,7 +5894,7 @@ function renderTrainingDetail(){
   } else if(_tdDetailTab==='participants'){
     tabBody=_tdaRenderTab(s);
   } else if(_tdDetailTab==='report'){
-    tabBody=_tddPlaceholderPanel('📋','Training Report','The structured post-session report (draft → submit → approve/return) will live here.');
+    tabBody=_tdrRenderTab(s);
   } else if(_tdDetailTab==='trainer-eval'){
     tabBody=_tddPlaceholderPanel('◉','Trainer Evaluation','A recording-gated link into the existing Trainer Evaluation workflow will live here.');
   } else if(_tdDetailTab==='evidence'){
