@@ -5415,8 +5415,16 @@ function generateEvalCode(){
 
 function generateSessionCode(){
   const yr=new Date().getFullYear();
-  const count=TrSessionDB.all().filter(s=>s.code&&s.code.startsWith(`TS-${yr}-`)).length;
-  return `TS-${yr}-${String(count+1).padStart(3,'0')}`;
+  // Use the highest existing numeric suffix + 1 (not a count of matching codes) so a gap in
+  // the sequence (e.g. codes 002-007 with no 001) can't produce a duplicate that collides with
+  // the DB's unique constraint on training_sessions.code.
+  const prefix=`TS-${yr}-`;
+  const maxNum=TrSessionDB.all().reduce((max,s)=>{
+    if(!s.code||!s.code.startsWith(prefix)) return max;
+    const n=parseInt(s.code.slice(prefix.length),10);
+    return isNaN(n)?max:Math.max(max,n);
+  },0);
+  return `${prefix}${String(maxNum+1).padStart(3,'0')}`;
 }
 /* Ensures a session has a human-readable code, generating+persisting one if missing
    (covers sessions logged before this feature existed, or any other legacy gap). */
