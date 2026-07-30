@@ -5423,13 +5423,31 @@ const _TDA_STATUS_STYLE={
   pending:{bg:'#f1f5f9',fg:'#64748b',label:'Pending'}
 };
 
-function _tdaKpiCard(icon,iconBg,label,value,valueColor,sub,subColor){
-  return `<div class="kpi-card">
-    <div class="kpi-icon" style="background:${iconBg}">${icon}</div>
-    <div class="kpi-label">${label}</div>
-    <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">
-      <div class="kpi-value" style="color:${valueColor}">${value}</div>
-      ${sub?`<div style="font-size:11.5px;font-weight:600;color:${subColor||'var(--text3)'}">${sub}</div>`:''}
+const _TDA_ICON_PATHS={
+  users:'<path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7 9v-1.2a3 3 0 0 0-2.2-2.9M15.5 4.2a3.5 3.5 0 0 1 0 6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  check:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 12.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  clock:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  x:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.3 9.3l5.4 5.4M14.7 9.3l-5.4 5.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  question:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.8 9.5a2.2 2.2 0 1 1 3.3 1.9c-.8.5-1.1 1-1.1 1.9M12 16.3h.01" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  trend:'<path d="M4 16l5.5-5.5 4 4L20 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h5v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  clipboard:'<rect x="6" y="4.5" width="12" height="16" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 4V3.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V4M9 10h6M9 13.5h6M9 17h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  filetext:'<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 3.5V8h4M9 12.5h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  filecheck:'<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 3.5V8h4M9.3 14l1.8 1.8L14.8 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  award:'<circle cx="12" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 13.5L7.5 21l4.5-2 4.5 2-1.5-7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  target:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>'
+};
+function _tdaIcon(name,color){
+  return `<svg width="21" height="21" viewBox="0 0 24 24" style="color:${color};flex-shrink:0;margin-top:1px">${_TDA_ICON_PATHS[name]||''}</svg>`;
+}
+function _tdaKpiCard(iconName,iconColor,label,value,sub,subColor,valueColor){
+  return `<div class="card" style="padding:12px;display:flex;gap:9px;align-items:flex-start">
+    ${_tdaIcon(iconName,iconColor)}
+    <div>
+      <div style="font-size:11.5px;color:var(--text3);line-height:1.2">${label}</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px;flex-wrap:wrap">
+        <span style="font-size:19px;font-weight:700;color:${valueColor||'var(--text)'}">${value}</span>
+        ${sub?`<span style="font-size:11px;color:${subColor||'var(--text3)'}">${sub}</span>`:''}
+      </div>
     </div>
   </div>`;
 }
@@ -5454,31 +5472,37 @@ function _tdaRenderTab(s){
   const passRate=(passedCount!=null&&assessedRows.length)?Math.round((passedCount/assessedRows.length)*100):null;
   const pct=(n,d)=>d>0?Math.round((n/d)*100)+'%':'';
 
-  const attendanceKpis=`
-    <div style="font-weight:700;font-size:13px;color:var(--text2);margin-bottom:8px">Attendance Summary</div>
-    <div class="kpi-strip" style="margin-bottom:16px">
-      ${_tdaKpiCard('👥','#f0f9ff','Participants Listed',total,'#0369a1')}
-      ${_tdaKpiCard('✅','var(--green-lt)','Present',present,'var(--green)',pct(present,total),'var(--green)')}
-      ${_tdaKpiCard('🕐','var(--amber-lt)','Late',late,'var(--amber)',pct(late,total),'var(--amber)')}
-      ${_tdaKpiCard('✕','var(--red-lt)','Absent',absent,'var(--red)',pct(absent,total),'var(--red)')}
-      ${_tdaKpiCard('⏳','#f1f5f9','Pending',pending,'#64748b',pct(pending,total),'#64748b')}
-      ${_tdaKpiCard('📈','#f5f3ff','Attendance Rate',total>0?rate+'%':'—','#7c3aed',total>0?`(${present+late}/${total})`:'','var(--text3)')}
+  const attendanceCards=`
+    <div>
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Attendance Summary</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${_tdaKpiCard('users','#0369a1','Participants Listed',total)}
+        ${_tdaKpiCard('check','var(--green)','Present',present,pct(present,total),'var(--green)')}
+        ${_tdaKpiCard('clock','var(--amber)','Late',late,pct(late,total),'var(--amber)')}
+        ${_tdaKpiCard('x','var(--red)','Absent',absent,pct(absent,total),'var(--red)')}
+        ${_tdaKpiCard('question','#64748b','Pending',pending,pct(pending,total),'#64748b')}
+        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',total>0?rate+'%':'—',total>0?`(${present+late}/${total})`:'','var(--text3)')}
+      </div>
     </div>`;
 
   const assessLabel=s.assessmentType&&s.assessmentType!=='None'?s.assessmentType:'None configured';
-  const assessmentKpis=`
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-      <div style="font-weight:700;font-size:13px;color:var(--text2)">Assessment Results</div>
-      <div style="font-size:11.5px;color:var(--text3)">Type: <strong>${Utils.esc(assessLabel)}</strong>${s.assessmentType&&s.assessmentType!=='None'&&s.passingScore!=null?` &nbsp;·&nbsp; Passing Score: <strong>${s.passingScore}%</strong>`:''} &nbsp;·&nbsp; set on Overview</div>
-    </div>
-    <div class="kpi-strip" style="margin-bottom:16px">
-      ${_tdaKpiCard('📋','#f0f9ff','Assessed',assessedRows.length,'#0369a1',pct(assessedRows.length,total),'var(--text3)')}
-      ${_tdaKpiCard('📝','var(--sky-lt)','Avg Pre-Test',avgPre!=null?avgPre+'%':'—','var(--sky)')}
-      ${_tdaKpiCard('📄','var(--green-lt)','Avg Post-Test',avgPost!=null?avgPost+'%':'—','var(--green)')}
-      ${_tdaKpiCard('📈','#f5f3ff','Avg Gain',avgGain!=null?(avgGain>0?'+':'')+avgGain+'%':'—',avgGain>0?'var(--green)':avgGain<0?'var(--red)':'var(--text2)')}
-      ${_tdaKpiCard('🏅','var(--green-lt)','Passed',passedCount!=null?passedCount:'—','var(--green)',(passedCount!=null&&assessedRows.length)?pct(passedCount,assessedRows.length):'','var(--text3)')}
-      ${_tdaKpiCard('🎯','#f5f3ff','Pass Rate',passRate!=null?passRate+'%':'—','#7c3aed',(passedCount!=null&&assessedRows.length)?`(${passedCount}/${assessedRows.length})`:'','var(--text3)')}
+  const assessmentCards=`
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+        <div style="font-weight:700;font-size:13.5px">Assessment Results</div>
+        <div style="font-size:11px;color:var(--text3)">${Utils.esc(assessLabel)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${_tdaKpiCard('clipboard','#0369a1','Assessed',assessedRows.length,pct(assessedRows.length,total),'var(--text3)')}
+        ${_tdaKpiCard('filetext','var(--sky)','Avg Pre-Test',avgPre!=null?avgPre+'%':'—')}
+        ${_tdaKpiCard('filecheck','var(--green)','Avg Post-Test',avgPost!=null?avgPost+'%':'—')}
+        ${_tdaKpiCard('trend','#7c3aed','Avg Gain',avgGain!=null?(avgGain>0?'+':'')+avgGain+'%':'—','','',avgGain>0?'var(--green)':avgGain<0?'var(--red)':'var(--text2)')}
+        ${_tdaKpiCard('award','var(--green)','Passed',passedCount!=null?passedCount:'—',(passedCount!=null&&assessedRows.length)?pct(passedCount,assessedRows.length):'','var(--text3)')}
+        ${_tdaKpiCard('target','var(--sky)','Pass Rate',passRate!=null?passRate+'%':'—',(passedCount!=null&&assessedRows.length)?`(${passedCount}/${assessedRows.length})`:'','var(--text3)')}
+      </div>
     </div>`;
+
+  const kpiColumns=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px">${attendanceCards}${assessmentCards}</div>`;
 
   const warnBanner=pending>0?`
     <div style="background:var(--amber-lt);border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#92400e;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -5520,8 +5544,7 @@ function _tdaRenderTab(s){
     </div>`;
 
   return `
-    ${attendanceKpis}
-    ${assessmentKpis}
+    ${kpiColumns}
     ${warnBanner}
     <div class="card" style="padding:18px 20px">
       ${toolbar}
