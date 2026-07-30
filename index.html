@@ -2319,7 +2319,10 @@ const _FIELD_MAPS = {
   },
   session_participants:{
     id:'id', sessionId:'session_id', profileId:'profile_id', externalName:'external_name',
-    attended:'attended', notes:'notes', createdAt:'created_at', updatedAt:'updated_at'
+    attended:'attended', notes:'notes', createdAt:'created_at', updatedAt:'updated_at',
+    // Attendance & Performance tab (2026-07-30): real attendance status + pre/post test score fields.
+    attendanceStatus:'attendance_status', preTestScore:'pre_test_score', postTestScore:'post_test_score',
+    remarks:'remarks'
   },
   training_reports:{
     id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
@@ -5251,9 +5254,18 @@ let _tdDetailId=null;
 let _tdDetailTab='overview';
 let _tdDetailEditing=false;
 
+// Attendance & Performance tab working state (2026-07-30) -- participants are edited as an
+// in-memory working copy (_tdPartRows) and only persisted on Save Draft / Mark Completed, so
+// keystrokes in score/remarks fields don't round-trip to Supabase on every character.
+let _tdPartRows=[];
+let _tdPartLoadedFor=null;
+let _tdPartSelected=new Set();
+let _tdPartFilterPending=false;
+let _tdPartAddPickerOpen=false;
+
 const TD_DETAIL_TABS=[
   {id:'overview',label:'Overview'},
-  {id:'participants',label:'Participants & Attendance'},
+  {id:'participants',label:'Attendance & Performance'},
   {id:'report',label:'Training Report'},
   {id:'assessments',label:'Assessments'},
   {id:'trainer-eval',label:'Trainer Evaluation'},
@@ -5356,6 +5368,328 @@ function _tddPlaceholderPanel(icon,title,note){
   </div>`;
 }
 
+/* ── ATTENDANCE & PERFORMANCE TAB (2026-07-30) ────────────────────────────────────────────
+   Roster + attendance + pre/post test scoring for a training session, backed by the
+   session_participants table. Participants are edited in an in-memory working copy
+   (_tdPartRows) and only written to Supabase on "Save Draft" / "Mark Session as Completed" --
+   this keeps per-keystroke edits (scores, remarks) from round-tripping to the DB. ─────────── */
+
+function _tdaEnsureLoaded(sessionId){
+  if(_tdPartLoadedFor!==sessionId){
+    _tdPartRows=SessionParticipantsDB.all().filter(r=>r.sessionId===sessionId)
+      .map(r=>({...r, attendanceStatus:r.attendanceStatus||'pending'}));
+    _tdPartLoadedFor=sessionId;
+    _tdPartSelected=new Set();
+    _tdPartFilterPending=false;
+    _tdPartAddPickerOpen=false;
+  }
+}
+
+function _tdaPersonInfo(r){
+  if(r.profileId){
+    const u=DB.byId(r.profileId);
+    if(!u) return {name:'(deactivated / deleted user)', email:'', role:'—', supervisor:'—', initials:'?', avaStyle:'', inactive:true};
+    const name=`${u.firstName} ${u.lastName}`;
+    const role=Sel.nameOf(Store.POS,u.positionId)||'—';
+    const sv=u.supervisorId?DB.byId(u.supervisorId):null;
+    const supervisor=sv?`${sv.firstName} ${sv.lastName}`:'—';
+    return {name, email:u.email, role, supervisor, initials:Utils.initials(name), avaStyle:Utils.avatarBg(u.isAdmin), inactive:!u.isActive};
+  }
+  return {name:r.externalName||'External Participant', email:'External', role:'External', supervisor:'—', initials:Utils.initials(r.externalName||'EX'), avaStyle:Utils.avatarBg(false), inactive:false};
+}
+
+function _tdaGain(r){
+  const pre=r.preTestScore, post=r.postTestScore;
+  if(pre===null||pre===undefined||pre===''||post===null||post===undefined||post==='') return null;
+  return Number(post)-Number(pre);
+}
+
+const _TDA_STATUS_STYLE={
+  present:{bg:'var(--green-lt)',fg:'var(--green)',label:'Present'},
+  late:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Late'},
+  absent:{bg:'var(--red-lt)',fg:'var(--red)',label:'Absent'},
+  pending:{bg:'#f1f5f9',fg:'#64748b',label:'Pending'}
+};
+
+function _tdaRenderTab(s){
+  _tdaEnsureLoaded(s.id);
+  const all=_tdPartRows;
+  const total=all.length;
+  const present=all.filter(r=>r.attendanceStatus==='present').length;
+  const late=all.filter(r=>r.attendanceStatus==='late').length;
+  const absent=all.filter(r=>r.attendanceStatus==='absent').length;
+  const pending=all.filter(r=>r.attendanceStatus==='pending').length;
+  const rate=total>0?Math.round(((present+late)/total)*100):0;
+  const rows=_tdPartFilterPending?all.filter(r=>r.attendanceStatus==='pending'):all;
+
+  const kpis=`
+    <div class="kpi-strip" style="margin-bottom:16px">
+      <div class="kpi-card"><div class="kpi-icon" style="background:#f0f9ff">👥</div><div class="kpi-label">Participants Listed</div><div class="kpi-value" style="color:#0369a1">${total}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-lt)">✅</div><div class="kpi-label">Present</div><div class="kpi-value" style="color:var(--green)">${present}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--amber-lt)">🕐</div><div class="kpi-label">Late</div><div class="kpi-value" style="color:var(--amber)">${late}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--red-lt)">✕</div><div class="kpi-label">Absent</div><div class="kpi-value" style="color:var(--red)">${absent}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#f1f5f9">⏳</div><div class="kpi-label">Pending</div><div class="kpi-value" style="color:#64748b">${pending}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#f5f3ff">📈</div><div class="kpi-label">Attendance Rate</div><div class="kpi-value" style="color:#7c3aed">${total>0?rate+'%':'—'}</div></div>
+    </div>`;
+
+  const assessLabel=s.assessmentType&&s.assessmentType!=='None'?s.assessmentType:'None configured';
+  const assessBox=`
+    <div class="card" style="padding:16px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px">Assessment Setup</div>
+        <div style="font-size:12.5px;color:var(--text2)">Type: <strong>${Utils.esc(assessLabel)}</strong>${s.assessmentType&&s.assessmentType!=='None'&&s.passingScore!=null?` &nbsp;·&nbsp; Passing Score: <strong>${s.passingScore}%</strong>`:''}</div>
+        <div style="font-size:11.5px;color:var(--text3);margin-top:2px">Set on the Overview tab's Session Information card.</div>
+      </div>
+      <a href="javascript:void(0)" onclick="tdDetailSwitchTab('assessments')" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600;white-space:nowrap">View Details →</a>
+    </div>`;
+
+  const warnBanner=pending>0?`
+    <div style="background:var(--amber-lt);border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#92400e;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span>⚠ ${pending} participant(s) have <strong>Pending</strong> attendance status. Mark actual attendance before completing this session.</span>
+      <a href="javascript:void(0)" onclick="_tdaToggleFilterPending()" style="color:#92400e;font-weight:700;text-decoration:underline;white-space:nowrap">${_tdPartFilterPending?'Show All':'View Pending Only'}</a>
+    </div>`:'';
+
+  const addPanel=_tdPartAddPickerOpen?_tdaAddPickerHtml(s):'';
+
+  const selCount=_tdPartSelected.size;
+  const toolbar=`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <div style="font-weight:700;font-size:14.5px">Participant Roster</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-secondary" onclick="_tdaToggleAddPicker()">+ Add Participant</button>
+        <button class="btn btn-sm btn-secondary" onclick="document.getElementById('tda-csv-input').click()">⇪ Add Multiple (CSV)</button>
+        <input type="file" id="tda-csv-input" accept=".csv" style="display:none" onchange="_tdaHandleCSVFile(this.files[0])">
+        <button class="btn btn-sm btn-ghost" ${selCount?'':'disabled'} style="${selCount?'color:var(--red)':''}" onclick="_tdaBulkRemove()">Remove${selCount?` (${selCount})`:''}</button>
+      </div>
+    </div>`;
+
+  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Participant','Role','Immediate Supervisor','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
+  const thead=`<tr>${theadCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+
+  const tbody=rows.length?rows.map((r,i)=>_tdaRowHtml(r,i)).join(''):`<tr><td colspan="11" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">${_tdPartFilterPending?'No pending participants — everyone has an attendance status.':'No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.'}</td></tr>`;
+
+  const legend=`<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);margin-top:10px">
+      <span>● <span style="color:var(--green)">Present</span></span>
+      <span>● <span style="color:var(--amber)">Late</span></span>
+      <span>● <span style="color:var(--red)">Absent</span></span>
+      <span>● <span style="color:#64748b">Pending</span></span>
+      <span>Gain = Post-Test − Pre-Test</span>
+    </div>`;
+
+  const actionBar=`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn btn-secondary" onclick="_tdaSaveDraft()">Save Draft</button>
+      <button class="btn btn-primary" onclick="_tdaMarkCompleted()">Mark Session as Completed</button>
+    </div>`;
+
+  return `
+    ${kpis}
+    ${assessBox}
+    ${warnBanner}
+    <div class="card" style="padding:18px 20px">
+      ${toolbar}
+      ${addPanel}
+      <div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${tbody}</tbody></table></div>
+      ${legend}
+    </div>
+    ${actionBar}
+  `;
+}
+
+function _tdaRowHtml(r,i){
+  const p=_tdaPersonInfo(r);
+  const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending;
+  const gain=_tdaGain(r);
+  const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
+  const passBadge=(gain!==null&&r.postTestScore!==''&&r.postTestScore!==null)?'':'';
+  return `<tr data-row-id="${r.id}">
+    <td><input type="checkbox" onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
+    <td style="color:var(--text3)">${i+1}</td>
+    <td><div class="tbl-user"><div class="tbl-ava" style="${p.avaStyle}">${p.initials}</div><div><div class="td-name">${Utils.esc(p.name)}${p.inactive?' <span class="txt-muted" style="font-size:11px">(inactive)</span>':''}</div>${p.email&&p.email!=='External'?`<div style="font-size:11px;color:var(--text3)">${Utils.esc(p.email)}</div>`:''}</div></div></td>
+    <td style="font-size:12.5px">${Utils.esc(p.role)}</td>
+    <td style="font-size:12.5px">${Utils.esc(p.supervisor)}</td>
+    <td><select class="form-control" style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="_tdaSetField('${r.id}','attendanceStatus',this.value)">
+      ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${r.attendanceStatus===k?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
+    </select></td>
+    <td><input type="number" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)"></td>
+    <td><input type="number" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)"></td>
+    <td>${gainHtml}</td>
+    <td><input type="text" class="form-control" style="width:120px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.remarks||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','remarks',this.value)"></td>
+    <td><button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdaRemoveRow('${r.id}')" title="Remove participant">✕</button></td>
+  </tr>`;
+}
+
+function _tdaAddPickerHtml(s){
+  const already=new Set(_tdPartRows.filter(r=>r.profileId).map(r=>r.profileId));
+  const eligible=DB.all().filter(u=>u.isActive&&!already.has(u.id)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
+  return `<div class="card" style="padding:14px 16px;margin-bottom:12px;background:#f8fafc;border-style:dashed">
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px">Add Participant</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="tda-add-select" class="form-control" style="flex:1;min-width:220px">
+          <option value="">— Select a user —</option>
+          ${eligible.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.employeeId?' ('+Utils.esc(u.employeeId)+')':''}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="_tdaConfirmAdd()">Add</button>
+        <button class="btn btn-sm btn-ghost" onclick="_tdaToggleAddPicker()">Cancel</button>
+      </div>
+      ${eligible.length===0?'<div style="font-size:12px;color:var(--text3);margin-top:6px">All active users are already on this roster.</div>':''}
+    </div>`;
+}
+
+function _tdaToggleAddPicker(){
+  _tdPartAddPickerOpen=!_tdPartAddPickerOpen;
+  renderTrainingDetail();
+}
+
+function _tdaConfirmAdd(){
+  const sel=document.getElementById('tda-add-select');
+  const profileId=sel?sel.value:'';
+  if(!profileId){ toast('Please select a user to add.','error'); return; }
+  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId, externalName:null, attended:false, attendanceStatus:'pending', preTestScore:null, postTestScore:null, remarks:'', notes:'', _isNew:true});
+  _tdPartAddPickerOpen=false;
+  renderTrainingDetail();
+  toast('Participant added to roster (unsaved — click Save Draft to persist).','info');
+}
+
+function _tdaSetField(rowId,field,value){
+  const r=_tdPartRows.find(x=>x.id===rowId); if(!r) return;
+  if(field==='preTestScore'||field==='postTestScore'){
+    r[field]=value===''?null:Number(value);
+  } else {
+    r[field]=value;
+  }
+  renderTrainingDetail();
+}
+
+function _tdaToggleSelectRow(rowId,checked){
+  if(checked) _tdPartSelected.add(rowId); else _tdPartSelected.delete(rowId);
+  renderTrainingDetail();
+}
+
+function _tdaToggleSelectAll(checked){
+  const rows=_tdPartFilterPending?_tdPartRows.filter(r=>r.attendanceStatus==='pending'):_tdPartRows;
+  if(checked) rows.forEach(r=>_tdPartSelected.add(r.id)); else rows.forEach(r=>_tdPartSelected.delete(r.id));
+  renderTrainingDetail();
+}
+
+function _tdaToggleFilterPending(){
+  _tdPartFilterPending=!_tdPartFilterPending;
+  renderTrainingDetail();
+}
+
+function _tdaRemoveRow(rowId){
+  const r=_tdPartRows.find(x=>x.id===rowId); if(!r) return;
+  const p=_tdaPersonInfo(r);
+  confirm$('Remove Participant',`Remove <strong>${Utils.esc(p.name)}</strong> from this training's roster?`,'Remove',async()=>{
+    if(!r._isNew){
+      try{ await SessionParticipantsDB.delete(rowId); }catch(e){ return; }
+    }
+    _tdPartRows=_tdPartRows.filter(x=>x.id!==rowId);
+    _tdPartSelected.delete(rowId);
+    renderTrainingDetail();
+    toast('Participant removed.','success');
+  });
+}
+
+function _tdaBulkRemove(){
+  const ids=[..._tdPartSelected];
+  if(!ids.length) return;
+  confirm$('Remove Participants',`Remove <strong>${ids.length}</strong> selected participant(s) from this training's roster?`,'Remove',async()=>{
+    for(const id of ids){
+      const r=_tdPartRows.find(x=>x.id===id);
+      if(r&&!r._isNew){ try{ await SessionParticipantsDB.delete(id); }catch(e){ /* keep going */ } }
+    }
+    _tdPartRows=_tdPartRows.filter(r=>!ids.includes(r.id));
+    _tdPartSelected=new Set();
+    renderTrainingDetail();
+    toast('Selected participants removed.','success');
+  });
+}
+
+// Minimal CSV parser (no embedded-comma/quote support) -- matches rows against existing users
+// by Employee ID or Email, whichever the header row identifies. Good enough for a simple
+// export/import loop; documented limitation rather than pulling in a parsing library.
+function _tdaParseCSV(text){
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
+  if(!lines.length) return {header:[],rows:[]};
+  const header=lines[0].split(',').map(h=>h.trim().toLowerCase());
+  const rows=lines.slice(1).map(l=>l.split(',').map(c=>c.trim()));
+  return {header,rows};
+}
+
+function _tdaHandleCSVFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const {header,rows}=_tdaParseCSV(String(reader.result||''));
+    const emailIdx=header.findIndex(h=>h.includes('email'));
+    const empIdx=header.findIndex(h=>h.includes('employee')||h.includes('emp id')||h.includes('emp_id'));
+    if(emailIdx===-1&&empIdx===-1){
+      toast('CSV must have an Email or Employee ID column.','error');
+      return;
+    }
+    const already=new Set(_tdPartRows.filter(r=>r.profileId).map(r=>r.profileId));
+    let added=0, skippedDup=0, notFound=0;
+    rows.forEach(cols=>{
+      const email=emailIdx>=0?cols[emailIdx]:'';
+      const empId=empIdx>=0?cols[empIdx]:'';
+      let u=null;
+      if(email) u=DB.byEmail(email);
+      if(!u&&empId) u=DB.byEmpId(empId);
+      if(!u){ notFound++; return; }
+      if(already.has(u.id)){ skippedDup++; return; }
+      _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:u.id, externalName:null, attended:false, attendanceStatus:'pending', preTestScore:null, postTestScore:null, remarks:'', notes:'', _isNew:true});
+      already.add(u.id);
+      added++;
+    });
+    renderTrainingDetail();
+    toast(`${added} participant(s) added${skippedDup?`, ${skippedDup} already on roster`:''}${notFound?`, ${notFound} not matched to a user`:''}.`, added?'success':'warning');
+  };
+  reader.readAsText(file);
+  document.getElementById('tda-csv-input').value='';
+}
+
+async function _tdaPersistRows(){
+  for(const r of _tdPartRows){
+    const patch={sessionId:r.sessionId, profileId:r.profileId||null, externalName:r.externalName||null,
+      attendanceStatus:r.attendanceStatus||'pending', preTestScore:r.preTestScore??null, postTestScore:r.postTestScore??null,
+      remarks:r.remarks||'', attended:r.attendanceStatus==='present'||r.attendanceStatus==='late', notes:r.notes||''};
+    if(r._isNew){
+      const saved=await SessionParticipantsDB.create({...patch, id:r.id});
+      r._isNew=false;
+      Object.assign(r,saved);
+    } else {
+      const saved=await SessionParticipantsDB.update(r.id,patch);
+      Object.assign(r,saved);
+    }
+  }
+}
+
+async function _tdaSaveDraft(){
+  try{
+    await _tdaPersistRows();
+    renderTrainingDetail();
+    toast('Attendance & Performance draft saved.','success');
+  }catch(e){ /* error already surfaced by SessionParticipantsDB */ }
+}
+
+async function _tdaMarkCompleted(){
+  const pendingCount=_tdPartRows.filter(r=>r.attendanceStatus==='pending').length;
+  if(pendingCount>0){
+    toast(`Cannot mark session as completed — ${pendingCount} participant(s) still have Pending attendance status.`,'error');
+    _tdPartFilterPending=true;
+    renderTrainingDetail();
+    return;
+  }
+  confirm$('Mark Session as Completed','This will save the current roster and mark the training session as Completed. Continue?','Mark Completed',async()=>{
+    try{
+      await _tdaPersistRows();
+      await TrSessionDB.update(_tdDetailId,{status:'completed'});
+      renderTrainingDetail();
+      toast('Session marked as Completed.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+
 function renderTrainingDetail(){
   const s=TrSessionDB.byId(_tdDetailId);
   const wrap=document.getElementById('td-detail-wrap');
@@ -5371,7 +5705,7 @@ function renderTrainingDetail(){
   if(_tdDetailTab==='overview'){
     tabBody=_tddOverviewView(s,ownerType,personLabel,personName);
   } else if(_tdDetailTab==='participants'){
-    tabBody=_tddPlaceholderPanel('👥','Participants & Attendance','Attendee rosters and attendance tracking will live here, backed by the session_participants table already in place.');
+    tabBody=_tdaRenderTab(s);
   } else if(_tdDetailTab==='report'){
     tabBody=_tddPlaceholderPanel('📋','Training Report','The structured post-session report (draft → submit → approve/return) will live here.');
   } else if(_tdDetailTab==='assessments'){
@@ -5438,6 +5772,15 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
   `;
 }
 
+function _tddAttendanceSummaryRow(s){
+  const rows=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
+  if(!rows.length) return '<div style="font-size:12px;color:var(--text3);margin-top:8px;line-height:1.5">No participants added yet — see the Attendance &amp; Performance tab.</div>';
+  const present=rows.filter(r=>(r.attendanceStatus||'pending')==='present').length;
+  const late=rows.filter(r=>(r.attendanceStatus||'pending')==='late').length;
+  const rate=Math.round(((present+late)/rows.length)*100);
+  return `${_tddInfoRow('Participants Listed', rows.length)}${_tddInfoRow('Attendance Rate', rate+'%')}`;
+}
+
 function _tddOverviewView(s,ownerType,personLabel,personName){
   return `
     <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:16px;align-items:start">
@@ -5447,7 +5790,7 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
       <div class="card" style="padding:18px 20px">
         <div style="font-weight:700;font-size:14.5px;margin-bottom:4px">Session Summary</div>
         ${_tddInfoRow('Expected Participants', s.expectedParticipants??'<span style="color:var(--text3)">— not set —</span>')}
-        <div style="font-size:12px;color:var(--text3);margin-top:8px;line-height:1.5">Registered / attendance figures will appear here once Participants &amp; Attendance is built.</div>
+        ${_tddAttendanceSummaryRow(s)}
       </div>
       <div style="display:flex;flex-direction:column;gap:16px">
         <div class="card" style="padding:18px 20px">
