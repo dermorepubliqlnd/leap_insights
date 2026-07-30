@@ -5227,7 +5227,13 @@ function deleteTrainingRecord(id){
   confirm$('Delete Training',
     `Delete <strong>${Utils.esc(s.trainingProgram||'this training')}</strong>${s.batchNo?` (Batch ${Utils.esc(s.batchNo)})`:''}? This cannot be undone.`,
     'Delete',async()=>{
-      try{ await TrSessionDB.delete(id); toast('Training deleted.','success'); renderTrainingDelivery(); }
+      try{
+        await TrSessionDB.delete(id);
+        toast('Training deleted.','success');
+        // If we're currently viewing this record's detail page, navigate back to the list
+        // instead of leaving a stale detail view rendered against a now-deleted record.
+        if(_tdDetailId===id) closeTrainingDetail(); else renderTrainingDelivery();
+      }
       catch(e){ /* error already surfaced */ }
     }
   );
