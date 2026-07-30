@@ -5267,11 +5267,14 @@ let _tdPartSelected=new Set();
 let _tdPartFilterPending=false;
 let _tdPartAddPickerOpen=false;
 
-// Training Report tab working state (2026-07-30) -- one report per session, simple save-as-you-go
-// draft (no submit/approve workflow for v1). Edited as an in-memory working copy, same pattern as
-// the Attendance & Performance tab, so keystrokes don't round-trip to Supabase on every character.
+// Training Report tab working state (2026-07-30, redesigned same day per Sandra's reference
+// mockup) -- one report per session. Draft until Submit is clicked, then locked read-only
+// (matches the mockup's "once submitted, you won't be able to edit" note) -- no separate
+// approver/return step yet, just a draft->submitted lock. Edited as an in-memory working copy,
+// same pattern as the Attendance & Performance tab, so keystrokes don't round-trip on every char.
 let _tdrReport=null;
 let _tdrLoadedFor=null;
+let _tdrPreviewMode=false;
 
 const TD_DETAIL_TABS=[
   {id:'overview',label:'Overview'},
@@ -5730,12 +5733,22 @@ async function _tdaMarkCompleted(){
   });
 }
 
-/* ── TRAINING REPORT TAB (2026-07-30) ──────────────────────────────────────────────────────
-   One report per session, simple save-as-you-go draft (no submit/approve workflow for v1, per
-   Sandra's explicit decision -- can layer that on later using the idqa/cdqa lifecycle pattern
-   without changing this content shape). Everything lives in training_reports.content (jsonb):
-   csatScore/csatRespondents (ILT/VILT only), agenda[] (topic+duration), highlights/challenges
-   (free text), actionItems[] (description/owner/dueDate/status). ─────────────────────────── */
+/* ── TRAINING REPORT TAB (2026-07-30, redesigned same day per Sandra's mockup) ───────────────
+   One report per session. Content lives in training_reports.content (jsonb):
+   - Session L1 Report (Learner Reaction): responses/contentRating/materialsRating/
+     facilitationRating/overallSatisfaction/csat/nps (all manual aggregate entry -- there's no
+     per-participant survey-collection mechanism in the app, so these are typed in directly,
+     same approach as the original single-CSAT-field v1), plus two free-text callouts
+     (learnersValued / learnersImprove).
+   - Agenda Delivery: list of {item, facilitator, status, remarks} rows (replaces the old
+     simpler topic+duration agenda).
+   - Summary: five fixed callout blocks (winsHighlights/challengesImprovement/recommendations/
+     pendingActions/additionalRemarks) -- replaces the old Highlights/Challenges boxes and the
+     structured Action Items table from the first build; "Pending Actions" here is free text per
+     the mockup, not a structured owner/due-date list.
+   Draft until Submit Report is clicked, then the whole tab locks read-only (matches the
+   mockup's "once submitted, you won't be able to edit the report" note). No separate approver
+   step yet. ─────────────────────────────────────────────────────────────────────────────── */
 
 function _tdrEnsureLoaded(sessionId){
   if(_tdrLoadedFor!==sessionId){
@@ -5744,121 +5757,172 @@ function _tdrEnsureLoaded(sessionId){
     _tdrReport=existing
       ?{...existing, content:baseContent, _isNew:false}
       :{id:Utils.uid(), sessionId, status:'draft', content:{}, _isNew:true};
-    _tdrReport.content.agenda=_tdrReport.content.agenda||[];
-    _tdrReport.content.actionItems=_tdrReport.content.actionItems||[];
-    _tdrReport.content.highlights=_tdrReport.content.highlights||'';
-    _tdrReport.content.challenges=_tdrReport.content.challenges||'';
-    _tdrReport.content.csatScore=_tdrReport.content.csatScore??null;
-    _tdrReport.content.csatRespondents=_tdrReport.content.csatRespondents??null;
+    const c=_tdrReport.content;
+    c.responses=c.responses??null;
+    c.contentRating=c.contentRating??null;
+    c.materialsRating=c.materialsRating??null;
+    c.facilitationRating=c.facilitationRating??null;
+    c.overallSatisfaction=c.overallSatisfaction??null;
+    c.csat=c.csat??null;
+    c.nps=c.nps??null;
+    c.learnersValued=c.learnersValued||'';
+    c.learnersImprove=c.learnersImprove||'';
+    c.agendaDelivery=c.agendaDelivery||[];
+    c.winsHighlights=c.winsHighlights||'';
+    c.challengesImprovement=c.challengesImprovement||'';
+    c.recommendations=c.recommendations||'';
+    c.pendingActions=c.pendingActions||'';
+    c.additionalRemarks=c.additionalRemarks||'';
     _tdrLoadedFor=sessionId;
+    _tdrPreviewMode=false;
   }
+}
+
+function _tdrNpsLabel(v){
+  if(v==null||v==='') return '';
+  const n=Number(v);
+  if(n>=50) return 'Promoter';
+  if(n>=0) return 'Passive';
+  return 'Detractor';
+}
+
+function _tdrMetricCard(icon,iconBg,label,value,sub){
+  return `<div class="kpi-card">
+    <div class="kpi-icon" style="background:${iconBg}">${icon}</div>
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}</div>
+    ${sub?`<div class="kpi-sub">${sub}</div>`:''}
+  </div>`;
 }
 
 function _tdrRenderTab(s){
   _tdrEnsureLoaded(s.id);
   const c=_tdrReport.content;
-  const showCSAT=(s.deliveryType==='ILT'||s.deliveryType==='VILT');
-  const savedNote=_tdrReport._isNew?'Not saved yet.':`Last saved ${Utils.esc(Utils.fmtDateTime?Utils.fmtDateTime(_tdrReport.updatedAt):new Date(_tdrReport.updatedAt).toLocaleString())}`;
+  const locked=_tdrReport.status==='submitted';
+  const readOnly=locked||_tdrPreviewMode;
+  const dis=readOnly?'disabled':'';
+  const totalParticipants=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length;
+  const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
+  const npsLbl=_tdrNpsLabel(c.nps);
+  const savedNote=_tdrReport._isNew?'Not saved yet.':`Last saved ${Utils.esc(new Date(_tdrReport.updatedAt).toLocaleString())}`;
 
-  const csatBox=showCSAT?`
-    <div class="card" style="padding:18px 20px;margin-bottom:16px">
-      <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">CSAT (Participant Satisfaction)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:480px">
-        <div class="form-group">
-          <label>CSAT Score (%)</label>
-          <input type="number" class="form-control" min="0" max="100" placeholder="e.g. 92" value="${c.csatScore??''}" onblur="_tdrSetField('csatScore',this.value)">
-        </div>
-        <div class="form-group">
-          <label>Respondents</label>
-          <input type="number" class="form-control" min="0" placeholder="e.g. 24" value="${c.csatRespondents??''}" onblur="_tdrSetField('csatRespondents',this.value)">
-        </div>
+  const toolbar=`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div style="font-size:11.5px;color:var(--text3)">
+        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrPreviewMode?`<span style="font-weight:600">Preview mode</span> — read-only`:savedNote}
       </div>
-    </div>`:'';
-
-  const agendaRows=c.agenda.map((a,i)=>`
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <span style="width:20px;color:var(--text3);font-size:12.5px">${i+1}.</span>
-      <input type="text" class="form-control" style="flex:2" placeholder="Topic" value="${Utils.esc(a.topic||'')}" onblur="_tdrSetAgendaField(${i},'topic',this.value)">
-      <input type="text" class="form-control" style="flex:1;max-width:140px" placeholder="Duration (e.g. 30 min)" value="${Utils.esc(a.duration||'')}" onblur="_tdrSetAgendaField(${i},'duration',this.value)">
-      <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveAgendaRow(${i})" title="Remove">✕</button>
-    </div>`).join('');
-  const agendaBox=`
-    <div class="card" style="padding:18px 20px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:700;font-size:14.5px">Agenda</div>
-        <button class="btn btn-sm btn-secondary" onclick="_tdrAddAgendaRow()">+ Add Topic</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${_tdrPreviewMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrExitPreview()">← Exit Preview</button>`:locked?'':`
+          <button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save Draft</button>
+          <button class="btn btn-sm btn-secondary" onclick="_tdrTogglePreview()">👁 Preview Report</button>
+          <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
+        `}
       </div>
-      ${c.agenda.length?agendaRows:'<div style="font-size:12.5px;color:var(--text3)">No agenda items yet. Click "+ Add Topic" to start listing what was covered.</div>'}
     </div>`;
 
-  const highlightsChallengesBox=`
+  const ratingInput=(field,val,placeholder)=>`<input type="number" class="form-control" style="width:64px;padding:5px 8px;font-size:13px;text-align:center" min="0" max="5" step="0.1" placeholder="${placeholder||'—'}" value="${val??''}" ${dis} onblur="_tdrSetField('${field}',this.value)">`;
+
+  const l1Metrics=`
+    <div class="kpi-strip" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));margin-bottom:14px">
+      ${_tdrMetricCard('👥','#f0f9ff','Responses',`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:14px;text-align:center;display:inline-block" min="0" placeholder="—" value="${c.responses??''}" ${dis} onblur="_tdrSetField('responses',this.value)"> / ${totalParticipants}`)}
+      ${_tdrMetricCard('◔','var(--sky-lt)','Response Rate',responseRate!=null?responseRate+'%':'—')}
+      ${_tdrMetricCard('★','#fff7ed','Content Rating',ratingInput('contentRating',c.contentRating),'/ 5')}
+      ${_tdrMetricCard('📘','var(--sky-lt)','Materials Rating',ratingInput('materialsRating',c.materialsRating),'/ 5')}
+      ${_tdrMetricCard('👤','#f5f3ff','Facilitation Rating',ratingInput('facilitationRating',c.facilitationRating),'/ 5')}
+      ${_tdrMetricCard('♥','var(--red-lt)','Overall Satisfaction',ratingInput('overallSatisfaction',c.overallSatisfaction),'/ 5')}
+      ${_tdrMetricCard('☺','var(--green-lt)','CSAT',ratingInput('csat',c.csat),'/ 5')}
+      ${_tdrMetricCard('📈','#f5f3ff','NPS',`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:14px;text-align:center;display:inline-block" min="-100" max="100" placeholder="—" value="${c.nps??''}" ${dis} onblur="_tdrSetField('nps',this.value)">`,npsLbl)}
+    </div>`;
+
+  const feedbackBoxes=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      <div class="card" style="padding:18px 20px">
-        <div style="font-weight:700;font-size:14.5px;margin-bottom:8px">Highlights</div>
-        <textarea class="form-control" rows="5" placeholder="What went well? Notable wins, engagement, feedback..." onblur="_tdrSetField('highlights',this.value)">${Utils.esc(c.highlights)}</textarea>
+      <div class="card" style="padding:16px 18px;background:var(--green-lt)">
+        <div style="font-weight:700;font-size:13.5px;color:var(--green);margin-bottom:8px">👍 What learners found most valuable</div>
+        <textarea class="form-control" rows="3" style="background:var(--white)" placeholder="e.g. practical frameworks, role-play exercises..." ${dis} onblur="_tdrSetField('learnersValued',this.value)">${Utils.esc(c.learnersValued)}</textarea>
       </div>
-      <div class="card" style="padding:18px 20px">
-        <div style="font-weight:700;font-size:14.5px;margin-bottom:8px">Challenges</div>
-        <textarea class="form-control" rows="5" placeholder="What didn't go as planned? Logistics issues, gaps, blockers..." onblur="_tdrSetField('challenges',this.value)">${Utils.esc(c.challenges)}</textarea>
+      <div class="card" style="padding:16px 18px;background:var(--amber-lt)">
+        <div style="font-weight:700;font-size:13.5px;color:var(--amber);margin-bottom:8px">⚠ What can be improved</div>
+        <textarea class="form-control" rows="3" style="background:var(--white)" placeholder="e.g. more practice time, more examples..." ${dis} onblur="_tdrSetField('learnersImprove',this.value)">${Utils.esc(c.learnersImprove)}</textarea>
       </div>
     </div>`;
 
-  const actionRows=c.actionItems.map((a,i)=>`
-    <tr>
-      <td style="color:var(--text3)">${i+1}</td>
-      <td><input type="text" class="form-control" style="min-width:200px" placeholder="Action item" value="${Utils.esc(a.description||'')}" onblur="_tdrSetActionField(${i},'description',this.value)"></td>
-      <td><input type="text" class="form-control" style="min-width:140px" placeholder="Owner" value="${Utils.esc(a.owner||'')}" onblur="_tdrSetActionField(${i},'owner',this.value)"></td>
-      <td><input type="date" class="form-control" value="${a.dueDate||''}" onblur="_tdrSetActionField(${i},'dueDate',this.value)"></td>
-      <td><select class="form-control" onchange="_tdrSetActionField(${i},'status',this.value)">
-        <option value="open" ${(!a.status||a.status==='open')?'selected':''}>Open</option>
-        <option value="done" ${a.status==='done'?'selected':''}>Done</option>
-      </select></td>
-      <td><button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveActionRow(${i})" title="Remove">✕</button></td>
-    </tr>`).join('');
-  const actionBox=`
+  const l1Card=`
     <div class="card" style="padding:18px 20px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">1. Session L1 Report (Learner Reaction)</div>
+      ${l1Metrics}
+      ${feedbackBoxes}
+    </div>`;
+
+  const AGENDA_STATUS={covered:{bg:'var(--green-lt)',fg:'var(--green)',label:'Covered'},partial:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Partially Covered'},not_covered:{bg:'var(--red-lt)',fg:'var(--red)',label:'Not Covered'}};
+  const agendaRows=c.agendaDelivery.map((a,i)=>{
+    const st=AGENDA_STATUS[a.status]||AGENDA_STATUS.covered;
+    return `<tr>
+      <td><input type="text" class="form-control" style="min-width:140px" placeholder="Agenda item" value="${Utils.esc(a.item||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'item',this.value)"></td>
+      <td><input type="text" class="form-control" style="min-width:110px" placeholder="Facilitator" value="${Utils.esc(a.facilitator||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'facilitator',this.value)"></td>
+      <td><select class="form-control" style="background:${st.bg};color:${st.fg};font-weight:600" ${dis} onchange="_tdrSetAgendaField(${i},'status',this.value)">
+        ${Object.keys(AGENDA_STATUS).map(k=>`<option value="${k}" ${a.status===k?'selected':''}>${AGENDA_STATUS[k].label}</option>`).join('')}
+      </select></td>
+      <td><input type="text" class="form-control" style="min-width:140px" placeholder="${a.status&&a.status!=='covered'?'Required':'—'}" value="${Utils.esc(a.remarks||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'remarks',this.value)"></td>
+      <td>${readOnly?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveAgendaRow(${i})" title="Remove">✕</button>`}</td>
+    </tr>`;
+  }).join('');
+  const agendaCard=`
+    <div class="card" style="padding:18px 20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:700;font-size:14.5px">Action Items</div>
-        <button class="btn btn-sm btn-secondary" onclick="_tdrAddActionRow()">+ Add Action Item</button>
+        <div style="font-weight:700;font-size:14.5px">2. Agenda Delivery</div>
+        ${readOnly?'':'<button class="btn btn-sm btn-secondary" onclick="_tdrAddAgendaRow()">+ Add Agenda Item</button>'}
       </div>
-      ${c.actionItems.length?`<div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>#</th><th>Action Item</th><th>Owner</th><th>Due Date</th><th>Status</th><th></th></tr>${actionRows}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No action items yet. Click "+ Add Action Item" to track follow-ups.</div>'}
+      ${c.agendaDelivery.length?`<div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>Agenda Item</th><th>Facilitator</th><th>Delivery Status</th><th>Remarks</th><th></th></tr>${agendaRows}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No agenda items yet. Click "+ Add Agenda Item" to list what was covered.</div>'}
     </div>`;
 
-  const footer=`
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:11.5px;color:var(--text3)">${savedNote}</div>
-      <button class="btn btn-primary" onclick="_tdrSaveDraft()">Save Draft</button>
+  const summaryField=(key,label,icon,bg,fg,placeholder)=>`
+    <div style="background:${bg};border-radius:8px;padding:12px 14px;margin-bottom:10px">
+      <div style="font-weight:700;font-size:12.5px;color:${fg};margin-bottom:6px">${icon} ${label}</div>
+      <textarea class="form-control" rows="2" style="background:var(--white)" placeholder="${placeholder}" ${dis} onblur="_tdrSetField('${key}',this.value)">${Utils.esc(c[key])}</textarea>
+    </div>`;
+  const summaryCard=`
+    <div class="card" style="padding:18px 20px">
+      <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Summary</div>
+      ${summaryField('winsHighlights','Wins & Highlights','✓','var(--green-lt)','var(--green)','Notable wins from this session...')}
+      ${summaryField('challengesImprovement','Challenges & Areas for Improvement','⚠','var(--amber-lt)','var(--amber)','What could be better next time...')}
+      ${summaryField('recommendations','Recommendations','💡','var(--sky-lt)','var(--sky)','Suggestions for future runs...')}
+      ${summaryField('pendingActions','Pending Actions','📌','#f5f3ff','#7c3aed','Anything still outstanding...')}
+      ${summaryField('additionalRemarks','Additional Remarks','✎','#f1f5f9','#64748b','Anything else worth noting...')}
     </div>`;
 
-  return `${csatBox}${agendaBox}${highlightsChallengesBox}${actionBox}${footer}`;
+  const agendaSummaryRow=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+      ${agendaCard}
+      ${summaryCard}
+    </div>`;
+
+  return `${toolbar}${l1Card}${agendaSummaryRow}`;
 }
 
 function _tdrSetField(field,value){
-  _tdrReport.content[field]=(field==='csatScore'||field==='csatRespondents')?(value===''?null:Number(value)):value;
+  const numericFields=['responses','contentRating','materialsRating','facilitationRating','overallSatisfaction','csat','nps'];
+  _tdrReport.content[field]=numericFields.includes(field)?(value===''?null:Number(value)):value;
 }
 
 function _tdrAddAgendaRow(){
-  _tdrReport.content.agenda.push({topic:'',duration:''});
+  _tdrReport.content.agendaDelivery.push({item:'',facilitator:'',status:'covered',remarks:''});
   renderTrainingDetail();
 }
 function _tdrSetAgendaField(i,field,value){
-  if(_tdrReport.content.agenda[i]) _tdrReport.content.agenda[i][field]=value;
+  if(_tdrReport.content.agendaDelivery[i]) _tdrReport.content.agendaDelivery[i][field]=value;
+  if(field==='status') renderTrainingDetail();
 }
 function _tdrRemoveAgendaRow(i){
-  _tdrReport.content.agenda.splice(i,1);
+  _tdrReport.content.agendaDelivery.splice(i,1);
   renderTrainingDetail();
 }
 
-function _tdrAddActionRow(){
-  _tdrReport.content.actionItems.push({description:'',owner:'',dueDate:'',status:'open'});
+function _tdrTogglePreview(){
+  _tdrPreviewMode=true;
   renderTrainingDetail();
 }
-function _tdrSetActionField(i,field,value){
-  if(_tdrReport.content.actionItems[i]) _tdrReport.content.actionItems[i][field]=value;
-  if(field==='status') renderTrainingDetail();
-}
-function _tdrRemoveActionRow(i){
-  _tdrReport.content.actionItems.splice(i,1);
+function _tdrExitPreview(){
+  _tdrPreviewMode=false;
   renderTrainingDetail();
 }
 
@@ -5875,6 +5939,18 @@ async function _tdrSaveDraft(){
     renderTrainingDetail();
     toast('Training report draft saved.','success');
   }catch(e){ /* error already surfaced */ }
+}
+
+function _tdrSubmitReport(){
+  confirm$('Submit Report','Once submitted, you will not be able to edit this report. Continue?','Submit Report',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content};
+      const saved=_tdrReport._isNew?await TrainingReportsDB.create({...patch, id:_tdrReport.id}):await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      renderTrainingDetail();
+      toast('Training report submitted.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
 }
 
 function renderTrainingDetail(){
