@@ -2322,7 +2322,10 @@ const _FIELD_MAPS = {
     attended:'attended', notes:'notes', createdAt:'created_at', updatedAt:'updated_at',
     // Attendance & Performance tab (2026-07-30): real attendance status + pre/post test score fields.
     attendanceStatus:'attendance_status', preTestScore:'pre_test_score', postTestScore:'post_test_score',
-    remarks:'remarks'
+    remarks:'remarks',
+    // Manual-entry participant fields (2026-07-30) -- Add Participant / CSV are fully manual (no
+    // system-user picker); role & supervisor are free text tied to the participant, not a profile lookup.
+    externalRole:'external_role', externalSupervisor:'external_supervisor'
   },
   training_reports:{
     id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
@@ -5395,7 +5398,7 @@ function _tdaPersonInfo(r){
     const supervisor=sv?`${sv.firstName} ${sv.lastName}`:'—';
     return {name, email:u.email, role, supervisor, initials:Utils.initials(name), avaStyle:Utils.avatarBg(u.isAdmin), inactive:!u.isActive};
   }
-  return {name:r.externalName||'External Participant', email:'External', role:'External', supervisor:'—', initials:Utils.initials(r.externalName||'EX'), avaStyle:Utils.avatarBg(false), inactive:false};
+  return {name:r.externalName||'Unnamed Participant', email:'', role:r.externalRole||'—', supervisor:r.externalSupervisor||'—', initials:Utils.initials(r.externalName||'?'), avaStyle:Utils.avatarBg(false), inactive:false};
 }
 
 function _tdaGain(r){
@@ -5488,7 +5491,7 @@ function _tdaRenderTab(s){
     ${warnBanner}
     <div class="card" style="padding:18px 20px">
       ${toolbar}
-      <div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${tbody}</tbody></table></div>
+      <div class="eval-tbl-wrap"><table class="eval-tbl" style="min-width:1080px">${thead}<tbody>${tbody}</tbody></table></div>
       ${legend}
     </div>
     ${actionBar}
@@ -5519,19 +5522,19 @@ function _tdaRowHtml(r,i){
 }
 
 function _tdaAddPickerRowHtml(){
-  const already=new Set(_tdPartRows.filter(r=>r.profileId).map(r=>r.profileId));
-  const eligible=DB.all().filter(u=>u.isActive&&!already.has(u.id)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
   return `<tr style="background:#f8fafc">
     <td></td>
     <td style="color:var(--text3)">•</td>
-    <td colspan="4">
-      <select id="tda-add-select" class="form-control" style="font-size:12.5px;max-width:320px">
-        <option value="">— Select a user to add —</option>
-        ${eligible.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.employeeId?' ('+Utils.esc(u.employeeId)+')':''}</option>`).join('')}
-      </select>
-      ${eligible.length===0?'<div style="font-size:11.5px;color:var(--text3);margin-top:4px">All active users are already on this roster.</div>':''}
-    </td>
-    <td colspan="4"></td>
+    <td><input type="text" id="tda-add-name" class="form-control" style="font-size:12.5px;min-width:140px" placeholder="Full name"></td>
+    <td><input type="text" id="tda-add-role" class="form-control" style="font-size:12.5px;min-width:110px" placeholder="Role"></td>
+    <td><input type="text" id="tda-add-supervisor" class="form-control" style="font-size:12.5px;min-width:130px" placeholder="Supervisor"></td>
+    <td><select id="tda-add-status" class="form-control" style="font-size:12.5px">
+      ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${k==='pending'?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
+    </select></td>
+    <td><input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100"></td>
+    <td><input type="number" id="tda-add-post" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100"></td>
+    <td style="color:var(--text3)">—</td>
+    <td><input type="text" id="tda-add-remarks" class="form-control" style="width:120px;padding:5px 8px;font-size:12.5px" placeholder="—"></td>
     <td><div style="display:flex;gap:6px"><button class="btn btn-sm btn-primary" onclick="_tdaConfirmAdd()">Add</button><button class="btn btn-sm btn-ghost" onclick="_tdaToggleAddPicker()">Cancel</button></div></td>
   </tr>`;
 }
@@ -5542,10 +5545,17 @@ function _tdaToggleAddPicker(){
 }
 
 function _tdaConfirmAdd(){
-  const sel=document.getElementById('tda-add-select');
-  const profileId=sel?sel.value:'';
-  if(!profileId){ toast('Please select a user to add.','error'); return; }
-  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId, externalName:null, attended:false, attendanceStatus:'pending', preTestScore:null, postTestScore:null, remarks:'', notes:'', _isNew:true});
+  const name=(document.getElementById('tda-add-name')?.value||'').trim();
+  if(!name){ toast("Please enter the participant's name.",'error'); return; }
+  const role=(document.getElementById('tda-add-role')?.value||'').trim();
+  const supervisor=(document.getElementById('tda-add-supervisor')?.value||'').trim();
+  const status=document.getElementById('tda-add-status')?.value||'pending';
+  const preRaw=document.getElementById('tda-add-pre')?.value;
+  const postRaw=document.getElementById('tda-add-post')?.value;
+  const remarks=(document.getElementById('tda-add-remarks')?.value||'').trim();
+  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, externalRole:role, externalSupervisor:supervisor,
+    attended:false, attendanceStatus:status, preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
+    remarks, notes:'', _isNew:true});
   _tdPartAddPickerOpen=false;
   renderTrainingDetail();
   toast('Participant added to roster (unsaved — click Save Draft to persist).','info');
@@ -5606,9 +5616,9 @@ function _tdaBulkRemove(){
   });
 }
 
-// Minimal CSV parser (no embedded-comma/quote support) -- matches rows against existing users
-// by Employee ID or Email, whichever the header row identifies. Good enough for a simple
-// export/import loop; documented limitation rather than pulling in a parsing library.
+// Minimal CSV parser (no embedded-comma/quote support) -- expects Name (required), and optional
+// Role / Supervisor columns. Fully manual, matching the Add Participant row -- no system-user
+// lookup/matching, since rosters here are entered by hand rather than linked to profiles.
 function _tdaParseCSV(text){
   const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
   if(!lines.length) return {header:[],rows:[]};
@@ -5622,28 +5632,25 @@ function _tdaHandleCSVFile(file){
   const reader=new FileReader();
   reader.onload=()=>{
     const {header,rows}=_tdaParseCSV(String(reader.result||''));
-    const emailIdx=header.findIndex(h=>h.includes('email'));
-    const empIdx=header.findIndex(h=>h.includes('employee')||h.includes('emp id')||h.includes('emp_id'));
-    if(emailIdx===-1&&empIdx===-1){
-      toast('CSV must have an Email or Employee ID column.','error');
+    const nameIdx=header.findIndex(h=>h.includes('name'));
+    const roleIdx=header.findIndex(h=>h.includes('role'));
+    const supIdx=header.findIndex(h=>h.includes('supervisor'));
+    if(nameIdx===-1){
+      toast('CSV must have a Name column.','error');
       return;
     }
-    const already=new Set(_tdPartRows.filter(r=>r.profileId).map(r=>r.profileId));
-    let added=0, skippedDup=0, notFound=0;
+    let added=0, skippedBlank=0;
     rows.forEach(cols=>{
-      const email=emailIdx>=0?cols[emailIdx]:'';
-      const empId=empIdx>=0?cols[empIdx]:'';
-      let u=null;
-      if(email) u=DB.byEmail(email);
-      if(!u&&empId) u=DB.byEmpId(empId);
-      if(!u){ notFound++; return; }
-      if(already.has(u.id)){ skippedDup++; return; }
-      _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:u.id, externalName:null, attended:false, attendanceStatus:'pending', preTestScore:null, postTestScore:null, remarks:'', notes:'', _isNew:true});
-      already.add(u.id);
+      const name=(cols[nameIdx]||'').trim();
+      if(!name){ skippedBlank++; return; }
+      const role=roleIdx>=0?(cols[roleIdx]||'').trim():'';
+      const supervisor=supIdx>=0?(cols[supIdx]||'').trim():'';
+      _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, externalRole:role, externalSupervisor:supervisor,
+        attended:false, attendanceStatus:'pending', preTestScore:null, postTestScore:null, remarks:'', notes:'', _isNew:true});
       added++;
     });
     renderTrainingDetail();
-    toast(`${added} participant(s) added${skippedDup?`, ${skippedDup} already on roster`:''}${notFound?`, ${notFound} not matched to a user`:''}.`, added?'success':'warning');
+    toast(`${added} participant(s) added${skippedBlank?`, ${skippedBlank} row(s) skipped (blank name)`:''}.`, added?'success':'warning');
   };
   reader.readAsText(file);
   document.getElementById('tda-csv-input').value='';
@@ -5652,6 +5659,7 @@ function _tdaHandleCSVFile(file){
 async function _tdaPersistRows(){
   for(const r of _tdPartRows){
     const patch={sessionId:r.sessionId, profileId:r.profileId||null, externalName:r.externalName||null,
+      externalRole:r.externalRole||null, externalSupervisor:r.externalSupervisor||null,
       attendanceStatus:r.attendanceStatus||'pending', preTestScore:r.preTestScore??null, postTestScore:r.postTestScore??null,
       remarks:r.remarks||'', attended:r.attendanceStatus==='present'||r.attendanceStatus==='late', notes:r.notes||''};
     if(r._isNew){
