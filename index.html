@@ -1575,6 +1575,7 @@
         </div>
 
         <div id="view-training-delivery" class="hidden">
+          <div id="td-browse-wrap">
           <div class="kpi-strip" id="td-kpis" style="margin-bottom:16px"></div>
 
           <div class="card" style="margin-bottom:14px">
@@ -1637,6 +1638,9 @@
 
           <div id="td-list-wrap"></div>
           <div id="td-cal-wrap" class="hidden"></div>
+          </div>
+
+          <div id="td-detail-wrap" class="hidden"></div>
         </div>
 
         <div id="view-users" class="hidden">
@@ -2311,7 +2315,7 @@ const _FIELD_MAPS = {
     // Sessions module/UI does not read or write these yet.
     deliveryType:'delivery_type', coFacilitatorId:'co_facilitator_id', audience:'audience',
     expectedParticipants:'expected_participants', assessmentType:'assessment_type',
-    passingScore:'passing_score', reportStatus:'report_status', ownerId:'owner_id', endDate:'end_date'
+    passingScore:'passing_score', reportStatus:'report_status', ownerId:'owner_id', endDate:'end_date', description:'description'
   },
   session_participants:{
     id:'id', sessionId:'session_id', profileId:'profile_id', externalName:'external_name',
@@ -2780,10 +2784,12 @@ function guardedLeave(action){
 function _computeEvalHash(){ const inForm=!document.getElementById('eval-form-view')?.classList.contains('hidden'); return inForm?`#evaluations/form/${_evalId||'new'}`:'#evaluations'; }
 function _computeIDQAHash(){ const inForm=!document.getElementById('idqa-form-view')?.classList.contains('hidden'); return inForm?`#id-qa/form/${_idqaId||'new'}`:'#id-qa'; }
 function _computeCQAHash(){ const inForm=!document.getElementById('cqa-form-view')?.classList.contains('hidden'); return inForm?`#content-qa/form/${_cqaId||'new'}`:'#content-qa'; }
+function _computeTrainingDeliveryHash(){ return _tdDetailId?`#training-delivery/${_tdDetailId}`:'#training-delivery'; }
 function _hashForView(id){
   if(id==='evaluations') return _computeEvalHash();
   if(id==='id-qa')       return _computeIDQAHash();
   if(id==='content-qa')  return _computeCQAHash();
+  if(id==='training-delivery') return _computeTrainingDeliveryHash();
   return '#'+id;
 }
 function _pushAppHash(hash){
@@ -2818,7 +2824,7 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings'];
+    const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     showView(view);
     if(view==='evaluations'){
@@ -2830,6 +2836,10 @@ function _restoreFromHash(hash){
     } else if(view==='content-qa'){
       if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewCQA(); else { const rec=ContentQADB.byId(rid); if(rec) openCQA(rid); else showCQASubview('list'); } }
       else showCQASubview('list');
+    } else if(view==='training-delivery'){
+      const rid=parts[1];
+      if(rid){ const rec=TrSessionDB.byId(rid); if(rec) openTrainingDetail(rid); else renderTrainingDelivery(); }
+      else renderTrainingDelivery();
     }
   } finally {
     _routingRestore=false;
@@ -5032,9 +5042,9 @@ function renderTDList(rows){
   const start=(tdPage-1)*TD_PAGE_SIZE;
   const pageRows=rows.slice(start,start+TD_PAGE_SIZE);
   const rowHtml=(s)=>`<tr>
-      <td class="mono">${Utils.esc(s.code||s.id||'')}</td>
+      <td class="mono"><a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:var(--pri);text-decoration:none;font-weight:600">${Utils.esc(s.code||s.id||'')}</a></td>
       <td>
-        <div style="font-weight:600;font-size:13px">${Utils.esc(s.trainingProgram||'—')}</div>
+        <div style="font-weight:600;font-size:13px"><a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:inherit;text-decoration:none">${Utils.esc(s.trainingProgram||'—')}</a></div>
         <div style="font-size:11.5px;color:var(--text3)">Batch ${Utils.esc(s.batchNo||'—')}</div>
       </td>
       <td>${_tdTypeBadge(s.deliveryType)}</td>
@@ -5046,7 +5056,7 @@ function renderTDList(rows){
       <td style="font-size:13px">${_tdRecordingCell(s)}</td>
       <td>${_tdEvalStatus(s)}</td>
       <td><div class="td-acts">
-        <button class="btn btn-sm btn-secondary" onclick="openTrainingModal('${s.id}')">Edit</button>
+        <button class="btn btn-sm btn-secondary" onclick="openTrainingDetail('${s.id}')">View</button>
         <button class="btn btn-sm btn-ghost" style="color:#dc2626" onclick="deleteTrainingRecord('${s.id}')">Delete</button>
       </div></td>
     </tr>`;
@@ -5098,7 +5108,7 @@ function renderTDCalendar(rows){
     const more=(byDay[day]||[]).length-evs.length;
     const chips=evs.map(s=>{
       const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b',dot:'#94a3b8'};
-      return `<div onclick="openTrainingModal('${s.id}')" title="${Utils.esc(s.trainingProgram||'')}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10.5px;padding:2px 5px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
+      return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(s.trainingProgram||'')}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10.5px;padding:2px 5px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
     }).join('');
     cells+=`<div style="background:var(--white);border:1px solid var(--border);min-height:92px;padding:5px;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5':''}">
       <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
@@ -5198,10 +5208,16 @@ async function saveTrainingModal(){
   const saveBtn=document.querySelector('#modal-training .btn-primary'); const origTxt=saveBtn?saveBtn.textContent:'';
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
-    if(id){ await TrSessionDB.update(id,d); toast('Training updated.','success'); }
-    else { await TrSessionDB.create({...d,code:generateSessionCode()}); toast('Training added.','success'); }
-    closeModal('training');
-    renderTrainingDelivery();
+    if(id){
+      await TrSessionDB.update(id,d); toast('Training updated.','success');
+      closeModal('training');
+      renderTrainingDelivery();
+    } else {
+      const rec=await TrSessionDB.create({...d,code:generateSessionCode()});
+      toast('Training added.','success');
+      closeModal('training');
+      openTrainingDetail(rec.id);
+    }
   }catch(e){ /* error already surfaced */ }
   finally{ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} }
 }
@@ -5215,6 +5231,361 @@ function deleteTrainingRecord(id){
       catch(e){ /* error already surfaced */ }
     }
   );
+}
+
+/* ── TRAINING SESSION DETAILS PAGE ────────────────────────────────────────────────────────
+   Full dedicated page (breadcrumb: Training Delivery > code) that replaces the Add/Edit
+   modal for viewing and editing an EXISTING training. The modal above still handles quick
+   initial creation; on success it hands off straight into this page. Only the Overview tab
+   has real content (the editable Session Information panel) — the rest are placeholder tabs
+   per Sandra's explicit scoping (2026-07-30): Session Summary / Next Step / Recent Activities /
+   Attachments are placeholders too, since they depend on Participants & Attendance and
+   Assessments, which aren't built yet. ─────────────────────────────────────────────────────── */
+let _tdDetailId=null;
+let _tdDetailTab='overview';
+let _tdDetailEditing=false;
+
+const TD_DETAIL_TABS=[
+  {id:'overview',label:'Overview'},
+  {id:'participants',label:'Participants & Attendance'},
+  {id:'report',label:'Training Report'},
+  {id:'assessments',label:'Assessments'},
+  {id:'trainer-eval',label:'Trainer Evaluation'},
+  {id:'evidence',label:'Evidence'},
+  {id:'audit',label:'Audit History'}
+];
+
+function openTrainingDetail(id){
+  const s=TrSessionDB.byId(id);
+  if(!s){ toast('That training could not be found.','error'); return; }
+  _tdDetailId=id; _tdDetailTab='overview'; _tdDetailEditing=false;
+  document.getElementById('td-browse-wrap').classList.add('hidden');
+  document.getElementById('td-detail-wrap').classList.remove('hidden');
+  renderTrainingDetail();
+  _pushAppHash(_computeTrainingDeliveryHash());
+}
+
+function closeTrainingDetail(){
+  disarmLeaveGuard();
+  _tdDetailId=null; _tdDetailEditing=false;
+  document.getElementById('td-detail-wrap').classList.add('hidden');
+  document.getElementById('td-browse-wrap').classList.remove('hidden');
+  renderTrainingDelivery();
+  _pushAppHash(_computeTrainingDeliveryHash());
+}
+
+function tdDetailSwitchTab(tab){
+  if(_tdDetailEditing){
+    confirm$('Unsaved Changes','You have unsaved changes on this form. Leave without saving?','Leave Without Saving',()=>{
+      disarmLeaveGuard(); _tdDetailEditing=false; _tdDetailTab=tab; renderTrainingDetail();
+    });
+    return;
+  }
+  _tdDetailTab=tab;
+  renderTrainingDetail();
+}
+
+function tdDetailToggleEdit(){
+  _tdDetailEditing=true;
+  renderTrainingDetail();
+  armLeaveGuard('tdd-session-info-card');
+}
+
+function tdDetailCancelEdit(){
+  guardedLeave(()=>{ _tdDetailEditing=false; renderTrainingDetail(); });
+}
+
+async function tdDetailSave(){
+  const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
+  const deliveryType=document.getElementById('tdd-type').value;
+  const ownerType=_tdIsOwnerType(deliveryType);
+  const expectedRaw=document.getElementById('tdd-expected').value.trim();
+  const passingRaw=document.getElementById('tdd-passing').value.trim();
+  const d={
+    deliveryType,
+    trainingProgram:document.getElementById('tdd-program').value.trim(),
+    batchNo:document.getElementById('tdd-batch').value.trim(),
+    trainingDate:document.getElementById('tdd-date').value,
+    endDate:ownerType?(document.getElementById('tdd-enddate').value||null):null,
+    trainerId:ownerType?null:(document.getElementById('tdd-trainer').value||null),
+    ownerId:ownerType?(document.getElementById('tdd-owner').value||null):null,
+    coFacilitatorId:ownerType?null:(document.getElementById('tdd-cofacilitator').value||null),
+    venueId:document.getElementById('tdd-venue').value||null,
+    audience:document.getElementById('tdd-audience').value.trim(),
+    expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
+    description:document.getElementById('tdd-description').value.trim(),
+    recordingLink:ownerType?'':document.getElementById('tdd-recording').value.trim(),
+    assessmentType:document.getElementById('tdd-assessment').value,
+    passingScore:passingRaw?parseInt(passingRaw,10):null,
+    status:document.getElementById('tdd-status').value
+  };
+  const errs=[];
+  if(!d.deliveryType) errs.push('Please select a Delivery Type.');
+  if(!d.trainingProgram) errs.push('Training Program / Title is required.');
+  if(!d.batchNo) errs.push('Batch No. is required.');
+  if(!d.trainingDate) errs.push('Start Date is required.');
+  if(!ownerType && !d.trainerId) errs.push('Please select a Trainer.');
+  if(ownerType && !d.ownerId) errs.push('Please select an Owner.');
+  if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
+  const errEl=document.getElementById('tdd-error');
+  if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
+  errEl.classList.add('hidden');
+  const saveBtn=document.getElementById('tdd-save-btn'); const origTxt=saveBtn?saveBtn.textContent:'';
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+  try{
+    await TrSessionDB.update(_tdDetailId,d);
+    toast('Training updated.','success');
+    disarmLeaveGuard();
+    _tdDetailEditing=false;
+    renderTrainingDetail();
+  }catch(e){ /* error already surfaced */ }
+  finally{ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} }
+}
+
+function _tddPlaceholderPanel(icon,title,note){
+  return `<div class="empty-state" style="padding:60px 20px">
+    <div class="empty-ico">${icon}</div>
+    <div class="empty-title">${Utils.esc(title)} — coming soon</div>
+    <div style="font-size:13px;color:var(--text3);margin-top:4px">${Utils.esc(note)}</div>
+  </div>`;
+}
+
+function renderTrainingDetail(){
+  const s=TrSessionDB.byId(_tdDetailId);
+  const wrap=document.getElementById('td-detail-wrap');
+  if(!s){ closeTrainingDetail(); return; }
+  const ownerType=_tdIsOwnerType(s.deliveryType);
+  const personLabel=ownerType?'Owner':'Trainer';
+  const personName=Utils.esc(_tdPersonName(s));
+  const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, _tdDateCell(s), s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
+
+  const tabsHtml=TD_DETAIL_TABS.map(t=>`<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(t.label)}</button>`).join('');
+
+  let tabBody='';
+  if(_tdDetailTab==='overview'){
+    tabBody=_tdDetailEditing ? _tddOverviewEdit(s,ownerType) : _tddOverviewView(s,ownerType,personLabel,personName);
+  } else if(_tdDetailTab==='participants'){
+    tabBody=_tddPlaceholderPanel('👥','Participants & Attendance','Attendee rosters and attendance tracking will live here, backed by the session_participants table already in place.');
+  } else if(_tdDetailTab==='report'){
+    tabBody=_tddPlaceholderPanel('📋','Training Report','The structured post-session report (draft → submit → approve/return) will live here.');
+  } else if(_tdDetailTab==='assessments'){
+    tabBody=_tddPlaceholderPanel('📝','Assessments','Pre/post-test setup and results will live here.');
+  } else if(_tdDetailTab==='trainer-eval'){
+    tabBody=_tddPlaceholderPanel('◉','Trainer Evaluation','A recording-gated link into the existing Trainer Evaluation workflow will live here.');
+  } else if(_tdDetailTab==='evidence'){
+    tabBody=_tddPlaceholderPanel('📎','Evidence','Supporting evidence and documentation will live here.');
+  } else if(_tdDetailTab==='audit'){
+    tabBody=_tddPlaceholderPanel('🕘','Audit History','A full change history for this implementation will live here.');
+  }
+
+  wrap.innerHTML=`
+    <div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">
+      <a href="javascript:void(0)" onclick="closeTrainingDetail()" style="color:var(--pri);text-decoration:none">Training Delivery</a>
+      &nbsp;›&nbsp; ${Utils.esc(s.code||s.id||'')}
+    </div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <h2 style="margin:0;font-size:20px;font-weight:700">${Utils.esc(s.trainingProgram||'Untitled Training')}</h2>
+          ${_tdTypeBadge(s.deliveryType)}
+        </div>
+        <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${summaryLine}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${_tdDetailTab==='overview'&&!_tdDetailEditing?`<button class="btn btn-secondary btn-sm" onclick="tdDetailToggleEdit()">✎ Edit</button>`:''}
+        <button class="btn btn-ghost btn-sm" style="color:#dc2626" onclick="deleteTrainingRecord('${s.id}')">Delete</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
+    <div>${tabBody}</div>
+  `;
+  if(_tdDetailTab==='overview' && _tdDetailEditing) _tddPopulateEditDropdowns(s,ownerType);
+}
+
+function _tddInfoRow(label,value){
+  return `<div style="padding:8px 0;border-bottom:1px solid var(--border-lt,#f1f5f9);display:grid;grid-template-columns:150px 1fr;gap:10px">
+    <div style="font-size:12px;color:var(--text3);font-weight:600">${Utils.esc(label)}</div>
+    <div style="font-size:13.5px">${value}</div>
+  </div>`;
+}
+
+function _tddOverviewView(s,ownerType,personLabel,personName){
+  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null;
+  const coFac=s.coFacilitatorId?DB.byId(s.coFacilitatorId):null;
+  return `
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
+      <div class="card" id="tdd-session-info-card" style="padding:16px 18px">
+        <div style="font-weight:700;font-size:14.5px;margin-bottom:8px">Session Information</div>
+        ${_tddInfoRow('Program', Utils.esc(s.trainingProgram||'—'))}
+        ${_tddInfoRow('Batch', Utils.esc(s.batchNo||'—'))}
+        ${_tddInfoRow('Delivery Type', _tdTypeBadge(s.deliveryType))}
+        ${_tddInfoRow(personLabel, personName)}
+        ${!ownerType?_tddInfoRow('Co-Facilitator', coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3)">— none —</span>'):''}
+        ${_tddInfoRow('Date'+(ownerType?' / Period':''), _tdDateCell(s))}
+        ${_tddInfoRow('Venue', venueName?Utils.esc(venueName):'<span style="color:var(--text3)">— not set —</span>')}
+        ${_tddInfoRow('Audience', Utils.esc(s.audience||'—'))}
+        ${_tddInfoRow('Expected Participants', s.expectedParticipants??'<span style="color:var(--text3)">— not set —</span>')}
+        ${!ownerType?_tddInfoRow('Recording Link', s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener">▶ View recording</a>`:'<span style="color:var(--text3)">— none —</span>'):''}
+        ${_tddInfoRow('Assessment Type', Utils.esc(s.assessmentType||'None'))}
+        ${s.assessmentType&&s.assessmentType!=='None'?_tddInfoRow('Passing Score', s.passingScore!=null?s.passingScore+'%':'<span style="color:var(--text3)">— not set —</span>'):''}
+        ${_tddInfoRow('Status', _tdStatusBadge(_tdStatus(s)))}
+        ${_tddInfoRow('Description', s.description?Utils.esc(s.description).replace(/\n/g,'<br>'):'<span style="color:var(--text3)">— none —</span>')}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card" style="padding:14px 16px">
+          <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">Session Summary</div>
+          <div style="font-size:13px;color:var(--text2)">Expected Participants: <strong>${s.expectedParticipants??'—'}</strong></div>
+          <div style="font-size:12px;color:var(--text3);margin-top:6px">Registered / attendance figures will appear here once Participants &amp; Attendance is built.</div>
+        </div>
+        <div class="card" style="padding:14px 16px">
+          <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">Next Step</div>
+          <div style="font-size:12.5px;color:var(--text3)">Coming soon — a guided checklist (conduct session → upload recording → evaluate trainer → submit report) will appear here.</div>
+        </div>
+        <div class="card" style="padding:14px 16px">
+          <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">Recent Activities</div>
+          <div style="font-size:12.5px;color:var(--text3)">Coming soon.</div>
+        </div>
+        <div class="card" style="padding:14px 16px">
+          <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">Attachments / Links</div>
+          <div style="font-size:12.5px;color:var(--text3)">Agenda: not yet available.</div>
+          <div style="font-size:12.5px;color:var(--text3);margin-top:4px">Presentation Deck: not yet available.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _tddOverviewEdit(s,ownerType){
+  return `
+    <div class="card" id="tdd-session-info-card" style="padding:16px 18px;max-width:760px">
+      <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">Edit Session Information</div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Delivery Type <span class="req">*</span></label>
+          <select id="tdd-type" class="form-control" onchange="_tddToggleTypeFields()">
+            <option value="ILT" ${s.deliveryType==='ILT'?'selected':''}>ILT</option>
+            <option value="VILT" ${s.deliveryType==='VILT'?'selected':''}>VILT</option>
+            <option value="Self-led" ${s.deliveryType==='Self-led'?'selected':''}>Self-led</option>
+            <option value="External" ${s.deliveryType==='External'?'selected':''}>External</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label class="form-label">Training Program / Title <span class="req">*</span></label>
+          <input type="text" id="tdd-program" class="form-control" value="${Utils.esc(s.trainingProgram||'')}">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Batch No. <span class="req">*</span></label>
+          <input type="text" id="tdd-batch" class="form-control" value="${Utils.esc(s.batchNo||'')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Start Date <span class="req">*</span></label>
+          <input type="date" id="tdd-date" class="form-control" value="${s.trainingDate||''}">
+        </div>
+        <div class="form-group ${ownerType?'':'hidden'}" id="tdd-enddate-wrap">
+          <label class="form-label">End Date</label>
+          <input type="date" id="tdd-enddate" class="form-control" value="${s.endDate||''}">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group ${ownerType?'hidden':''}" id="tdd-trainer-wrap">
+          <label class="form-label">Trainer <span class="req">*</span></label>
+          <select id="tdd-trainer" class="form-control"><option value="">— Select Trainer —</option></select>
+        </div>
+        <div class="form-group ${ownerType?'':'hidden'}" id="tdd-owner-wrap">
+          <label class="form-label">Owner <span class="req">*</span></label>
+          <select id="tdd-owner" class="form-control"><option value="">— Select Owner —</option></select>
+        </div>
+        <div class="form-group ${ownerType?'hidden':''}" id="tdd-cofacilitator-wrap">
+          <label class="form-label">Co-Facilitator</label>
+          <select id="tdd-cofacilitator" class="form-control"><option value="">— None —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Venue</label>
+          <select id="tdd-venue" class="form-control"><option value="">— Select Venue —</option></select>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Audience</label>
+          <input type="text" id="tdd-audience" class="form-control" value="${Utils.esc(s.audience||'')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expected Participants</label>
+          <input type="number" id="tdd-expected" class="form-control" min="1" step="1" value="${s.expectedParticipants??''}">
+        </div>
+        <div class="form-group ${ownerType?'hidden':''}" id="tdd-recording-wrap">
+          <label class="form-label">Recording Link</label>
+          <input type="url" id="tdd-recording" class="form-control" value="${Utils.esc(s.recordingLink||'')}">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Assessment Type</label>
+          <select id="tdd-assessment" class="form-control">
+            <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
+            <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
+            <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
+            <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Passing Score (%)</label>
+          <input type="number" id="tdd-passing" class="form-control" min="0" max="100" step="1" value="${s.passingScore??''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status <span class="req">*</span></label>
+          <select id="tdd-status" class="form-control">
+            <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
+            <option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>
+            <option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="tdd-description" class="form-control" rows="3">${Utils.esc(s.description||'')}</textarea>
+      </div>
+      <div class="modal-err hidden" id="tdd-error"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn btn-primary btn-sm" id="tdd-save-btn" onclick="tdDetailSave()">Save</button>
+        <button class="btn btn-secondary btn-sm" onclick="tdDetailCancelEdit()">Cancel</button>
+      </div>
+    </div>
+  `;
+}
+
+function _tddPopulateEditDropdowns(s,ownerType){
+  const eligibleTrainers=DB.all().filter(u=>u.positionId==='pos_6'&&(u.isActive||u.id===s.trainerId));
+  const trainerSel=document.getElementById('tdd-trainer');
+  if(trainerSel){
+    trainerSel.innerHTML='<option value="">— Select Trainer —</option>'+eligibleTrainers.map(u=>`<option value="${u.id}" ${u.id===s.trainerId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
+  }
+  const cofacSel=document.getElementById('tdd-cofacilitator');
+  if(cofacSel){
+    const eligibleCofac=DB.all().filter(u=>u.isActive||u.id===s.coFacilitatorId);
+    cofacSel.innerHTML='<option value="">— None —</option>'+eligibleCofac.map(u=>`<option value="${u.id}" ${u.id===s.coFacilitatorId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
+  }
+  const ownerSel=document.getElementById('tdd-owner');
+  if(ownerSel){
+    const activeUsers=DB.all().filter(u=>u.isActive||u.id===s.ownerId).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
+    ownerSel.innerHTML='<option value="">— Select Owner —</option>'+activeUsers.map(u=>`<option value="${u.id}" ${u.id===s.ownerId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
+  }
+  const venueSel=document.getElementById('tdd-venue');
+  if(venueSel){
+    venueSel.innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).map(v=>`<option value="${v.id}" ${v.id===s.venueId?'selected':''}>${Utils.esc(v.name)}</option>`).join('');
+  }
+}
+
+function _tddToggleTypeFields(){
+  const dt=document.getElementById('tdd-type').value;
+  const ownerType=_tdIsOwnerType(dt);
+  document.getElementById('tdd-trainer-wrap').classList.toggle('hidden',ownerType);
+  document.getElementById('tdd-cofacilitator-wrap').classList.toggle('hidden',ownerType);
+  document.getElementById('tdd-owner-wrap').classList.toggle('hidden',!ownerType);
+  document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!ownerType);
+  document.getElementById('tdd-recording-wrap').classList.toggle('hidden',ownerType);
 }
 
 function _durationToMinutes(str){
@@ -9835,7 +10206,7 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings'];
+  const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery'];
   if(location.hash && location.hash.length>1){
     _restoreFromHash(location.hash);
   } else {
