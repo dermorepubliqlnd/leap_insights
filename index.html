@@ -5270,7 +5270,6 @@ const TD_DETAIL_TABS=[
   {id:'overview',label:'Overview'},
   {id:'participants',label:'Attendance & Performance'},
   {id:'report',label:'Training Report'},
-  {id:'assessments',label:'Assessments'},
   {id:'trainer-eval',label:'Trainer Evaluation'},
   {id:'evidence',label:'Evidence'},
   {id:'audit',label:'Audit History'}
@@ -5414,6 +5413,17 @@ const _TDA_STATUS_STYLE={
   pending:{bg:'#f1f5f9',fg:'#64748b',label:'Pending'}
 };
 
+function _tdaKpiCard(icon,iconBg,label,value,valueColor,sub,subColor){
+  return `<div class="kpi-card">
+    <div class="kpi-icon" style="background:${iconBg}">${icon}</div>
+    <div class="kpi-label">${label}</div>
+    <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">
+      <div class="kpi-value" style="color:${valueColor}">${value}</div>
+      ${sub?`<div style="font-size:11.5px;font-weight:600;color:${subColor||'var(--text3)'}">${sub}</div>`:''}
+    </div>
+  </div>`;
+}
+
 function _tdaRenderTab(s){
   _tdaEnsureLoaded(s.id);
   const all=_tdPartRows;
@@ -5425,25 +5435,39 @@ function _tdaRenderTab(s){
   const rate=total>0?Math.round(((present+late)/total)*100):0;
   const rows=_tdPartFilterPending?all.filter(r=>r.attendanceStatus==='pending'):all;
 
-  const kpis=`
+  const assessedRows=all.filter(r=>r.preTestScore!=null&&r.postTestScore!=null);
+  const avgPre=assessedRows.length?Math.round(assessedRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/assessedRows.length):null;
+  const avgPost=assessedRows.length?Math.round(assessedRows.reduce((sum,r)=>sum+Number(r.postTestScore),0)/assessedRows.length):null;
+  const avgGain=(avgPre!=null&&avgPost!=null)?avgPost-avgPre:null;
+  const passingScore=s.passingScore;
+  const passedCount=(passingScore!=null)?assessedRows.filter(r=>Number(r.postTestScore)>=passingScore).length:null;
+  const passRate=(passedCount!=null&&assessedRows.length)?Math.round((passedCount/assessedRows.length)*100):null;
+  const pct=(n,d)=>d>0?Math.round((n/d)*100)+'%':'';
+
+  const attendanceKpis=`
+    <div style="font-weight:700;font-size:13px;color:var(--text2);margin-bottom:8px">Attendance Summary</div>
     <div class="kpi-strip" style="margin-bottom:16px">
-      <div class="kpi-card"><div class="kpi-icon" style="background:#f0f9ff">👥</div><div class="kpi-label">Participants Listed</div><div class="kpi-value" style="color:#0369a1">${total}</div></div>
-      <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-lt)">✅</div><div class="kpi-label">Present</div><div class="kpi-value" style="color:var(--green)">${present}</div></div>
-      <div class="kpi-card"><div class="kpi-icon" style="background:var(--amber-lt)">🕐</div><div class="kpi-label">Late</div><div class="kpi-value" style="color:var(--amber)">${late}</div></div>
-      <div class="kpi-card"><div class="kpi-icon" style="background:var(--red-lt)">✕</div><div class="kpi-label">Absent</div><div class="kpi-value" style="color:var(--red)">${absent}</div></div>
-      <div class="kpi-card"><div class="kpi-icon" style="background:#f1f5f9">⏳</div><div class="kpi-label">Pending</div><div class="kpi-value" style="color:#64748b">${pending}</div></div>
-      <div class="kpi-card"><div class="kpi-icon" style="background:#f5f3ff">📈</div><div class="kpi-label">Attendance Rate</div><div class="kpi-value" style="color:#7c3aed">${total>0?rate+'%':'—'}</div></div>
+      ${_tdaKpiCard('👥','#f0f9ff','Participants Listed',total,'#0369a1')}
+      ${_tdaKpiCard('✅','var(--green-lt)','Present',present,'var(--green)',pct(present,total),'var(--green)')}
+      ${_tdaKpiCard('🕐','var(--amber-lt)','Late',late,'var(--amber)',pct(late,total),'var(--amber)')}
+      ${_tdaKpiCard('✕','var(--red-lt)','Absent',absent,'var(--red)',pct(absent,total),'var(--red)')}
+      ${_tdaKpiCard('⏳','#f1f5f9','Pending',pending,'#64748b',pct(pending,total),'#64748b')}
+      ${_tdaKpiCard('📈','#f5f3ff','Attendance Rate',total>0?rate+'%':'—','#7c3aed',total>0?`(${present+late}/${total})`:'','var(--text3)')}
     </div>`;
 
   const assessLabel=s.assessmentType&&s.assessmentType!=='None'?s.assessmentType:'None configured';
-  const assessBox=`
-    <div class="card" style="padding:16px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-weight:700;font-size:14px;margin-bottom:2px">Assessment Setup</div>
-        <div style="font-size:12.5px;color:var(--text2)">Type: <strong>${Utils.esc(assessLabel)}</strong>${s.assessmentType&&s.assessmentType!=='None'&&s.passingScore!=null?` &nbsp;·&nbsp; Passing Score: <strong>${s.passingScore}%</strong>`:''}</div>
-        <div style="font-size:11.5px;color:var(--text3);margin-top:2px">Set on the Overview tab's Session Information card.</div>
-      </div>
-      <a href="javascript:void(0)" onclick="tdDetailSwitchTab('assessments')" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600;white-space:nowrap">View Details →</a>
+  const assessmentKpis=`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+      <div style="font-weight:700;font-size:13px;color:var(--text2)">Assessment Results</div>
+      <div style="font-size:11.5px;color:var(--text3)">Type: <strong>${Utils.esc(assessLabel)}</strong>${s.assessmentType&&s.assessmentType!=='None'&&s.passingScore!=null?` &nbsp;·&nbsp; Passing Score: <strong>${s.passingScore}%</strong>`:''} &nbsp;·&nbsp; set on Overview</div>
+    </div>
+    <div class="kpi-strip" style="margin-bottom:16px">
+      ${_tdaKpiCard('📋','#f0f9ff','Assessed',assessedRows.length,'#0369a1',pct(assessedRows.length,total),'var(--text3)')}
+      ${_tdaKpiCard('📝','var(--sky-lt)','Avg Pre-Test',avgPre!=null?avgPre+'%':'—','var(--sky)')}
+      ${_tdaKpiCard('📄','var(--green-lt)','Avg Post-Test',avgPost!=null?avgPost+'%':'—','var(--green)')}
+      ${_tdaKpiCard('📈','#f5f3ff','Avg Gain',avgGain!=null?(avgGain>0?'+':'')+avgGain+'%':'—',avgGain>0?'var(--green)':avgGain<0?'var(--red)':'var(--text2)')}
+      ${_tdaKpiCard('🏅','var(--green-lt)','Passed',passedCount!=null?passedCount:'—','var(--green)',(passedCount!=null&&assessedRows.length)?pct(passedCount,assessedRows.length):'','var(--text3)')}
+      ${_tdaKpiCard('🎯','#f5f3ff','Pass Rate',passRate!=null?passRate+'%':'—','#7c3aed',(passedCount!=null&&assessedRows.length)?`(${passedCount}/${assessedRows.length})`:'','var(--text3)')}
     </div>`;
 
   const warnBanner=pending>0?`
@@ -5486,8 +5510,8 @@ function _tdaRenderTab(s){
     </div>`;
 
   return `
-    ${kpis}
-    ${assessBox}
+    ${attendanceKpis}
+    ${assessmentKpis}
     ${warnBanner}
     <div class="card" style="padding:18px 20px">
       ${toolbar}
@@ -5717,8 +5741,6 @@ function renderTrainingDetail(){
     tabBody=_tdaRenderTab(s);
   } else if(_tdDetailTab==='report'){
     tabBody=_tddPlaceholderPanel('📋','Training Report','The structured post-session report (draft → submit → approve/return) will live here.');
-  } else if(_tdDetailTab==='assessments'){
-    tabBody=_tddPlaceholderPanel('📝','Assessments','Pre/post-test setup and results will live here.');
   } else if(_tdDetailTab==='trainer-eval'){
     tabBody=_tddPlaceholderPanel('◉','Trainer Evaluation','A recording-gated link into the existing Trainer Evaluation workflow will live here.');
   } else if(_tdDetailTab==='evidence'){
