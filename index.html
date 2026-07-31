@@ -1636,7 +1636,7 @@
                 <button class="btn btn-sm" id="td-view-list-btn" onclick="tdSwitchView('list')" style="border-radius:0;border:none">☰ List</button>
                 <button class="btn btn-sm" id="td-view-cal-btn" onclick="tdSwitchView('calendar')" style="border-radius:0;border:none;border-left:1px solid var(--border)">📅 Calendar</button>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="openTrainingModal()">+ Add Training</button>
+              <button class="btn btn-primary btn-sm" onclick="openModal('td-type-pick')">+ Add Training</button>
             </div>
           </div>
 
@@ -2105,6 +2105,26 @@
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('training')">Cancel</button>
       <button class="btn btn-primary" onclick="saveTrainingModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: NEW TRAINING — DELIVERY TYPE PICKER ═════════════ -->
+<div id="modal-td-type-pick" class="modal-overlay" onclick="if(event.target===this)closeModal('td-type-pick')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">What type of training is this?</span>
+      <button class="modal-close" onclick="closeModal('td-type-pick')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Pick a delivery type to continue — this determines which fields you'll fill in next.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="td-type-pick-grid">
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('ILT')">ILT</button>
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('VILT')">VILT</button>
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('Self-led')">Self-led</button>
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('External')">External</button>
+      </div>
+      <div class="modal-err hidden" id="td-type-pick-error"></div>
     </div>
   </div>
 </div>
@@ -5491,6 +5511,30 @@ const TD_DETAIL_TABS=[
   {id:'evidence',label:'Evidence'},
   {id:'audit',label:'Audit History'}
 ];
+
+// Minimal "+ Add Training" flow (2026-07-31): the delivery-type picker modal creates a bare
+// training_sessions row (nothing but code/deliveryType/status — the DB has no other NOT NULL
+// constraints on this table) and routes straight into the Detail page's inline edit form, which
+// is already correctly field-gated per delivery type (_tddToggleTypeFields runs on entry). This
+// replaces the old full Add modal for creation; the modal/functions are left in the file (Save
+// Training modal is otherwise unused for editing — the List view already routes Edit to the
+// Detail page), only "+ Add Training" no longer opens it.
+async function _tdCreateFromTypePick(deliveryType){
+  const errEl=document.getElementById('td-type-pick-error');
+  if(errEl) errEl.classList.add('hidden');
+  try{
+    const rec=await TrSessionDB.create({
+      deliveryType,
+      code:generateSessionCode(),
+      status:'scheduled'
+    });
+    closeModal('td-type-pick');
+    openTrainingDetail(rec.id);
+    tdDetailToggleEdit();
+  }catch(e){
+    if(errEl){ errEl.textContent='Could not create the training record. Please try again.'; errEl.classList.remove('hidden'); }
+  }
+}
 
 function openTrainingDetail(id){
   const s=TrSessionDB.byId(id);
