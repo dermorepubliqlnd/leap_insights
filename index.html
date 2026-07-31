@@ -5237,7 +5237,6 @@ function _tdCalChipHtml(s){
   return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3">
     <div style="font-weight:600;white-space:normal;word-break:break-word">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
     <div style="font-size:9px;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(person)}${venueName?' · '+Utils.esc(venueName):''}</div>
-    <div style="font-size:9px;opacity:.7;white-space:normal;word-break:break-word">${Utils.esc(_tdCalDuration(s))}</div>
   </div>`;
 }
 
@@ -5522,8 +5521,7 @@ let _tdPartAddPickerOpen=false;
 let _tdrReport=null;
 let _tdrLoadedFor=null;
 let _tdrPreviewMode=false;
-let _tdrSummaryEditing={};
-let _tdrMetricsEditing=false;
+let _tdrEditMode=false;
 
 // Minimal allow-listed rich-text sanitizer for the Summary callout fields (2026-07-30) --
 // only Bold and Bullet List formatting is supported, matching Sandra's ask for "rich text...
@@ -5550,18 +5548,13 @@ function _tdrSanitizeRich(html){
   }
   return walk(tmp).replace(/(<br>)+$/,'');
 }
-function _tdrToggleSummaryEdit(key,on){
-  _tdrSummaryEditing[key]=on;
+function _tdrToggleEditMode(on){
+  _tdrEditMode=on;
   renderTrainingDetail();
 }
 function _tdrCommitRich(key,el){
   const clean=_tdrSanitizeRich(el.innerHTML);
   _tdrReport.content[key]=clean;
-  _tdrSummaryEditing[key]=false;
-  renderTrainingDetail();
-}
-function _tdrToggleMetricsEdit(on){
-  _tdrMetricsEditing=on;
   renderTrainingDetail();
 }
 
@@ -5777,6 +5770,29 @@ function _tdaGain(r){
   return Number(post)-Number(pre);
 }
 
+// Whether a participant row counts as "assessed" for a session, respecting the session's
+// configured assessmentType -- a Post-test only session only requires a post-test score,
+// a Pre-test only session only requires a pre-test score, Pre & Post requires both, and
+// None/unset sessions have nothing to assess (2026-07-31, fixes TS-2026-008 "assessed
+// progress un-tagged" report where a Post-test-only session with real post-test scores was
+// showing 0 Assessed because the old logic always required BOTH scores regardless of type).
+function _tdaIsAssessed(r,assessmentType){
+  const hasPre=r.preTestScore!=null, hasPost=r.postTestScore!=null;
+  if(assessmentType==='Pre-test only') return hasPre;
+  if(assessmentType==='Post-test only') return hasPost;
+  if(assessmentType==='Pre & Post') return hasPre&&hasPost;
+  return false;
+}
+
+// Whether the Pre-Test input is applicable for this session's assessment type (false = show
+// disabled dash). Symmetric with _tdaPostApplicable below.
+function _tdaPreApplicable(assessmentType){
+  return assessmentType!=='Post-test only';
+}
+function _tdaPostApplicable(assessmentType){
+  return assessmentType!=='Pre-test only';
+}
+
 const _TDA_STATUS_STYLE={
   present:{bg:'var(--green-lt)',fg:'var(--green)',label:'Present'},
   late:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Late'},
@@ -5835,12 +5851,14 @@ function _tdaKpiColumnsHtml(s){
   const pending=all.filter(r=>r.attendanceStatus==='pending').length;
   const rate=total>0?Math.round(((present+late)/total)*100):0;
 
-  const assessedRows=all.filter(r=>r.preTestScore!=null&&r.postTestScore!=null);
-  const avgPre=assessedRows.length?Math.round(assessedRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/assessedRows.length):null;
-  const avgPost=assessedRows.length?Math.round(assessedRows.reduce((sum,r)=>sum+Number(r.postTestScore),0)/assessedRows.length):null;
-  const avgGain=(avgPre!=null&&avgPost!=null)?avgPost-avgPre:null;
+  const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType));
+  const preRows=all.filter(r=>r.preTestScore!=null), postRows=all.filter(r=>r.postTestScore!=null);
+  const avgPre=preRows.length?Math.round(preRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/preRows.length):null;
+  const avgPost=postRows.length?Math.round(postRows.reduce((sum,r)=>sum+Number(r.postTestScore),0)/postRows.length):null;
+  const avgGain=(avgPre!=null&&avgPost!=null&&s.assessmentType==='Pre & Post')?avgPost-avgPre:null;
   const passingScore=s.passingScore;
-  const passedCount=(passingScore!=null)?assessedRows.filter(r=>Number(r.postTestScore)>=passingScore).length:null;
+  const passApplicable=s.assessmentType!=='Pre-test only';
+  const passedCount=(passingScore!=null&&passApplicable)?assessedRows.filter(r=>r.postTestScore!=null&&Number(r.postTestScore)>=passingScore).length:null;
   const passRate=(passedCount!=null&&assessedRows.length)?Math.round((passedCount/assessedRows.length)*100):null;
   const pct=(n,d)=>d>0?Math.round((n/d)*100)+'%':'';
 
@@ -5911,8 +5929,8 @@ function _tdaRenderTab(s){
   const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Participant','Role','Immediate Supervisor','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
   const thead=`<tr>${theadCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
 
-  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml():'';
-  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked)).join('');
+  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType):'';
+  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType)).join('');
   const emptyRow=`<tr><td colspan="11" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.</td></tr>`;
   const tbody=addRow+(bodyRows||(addRow?'':emptyRow));
 
@@ -5941,31 +5959,34 @@ function _tdaRenderTab(s){
   `;
 }
 
-function _tdaRowHtml(r,i,locked){
+function _tdaRowHtml(r,i,locked,assessmentType){
   const p=_tdaPersonInfo(r);
   const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending;
-  const gain=_tdaGain(r);
+  const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
+  const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
   const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
-  const passBadge=(gain!==null&&r.postTestScore!==''&&r.postTestScore!==null)?'':'';
   const dis=locked?'disabled':'';
+  const preDis=(dis||!preApplicable)?'disabled':'';
+  const postDis=(dis||!postApplicable)?'disabled':'';
   return `<tr data-row-id="${r.id}">
     <td><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
     <td><div class="tbl-user"><div class="tbl-ava" style="${p.avaStyle}">${p.initials}</div><div><div class="td-name">${Utils.esc(p.name)}${p.inactive?' <span class="txt-muted" style="font-size:11px">(inactive)</span>':''}</div>${p.email&&p.email!=='External'?`<div style="font-size:11px;color:var(--text3)">${Utils.esc(p.email)}</div>`:''}</div></div></td>
-    <td style="font-size:12.5px">${Utils.esc(p.role)}</td>
-    <td style="font-size:12.5px">${Utils.esc(p.supervisor)}</td>
+    <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.role)}</span>`:`<input type="text" class="form-control" ${dis} style="width:110px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.externalRole||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','externalRole',this.value)">`}</td>
+    <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.supervisor)}</span>`:`<input type="text" class="form-control" ${dis} style="width:130px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.externalSupervisor||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','externalSupervisor',this.value)">`}</td>
     <td><select class="form-control" ${dis} style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="_tdaSetField('${r.id}','attendanceStatus',this.value)">
       ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${r.attendanceStatus===k?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
     </select></td>
-    <td><input type="number" class="form-control" ${dis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)"></td>
-    <td><input type="number" class="form-control" ${dis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)"></td>
+    <td>${preApplicable?`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    <td>${postApplicable?`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${gainHtml}</td>
     <td><input type="text" class="form-control" ${dis} style="width:120px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.remarks||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','remarks',this.value)"></td>
     <td>${locked?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdaRemoveRow('${r.id}')" title="Remove participant">✕</button>`}</td>
   </tr>`;
 }
 
-function _tdaAddPickerRowHtml(){
+function _tdaAddPickerRowHtml(assessmentType){
+  const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
   return `<tr style="background:#f8fafc">
     <td></td>
     <td style="color:var(--text3)">•</td>
@@ -5975,8 +5996,8 @@ function _tdaAddPickerRowHtml(){
     <td><select id="tda-add-status" class="form-control" style="font-size:12.5px">
       ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${k==='pending'?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
     </select></td>
-    <td><input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100"></td>
-    <td><input type="number" id="tda-add-post" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100"></td>
+    <td>${preApplicable?'<input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    <td>${postApplicable?'<input type="number" id="tda-add-post" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td style="color:var(--text3)">—</td>
     <td><input type="text" id="tda-add-remarks" class="form-control" style="width:120px;padding:5px 8px;font-size:12.5px" placeholder="—"></td>
     <td><div style="display:flex;gap:6px"><button class="btn btn-sm btn-primary" onclick="_tdaConfirmAdd()">Add</button><button class="btn btn-sm btn-ghost" onclick="_tdaToggleAddPicker()">Cancel</button></div></td>
@@ -6126,6 +6147,14 @@ async function _tdaMarkCompleted(){
     toast(`Cannot tag session complete — ${pendingCount} participant(s) still have Pending attendance status.`,'error');
     return;
   }
+  const missingRoleOrSup=_tdPartRows.filter(r=>{
+    const p=_tdaPersonInfo(r);
+    return !p.role||p.role==='—'||!p.supervisor||p.supervisor==='—';
+  }).length;
+  if(missingRoleOrSup>0){
+    toast(`Cannot tag session complete — ${missingRoleOrSup} participant(s) missing Role or Immediate Supervisor.`,'error');
+    return;
+  }
   confirm$('Tag Session Complete','This will lock the roster and tag this training session as Complete. Continue?','Tag Complete',async()=>{
     try{
       await _tdaPersistRows();
@@ -6178,6 +6207,7 @@ function _tdrEnsureLoaded(sessionId){
     c.additionalRemarks=c.additionalRemarks||'';
     _tdrLoadedFor=sessionId;
     _tdrPreviewMode=false;
+    _tdrEditMode=false;
   }
 }
 
@@ -6205,10 +6235,11 @@ function _tdrRenderTab(s){
   const toolbar=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
       <div style="font-size:11.5px;color:var(--text3)">
-        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrPreviewMode?`<span style="font-weight:600">Preview mode</span> — read-only`:savedNote}
+        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrPreviewMode?`<span style="font-weight:600">Preview mode</span> — read-only`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${_tdrPreviewMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrExitPreview()">← Exit Preview</button>`:locked?'':`
+          ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(false)">Done</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
           <button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save Draft</button>
           <button class="btn btn-sm btn-secondary" onclick="_tdrTogglePreview()">👁 Preview Report</button>
           <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
@@ -6216,30 +6247,29 @@ function _tdrRenderTab(s){
       </div>
     </div>`;
 
-  const _tdrRatingBox=(field,val,max)=>_tdrMetricsEditing
+  const l1Editing=!readOnly && _tdrEditMode;
+  const _tdrRatingBox=(field,val,max)=>l1Editing
     ?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="0" max="${max}" step="0.1" placeholder="—" value="${val??''}" ${dis} onblur="_tdrSetField('${field}',this.value)">`
     :((val!=null&&val!=='')?Utils.esc(String(val)):'—');
-  const l1EditToggle=readOnly?'':`<button type="button" onclick="_tdrToggleMetricsEdit(${_tdrMetricsEditing?'false':'true'})" style="border:none;background:transparent;cursor:pointer;color:var(--text3);padding:2px;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600" onmouseover="this.style.color='var(--pri)'" onmouseout="this.style.color='var(--text3)'">${_tdIconSvg(_tdrMetricsEditing?'check':'edit3','currentColor',14)}${_tdrMetricsEditing?'Done':'Edit Ratings'}</button>`;
 
   const l1Metrics=`
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-      ${_tdaKpiCard('users','#0369a1','Responses',_tdrMetricsEditing?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="0" placeholder="—" value="${c.responses??''}" ${dis} onblur="_tdrSetField('responses',this.value)">`:(c.responses??'—'),`of ${totalParticipants}`)}
+      ${_tdaKpiCard('users','#0369a1','Responses',l1Editing?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="0" placeholder="—" value="${c.responses??''}" ${dis} onblur="_tdrSetField('responses',this.value)">`:(c.responses??'—'),`of ${totalParticipants}`)}
       ${_tdaKpiCard('target','var(--sky)','Response Rate',responseRate!=null?responseRate+'%':'—')}
       ${_tdaKpiCard('filetext','#c2410c','Content Rating',_tdrRatingBox('contentRating',c.contentRating,5),'/ 5')}
       ${_tdaKpiCard('clipboard','var(--sky)','Materials Rating',_tdrRatingBox('materialsRating',c.materialsRating,5),'/ 5')}
       ${_tdaKpiCard('user','#7c3aed','Facilitation Rating',_tdrRatingBox('facilitationRating',c.facilitationRating,5),'/ 5')}
       ${_tdaKpiCard('heart','var(--red)','Overall Satisfaction',_tdrRatingBox('overallSatisfaction',c.overallSatisfaction,5),'/ 5')}
       ${_tdaKpiCard('check','var(--green)','CSAT',_tdrRatingBox('csat',c.csat,5),'/ 5')}
-      ${_tdaKpiCard('trend','#7c3aed','NPS',_tdrMetricsEditing?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="-100" max="100" placeholder="—" value="${c.nps??''}" ${dis} onblur="_tdrSetField('nps',this.value)">`:(c.nps??'—'),npsLbl)}
+      ${_tdaKpiCard('trend','#7c3aed','NPS',l1Editing?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="-100" max="100" placeholder="—" value="${c.nps??''}" ${dis} onblur="_tdrSetField('nps',this.value)">`:(c.nps??'—'),npsLbl)}
     </div>`;
 
   const _rtToolbarBtn=(cmd,inner,title)=>`<button type="button" title="${title}" onmousedown="event.preventDefault()" onclick="document.execCommand('${cmd}')" style="border:none;background:rgba(255,255,255,.55);border-radius:5px;width:26px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:inherit">${inner}</button>`;
   const summaryField=(key,label,iconName,bg,fg,placeholder)=>{
-    const editing=!readOnly && !!_tdrSummaryEditing[key];
+    const editing=!readOnly && _tdrEditMode;
     const raw=c[key]||'';
     const headerRow=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px;color:${fg}">${_tdIconSvg(iconName,fg,16)}${label}</div>
-      ${readOnly?'':editing?'':`<button type="button" title="Edit" onclick="_tdrToggleSummaryEdit('${key}',true)" style="border:none;background:transparent;cursor:pointer;color:${fg};opacity:.75;padding:2px" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.75">${_tdIconSvg('edit3',fg,14)}</button>`}
     </div>`;
     let body;
     if(editing){
@@ -6262,7 +6292,6 @@ function _tdrRenderTab(s){
     <div class="card" style="padding:18px 20px;margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-weight:700;font-size:14.5px">1. Session L1 Report (Learner Reaction)</div>
-        ${l1EditToggle}
       </div>
       ${l1Metrics}
       ${feedbackBoxes}
@@ -6302,7 +6331,11 @@ function _tdrRenderTab(s){
       ${summaryField('additionalRemarks','Additional Remarks','edit3','#f1f5f9','#64748b','Anything else worth noting...')}
     </div>`;
 
-  return `${toolbar}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}`;
+  const canExportSummaryReport=s.status==='completed'&&locked;
+  const exportBarReport=canExportSummaryReport?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary Image</button>
+    </div>`:'';
+  return `${exportBarReport}${toolbar}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}`;
 }
 
 function _tdrSetField(field,value){
@@ -6342,6 +6375,7 @@ async function _tdrSaveDraft(){
       const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
     }
+    _tdrEditMode=false;
     renderTrainingDetail();
     toast('Training report draft saved.','success');
   }catch(e){ /* error already surfaced */ }
@@ -6579,12 +6613,14 @@ function _tdOverviewAttendanceAssessmentBlock(s){
   const absent=all.filter(r=>r.attendanceStatus==='absent').length;
   const pending=all.filter(r=>r.attendanceStatus==='pending').length;
   const rate=total>0?Math.round(((present+late)/total)*100):0;
-  const assessedRows=all.filter(r=>r.preTestScore!=null&&r.postTestScore!=null);
-  const avgPre=assessedRows.length?Math.round(assessedRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/assessedRows.length):null;
-  const avgPost=assessedRows.length?Math.round(assessedRows.reduce((sum,r)=>sum+Number(r.postTestScore),0)/assessedRows.length):null;
-  const avgGain=(avgPre!=null&&avgPost!=null)?avgPost-avgPre:null;
+  const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType));
+  const preRows=all.filter(r=>r.preTestScore!=null), postRows=all.filter(r=>r.postTestScore!=null);
+  const avgPre=preRows.length?Math.round(preRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/preRows.length):null;
+  const avgPost=postRows.length?Math.round(postRows.reduce((sum,r)=>sum+Number(r.postTestScore),0)/postRows.length):null;
+  const avgGain=(avgPre!=null&&avgPost!=null&&s.assessmentType==='Pre & Post')?avgPost-avgPre:null;
   const passingScore=s.passingScore;
-  const passedCount=(passingScore!=null)?assessedRows.filter(r=>Number(r.postTestScore)>=passingScore).length:null;
+  const passApplicable=s.assessmentType!=='Pre-test only';
+  const passedCount=(passingScore!=null&&passApplicable)?assessedRows.filter(r=>r.postTestScore!=null&&Number(r.postTestScore)>=passingScore).length:null;
   const passRate=(passedCount!=null&&assessedRows.length)?Math.round((passedCount/assessedRows.length)*100):null;
   const pct=(n,d)=>d>0?Math.round((n/d)*100)+'%':'';
   const attendanceCards=`
@@ -6832,7 +6868,7 @@ function _tdOverviewJourneySteps(s,ownerType){
   steps.push({label:'Attendance Recorded',state:attState,sub:attSub});
 
   if(s.assessmentType && s.assessmentType!=='None'){
-    const assessedRows=partRows.filter(r=>r.preTestScore!=null&&r.postTestScore!=null);
+    const assessedRows=partRows.filter(r=>_tdaIsAssessed(r,s.assessmentType));
     let assessState='pending';
     if(totalP>0 && assessedRows.length===totalP) assessState='done';
     else if(assessedRows.length>0) assessState='in_progress';
