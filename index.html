@@ -2373,7 +2373,9 @@ const _FIELD_MAPS = {
   training_reports:{
     id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
     submittedAt:'submitted_at', approvedBy:'approved_by', approvedAt:'approved_at',
-    returnReason:'return_reason', createdAt:'created_at', updatedAt:'updated_at'
+    returnReason:'return_reason', createdAt:'created_at', updatedAt:'updated_at',
+    reopenStatus:'reopen_status', reopenRequestedBy:'reopen_requested_by', reopenRequestedAt:'reopen_requested_at',
+    reopenReason:'reopen_reason', reopenDecidedBy:'reopen_decided_by', reopenDecidedAt:'reopen_decided_at'
   },
   evaluations:{
     id:'id', code:'code', status:'status', batchNo:'batch_no', trainingDate:'training_date',
@@ -6215,7 +6217,7 @@ function _tdrRenderTab(s){
       ${summaryField('additionalRemarks','Additional Remarks','edit3','#f1f5f9','#64748b','Anything else worth noting...')}
     </div>`;
 
-  return `${toolbar}${l1Card}${agendaCard}${summaryCard}`;
+  return `${toolbar}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}`;
 }
 
 function _tdrSetField(field,value){
@@ -6281,13 +6283,93 @@ function _tdrSubmitReport(){
     try{
       // createdBy repurposed here as "prepared by" -- captured at submit time (not draft creation)
       // so the Overview page's "Report Prepared By" field reflects who finalized the report.
-      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content, createdBy:Auth.user.id};
+      // submittedAt is always stamped fresh on every (re)submit so the Report SLA column always
+      // measures against the CURRENT submission, and reopenStatus is cleared so a future reopen
+      // cycle can be requested again after this resubmission.
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content, createdBy:Auth.user.id,
+        submittedAt:new Date().toISOString(), reopenStatus:null, reopenRequestedBy:null, reopenRequestedAt:null,
+        reopenReason:null, reopenDecidedBy:null, reopenDecidedAt:null};
       const saved=_tdrReport._isNew?await TrainingReportsDB.create({...patch, id:_tdrReport.id}):await TrainingReportsDB.update(_tdrReport.id,patch);
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
       renderTrainingDetail();
       toast('Training report submitted.','success');
     }catch(e){ /* error already surfaced */ }
   });
+}
+
+/* ── REOPEN WORKFLOW (2026-07-31) ─────────────────────────────────────────────
+   Gated on one-up (direct supervisor) approval. reopen_status lifecycle:
+   null -> 'pending' (requested) -> 'approved' (report unlocked, status back to draft)
+                                  -> 'denied' (report stays submitted/locked)
+   A fresh Request Reopen is allowed again once a request has been denied, or after
+   a new submit cycle resets reopen_status back to null. ───────────────────────── */
+function _tdrRequestReopen(){
+  const reason=(prompt('Optional: reason for requesting this report be reopened (leave blank to skip)')||'').trim();
+  confirm$('Request Reopen','Request to reopen this submitted report for editing? Your direct supervisor will need to approve before it unlocks.','Request Reopen',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
+        reopenStatus:'pending', reopenRequestedBy:Auth.user.id, reopenRequestedAt:new Date().toISOString(),
+        reopenReason:reason||null, reopenDecidedBy:null, reopenDecidedAt:null};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('reopen_requested','Training Report',_tdrReport.id,`Reopen requested by ${Auth.user.firstName} ${Auth.user.lastName}${reason?`: "${reason}"`:''}`);
+      renderTrainingDetail();
+      toast('Reopen requested — awaiting supervisor approval.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdrApproveReopen(){
+  confirm$('Approve Reopen','Approve this reopen request? The report will be unlocked for editing (status returns to Draft).','Approve Reopen',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'draft', content:_tdrReport.content,
+        reopenStatus:'approved', reopenDecidedBy:Auth.user.id, reopenDecidedAt:new Date().toISOString()};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('reopen_approved','Training Report',_tdrReport.id,`Reopen approved by ${Auth.user.firstName} ${Auth.user.lastName} — report unlocked for editing`);
+      renderTrainingDetail();
+      toast('Reopen approved — report unlocked.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdrDenyReopen(){
+  confirm$('Deny Reopen','Deny this reopen request? The report will remain submitted and locked.','Deny Reopen',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
+        reopenStatus:'denied', reopenDecidedBy:Auth.user.id, reopenDecidedAt:new Date().toISOString()};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('reopen_denied','Training Report',_tdrReport.id,`Reopen denied by ${Auth.user.firstName} ${Auth.user.lastName}`);
+      renderTrainingDetail();
+      toast('Reopen request denied.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdrReopenBlock(){
+  const rep=_tdrReport;
+  const me=Auth.user;
+  const status=rep.reopenStatus;
+  let html='';
+  if(status==='pending'){
+    const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
+    const approverId=requester?requester.supervisorId:null;
+    const canApprove=!!me&&(Auth.isAdmin||(approverId&&approverId===me.id));
+    html+=`<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:#92400e">
+      <div style="font-weight:700;margin-bottom:4px">🔓 Reopen Requested — awaiting supervisor approval</div>
+      <div>Requested by ${Utils.esc(requester?`${requester.firstName} ${requester.lastName}`:'—')}${rep.reopenRequestedAt?` on ${new Date(rep.reopenRequestedAt).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}`:''}${rep.reopenReason?` — "${Utils.esc(rep.reopenReason)}"`:''}</div>
+    </div>`;
+    if(canApprove){
+      html+=`<div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
+        <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>
+      </div>`;
+    }
+    return html;
+  }
+  if(status==='denied'){
+    html+=`<div style="font-size:12px;color:var(--text3);margin-top:14px">Reopen request was denied${rep.reopenDecidedAt?` on ${new Date(rep.reopenDecidedAt).toLocaleString('en-PH',{dateStyle:'medium'})}`:''}.</div>`;
+  }
+  html+=`<div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">Request Reopen</button></div>`;
+  return html;
 }
 
 function renderTrainingDetail(){
