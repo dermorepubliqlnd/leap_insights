@@ -1636,7 +1636,7 @@
                 <button class="btn btn-sm" id="td-view-list-btn" onclick="tdSwitchView('list')" style="border-radius:0;border:none">☰ List</button>
                 <button class="btn btn-sm" id="td-view-cal-btn" onclick="tdSwitchView('calendar')" style="border-radius:0;border:none;border-left:1px solid var(--border)">📅 Calendar</button>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="openTrainingModal()">+ Add Training</button>
+              <button class="btn btn-primary btn-sm" onclick="openModal('td-type-pick')">+ Add Training</button>
             </div>
           </div>
 
@@ -2024,7 +2024,7 @@
         </div>
       </div>
       <div class="form-row-3">
-        <div class="form-group">
+        <div class="form-group" id="td-batch-wrap">
           <label class="form-label">Batch No. <span class="req">*</span></label>
           <input type="text" id="td-batch" class="form-control" placeholder="e.g. 2026-01">
         </div>
@@ -2105,6 +2105,26 @@
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('training')">Cancel</button>
       <button class="btn btn-primary" onclick="saveTrainingModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: NEW TRAINING — DELIVERY TYPE PICKER ═════════════ -->
+<div id="modal-td-type-pick" class="modal-overlay" onclick="if(event.target===this)closeModal('td-type-pick')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">What type of training is this?</span>
+      <button class="modal-close" onclick="closeModal('td-type-pick')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Pick a delivery type to continue — this determines which fields you'll fill in next.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="td-type-pick-grid">
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('ILT')">ILT</button>
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('VILT')">VILT</button>
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('Self-led')">Self-led</button>
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('External')">External</button>
+      </div>
+      <div class="modal-err hidden" id="td-type-pick-error"></div>
     </div>
   </div>
 </div>
@@ -4915,7 +4935,7 @@ function _tdPopulateVenueOptions(prefix,deliveryType,selectedId){
   const sel=document.getElementById(`${prefix}-venue`); if(!sel) return;
   const wantType=_tdVenueTypeFor(deliveryType);
   const isPlatform=wantType==='platform';
-  const opts=Sel.active(Store.VENUES).filter(v=>v.type===wantType||_isOtherVenue(v.id));
+  const opts=Sel.active(Store.VENUES).filter(v=>v.type===wantType||_isOtherVenue(v.id)).sort((a,b)=>(_isOtherVenue(a.id)?1:0)-(_isOtherVenue(b.id)?1:0));
   const cur=selectedId!==undefined?selectedId:sel.value;
   sel.innerHTML=`<option value="">— Select ${isPlatform?'Platform':'Venue'} —</option>`+opts.map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
   if(cur) sel.value=cur;
@@ -5211,39 +5231,63 @@ function renderTDCalendar(rows){
   const CHIP_CAP=2;
   let weeksHtml='';
   for(let w=0; w<numWeeks; w++){
+    const weekStartIdx=w*7, weekEndIdx=w*7+6;
+
+    // Compute which multi-day bars fall in this week + assign stacking lanes so overlapping
+    // date ranges don't visually collide (greedy interval scheduling by column start).
+    const weekBars=[];
+    multiDay.forEach(s=>{
+      if(!s.trainingDate||!s.endDate) return;
+      const sStart=new Date(s.trainingDate+'T00:00:00'), sEnd=new Date(s.endDate+'T00:00:00');
+      const startIdx=Math.round((sStart-monthStart)/86400000)+firstDow;
+      const endIdx=Math.round((sEnd-monthStart)/86400000)+firstDow;
+      if(endIdx<weekStartIdx||startIdx>weekEndIdx) return;
+      const clampedStart=Math.max(startIdx,weekStartIdx), clampedEnd=Math.min(endIdx,weekEndIdx);
+      weekBars.push({s,startIdx,endIdx,clampedStart,clampedEnd});
+    });
+    weekBars.sort((a,b)=>a.clampedStart-b.clampedStart);
+    const laneEnds=[];
+    weekBars.forEach(b=>{
+      let lane=laneEnds.findIndex(endCol=>endCol<b.clampedStart);
+      if(lane===-1){ lane=laneEnds.length; laneEnds.push(b.clampedEnd); } else { laneEnds[lane]=b.clampedEnd; }
+      b.lane=lane;
+    });
+    const maxLanes=laneEnds.length;
+    const BAR_H=20; // px per stacked bar lane
+    const barBand=maxLanes>0?(maxLanes*BAR_H+6):0; // extra vertical space reserved for bars this week
+    const cellMinHeight=132+barBand;
+    const chipTopOffset=22+barBand;
+
     let dayCellsHtml='';
     for(let c=0;c<7;c++){
       const idx=w*7+c;
       const day=idx-firstDow+1;
-      if(day<1||day>daysInMonth){ dayCellsHtml+='<div style="background:#f8fafc;border:1px solid var(--border);min-height:132px"></div>'; continue; }
+      if(day<1||day>daysInMonth){ dayCellsHtml+=`<div style="background:#f8fafc;border:1px solid var(--border);min-height:${cellMinHeight}px;box-sizing:border-box"></div>`; continue; }
       const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const isToday=dateStr===todayStr;
       const dayEvs=byDay[day]||[];
       const shown=dayEvs.slice(0,CHIP_CAP);
       const more=dayEvs.length-shown.length;
-      dayCellsHtml+=`<div style="background:var(--white);border:1px solid var(--border);min-height:132px;padding:5px;box-sizing:border-box;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
+      dayCellsHtml+=`<div style="background:var(--white);border:1px solid var(--border);min-height:${cellMinHeight}px;padding:5px;box-sizing:border-box;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
         <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
-        <div style="margin-top:22px">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
+        <div style="margin-top:${chipTopOffset}px">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
       </div>`;
     }
-    const weekStartIdx=w*7, weekEndIdx=w*7+6;
-    const barsHtml=multiDay.map(s=>{
-      if(!s.trainingDate||!s.endDate) return '';
-      const sStart=new Date(s.trainingDate+'T00:00:00'), sEnd=new Date(s.endDate+'T00:00:00');
-      const startIdx=Math.round((sStart-monthStart)/86400000)+firstDow;
-      const endIdx=Math.round((sEnd-monthStart)/86400000)+firstDow;
-      if(endIdx<weekStartIdx||startIdx>weekEndIdx) return '';
-      const clampedStart=Math.max(startIdx,weekStartIdx), clampedEnd=Math.min(endIdx,weekEndIdx);
-      const colStart=(clampedStart-weekStartIdx)+1, colEnd=(clampedEnd-weekStartIdx)+2;
-      const isStartCapped=clampedStart===startIdx, isEndCapped=clampedEnd===endIdx;
+    // Bars are rendered as items of the SAME grid as the day cells (not a second,
+    // independently-tracked overlay grid) so their grid-column boundaries are guaranteed
+    // pixel-identical to the day-cell borders. Each bar gets an explicit grid-column/grid-row
+    // plus position:absolute, which (per spec) positions it relative to its own grid area —
+    // giving precise vertical (lane) placement without affecting row track sizing.
+    const barsHtml=weekBars.map(b=>{
+      const s=b.s;
+      const colStart=(b.clampedStart-weekStartIdx)+1, colEnd=(b.clampedEnd-weekStartIdx)+2;
+      const isStartCapped=b.clampedStart===b.startIdx, isEndCapped=b.clampedEnd===b.endIdx;
       const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
       const radius=`${isStartCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isStartCapped?'10px':'0'}`;
-      return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="grid-column:${colStart} / ${colEnd};pointer-events:auto;cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:${radius};box-sizing:border-box">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
+      const top=20+b.lane*BAR_H;
+      return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="grid-column:${colStart} / ${colEnd};grid-row:1;position:absolute;top:${top}px;left:0;right:0;pointer-events:auto;cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:${radius};box-sizing:border-box">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
     }).join('');
-    weeksHtml+=`<div style="position:relative">
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0">${dayCellsHtml}</div>
-      ${barsHtml?`<div style="position:absolute;top:20px;left:0;right:0;display:grid;grid-template-columns:repeat(7,1fr);gap:0;pointer-events:none">${barsHtml}</div>`:''}
-    </div>`;
+    weeksHtml+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;position:relative">${dayCellsHtml}${barsHtml}</div>`;
   }
   const legend=Object.entries(TD_TYPE_COLORS).map(([k,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${c.dot};display:inline-block"></span>${k}</span>`).join('');
   wrap.innerHTML=`<div class="card" style="padding:14px 16px">
@@ -5276,6 +5320,7 @@ function _tdToggleTypeFields(){
   document.getElementById('td-provider-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('td-enddate-wrap').classList.toggle('hidden',!ownerType);
   document.getElementById('td-recording-wrap').classList.toggle('hidden',ownerType);
+  document.getElementById('td-batch-wrap').classList.toggle('hidden',grp==='owner');
   _tdPopulateVenueOptions('td',dt);
   _toggleVenueOtherWrap('td');
 }
@@ -5340,7 +5385,7 @@ async function saveTrainingModal(){
   const errs=[];
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
-  if(!d.batchNo) errs.push('Batch No. is required.');
+  if(grp!=='owner' && !d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
   if(grp==='trainer' && !d.trainerId) errs.push('Please select a Trainer.');
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
@@ -5467,6 +5512,30 @@ const TD_DETAIL_TABS=[
   {id:'audit',label:'Audit History'}
 ];
 
+// Minimal "+ Add Training" flow (2026-07-31): the delivery-type picker modal creates a bare
+// training_sessions row (nothing but code/deliveryType/status — the DB has no other NOT NULL
+// constraints on this table) and routes straight into the Detail page's inline edit form, which
+// is already correctly field-gated per delivery type (_tddToggleTypeFields runs on entry). This
+// replaces the old full Add modal for creation; the modal/functions are left in the file (Save
+// Training modal is otherwise unused for editing — the List view already routes Edit to the
+// Detail page), only "+ Add Training" no longer opens it.
+async function _tdCreateFromTypePick(deliveryType){
+  const errEl=document.getElementById('td-type-pick-error');
+  if(errEl) errEl.classList.add('hidden');
+  try{
+    const rec=await TrSessionDB.create({
+      deliveryType,
+      code:generateSessionCode(),
+      status:'scheduled'
+    });
+    closeModal('td-type-pick');
+    openTrainingDetail(rec.id);
+    tdDetailToggleEdit();
+  }catch(e){
+    if(errEl){ errEl.textContent='Could not create the training record. Please try again.'; errEl.classList.remove('hidden'); }
+  }
+}
+
 function openTrainingDetail(id){
   const s=TrSessionDB.byId(id);
   if(!s){ toast('That training could not be found.','error'); return; }
@@ -5540,7 +5609,7 @@ async function tdDetailSave(){
   const errs=[];
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
-  if(!d.batchNo) errs.push('Batch No. is required.');
+  if(grp!=='owner' && !d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
   if(grp==='trainer' && !d.trainerId) errs.push('Please select a Trainer.');
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
@@ -6240,7 +6309,7 @@ function renderTrainingDetail(){
     <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
     <div>${tabBody}</div>
   `;
-  if(_tdDetailTab==='overview' && _tdDetailEditing) _tddPopulateEditDropdowns(s,ownerType);
+  if(_tdDetailTab==='overview' && _tdDetailEditing){ _tddPopulateEditDropdowns(s,ownerType); _tddToggleTypeFields(); }
 }
 
 function _tddInfoRow(label,value){
@@ -6583,7 +6652,7 @@ function _tddSessionInfoEditContent(s,ownerType){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;gap:6px;align-items:center"><input type="date" id="tdd-date" class="form-control" ${smallInput} value="${s.trainingDate||''}"><span ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;align-items:center;gap:6px">→<input type="date" id="tdd-enddate" class="form-control" ${smallInput} value="${s.endDate||''}"></span></div>`)}
-      ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`)}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`,'tdd-batch-wrap')}
       ${_tddInfoBlockEdit('target','#64748b','Modality',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
         <option value="ILT" ${s.deliveryType==='ILT'?'selected':''}>ILT</option>
         <option value="VILT" ${s.deliveryType==='VILT'?'selected':''}>VILT</option>
@@ -6655,6 +6724,7 @@ function _tddToggleTypeFields(){
   document.getElementById('tdd-provider-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!ownerType);
   document.getElementById('tdd-recording-wrap').classList.toggle('hidden',ownerType);
+  document.getElementById('tdd-batch-wrap').classList.toggle('hidden',grp==='owner');
   _tdPopulateVenueOptions('tdd',dt);
   _toggleVenueOtherWrap('tdd');
 }
@@ -7627,7 +7697,7 @@ function openSessionModal(id){
   const s=id?TrSessionDB.byId(id):null;
   const eligible=DB.all().filter(u=>u.positionId==='pos_6'&&(u.isActive||u.id===(s&&s.trainerId)));
   document.getElementById('sess-trainer').innerHTML='<option value="">— Select Trainer —</option>'+eligible.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
-  document.getElementById('sess-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  document.getElementById('sess-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).sort((a,b)=>(_isOtherVenue(a.id)?1:0)-(_isOtherVenue(b.id)?1:0)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
   document.getElementById('sess-modality').innerHTML='<option value="">— Select Modality —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
   document.getElementById('sess-id').value=id||'';
   document.getElementById('sess-modal-title').textContent=id?'Edit Training Session':'Log Training Session';
@@ -7904,7 +7974,7 @@ function _populateEvalDropdowns(evaluatorId, currentTrainerId){
     const label=u.isActive?Utils.esc(u.firstName+' '+u.lastName):Utils.esc(u.firstName+' '+u.lastName)+' (inactive)';
     return `<option value="${u.id}">${label}</option>`;
   }).join('');
-  document.getElementById('ef-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  document.getElementById('ef-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).sort((a,b)=>(_isOtherVenue(a.id)?1:0)-(_isOtherVenue(b.id)?1:0)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
   document.getElementById('ef-modality').innerHTML='<option value="">— Select Modality —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
 }
 
