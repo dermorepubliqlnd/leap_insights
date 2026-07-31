@@ -5192,8 +5192,9 @@ function renderTDList(rows){
         <button class="btn btn-sm btn-secondary" ${tdPage>=totalPages?'disabled':''} onclick="tdGoPage(${tdPage+1})">Next ›</button>
       </div>
     </div>`;
-  wrap.innerHTML=`<div class="card"><div class="eval-tbl-wrap"><table class="eval-tbl">
-    <thead><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Report SLA</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
+  wrap.innerHTML=`<div class="card" style="padding-bottom:0">
+    <div class="eval-tbl-wrap" style="max-height:calc(100vh - 380px);min-height:220px;overflow-y:auto"><table class="eval-tbl">
+    <thead style="position:sticky;top:0;z-index:2"><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Report SLA</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
     <tbody>${pageRows.map(rowHtml).join('')}</tbody>
   </table></div>${pager}</div>`;
 }
@@ -5276,7 +5277,7 @@ function renderTDCalendar(rows){
   });
 
   const CHIP_CAP=2;
-  const BAR_H=20; // px per stacked bar lane
+  const BAR_H=32; // px per stacked bar lane (room for program title + person/venue line)
   let bodyCellsHtml='';
   for(let w=0; w<numWeeks; w++){
     const weekStartIdx=w*7, weekEndIdx=w*7+6;
@@ -5332,7 +5333,12 @@ function renderTDCalendar(rows){
         const bc=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
         const radius=`${isStartCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isStartCapped?'10px':'0'}`;
         const top=20+b.lane*BAR_H;
-        return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
+        const barVenueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+        const barPerson=_tdPersonName(s);
+        return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box;line-height:1.3">
+          <div>● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
+          <div style="font-size:9px;font-weight:400;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(barPerson)}${barVenueName?' · '+Utils.esc(barVenueName):''}</div>
+        </div>`;
       }).join('');
       bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:var(--white);border:1px solid var(--border);padding:5px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
         <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
@@ -5469,6 +5475,10 @@ async function saveTrainingModal(){
 
 function deleteTrainingRecord(id){
   const s=TrSessionDB.byId(id); if(!s) return;
+  if(s.status==='completed'){
+    toast("Completed sessions can't be deleted. Contact an admin if this needs to change.",'error');
+    return;
+  }
   confirm$('Delete Training',
     `Delete <strong>${Utils.esc(s.trainingProgram||'this training')}</strong>${s.batchNo?` (Batch ${Utils.esc(s.batchNo)})`:''}? This cannot be undone.`,
     'Delete',async()=>{
@@ -6467,7 +6477,7 @@ function renderTrainingDetail(){
   } else if(_tdDetailTab==='report'){
     tabBody=_tdrRenderTab(s);
   } else if(_tdDetailTab==='trainer-eval'){
-    tabBody=_tddPlaceholderPanel('◉','Trainer Evaluation','A recording-gated link into the existing Trainer Evaluation workflow will live here.');
+    tabBody=_tdTrainerEvalTabHtml(s);
   } else if(_tdDetailTab==='audit'){
     tabBody=_tdAuditRenderTab(s);
   }
@@ -6608,16 +6618,11 @@ function _tdOverviewAttendanceAssessmentBlock(s){
   return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch">${attendanceCards}<div style="width:1px;background:var(--border);align-self:stretch"></div>${assessmentCards}</div>`;
 }
 
-function _tdOverviewReportBlocks(s){
-  const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
-  const emptyNote='<div style="font-size:12.5px;color:var(--text3)">No training report has been started yet — see the Training Report tab.</div>';
-  const goToReport='<div style="margin-top:12px"><a href="javascript:void(0)" onclick="tdDetailSwitchTab(\'report\')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600">Go to Training Report tab for details →</a></div>';
-  if(!report){
-    return {
-      l1:`<div class="card" style="padding:18px 20px;margin-bottom:16px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">3. Session L1 Report (Learner Reaction)</div>${emptyNote}${goToReport}</div>`,
-      summary:`<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">5. Summary</div>${emptyNote}${goToReport}</div>`
-    };
-  }
+// Pure, read-only inner-content builders (no card wrapper/title/nav-link) -- factored out
+// of _tdOverviewReportBlocks (2026-07-31) so the Export Summary Image feature can reuse the
+// EXACT same L1 metrics + Summary rendering without dragging along the Overview-tab-only
+// "Go to Training Report tab" link or duplicating the markup.
+function _tdrL1InnerHtml(s,report){
   const c=report.content||{};
   const totalParticipants=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length;
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
@@ -6641,23 +6646,38 @@ function _tdOverviewReportBlocks(s){
     ${feedbackBox('check','var(--green)','What learners found most valuable',c.learnersValued)}
     ${feedbackBox('alert-triangle','var(--amber)','What can be improved',c.learnersImprove)}
   </div>`;
-  const l1=`<div class="card" style="padding:18px 20px;margin-bottom:16px">
-    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Session L1 Report (Learner Reaction)</div>
-    ${l1Metrics}
-    ${feedbackBoxes}
-    ${goToReport}
-  </div>`;
+  return `${l1Metrics}${feedbackBoxes}`;
+}
+function _tdrSummaryInnerHtml(report){
+  const c=report.content||{};
   const summaryBox=(label,iconName,bg,fg,val)=>`<div style="background:${bg};color:${fg};border-radius:8px;padding:12px 14px;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px;margin-bottom:6px">${_tdIconSvg(iconName,fg,16)}${label}</div>
     ${val?`<div class="tdr-rt-view" style="font-size:13px;line-height:1.45">${val}</div>`:'<div style="font-size:12.5px;opacity:.6;font-style:italic">Not recorded yet</div>'}
   </div>`;
-  const summary=`<div class="card" style="padding:18px 20px">
-    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">5. Summary</div>
-    ${summaryBox('Wins &amp; Highlights','check','var(--green-lt)','var(--green)',c.winsHighlights)}
+  return `${summaryBox('Wins &amp; Highlights','check','var(--green-lt)','var(--green)',c.winsHighlights)}
     ${summaryBox('Challenges &amp; Areas for Improvement','alert-triangle','var(--amber-lt)','var(--amber)',c.challengesImprovement)}
     ${summaryBox('Recommendations','bulb','var(--sky-lt)','var(--sky)',c.recommendations)}
     ${summaryBox('Pending Actions','flag','#f5f3ff','#7c3aed',c.pendingActions)}
-    ${summaryBox('Additional Remarks','edit3','#f1f5f9','#64748b',c.additionalRemarks)}
+    ${summaryBox('Additional Remarks','edit3','#f1f5f9','#64748b',c.additionalRemarks)}`;
+}
+function _tdOverviewReportBlocks(s){
+  const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const emptyNote='<div style="font-size:12.5px;color:var(--text3)">No training report has been started yet — see the Training Report tab.</div>';
+  const goToReport='<div style="margin-top:12px"><a href="javascript:void(0)" onclick="tdDetailSwitchTab(\'report\')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600">Go to Training Report tab for details →</a></div>';
+  if(!report){
+    return {
+      l1:`<div class="card" style="padding:18px 20px;margin-bottom:16px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">3. Session L1 Report (Learner Reaction)</div>${emptyNote}${goToReport}</div>`,
+      summary:`<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">5. Summary</div>${emptyNote}${goToReport}</div>`
+    };
+  }
+  const l1=`<div class="card" style="padding:18px 20px;margin-bottom:16px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Session L1 Report (Learner Reaction)</div>
+    ${_tdrL1InnerHtml(s,report)}
+    ${goToReport}
+  </div>`;
+  const summary=`<div class="card" style="padding:18px 20px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">5. Summary</div>
+    ${_tdrSummaryInnerHtml(report)}
     ${goToReport}
   </div>`;
   return {l1, summary};
@@ -6689,6 +6709,78 @@ function _tdOverviewEvaluationsBlock(s,ownerType){
     <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">4. Evaluations</div>
     ${body}
     <div style="margin-top:12px"><a href="javascript:void(0)" onclick="tdDetailSwitchTab('trainer-eval')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600">Go to Trainer Evaluation tab for details →</a></div>
+  </div>`;
+}
+
+// Trainer Evaluation tab (2026-07-31): per Sandra's explicit direction ("this is more similar
+// to the existing sessions list, just a filtered version particular to that session alone"),
+// this reuses the SAME evaluations table columns/row actions as the main Evaluations page's
+// list (see renderEvaluations' rowHtml/cellFor above) but scoped down to only this session's
+// evaluations -- not a new data model, just a session-filtered view of EvalDB. The existing
+// "Evaluate This Training" entry point (startSessionEvaluation) is repeated here too so this
+// tab is a self-sufficient place to both review and start evaluations for this session.
+function _tdTrainerEvalTabHtml(s){
+  if(_tdIsOwnerType(s.deliveryType)){
+    return `<div class="card" style="padding:18px 20px">
+      <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">Trainer Evaluation</div>
+      <div style="font-size:12.5px;color:var(--text3)">Trainer Evaluation does not apply to Self-led/External training.</div>
+    </div>`;
+  }
+  const me=Auth.user;
+  const access=Auth.formAccess(me);
+  const canConduct=access.trainerEval||me.isAdmin;
+  const evals=EvalDB.all().filter(e=>e.sessionId===s.id).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+
+  const headerBar=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+    <div style="font-weight:700;font-size:14.5px">Trainer Evaluation — ${evals.length} record${evals.length!==1?'s':''} for this session</div>
+    ${canConduct?`<button class="btn btn-sm btn-primary" onclick="startSessionEvaluation('${s.id}')">Evaluate This Training</button>`:''}
+  </div>`;
+
+  if(!evals.length){
+    return `<div class="card" style="padding:18px 20px">
+      ${headerBar}
+      <div class="empty-state"><div class="empty-ico">📋</div><div class="empty-title">No evaluations for this session yet</div><div style="font-size:13px;color:var(--text3);margin-top:4px">${canConduct?'Click "Evaluate This Training" to get started.':'No evaluations have been submitted for this session yet.'}</div></div>
+    </div>`;
+  }
+
+  const rowsHtml=evals.map(e=>{
+    const evaluator=DB.byId(e.evaluatorId);
+    const evName=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
+    const trainer=DB.byId(e.trainerId);
+    const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'—';
+    const sc=e.overallScore;
+    const scClr=sc>=4.5?'#16a34a':sc>=3.5?'#65a30d':sc>=2.5?'#d97706':sc>=1.5?'#ea580c':'#dc2626';
+    const scoreHtml=sc!=null?`<strong style="color:${scClr}">${sc.toFixed(1)}</strong><span style="color:var(--text3);font-size:11.5px">/5</span>`:'<span class="txt-muted">—</span>';
+    const dateStr=e.trainingDate?Utils.formatDate(e.trainingDate):'—';
+    const submitted=e.finalizedAt?Utils.formatDate(e.finalizedAt.split('T')[0]):'<span class="txt-muted">—</span>';
+    const canEdit=(e.evaluatorId===me.id||me.isAdmin)&&e.status==='draft';
+    const canView=e.status!=='draft'&&(e.trainerId===me.id||e.evaluatorId===me.id||me.isAdmin);
+    const canAck=e.status==='pending_ack'&&e.trainerId===me.id;
+    let btns='';
+    if(canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openEvalForm('${e.id}')">Edit</button>`;
+    if(canAck) btns+=`<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openEvalView('${e.id}')">✓ Acknowledge</button>`;
+    else if(canView&&!canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openEvalView('${e.id}')">View</button>`;
+    if(e.status==='completed') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();showEvalPDFPreview('${e.id}')" style="color:var(--pri);border-color:var(--pri)" title="Download PDF">📄 PDF</button>`;
+    if(me.isAdmin&&e.status==='completed') btns+=`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();reopenEval('${e.id}')" title="Reopen for editing" style="color:var(--text3)">↩</button>`;
+    if(canEdit||me.isAdmin) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteEval('${e.id}')" title="${e.status==='draft'?'Delete draft':'Admin: delete record'}" style="color:#dc2626;border-color:#dc2626">🗑 Delete</button>`;
+    const rowClick=canEdit?`openEvalForm('${e.id}')`:canView?`openEvalView('${e.id}')`:null;
+    return `<tr style="${rowClick?'cursor:pointer':''}" ${rowClick?`onclick="${rowClick}" title="Click to open"`:''}>
+      <td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>
+      <td>${Utils.esc(evName)}</td>
+      <td style="white-space:nowrap">${dateStr}</td>
+      <td style="white-space:nowrap">${submitted}</td>
+      <td>${scoreHtml}</td>
+      <td>${_evalStatusBadge(e.status)}</td>
+      <td><div class="td-acts">${btns||'<span class="txt-muted" style="font-size:12px">—</span>'}</div></td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="card" style="padding:18px 20px">
+    ${headerBar}
+    <div class="eval-tbl-wrap"><table class="eval-tbl">
+      <thead><tr><th>Trainer</th><th>Evaluator</th><th>Session Date</th><th>Submitted</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>
   </div>`;
 }
 
@@ -6811,25 +6903,24 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
   `;
 }
 
-// Export Summary Image (2026-07-31): renders a hidden, off-DOM 4-section stacked container
-// (Session Details / Attendance & Performance / Evaluation / Summary) reusing the SAME render
-// helpers as their respective tabs (_tdaKpiColumnsHtml, _tdOverviewEvaluationsBlock,
-// _tdOverviewReportBlocks' summary half), captures it via html2canvas, downloads a PNG, then
-// opens an Outlook Web compose deep link (no attachment param exists for mailto/deeplinks --
-// confirmed limitation, already explained to Sandra) so the user can drag the just-downloaded
-// PNG into the blank pre-subjected compose window that opens.
+// Export Summary Image (2026-07-31, revised phase31): renders a hidden, off-DOM 4-section
+// stacked container -- 1. Session Details, 2. Attendance & Performance, 3. Summary, 4. L1
+// Evaluation Survey (Learner Reaction) -- reusing the SAME render helpers as their respective
+// tabs (_tdaKpiColumnsHtml, _tdrSummaryInnerHtml, _tdrL1InnerHtml), captures it via html2canvas
+// at a reduced scale, and downloads a PNG. No email compose window is opened -- Sandra
+// confirmed she just wants the PNG download, nothing else.
 async function _tdExportSummaryImage(sessionId){
   const s=TrSessionDB.byId(sessionId);
   if(!s){ toast('Session not found.','error'); return; }
   if(typeof html2canvas==='undefined'){ toast('Export library failed to load. Check your connection and try again.','error'); return; }
-  const ownerType=_tdIsOwnerType(s.deliveryType);
   const _tdGrp=_tdFieldGroup(s.deliveryType);
   const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'Facilitator':'Trainer');
   const personName=Utils.esc(_tdPersonName(s))||'—';
   const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
   const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'—';
-  const {summary}=_tdOverviewReportBlocks(s);
-  const evalBlock=_tdOverviewEvaluationsBlock(s,ownerType);
+  const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const summaryHtml=report?_tdrSummaryInnerHtml(report):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
+  const l1Html=report?_tdrL1InnerHtml(s,report):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
   const attendanceHtml=_tdaKpiColumnsHtml(s);
 
   const sectionTitle=(t)=>`<div style="font-weight:700;font-size:13px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">${Utils.esc(t)}</div>`;
@@ -6844,16 +6935,22 @@ async function _tdExportSummaryImage(sessionId){
       <div><strong>Batch:</strong> ${Utils.esc(s.batchNo||'—')}</div>
     </div>`;
 
+  // Width chosen wide enough (1200px) that the Attendance & Performance two-column KPI grid
+  // (Attendance Summary | divider | Assessment Results, each 3-cards-across) never wraps or
+  // clips -- the previous 900px holder was narrower than the tab's real rendered width and
+  // was cutting off the Assessment Results column. Scale is 1.5 (was 2, x0.75) per Sandra's
+  // "too big for email" feedback -- content width is unchanged so text stays legible, only the
+  // exported pixel density/output file size drops ~25%.
   const holder=document.createElement('div');
-  holder.style.cssText='position:fixed;left:-9999px;top:0;width:900px;background:#fff;padding:24px;font-family:Sora,sans-serif;color:#1e293b';
+  holder.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;background:#fff;padding:24px;font-family:Sora,sans-serif;color:#1e293b';
   holder.innerHTML=`
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Session Details')}${sessionDetailsHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Attendance & Performance')}${attendanceHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Evaluation')}${evalBlock}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('Summary')}${summary}</div>`;
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('1. Session Details')}${sessionDetailsHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('2. Attendance & Performance')}${attendanceHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('3. Summary')}${summaryHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('4. L1 Evaluation Survey')}${l1Html}</div>`;
   document.body.appendChild(holder);
   try{
-    const canvas=await html2canvas(holder,{backgroundColor:'#ffffff',scale:2});
+    const canvas=await html2canvas(holder,{backgroundColor:'#ffffff',scale:1.5,width:1200,windowWidth:1200});
     const dataUrl=canvas.toDataURL('image/png');
     const a=document.createElement('a');
     a.href=dataUrl;
@@ -6861,9 +6958,7 @@ async function _tdExportSummaryImage(sessionId){
     document.body.appendChild(a);
     a.click();
     a.remove();
-    const subject=encodeURIComponent(`Training Summary — ${s.code||''} ${s.trainingProgram||''}`.trim());
-    window.open(`https://outlook.office.com/mail/deeplink/compose?subject=${subject}`,'_blank');
-    toast('Image downloaded — attach it to the email that just opened.','info');
+    toast('Summary image downloaded.','success');
   }catch(e){
     console.error(e);
     toast('Failed to generate summary image.','error');
@@ -6899,7 +6994,13 @@ function _tddSessionInfoEditContent(s,ownerType){
       ${_tddInfoBlockEdit('user','var(--sky)','Facilitator Name',`<input type="text" id="tdd-facilitator" class="form-control" ${smallInput} value="${Utils.esc(s.facilitatorName||'')}">`,'tdd-facilitator-wrap')}
       ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput}><option value="">— None —</option></select>`,'tdd-cofacilitator-wrap')}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
-      <div style="grid-column:${ownerType?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><input type="date" id="tdd-date" class="form-control" ${smallInput} value="${s.trainingDate||''}"><span ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;align-items:center;gap:6px">→<input type="date" id="tdd-enddate" class="form-control" ${smallInput} value="${s.endDate||''}"></span></div>`)}</div>
+      <div style="grid-column:${ownerType?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;flex-direction:column;gap:6px;max-width:170px">
+        <input type="date" id="tdd-date" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.trainingDate||''}">
+        <div ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:11px;color:var(--text3);line-height:1.2">→ End Date</span>
+          <input type="date" id="tdd-enddate" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.endDate||''}">
+        </div>
+      </div>`)}</div>
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`,'tdd-batch-wrap')}
