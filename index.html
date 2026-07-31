@@ -5691,6 +5691,45 @@ function _tddPlaceholderPanel(icon,title,note){
   </div>`;
 }
 
+// Full session Audit History (2026-07-31): AuditLog entries for training_sessions mutations are
+// already logged with entityId===session.id via _makeRecordDB, but session_participants /
+// training_reports mutations are logged with THEIR OWN row id, not the parent session's id -- so
+// we collect the session's own id + all its participant row ids + its report row id (if any) into
+// one set, then filter AuditLog.all() for entries whose entityId falls in that set. Covers field
+// edits, status changes, roster/attendance changes, and the full report submit/reopen-request/
+// approve/deny/resubmit lifecycle, most-recent-first. Styled to match the org-wide renderAuditLog().
+function _tdAuditRenderTab(s){
+  const partIds=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).map(r=>r.id);
+  const reportRow=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const idSet=new Set([s.id, ...partIds]);
+  if(reportRow) idSet.add(reportRow.id);
+  const entries=AuditLog.all().filter(e=>idSet.has(e.entityId)).sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+  if(!entries.length){
+    return `<div class="empty-state" style="padding:60px 20px">
+      <div class="empty-ico">🕘</div>
+      <div class="empty-title">No audit history yet</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px">Changes to this session, its roster, and its report will appear here.</div>
+    </div>`;
+  }
+  const trs=entries.map(e=>{
+    const when=new Date(e.ts).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'});
+    return `<tr>
+      <td style="white-space:nowrap;font-size:12px;color:var(--text3)">${when}</td>
+      <td>${Utils.esc(e.actorName)}</td>
+      <td>${_auditActionBadge(e.action)}</td>
+      <td>${Utils.esc(e.module)}</td>
+      <td style="font-size:13px">${Utils.esc(e.summary)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card" style="padding:18px 20px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">Audit History</div>
+    <div class="eval-tbl-wrap"><table class="eval-tbl">
+      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Module</th><th>Details</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table></div>
+  </div>`;
+}
+
 /* ── ATTENDANCE & PERFORMANCE TAB (2026-07-30) ────────────────────────────────────────────
    Roster + attendance + pre/post test scoring for a training session, backed by the
    session_participants table. Participants are edited in an in-memory working copy
