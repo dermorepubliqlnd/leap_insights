@@ -5522,7 +5522,6 @@ const TD_DETAIL_TABS=[
   {id:'participants',label:'Attendance & Performance'},
   {id:'report',label:'Training Report'},
   {id:'trainer-eval',label:'Trainer Evaluation'},
-  {id:'evidence',label:'Evidence'},
   {id:'audit',label:'Audit History'}
 ];
 
@@ -6297,10 +6296,8 @@ function renderTrainingDetail(){
     tabBody=_tdrRenderTab(s);
   } else if(_tdDetailTab==='trainer-eval'){
     tabBody=_tddPlaceholderPanel('◉','Trainer Evaluation','A recording-gated link into the existing Trainer Evaluation workflow will live here.');
-  } else if(_tdDetailTab==='evidence'){
-    tabBody=_tddPlaceholderPanel('📎','Evidence','Supporting evidence and documentation will live here.');
   } else if(_tdDetailTab==='audit'){
-    tabBody=_tddPlaceholderPanel('🕘','Audit History','A full change history for this implementation will live here.');
+    tabBody=_tdAuditRenderTab(s);
   }
 
   wrap.innerHTML=`
