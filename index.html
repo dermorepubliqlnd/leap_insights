@@ -13,6 +13,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
   <!-- Supabase JS client (Phase 3: replaces Firebase Auth + Firestore) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- html2canvas -- Overview tab "Export Summary Image" feature (2026-07-31) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     /* =========================================================
        LEAP INSIGHTS  v1.2
@@ -2373,7 +2375,9 @@ const _FIELD_MAPS = {
   training_reports:{
     id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
     submittedAt:'submitted_at', approvedBy:'approved_by', approvedAt:'approved_at',
-    returnReason:'return_reason', createdAt:'created_at', updatedAt:'updated_at'
+    returnReason:'return_reason', createdAt:'created_at', updatedAt:'updated_at',
+    reopenStatus:'reopen_status', reopenRequestedBy:'reopen_requested_by', reopenRequestedAt:'reopen_requested_at',
+    reopenReason:'reopen_reason', reopenDecidedBy:'reopen_decided_by', reopenDecidedAt:'reopen_decided_at'
   },
   evaluations:{
     id:'id', code:'code', status:'status', batchNo:'batch_no', trainingDate:'training_date',
@@ -4996,6 +5000,39 @@ function _tdDocStatus(s){
   return '<span class="badge" style="background:#fef9c3;color:#a16207">Report Pending</span>';
 }
 
+// Counts working days (Mon-Fri only, weekends excluded, holidays not excluded per Sandra's spec)
+// strictly AFTER startDateStr up to and including endDateStr. Matches the given example exactly:
+// July 1, 2026 is a Wednesday; July 3, 2026 is a Friday -> Thu(Jul2)+Fri(Jul3) = 2 working days.
+function _tdBusinessDaysBetween(startDateStr,endDateStr){
+  if(!startDateStr||!endDateStr) return null;
+  const start=new Date(String(startDateStr).slice(0,10)+'T00:00:00');
+  const end=new Date(String(endDateStr).slice(0,10)+'T00:00:00');
+  if(isNaN(start.getTime())||isNaN(end.getTime())) return null;
+  if(end<start) return 0;
+  let count=0;
+  const cur=new Date(start);
+  cur.setDate(cur.getDate()+1);
+  while(cur<=end){
+    const dow=cur.getDay();
+    if(dow!==0&&dow!==6) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
+// Report SLA badge for the Training Calendar List view -- org SLA is 2 working days after the
+// session date. Always recomputed against the report's CURRENT submittedAt, so a reopen +
+// resubmit cycle automatically reflects the newest submission with no separate first/last
+// submission tracking needed (2026-07-31, per Sandra's reopen-workflow spec).
+function _tdReportSLA(s){
+  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  if(!rep||!rep.submittedAt) return '<span class="txt-muted">—</span>';
+  const days=_tdBusinessDaysBetween(s.trainingDate,rep.submittedAt);
+  if(days==null) return '<span class="txt-muted">—</span>';
+  if(days<=2) return `<span class="badge" style="background:#dcfce7;color:#15803d">Within SLA (${days}d)</span>`;
+  return `<span class="badge" style="background:#fee2e2;color:#dc2626">Passed SLA (${days}d)</span>`;
+}
+
 function _tdEvalStatus(s){
   if(_tdIsOwnerType(s.deliveryType)) return '<span style="color:var(--text3)">N/A</span>';
   const evs=EvalDB.all().filter(e=>e.sessionId===s.id);
@@ -5139,6 +5176,7 @@ function renderTDList(rows){
       <td style="font-size:13px">${Utils.esc(s.audience||'—')}</td>
       <td>${_tdStatusBadge(_tdStatus(s))}</td>
       <td>${_tdDocStatus(s)}</td>
+      <td>${_tdReportSLA(s)}</td>
       <td style="font-size:13px">${_tdRecordingCell(s)}</td>
       <td>${_tdEvalStatus(s)}</td>
       <td><div class="td-acts">
@@ -5155,7 +5193,7 @@ function renderTDList(rows){
       </div>
     </div>`;
   wrap.innerHTML=`<div class="card"><div class="eval-tbl-wrap"><table class="eval-tbl">
-    <thead><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Report SLA</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
     <tbody>${pageRows.map(rowHtml).join('')}</tbody>
   </table></div>${pager}</div>`;
 }
@@ -5522,7 +5560,6 @@ const TD_DETAIL_TABS=[
   {id:'participants',label:'Attendance & Performance'},
   {id:'report',label:'Training Report'},
   {id:'trainer-eval',label:'Trainer Evaluation'},
-  {id:'evidence',label:'Evidence'},
   {id:'audit',label:'Audit History'}
 ];
 
@@ -5656,6 +5693,45 @@ function _tddPlaceholderPanel(icon,title,note){
   </div>`;
 }
 
+// Full session Audit History (2026-07-31): AuditLog entries for training_sessions mutations are
+// already logged with entityId===session.id via _makeRecordDB, but session_participants /
+// training_reports mutations are logged with THEIR OWN row id, not the parent session's id -- so
+// we collect the session's own id + all its participant row ids + its report row id (if any) into
+// one set, then filter AuditLog.all() for entries whose entityId falls in that set. Covers field
+// edits, status changes, roster/attendance changes, and the full report submit/reopen-request/
+// approve/deny/resubmit lifecycle, most-recent-first. Styled to match the org-wide renderAuditLog().
+function _tdAuditRenderTab(s){
+  const partIds=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).map(r=>r.id);
+  const reportRow=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const idSet=new Set([s.id, ...partIds]);
+  if(reportRow) idSet.add(reportRow.id);
+  const entries=AuditLog.all().filter(e=>idSet.has(e.entityId)).sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+  if(!entries.length){
+    return `<div class="empty-state" style="padding:60px 20px">
+      <div class="empty-ico">🕘</div>
+      <div class="empty-title">No audit history yet</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px">Changes to this session, its roster, and its report will appear here.</div>
+    </div>`;
+  }
+  const trs=entries.map(e=>{
+    const when=new Date(e.ts).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'});
+    return `<tr>
+      <td style="white-space:nowrap;font-size:12px;color:var(--text3)">${when}</td>
+      <td>${Utils.esc(e.actorName)}</td>
+      <td>${_auditActionBadge(e.action)}</td>
+      <td>${Utils.esc(e.module)}</td>
+      <td style="font-size:13px">${Utils.esc(e.summary)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card" style="padding:18px 20px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">Audit History</div>
+    <div class="eval-tbl-wrap"><table class="eval-tbl">
+      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Module</th><th>Details</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table></div>
+  </div>`;
+}
+
 /* ── ATTENDANCE & PERFORMANCE TAB (2026-07-30) ────────────────────────────────────────────
    Roster + attendance + pre/post test scoring for a training session, backed by the
    session_participants table. Participants are edited in an in-memory working copy
@@ -5739,7 +5815,7 @@ function _tdaKpiCard(iconName,iconColor,label,value,sub,subColor,valueColor){
   </div>`;
 }
 
-function _tdaRenderTab(s){
+function _tdaKpiColumnsHtml(s){
   _tdaEnsureLoaded(s.id);
   const all=_tdPartRows;
   const total=all.length;
@@ -5748,7 +5824,6 @@ function _tdaRenderTab(s){
   const absent=all.filter(r=>r.attendanceStatus==='absent').length;
   const pending=all.filter(r=>r.attendanceStatus==='pending').length;
   const rate=total>0?Math.round(((present+late)/total)*100):0;
-  const rows=all;
 
   const assessedRows=all.filter(r=>r.preTestScore!=null&&r.postTestScore!=null);
   const avgPre=assessedRows.length?Math.round(assessedRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/assessedRows.length):null;
@@ -5789,7 +5864,18 @@ function _tdaRenderTab(s){
       </div>
     </div>`;
 
-  const kpiColumns=`<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch;margin-bottom:16px">${attendanceCards}<div style="width:1px;background:var(--border);align-self:stretch"></div>${assessmentCards}</div>`;
+  return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch;margin-bottom:16px">${attendanceCards}<div style="width:1px;background:var(--border);align-self:stretch"></div>${assessmentCards}</div>`;
+}
+
+function _tdaRenderTab(s){
+  _tdaEnsureLoaded(s.id);
+  const all=_tdPartRows;
+  const total=all.length;
+  const pending=all.filter(r=>r.attendanceStatus==='pending').length;
+  const rows=all;
+  const locked=s.status==='completed';
+
+  const kpiColumns=_tdaKpiColumnsHtml(s);
 
   const warnBanner=pending>0?`
     <div style="background:var(--amber-lt);border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#92400e;margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -5797,7 +5883,11 @@ function _tdaRenderTab(s){
     </div>`:'';
 
   const selCount=_tdPartSelected.size;
-  const toolbar=`
+  const toolbar=locked?`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <div style="font-weight:700;font-size:14.5px">Participant Roster</div>
+      <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">🔒 Locked — session tagged Complete</div>
+    </div>`:`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       <div style="font-weight:700;font-size:14.5px">Participant Roster</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -5811,8 +5901,8 @@ function _tdaRenderTab(s){
   const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Participant','Role','Immediate Supervisor','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
   const thead=`<tr>${theadCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
 
-  const addRow=_tdPartAddPickerOpen?_tdaAddPickerRowHtml():'';
-  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i)).join('');
+  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml():'';
+  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked)).join('');
   const emptyRow=`<tr><td colspan="11" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.</td></tr>`;
   const tbody=addRow+(bodyRows||(addRow?'':emptyRow));
 
@@ -5824,9 +5914,9 @@ function _tdaRenderTab(s){
       <span>Gain = Post-Test − Pre-Test</span>
     </div>`;
 
-  const actionBar=`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+  const actionBar=locked?'':`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
       <button class="btn btn-secondary" onclick="_tdaSaveDraft()">Save Draft</button>
-      <button class="btn btn-primary" onclick="_tdaMarkCompleted()">Mark Session as Completed</button>
+      <button class="btn btn-primary" onclick="_tdaMarkCompleted()">Tag Session Complete</button>
     </div>`;
 
   return `
@@ -5841,26 +5931,27 @@ function _tdaRenderTab(s){
   `;
 }
 
-function _tdaRowHtml(r,i){
+function _tdaRowHtml(r,i,locked){
   const p=_tdaPersonInfo(r);
   const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending;
   const gain=_tdaGain(r);
   const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
   const passBadge=(gain!==null&&r.postTestScore!==''&&r.postTestScore!==null)?'':'';
+  const dis=locked?'disabled':'';
   return `<tr data-row-id="${r.id}">
-    <td><input type="checkbox" onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
+    <td><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
     <td><div class="tbl-user"><div class="tbl-ava" style="${p.avaStyle}">${p.initials}</div><div><div class="td-name">${Utils.esc(p.name)}${p.inactive?' <span class="txt-muted" style="font-size:11px">(inactive)</span>':''}</div>${p.email&&p.email!=='External'?`<div style="font-size:11px;color:var(--text3)">${Utils.esc(p.email)}</div>`:''}</div></div></td>
     <td style="font-size:12.5px">${Utils.esc(p.role)}</td>
     <td style="font-size:12.5px">${Utils.esc(p.supervisor)}</td>
-    <td><select class="form-control" style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="_tdaSetField('${r.id}','attendanceStatus',this.value)">
+    <td><select class="form-control" ${dis} style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="_tdaSetField('${r.id}','attendanceStatus',this.value)">
       ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${r.attendanceStatus===k?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
     </select></td>
-    <td><input type="number" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)"></td>
-    <td><input type="number" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)"></td>
+    <td><input type="number" class="form-control" ${dis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)"></td>
+    <td><input type="number" class="form-control" ${dis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)"></td>
     <td>${gainHtml}</td>
-    <td><input type="text" class="form-control" style="width:120px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.remarks||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','remarks',this.value)"></td>
-    <td><button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdaRemoveRow('${r.id}')" title="Remove participant">✕</button></td>
+    <td><input type="text" class="form-control" ${dis} style="width:120px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.remarks||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','remarks',this.value)"></td>
+    <td>${locked?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdaRemoveRow('${r.id}')" title="Remove participant">✕</button>`}</td>
   </tr>`;
 }
 
@@ -6022,15 +6113,15 @@ async function _tdaSaveDraft(){
 async function _tdaMarkCompleted(){
   const pendingCount=_tdPartRows.filter(r=>r.attendanceStatus==='pending').length;
   if(pendingCount>0){
-    toast(`Cannot mark session as completed — ${pendingCount} participant(s) still have Pending attendance status.`,'error');
+    toast(`Cannot tag session complete — ${pendingCount} participant(s) still have Pending attendance status.`,'error');
     return;
   }
-  confirm$('Mark Session as Completed','This will save the current roster and mark the training session as Completed. Continue?','Mark Completed',async()=>{
+  confirm$('Tag Session Complete','This will lock the roster and tag this training session as Complete. Continue?','Tag Complete',async()=>{
     try{
       await _tdaPersistRows();
       await TrSessionDB.update(_tdDetailId,{status:'completed'});
       renderTrainingDetail();
-      toast('Session marked as Completed.','success');
+      toast('Session tagged Complete.','success');
     }catch(e){ /* error already surfaced */ }
   });
 }
@@ -6201,7 +6292,7 @@ function _tdrRenderTab(s){
       ${summaryField('additionalRemarks','Additional Remarks','edit3','#f1f5f9','#64748b','Anything else worth noting...')}
     </div>`;
 
-  return `${toolbar}${l1Card}${agendaCard}${summaryCard}`;
+  return `${toolbar}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}`;
 }
 
 function _tdrSetField(field,value){
@@ -6267,13 +6358,93 @@ function _tdrSubmitReport(){
     try{
       // createdBy repurposed here as "prepared by" -- captured at submit time (not draft creation)
       // so the Overview page's "Report Prepared By" field reflects who finalized the report.
-      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content, createdBy:Auth.user.id};
+      // submittedAt is always stamped fresh on every (re)submit so the Report SLA column always
+      // measures against the CURRENT submission, and reopenStatus is cleared so a future reopen
+      // cycle can be requested again after this resubmission.
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content, createdBy:Auth.user.id,
+        submittedAt:new Date().toISOString(), reopenStatus:null, reopenRequestedBy:null, reopenRequestedAt:null,
+        reopenReason:null, reopenDecidedBy:null, reopenDecidedAt:null};
       const saved=_tdrReport._isNew?await TrainingReportsDB.create({...patch, id:_tdrReport.id}):await TrainingReportsDB.update(_tdrReport.id,patch);
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
       renderTrainingDetail();
       toast('Training report submitted.','success');
     }catch(e){ /* error already surfaced */ }
   });
+}
+
+/* ── REOPEN WORKFLOW (2026-07-31) ─────────────────────────────────────────────
+   Gated on one-up (direct supervisor) approval. reopen_status lifecycle:
+   null -> 'pending' (requested) -> 'approved' (report unlocked, status back to draft)
+                                  -> 'denied' (report stays submitted/locked)
+   A fresh Request Reopen is allowed again once a request has been denied, or after
+   a new submit cycle resets reopen_status back to null. ───────────────────────── */
+function _tdrRequestReopen(){
+  const reason=(prompt('Optional: reason for requesting this report be reopened (leave blank to skip)')||'').trim();
+  confirm$('Request Reopen','Request to reopen this submitted report for editing? Your direct supervisor will need to approve before it unlocks.','Request Reopen',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
+        reopenStatus:'pending', reopenRequestedBy:Auth.user.id, reopenRequestedAt:new Date().toISOString(),
+        reopenReason:reason||null, reopenDecidedBy:null, reopenDecidedAt:null};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('reopen_requested','Training Report',_tdrReport.id,`Reopen requested by ${Auth.user.firstName} ${Auth.user.lastName}${reason?`: "${reason}"`:''}`);
+      renderTrainingDetail();
+      toast('Reopen requested — awaiting supervisor approval.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdrApproveReopen(){
+  confirm$('Approve Reopen','Approve this reopen request? The report will be unlocked for editing (status returns to Draft).','Approve Reopen',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'draft', content:_tdrReport.content,
+        reopenStatus:'approved', reopenDecidedBy:Auth.user.id, reopenDecidedAt:new Date().toISOString()};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('reopen_approved','Training Report',_tdrReport.id,`Reopen approved by ${Auth.user.firstName} ${Auth.user.lastName} — report unlocked for editing`);
+      renderTrainingDetail();
+      toast('Reopen approved — report unlocked.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdrDenyReopen(){
+  confirm$('Deny Reopen','Deny this reopen request? The report will remain submitted and locked.','Deny Reopen',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
+        reopenStatus:'denied', reopenDecidedBy:Auth.user.id, reopenDecidedAt:new Date().toISOString()};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('reopen_denied','Training Report',_tdrReport.id,`Reopen denied by ${Auth.user.firstName} ${Auth.user.lastName}`);
+      renderTrainingDetail();
+      toast('Reopen request denied.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdrReopenBlock(){
+  const rep=_tdrReport;
+  const me=Auth.user;
+  const status=rep.reopenStatus;
+  let html='';
+  if(status==='pending'){
+    const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
+    const approverId=requester?requester.supervisorId:null;
+    const canApprove=!!me&&(Auth.isAdmin||(approverId&&approverId===me.id));
+    html+=`<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:#92400e">
+      <div style="font-weight:700;margin-bottom:4px">🔓 Reopen Requested — awaiting supervisor approval</div>
+      <div>Requested by ${Utils.esc(requester?`${requester.firstName} ${requester.lastName}`:'—')}${rep.reopenRequestedAt?` on ${new Date(rep.reopenRequestedAt).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}`:''}${rep.reopenReason?` — "${Utils.esc(rep.reopenReason)}"`:''}</div>
+    </div>`;
+    if(canApprove){
+      html+=`<div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
+        <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>
+      </div>`;
+    }
+    return html;
+  }
+  if(status==='denied'){
+    html+=`<div style="font-size:12px;color:var(--text3);margin-top:14px">Reopen request was denied${rep.reopenDecidedAt?` on ${new Date(rep.reopenDecidedAt).toLocaleString('en-PH',{dateStyle:'medium'})}`:''}.</div>`;
+  }
+  html+=`<div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">Request Reopen</button></div>`;
+  return html;
 }
 
 function renderTrainingDetail(){
@@ -6297,10 +6468,8 @@ function renderTrainingDetail(){
     tabBody=_tdrRenderTab(s);
   } else if(_tdDetailTab==='trainer-eval'){
     tabBody=_tddPlaceholderPanel('◉','Trainer Evaluation','A recording-gated link into the existing Trainer Evaluation workflow will live here.');
-  } else if(_tdDetailTab==='evidence'){
-    tabBody=_tddPlaceholderPanel('📎','Evidence','Supporting evidence and documentation will live here.');
   } else if(_tdDetailTab==='audit'){
-    tabBody=_tddPlaceholderPanel('🕘','Audit History','A full change history for this implementation will live here.');
+    tabBody=_tdAuditRenderTab(s);
   }
 
   wrap.innerHTML=`
@@ -6611,7 +6780,13 @@ function _tdOverviewJourneyBlockVertical(s,ownerType){
 
 function _tddOverviewView(s,ownerType,personLabel,personName){
   const {l1, summary}=_tdOverviewReportBlocks(s);
+  const _tdrRepForExport=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const canExportSummary=s.status==='completed'&&_tdrRepForExport&&_tdrRepForExport.status==='submitted';
+  const exportBar=canExportSummary?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary Image</button>
+    </div>`:'';
   return `
+    ${exportBar}
     <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-bottom:16px">
       <div class="card" id="tdd-session-info-card" style="padding:18px 20px">
         ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
@@ -6634,6 +6809,67 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
       </div>
     </div>
   `;
+}
+
+// Export Summary Image (2026-07-31): renders a hidden, off-DOM 4-section stacked container
+// (Session Details / Attendance & Performance / Evaluation / Summary) reusing the SAME render
+// helpers as their respective tabs (_tdaKpiColumnsHtml, _tdOverviewEvaluationsBlock,
+// _tdOverviewReportBlocks' summary half), captures it via html2canvas, downloads a PNG, then
+// opens an Outlook Web compose deep link (no attachment param exists for mailto/deeplinks --
+// confirmed limitation, already explained to Sandra) so the user can drag the just-downloaded
+// PNG into the blank pre-subjected compose window that opens.
+async function _tdExportSummaryImage(sessionId){
+  const s=TrSessionDB.byId(sessionId);
+  if(!s){ toast('Session not found.','error'); return; }
+  if(typeof html2canvas==='undefined'){ toast('Export library failed to load. Check your connection and try again.','error'); return; }
+  const ownerType=_tdIsOwnerType(s.deliveryType);
+  const _tdGrp=_tdFieldGroup(s.deliveryType);
+  const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'Facilitator':'Trainer');
+  const personName=Utils.esc(_tdPersonName(s))||'—';
+  const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
+  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'—';
+  const {summary}=_tdOverviewReportBlocks(s);
+  const evalBlock=_tdOverviewEvaluationsBlock(s,ownerType);
+  const attendanceHtml=_tdaKpiColumnsHtml(s);
+
+  const sectionTitle=(t)=>`<div style="font-weight:700;font-size:13px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">${Utils.esc(t)}</div>`;
+  const sessionDetailsHtml=`
+    <div style="font-weight:700;font-size:16px;margin-bottom:10px">${Utils.esc(s.trainingProgram||'Untitled Training')}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:13px">
+      <div><strong>Type:</strong> ${Utils.esc(s.deliveryType||'—')}</div>
+      <div><strong>${personLabel}:</strong> ${personName}</div>
+      <div><strong>Date:</strong> ${Utils.esc(_tdCalDuration(s))}</div>
+      <div><strong>${venueLabel}:</strong> ${Utils.esc(venueName)}</div>
+      <div><strong>Status:</strong> ${_tdStatusBadge(_tdStatus(s))}</div>
+      <div><strong>Batch:</strong> ${Utils.esc(s.batchNo||'—')}</div>
+    </div>`;
+
+  const holder=document.createElement('div');
+  holder.style.cssText='position:fixed;left:-9999px;top:0;width:900px;background:#fff;padding:24px;font-family:Sora,sans-serif;color:#1e293b';
+  holder.innerHTML=`
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Session Details')}${sessionDetailsHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Attendance & Performance')}${attendanceHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Evaluation')}${evalBlock}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('Summary')}${summary}</div>`;
+  document.body.appendChild(holder);
+  try{
+    const canvas=await html2canvas(holder,{backgroundColor:'#ffffff',scale:2});
+    const dataUrl=canvas.toDataURL('image/png');
+    const a=document.createElement('a');
+    a.href=dataUrl;
+    a.download=`${(s.code||s.id||'Session')}_Summary.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    const subject=encodeURIComponent(`Training Summary — ${s.code||''} ${s.trainingProgram||''}`.trim());
+    window.open(`https://outlook.office.com/mail/deeplink/compose?subject=${subject}`,'_blank');
+    toast('Image downloaded — attach it to the email that just opened.','info');
+  }catch(e){
+    console.error(e);
+    toast('Failed to generate summary image.','error');
+  }finally{
+    holder.remove();
+  }
 }
 
 const CATEGORY_OPTIONS=['Onboarding','Leadership','Professional Development','Technical'];
