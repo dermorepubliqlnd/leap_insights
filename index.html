@@ -5195,10 +5195,10 @@ function _tdCalChipHtml(s){
   const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
   const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
   const person=_tdPersonName(s);
-  return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3;overflow:hidden">
-    <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
-    <div style="font-size:9px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(person)}${venueName?' · '+Utils.esc(venueName):''}</div>
-    <div style="font-size:9px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(_tdCalDuration(s))}</div>
+  return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3">
+    <div style="font-weight:600;white-space:normal;word-break:break-word">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
+    <div style="font-size:9px;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(person)}${venueName?' · '+Utils.esc(venueName):''}</div>
+    <div style="font-size:9px;opacity:.7;white-space:normal;word-break:break-word">${Utils.esc(_tdCalDuration(s))}</div>
   </div>`;
 }
 
@@ -5206,6 +5206,15 @@ function _tdCalChipHtml(s){
 // multi-day (date-range) Self-led/External sessions can be overlaid as a single continuous bar
 // spanning the correct day-cell columns for that week, instead of an identical chip repeated in
 // every day cell across the range (2026-07-31, SLT continuous calendar bar).
+// Calendar grid: header row + all week rows are items of ONE single unified CSS grid
+// container (repeat(7,1fr)) so every column's pixel width is computed exactly once and is
+// guaranteed identical across the header and every week row -- no per-week/per-header
+// separate grid instances (each of which could round fractional 1fr widths independently
+// and cause visible column misalignment, which is what phase28's per-week-only fix missed;
+// 2026-07-31 unified-grid rewrite). Multi-day bars are rendered as position:absolute children
+// of their range's FIRST (start) day cell, sized with width:calc(N*100%) -- since every cell
+// in the shared grid is guaranteed the same width, spanning N cells from one cell's left edge
+// via calc(N*100%) is pixel-exact without needing any separate row-relative wrapper.
 function renderTDCalendar(rows){
   const wrap=document.getElementById('td-cal-wrap');
   const year=tdCalCursor.getFullYear(), month=tdCalCursor.getMonth();
@@ -5229,7 +5238,8 @@ function renderTDCalendar(rows){
   });
 
   const CHIP_CAP=2;
-  let weeksHtml='';
+  const BAR_H=20; // px per stacked bar lane
+  let bodyCellsHtml='';
   for(let w=0; w<numWeeks; w++){
     const weekStartIdx=w*7, weekEndIdx=w*7+6;
 
@@ -5253,42 +5263,48 @@ function renderTDCalendar(rows){
       b.lane=lane;
     });
     const maxLanes=laneEnds.length;
-    const BAR_H=20; // px per stacked bar lane
     const barBand=maxLanes>0?(maxLanes*BAR_H+6):0; // extra vertical space reserved for bars this week
-    const cellMinHeight=132+barBand;
     const chipTopOffset=22+barBand;
+    // Bars keyed by the column index (within the week) of their FIRST cell, so we can render
+    // each bar as a child of that cell (rather than a separate overlay layer).
+    const barsByStartCol={};
+    weekBars.forEach(b=>{
+      const localCol=b.clampedStart-weekStartIdx;
+      (barsByStartCol[localCol]=barsByStartCol[localCol]||[]).push(b);
+    });
 
-    let dayCellsHtml='';
     for(let c=0;c<7;c++){
       const idx=w*7+c;
       const day=idx-firstDow+1;
-      if(day<1||day>daysInMonth){ dayCellsHtml+=`<div style="background:#f8fafc;border:1px solid var(--border);min-height:${cellMinHeight}px;box-sizing:border-box"></div>`; continue; }
+      const gridRow=w+2; // row 1 is the weekday header
+      const gridCol=c+1;
+      if(day<1||day>daysInMonth){
+        bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};background:#f8fafc;border:1px solid var(--border);box-sizing:border-box"></div>`;
+        continue;
+      }
       const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const isToday=dateStr===todayStr;
       const dayEvs=byDay[day]||[];
       const shown=dayEvs.slice(0,CHIP_CAP);
       const more=dayEvs.length-shown.length;
-      dayCellsHtml+=`<div style="background:var(--white);border:1px solid var(--border);min-height:${cellMinHeight}px;padding:5px;box-sizing:border-box;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
+      const barsHereHtml=(barsByStartCol[c]||[]).map(b=>{
+        const s=b.s;
+        const spanCols=(b.clampedEnd-b.clampedStart)+1;
+        const isStartCapped=b.clampedStart===b.startIdx, isEndCapped=b.clampedEnd===b.endIdx;
+        const bc=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
+        const radius=`${isStartCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isStartCapped?'10px':'0'}`;
+        const top=20+b.lane*BAR_H;
+        return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
+      }).join('');
+      bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:var(--white);border:1px solid var(--border);padding:5px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
         <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
-        <div style="margin-top:${chipTopOffset}px">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
+        <div style="height:${barBand}px"></div>
+        ${barsHereHtml}
+        <div>${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
       </div>`;
     }
-    // Bars are rendered as items of the SAME grid as the day cells (not a second,
-    // independently-tracked overlay grid) so their grid-column boundaries are guaranteed
-    // pixel-identical to the day-cell borders. Each bar gets an explicit grid-column/grid-row
-    // plus position:absolute, which (per spec) positions it relative to its own grid area —
-    // giving precise vertical (lane) placement without affecting row track sizing.
-    const barsHtml=weekBars.map(b=>{
-      const s=b.s;
-      const colStart=(b.clampedStart-weekStartIdx)+1, colEnd=(b.clampedEnd-weekStartIdx)+2;
-      const isStartCapped=b.clampedStart===b.startIdx, isEndCapped=b.clampedEnd===b.endIdx;
-      const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
-      const radius=`${isStartCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isStartCapped?'10px':'0'}`;
-      const top=20+b.lane*BAR_H;
-      return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="grid-column:${colStart} / ${colEnd};grid-row:1;position:absolute;top:${top}px;left:0;right:0;pointer-events:auto;cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:${radius};box-sizing:border-box">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>`;
-    }).join('');
-    weeksHtml+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;position:relative">${dayCellsHtml}${barsHtml}</div>`;
   }
+  const headerCellsHtml=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<div style="grid-row:1;grid-column:${i+1};background:#f8fafc;border:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3);box-sizing:border-box">${d}</div>`).join('');
   const legend=Object.entries(TD_TYPE_COLORS).map(([k,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${c.dot};display:inline-block"></span>${k}</span>`).join('');
   wrap.innerHTML=`<div class="card" style="padding:14px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -5300,11 +5316,9 @@ function renderTDCalendar(rows){
       </div>
       <div>${legend}</div>
     </div>
-    <div style="border-top:1px solid var(--border);border-left:1px solid var(--border)">
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0">
-        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div style="background:#f8fafc;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3)">${d}</div>`).join('')}
-      </div>
-      ${weeksHtml}
+    <div id="td-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(100px,auto);gap:0;margin:-1px 0 0 -1px">
+      ${headerCellsHtml}
+      ${bodyCellsHtml}
     </div>
   </div>`;
 }
@@ -6354,11 +6368,11 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     <div style="${gridStyle}">
       ${_tddInfoBlock('filetext','var(--sky)','Program',Utils.esc(s.trainingProgram||'—'))}
       ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
-      ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3);font-weight:400">— none —</span>'):(grp==='external'?_tddInfoBlock('filetext','#7c3aed','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):_tddInfoBlock('users','#7c3aed','Co-Facilitator',naVal))}
+      ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3);font-weight:400">— none —</span>'):(grp==='external'?_tddInfoBlock('filetext','#7c3aed','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):'')}
       ${_tddInfoBlock('calendar','var(--amber)','Date'+(ownerType?' / Period':'')+' & Time',_tdDateCell(s))}
     </div>
     <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
+      ${grp==='owner'?'':_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
       ${_tddInfoBlock('target','#64748b','Modality',Utils.esc(modalityLabel))}
       ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('users','var(--sky)','Participants (Expected)',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
@@ -6649,9 +6663,9 @@ function _tddSessionInfoEditContent(s,ownerType){
       ${_tddInfoBlockEdit('user','var(--sky)','Facilitator Name',`<input type="text" id="tdd-facilitator" class="form-control" ${smallInput} value="${Utils.esc(s.facilitatorName||'')}">`,'tdd-facilitator-wrap')}
       ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput}><option value="">— None —</option></select>`,'tdd-cofacilitator-wrap')}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
+      <div style="grid-column:${ownerType?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><input type="date" id="tdd-date" class="form-control" ${smallInput} value="${s.trainingDate||''}"><span ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;align-items:center;gap:6px">→<input type="date" id="tdd-enddate" class="form-control" ${smallInput} value="${s.endDate||''}"></span></div>`)}</div>
     </div>
     <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;gap:6px;align-items:center"><input type="date" id="tdd-date" class="form-control" ${smallInput} value="${s.trainingDate||''}"><span ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;align-items:center;gap:6px">→<input type="date" id="tdd-enddate" class="form-control" ${smallInput} value="${s.endDate||''}"></span></div>`)}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`,'tdd-batch-wrap')}
       ${_tddInfoBlockEdit('target','#64748b','Modality',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
         <option value="ILT" ${s.deliveryType==='ILT'?'selected':''}>ILT</option>
@@ -6660,24 +6674,24 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="External" ${s.deliveryType==='External'?'selected':''}>External</option>
       </select>`)}
       ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
+      ${_tddInfoBlockEdit('users','var(--sky)','Participants (Expected)',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('users','var(--sky)','Participants (Expected)',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
       ${_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`)}
       ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${CATEGORY_OPTIONS.map(c=>`<option value="${c}" ${s.category===c?'selected':''}>${c}</option>`).join('')}</select>`)}
-      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:6px"><select id="tdd-assessment" class="form-control" ${smallInput}>
+      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:90px"><div style="font-size:9.5px;color:var(--text3);margin-bottom:2px">Assessment Type</div><select id="tdd-assessment" class="form-control" ${smallInput}>
         <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
         <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
-      </select><input type="number" id="tdd-passing" class="form-control" style="width:56px;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="Pass %" value="${s.passingScore??''}"></div>`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
+      </select></div><div style="width:66px;flex-shrink:0"><div style="font-size:9.5px;color:var(--text3);margin-bottom:2px;white-space:nowrap">Passing %</div><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"></div></div>`)}
       ${_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
         <option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>
         <option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>
       </select>`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('users','var(--sky)','Audience',`<input type="text" id="tdd-audience" class="form-control" ${smallInput} value="${Utils.esc(s.audience||'')}">`)}
       ${_tddInfoBlockEdit('edit3','#64748b','Recording Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
     </div>
