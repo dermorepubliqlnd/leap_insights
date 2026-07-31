@@ -13,6 +13,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
   <!-- Supabase JS client (Phase 3: replaces Firebase Auth + Firestore) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- html2canvas -- Overview tab "Export Summary Image" feature (2026-07-31) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     /* =========================================================
        LEAP INSIGHTS  v1.2
@@ -6778,7 +6780,13 @@ function _tdOverviewJourneyBlockVertical(s,ownerType){
 
 function _tddOverviewView(s,ownerType,personLabel,personName){
   const {l1, summary}=_tdOverviewReportBlocks(s);
+  const _tdrRepForExport=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const canExportSummary=s.status==='completed'&&_tdrRepForExport&&_tdrRepForExport.status==='submitted';
+  const exportBar=canExportSummary?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary Image</button>
+    </div>`:'';
   return `
+    ${exportBar}
     <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-bottom:16px">
       <div class="card" id="tdd-session-info-card" style="padding:18px 20px">
         ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
@@ -6801,6 +6809,67 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
       </div>
     </div>
   `;
+}
+
+// Export Summary Image (2026-07-31): renders a hidden, off-DOM 4-section stacked container
+// (Session Details / Attendance & Performance / Evaluation / Summary) reusing the SAME render
+// helpers as their respective tabs (_tdaKpiColumnsHtml, _tdOverviewEvaluationsBlock,
+// _tdOverviewReportBlocks' summary half), captures it via html2canvas, downloads a PNG, then
+// opens an Outlook Web compose deep link (no attachment param exists for mailto/deeplinks --
+// confirmed limitation, already explained to Sandra) so the user can drag the just-downloaded
+// PNG into the blank pre-subjected compose window that opens.
+async function _tdExportSummaryImage(sessionId){
+  const s=TrSessionDB.byId(sessionId);
+  if(!s){ toast('Session not found.','error'); return; }
+  if(typeof html2canvas==='undefined'){ toast('Export library failed to load. Check your connection and try again.','error'); return; }
+  const ownerType=_tdIsOwnerType(s.deliveryType);
+  const _tdGrp=_tdFieldGroup(s.deliveryType);
+  const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'Facilitator':'Trainer');
+  const personName=Utils.esc(_tdPersonName(s))||'—';
+  const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
+  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'—';
+  const {summary}=_tdOverviewReportBlocks(s);
+  const evalBlock=_tdOverviewEvaluationsBlock(s,ownerType);
+  const attendanceHtml=_tdaKpiColumnsHtml(s);
+
+  const sectionTitle=(t)=>`<div style="font-weight:700;font-size:13px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">${Utils.esc(t)}</div>`;
+  const sessionDetailsHtml=`
+    <div style="font-weight:700;font-size:16px;margin-bottom:10px">${Utils.esc(s.trainingProgram||'Untitled Training')}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:13px">
+      <div><strong>Type:</strong> ${Utils.esc(s.deliveryType||'—')}</div>
+      <div><strong>${personLabel}:</strong> ${personName}</div>
+      <div><strong>Date:</strong> ${Utils.esc(_tdCalDuration(s))}</div>
+      <div><strong>${venueLabel}:</strong> ${Utils.esc(venueName)}</div>
+      <div><strong>Status:</strong> ${_tdStatusBadge(_tdStatus(s))}</div>
+      <div><strong>Batch:</strong> ${Utils.esc(s.batchNo||'—')}</div>
+    </div>`;
+
+  const holder=document.createElement('div');
+  holder.style.cssText='position:fixed;left:-9999px;top:0;width:900px;background:#fff;padding:24px;font-family:Sora,sans-serif;color:#1e293b';
+  holder.innerHTML=`
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Session Details')}${sessionDetailsHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Attendance & Performance')}${attendanceHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('Evaluation')}${evalBlock}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('Summary')}${summary}</div>`;
+  document.body.appendChild(holder);
+  try{
+    const canvas=await html2canvas(holder,{backgroundColor:'#ffffff',scale:2});
+    const dataUrl=canvas.toDataURL('image/png');
+    const a=document.createElement('a');
+    a.href=dataUrl;
+    a.download=`${(s.code||s.id||'Session')}_Summary.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    const subject=encodeURIComponent(`Training Summary — ${s.code||''} ${s.trainingProgram||''}`.trim());
+    window.open(`https://outlook.office.com/mail/deeplink/compose?subject=${subject}`,'_blank');
+    toast('Image downloaded — attach it to the email that just opened.','info');
+  }catch(e){
+    console.error(e);
+    toast('Failed to generate summary image.','error');
+  }finally{
+    holder.remove();
+  }
 }
 
 const CATEGORY_OPTIONS=['Onboarding','Leadership','Professional Development','Technical'];
