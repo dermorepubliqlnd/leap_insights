@@ -4998,6 +4998,39 @@ function _tdDocStatus(s){
   return '<span class="badge" style="background:#fef9c3;color:#a16207">Report Pending</span>';
 }
 
+// Counts working days (Mon-Fri only, weekends excluded, holidays not excluded per Sandra's spec)
+// strictly AFTER startDateStr up to and including endDateStr. Matches the given example exactly:
+// July 1, 2026 is a Wednesday; July 3, 2026 is a Friday -> Thu(Jul2)+Fri(Jul3) = 2 working days.
+function _tdBusinessDaysBetween(startDateStr,endDateStr){
+  if(!startDateStr||!endDateStr) return null;
+  const start=new Date(String(startDateStr).slice(0,10)+'T00:00:00');
+  const end=new Date(String(endDateStr).slice(0,10)+'T00:00:00');
+  if(isNaN(start.getTime())||isNaN(end.getTime())) return null;
+  if(end<start) return 0;
+  let count=0;
+  const cur=new Date(start);
+  cur.setDate(cur.getDate()+1);
+  while(cur<=end){
+    const dow=cur.getDay();
+    if(dow!==0&&dow!==6) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
+// Report SLA badge for the Training Calendar List view -- org SLA is 2 working days after the
+// session date. Always recomputed against the report's CURRENT submittedAt, so a reopen +
+// resubmit cycle automatically reflects the newest submission with no separate first/last
+// submission tracking needed (2026-07-31, per Sandra's reopen-workflow spec).
+function _tdReportSLA(s){
+  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  if(!rep||!rep.submittedAt) return '<span class="txt-muted">—</span>';
+  const days=_tdBusinessDaysBetween(s.trainingDate,rep.submittedAt);
+  if(days==null) return '<span class="txt-muted">—</span>';
+  if(days<=2) return `<span class="badge" style="background:#dcfce7;color:#15803d">Within SLA (${days}d)</span>`;
+  return `<span class="badge" style="background:#fee2e2;color:#dc2626">Passed SLA (${days}d)</span>`;
+}
+
 function _tdEvalStatus(s){
   if(_tdIsOwnerType(s.deliveryType)) return '<span style="color:var(--text3)">N/A</span>';
   const evs=EvalDB.all().filter(e=>e.sessionId===s.id);
@@ -5141,6 +5174,7 @@ function renderTDList(rows){
       <td style="font-size:13px">${Utils.esc(s.audience||'—')}</td>
       <td>${_tdStatusBadge(_tdStatus(s))}</td>
       <td>${_tdDocStatus(s)}</td>
+      <td>${_tdReportSLA(s)}</td>
       <td style="font-size:13px">${_tdRecordingCell(s)}</td>
       <td>${_tdEvalStatus(s)}</td>
       <td><div class="td-acts">
@@ -5157,7 +5191,7 @@ function renderTDList(rows){
       </div>
     </div>`;
   wrap.innerHTML=`<div class="card"><div class="eval-tbl-wrap"><table class="eval-tbl">
-    <thead><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Report SLA</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
     <tbody>${pageRows.map(rowHtml).join('')}</tbody>
   </table></div>${pager}</div>`;
 }
