@@ -1017,6 +1017,7 @@
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Modality <span style="color:#f87171">*</span></label>
                       <select id="ef-modality" class="form-control"><option value="">— Select Modality —</option></select>
+                      <div id="ef-modality-note" class="hidden" style="font-size:11.5px;color:var(--text3);margin-top:4px">Inherited from session</div>
                     </div>
                     <div class="form-group hidden" id="ef-venue-other-wrap" style="margin-bottom:0">
                       <label class="form-label">Specify Venue <span style="color:#f87171">*</span></label>
@@ -7497,6 +7498,7 @@ function openEvalView(id){
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=ev.modalityId||'';
+  _tdModalityNoteSet(!!ev.sessionId);
   buildAccordion();
   const ratings=ev.ratings||{},remarks=ev.remarks||{};
   _evalLiveRemarks={}; EVAL_CRITERIA.forEach(c=>{ const rv=ratings[c.id]; if(rv) _applyRating(c.id,rv); _evalLiveRemarks[c.id]=remarks[c.id]||''; const ta=document.getElementById(`eval-rmk-${c.id}`); if(ta) ta.value=remarks[c.id]||''; const wrap=document.getElementById(`eval-rmk-wrap-${c.id}`); if(wrap){ const needsRmk=rv&&rv<5; wrap.classList.toggle('rmk-required',!!needsRmk); if(ta) ta.placeholder=needsRmk?'Remarks required for this rating…':'Remarks (optional)…'; } });
@@ -8241,8 +8243,22 @@ function _openPrefilledEval(s){
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=s.modalityId||'';
+  // Modality is inherited from the session's own Modality field (set on the Training Calendar
+  // record) -- disable the dropdown here and label it clearly so it's not mistaken for a
+  // separately-entered value. See _tdModalityNoteSet.
+  _tdModalityNoteSet(true);
   _updateEvalRecordingDisplay(s.recordingLink);
   _updateEvalSessionCodeDisplay(s.code);
+}
+
+// Toggles the eval form's Modality dropdown between "inherited from session" (disabled, with
+// a small note) and normal manual-entry mode. inherited=true when the eval was opened via a
+// session (Evaluate This Training / resuming a session-linked draft).
+function _tdModalityNoteSet(inherited){
+  const sel=document.getElementById('ef-modality');
+  const note=document.getElementById('ef-modality-note');
+  if(sel) sel.disabled=!!inherited;
+  if(note) note.classList.toggle('hidden',!inherited);
 }
 
 function startSessionEvaluation(sessionId){
@@ -8356,6 +8372,7 @@ function openNewEval(){
   _populateEvalDropdowns(me.id);
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
+  _tdModalityNoteSet(false);
   buildAccordion();
   updateEvalScore();
   showEvalSubview('form');
@@ -8393,6 +8410,7 @@ function openEvalForm(id){
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=ev.modalityId||'';
+  _tdModalityNoteSet(!!ev.sessionId);
   buildAccordion();
   const ratings=ev.ratings||{}, remarks=ev.remarks||{};
   _evalLiveRemarks={}; EVAL_CRITERIA.forEach(c=>{ const rv=ratings[c.id]; if(rv) _applyRating(c.id,rv); _evalLiveRemarks[c.id]=remarks[c.id]||''; const ta=document.getElementById(`eval-rmk-${c.id}`); if(ta) ta.value=remarks[c.id]||''; const wrap=document.getElementById(`eval-rmk-wrap-${c.id}`); if(wrap){ const needsRmk=rv&&rv<5; wrap.classList.toggle('rmk-required',!!needsRmk); if(ta) ta.placeholder=needsRmk?'Remarks required for this rating…':'Remarks (optional)…'; } });
