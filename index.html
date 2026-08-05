@@ -2239,6 +2239,28 @@
   </div>
 </div>
 
+<!-- ══ MODAL: REOPEN REQUEST REASON ═════════════ -->
+<div id="modal-reopen-reason" class="modal-overlay" onclick="if(event.target===this)closeModal('reopen-reason')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Request Reopen</span>
+      <button class="modal-close" onclick="closeModal('reopen-reason')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">Request to reopen this submitted report for editing? Your direct supervisor will need to approve before it unlocks.</p>
+      <div class="form-group" style="margin-top:10px">
+        <label class="form-label">Reason for reopening <span style="color:var(--red)">*</span></label>
+        <textarea id="rr-reason" class="form-control" rows="3" placeholder="Explain why this report needs to be reopened…" oninput="document.getElementById('rr-reason-err').style.display='none'"></textarea>
+        <div id="rr-reason-err" style="display:none;color:var(--red);font-size:12.5px;margin-top:4px">Please provide a reason.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('reopen-reason')">Cancel</button>
+      <button class="btn btn-danger" onclick="_tdrSubmitReopenReason()">Request Reopen</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: TEMP PASSWORD REVEAL ═════════════ -->
 <div id="modal-pw-reveal" class="modal-overlay" onclick="if(event.target===this)closeModal('pw-reveal')">
   <div class="modal modal-sm">
@@ -6423,19 +6445,28 @@ function _tdrSubmitReport(){
    A fresh Request Reopen is allowed again once a request has been denied, or after
    a new submit cycle resets reopen_status back to null. ───────────────────────── */
 function _tdrRequestReopen(){
-  const reason=(prompt('Optional: reason for requesting this report be reopened (leave blank to skip)')||'').trim();
-  confirm$('Request Reopen','Request to reopen this submitted report for editing? Your direct supervisor will need to approve before it unlocks.','Request Reopen',async()=>{
+  const ta=document.getElementById('rr-reason'); if(ta) ta.value='';
+  const err=document.getElementById('rr-reason-err'); if(err) err.style.display='none';
+  openModal('reopen-reason');
+  setTimeout(()=>ta?.focus(),50);
+}
+function _tdrSubmitReopenReason(){
+  const ta=document.getElementById('rr-reason');
+  const reason=(ta?.value||'').trim();
+  if(!reason){ document.getElementById('rr-reason-err').style.display='block'; ta?.focus(); return; }
+  closeModal('reopen-reason');
+  (async()=>{
     try{
       const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
         reopenStatus:'pending', reopenRequestedBy:Auth.user.id, reopenRequestedAt:new Date().toISOString(),
-        reopenReason:reason||null, reopenDecidedBy:null, reopenDecidedAt:null};
+        reopenReason:reason, reopenDecidedBy:null, reopenDecidedAt:null};
       const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
-      await AuditLog.record('reopen_requested','Training Report',_tdrReport.id,`Reopen requested by ${Auth.user.firstName} ${Auth.user.lastName}${reason?`: "${reason}"`:''}`);
+      await AuditLog.record('reopen_requested','Training Report',_tdrReport.id,`Reopen requested by ${Auth.user.firstName} ${Auth.user.lastName}: "${reason}"`);
       renderTrainingDetail();
       toast('Reopen requested — awaiting supervisor approval.','success');
     }catch(e){ /* error already surfaced */ }
-  });
+  })();
 }
 function _tdrApproveReopen(){
   confirm$('Approve Reopen','Approve this reopen request? The report will be unlocked for editing (status returns to Draft).','Approve Reopen',async()=>{
