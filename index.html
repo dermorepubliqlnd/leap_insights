@@ -6494,32 +6494,50 @@ function _tdrDenyReopen(){
     }catch(e){ /* error already surfaced */ }
   });
 }
+/* Status banner only -- Request/Approve/Deny Reopen buttons live in the Detail page's
+   persistent header now (see _tdHeaderReopenBtns), visible regardless of active tab. */
 function _tdrReopenBlock(){
   const rep=_tdrReport;
-  const me=Auth.user;
   const status=rep.reopenStatus;
   let html='';
   if(status==='pending'){
     const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
-    const approverId=requester?requester.supervisorId:null;
-    const canApprove=!!me&&(Auth.isAdmin||(approverId&&approverId===me.id));
     html+=`<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:#92400e">
       <div style="font-weight:700;margin-bottom:4px">🔓 Reopen Requested — awaiting supervisor approval</div>
       <div>Requested by ${Utils.esc(requester?`${requester.firstName} ${requester.lastName}`:'—')}${rep.reopenRequestedAt?` on ${new Date(rep.reopenRequestedAt).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}`:''}${rep.reopenReason?` — "${Utils.esc(rep.reopenReason)}"`:''}</div>
     </div>`;
-    if(canApprove){
-      html+=`<div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
-        <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>
-      </div>`;
-    }
     return html;
   }
   if(status==='denied'){
     html+=`<div style="font-size:12px;color:var(--text3);margin-top:14px">Reopen request was denied${rep.reopenDecidedAt?` on ${new Date(rep.reopenDecidedAt).toLocaleString('en-PH',{dateStyle:'medium'})}`:''}.</div>`;
   }
-  html+=`<div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">Request Reopen</button></div>`;
   return html;
+}
+
+// Returns the "owner" user id of a training session for reopen-permission purposes --
+// Self-led uses ownerId, ILT/VILT uses trainerId; External has no linked user account
+// (facilitatorName is free text) so only an admin can act on those reports.
+function _tdSessionOwnerId(s){ return s.ownerId||s.trainerId||null; }
+
+// Header-level Request/Approve/Deny Reopen buttons -- rendered in the Detail page's
+// persistent header (replacing the old session Delete button there), visible from any tab.
+function _tdHeaderReopenBtns(s){
+  _tdrEnsureLoaded(s.id);
+  const rep=_tdrReport;
+  const me=Auth.user;
+  if(!rep||rep._isNew||rep.status!=='submitted') return '';
+  if(rep.reopenStatus==='pending'){
+    const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
+    const approverId=requester?requester.supervisorId:null;
+    const canApprove=!!me&&(me.isAdmin||(approverId&&approverId===me.id));
+    if(!canApprove) return '';
+    return `<button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
+      <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>`;
+  }
+  const ownerId=_tdSessionOwnerId(s);
+  const canRequest=!!me&&(me.isAdmin||(ownerId&&ownerId===me.id));
+  if(!canRequest) return '';
+  return `<button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">Request Reopen</button>`;
 }
 
 function renderTrainingDetail(){
@@ -6561,7 +6579,7 @@ function renderTrainingDetail(){
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${summaryLine}</div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" style="color:#dc2626" onclick="deleteTrainingRecord('${s.id}')">Delete</button>
+        ${_tdHeaderReopenBtns(s)}
       </div>
     </div>
     <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
