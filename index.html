@@ -6220,12 +6220,21 @@ function _tdrEnsureLoaded(sessionId){
   }
 }
 
+// Phase33 item 11: 5-tier NPS interpretation (replaces the old 3-tier Promoter/Passive/
+// Detractor scale) -- confirmed thresholds:
+//   < 0        Critical -- more detractors than promoters
+//   0 to 25    Needs improvement
+//   26 to 50   Good
+//   51 to 75   Very good
+//   76 to 100  Excellent
 function _tdrNpsLabel(v){
   if(v==null||v==='') return '';
   const n=Number(v);
-  if(n>=50) return 'Promoter';
-  if(n>=0) return 'Passive';
-  return 'Detractor';
+  if(n<0) return 'Critical — more detractors than promoters';
+  if(n<=25) return 'Needs improvement';
+  if(n<=50) return 'Good';
+  if(n<=75) return 'Very good';
+  return 'Excellent';
 }
 
 
