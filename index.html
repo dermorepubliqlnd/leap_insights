@@ -5517,7 +5517,6 @@ let _tdPartAddPickerOpen=false;
 // same pattern as the Attendance & Performance tab, so keystrokes don't round-trip on every char.
 let _tdrReport=null;
 let _tdrLoadedFor=null;
-let _tdrPreviewMode=false;
 let _tdrEditMode=false;
 
 // Minimal allow-listed rich-text sanitizer for the Summary callout fields (2026-07-30) --
@@ -6203,7 +6202,6 @@ function _tdrEnsureLoaded(sessionId){
     c.pendingActions=c.pendingActions||'';
     c.additionalRemarks=c.additionalRemarks||'';
     _tdrLoadedFor=sessionId;
-    _tdrPreviewMode=false;
     _tdrEditMode=false;
   }
 }
@@ -6222,7 +6220,7 @@ function _tdrRenderTab(s){
   _tdrEnsureLoaded(s.id);
   const c=_tdrReport.content;
   const locked=_tdrReport.status==='submitted';
-  const readOnly=locked||_tdrPreviewMode;
+  const readOnly=locked;
   const dis=readOnly?'disabled':'';
   const totalParticipants=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length;
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
@@ -6232,13 +6230,11 @@ function _tdrRenderTab(s){
   const toolbar=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
       <div style="font-size:11.5px;color:var(--text3)">
-        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrPreviewMode?`<span style="font-weight:600">Preview mode</span> — read-only`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
+        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${_tdrPreviewMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrExitPreview()">← Exit Preview</button>`:locked?'':`
-          ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(false)">Done</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
-          <button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save Draft</button>
-          <button class="btn btn-sm btn-secondary" onclick="_tdrTogglePreview()">👁 Preview Report</button>
+        ${locked?'':`
+          ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
           <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
         `}
       </div>
@@ -6350,15 +6346,6 @@ function _tdrSetAgendaField(i,field,value){
 }
 function _tdrRemoveAgendaRow(i){
   _tdrReport.content.agendaDelivery.splice(i,1);
-  renderTrainingDetail();
-}
-
-function _tdrTogglePreview(){
-  _tdrPreviewMode=true;
-  renderTrainingDetail();
-}
-function _tdrExitPreview(){
-  _tdrPreviewMode=false;
   renderTrainingDetail();
 }
 
