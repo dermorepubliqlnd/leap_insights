@@ -5666,6 +5666,7 @@ async function tdDetailSave(){
     recordingLink:ownerType?'':document.getElementById('tdd-recording').value.trim(),
     assessmentType:document.getElementById('tdd-assessment').value,
     passingScore:passingRaw?parseInt(passingRaw,10):null,
+    modalityId:grp==='trainer'?(document.getElementById('tdd-modalityid').value||null):null,
     status:document.getElementById('tdd-status').value
   };
   const errs=[];
@@ -5677,6 +5678,7 @@ async function tdDetailSave(){
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
   if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
+  if((deliveryType==='ILT'||deliveryType==='VILT') && !d.modalityId) errs.push('Modality is required for ILT/VILT sessions.');
   if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
@@ -6645,6 +6647,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('users','var(--sky)','Audience',Utils.esc(s.audience||'—'))}
+      ${grp==='trainer'?_tddInfoBlock('target','#0891b2','Format',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):''}
       ${_tddInfoBlock('edit3','#64748b','Report Prepared By',preparedBy?Utils.esc(preparedBy.firstName+' '+preparedBy.lastName):'<span style="color:var(--text3);font-weight:400">— not yet —</span>')}
     </div>
     ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
@@ -7172,6 +7175,7 @@ function _tddSessionInfoEditContent(s,ownerType){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('users','var(--sky)','Audience',`<input type="text" id="tdd-audience" class="form-control" ${smallInput} value="${Utils.esc(s.audience||'')}">`)}
+      ${_tddInfoBlockEdit('target','#0891b2','Format',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap')}
       ${_tddInfoBlockEdit('edit3','#64748b','Recording Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
     </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt)">
@@ -7204,6 +7208,10 @@ function _tddPopulateEditDropdowns(s,ownerType){
   }
   _tdPopulateVenueOptions('tdd',s.deliveryType,s.venueId);
   _toggleVenueOtherWrap('tdd');
+  const modIdSel=document.getElementById('tdd-modalityid');
+  if(modIdSel){
+    modIdSel.innerHTML='<option value="">— Select —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}" ${m.id===s.modalityId?'selected':''}>${Utils.esc(m.name)}</option>`).join('');
+  }
 }
 
 function _tddToggleTypeFields(){
@@ -7218,6 +7226,7 @@ function _tddToggleTypeFields(){
   document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!ownerType);
   document.getElementById('tdd-recording-wrap').classList.toggle('hidden',ownerType);
   document.getElementById('tdd-batch-wrap').classList.toggle('hidden',grp==='owner');
+  document.getElementById('tdd-modalityid-wrap').classList.toggle('hidden',grp!=='trainer');
   _tdPopulateVenueOptions('tdd',dt);
   _toggleVenueOtherWrap('tdd');
 }
