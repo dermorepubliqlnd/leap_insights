@@ -949,6 +949,7 @@
                       <div class="eval-readonly" id="ef-evaluator-display">—</div>
                       <input type="hidden" id="ef-evaluator-id">
                       <input type="hidden" id="ef-session-id">
+                      <input type="hidden" id="ef-evaluation-mode">
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Trainer <span style="color:#f87171">*</span></label>
@@ -2179,6 +2180,23 @@
   </div>
 </div>
 
+<!-- ══ MODAL: EVALUATION MODE (Live vs Virtual) ═════════════ -->
+<div id="modal-eval-mode" class="modal-overlay" onclick="if(event.target===this)closeModal('eval-mode')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Evaluation Type</span>
+      <button class="modal-close" onclick="closeModal('eval-mode')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">Is this evaluation being conducted live (sitting in on the session) or by reviewing a recording afterward?</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary" id="em-live-btn" style="justify-content:flex-start">🧑‍🤝‍🧑 Live (Sit-in)</button>
+        <button class="btn btn-secondary" id="em-virtual-btn" style="justify-content:flex-start">🎥 Virtual (Recording)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: CONFIRM ═════════════════ -->
 <div id="modal-confirm" class="modal-overlay" onclick="if(event.target===this)closeModal('confirm')">
   <div class="modal modal-sm">
@@ -2370,7 +2388,7 @@ const _FIELD_MAPS = {
     // *_id columns — MUST be verified against the live Supabase schema before go-live. If the
     // column doesn't exist, evaluation create/update calls that carry a sessionId will fail
     // loudly via the existing error Toast rather than silently, but this needs a real test.
-    sessionId:'session_id'
+    sessionId:'session_id', evaluationMode:'evaluation_mode'
   },
   idqa_reviews:{
     id:'id', code:'code', status:'status', projectTitle:'project_title', delivType:'deliv_type',
@@ -6809,6 +6827,7 @@ function _tdTrainerEvalTabHtml(s){
     return `<tr style="${rowClick?'cursor:pointer':''}" ${rowClick?`onclick="${rowClick}" title="Click to open"`:''}>
       <td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>
       <td>${Utils.esc(evName)}</td>
+      <td>${e.evaluationMode?_evalModeBadge(e.evaluationMode):'<span class="txt-muted" style="font-size:12px">—</span>'}</td>
       <td style="white-space:nowrap">${dateStr}</td>
       <td style="white-space:nowrap">${submitted}</td>
       <td>${scoreHtml}</td>
@@ -6820,7 +6839,7 @@ function _tdTrainerEvalTabHtml(s){
   return `<div class="card" style="padding:18px 20px">
     ${headerBar}
     <div class="eval-tbl-wrap"><table class="eval-tbl">
-      <thead><tr><th>Trainer</th><th>Evaluator</th><th>Session Date</th><th>Submitted</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Trainer</th><th>Evaluator</th><th>Type</th><th>Session Date</th><th>Submitted</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>
   </div>`;
@@ -7438,6 +7457,7 @@ function openEvalView(id){
   document.getElementById('ef-evaluator-display').textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   const _soEl2=document.getElementById('ef-signoff-evaluator');if(_soEl2)_soEl2.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   document.getElementById('ef-session-id').value=ev.sessionId||'';
+  document.getElementById('ef-evaluation-mode').value=ev.evaluationMode||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
@@ -7568,6 +7588,14 @@ function _evalStatusBadge(status){
   return `<span class="badge b-emp">${status||'—'}</span>`;
 }
 
+// Phase33 item 6: small badge showing whether a session-linked evaluation was conducted Live
+// (sit-in) or Virtual (recording review). Returns '' for manual/no-session evals with no mode.
+function _evalModeBadge(mode){
+  if(mode==='live')    return '<span class="badge" style="background:#dbeafe;color:#1d4ed8;white-space:nowrap">🧑\u200d🤝\u200d🧑 Live</span>';
+  if(mode==='virtual') return '<span class="badge" style="background:#ede9fe;color:#6d28d9;white-space:nowrap">🎥 Virtual</span>';
+  return '';
+}
+
 function renderEvaluations(){
   // Guard against a stale 'sessions' value left in localStorage from before the Training
   // Sessions sub-tab was removed (phase33 item 7) -- fall back to My Evaluations.
@@ -7669,7 +7697,7 @@ function renderEvaluations(){
     :`<th>${c.label}</th>`
   ).join('')}</tr></thead>`;
   function cellFor(col,ev,tName,evName,score,submitted,canEdit,canView,sessCode){
-    if(col==='code')      return `<td><span class="eval-code">${Utils.esc(ev.code||'—')}</span></td>`;
+    if(col==='code')      return `<td><span class="eval-code">${Utils.esc(ev.code||'—')}</span>${ev.evaluationMode?` ${_evalModeBadge(ev.evaluationMode)}`:''}</td>`;
     if(col==='sessioncode') return `<td>${sessCode?`<span class="eval-code">${Utils.esc(sessCode)}</span>`:'<span class="txt-muted" style="font-size:12px">—</span>'}</td>`;
     if(col==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>`;
     if(col==='evaluator') return `<td>${Utils.esc(evName)}</td>`;
@@ -7770,9 +7798,10 @@ function openDraftChoiceModal(onContinue,onDelete){
   openModal('draft-choice');
 }
 
-function _openPrefilledEval(s){
+function _openPrefilledEval(s,mode){
   openNewEval();
   document.getElementById('ef-session-id').value=s.id;
+  document.getElementById('ef-evaluation-mode').value=mode||'';
   document.getElementById('ef-trainer').value=s.trainerId;
   document.getElementById('ef-program').value=s.trainingProgram||'';
   document.getElementById('ef-batch').value=s.batchNo||'';
@@ -7806,12 +7835,37 @@ function startSessionEvaluation(sessionId){
   const canConduct=access.trainerEval||me.isAdmin;
   if(!canConduct){ toast("You don't have access to conduct evaluations.",'error'); return; }
   if(s.trainerId===me.id){ toast("You can't evaluate your own session.",'error'); return; }
-  if(s.status!=='completed'){ toast('Only completed sessions can be evaluated.','info'); return; }
+  // Phase33 item 6: ask Live (Sit-in) vs Virtual (Recording) before proceeding -- this replaces
+  // the old blanket "session must be Completed" gate with type-specific checks below.
+  openEvalModeModal(mode=>{ _startSessionEvaluationWithMode(sessionId,mode); });
+}
+
+// Small modal asking whether the evaluation is being conducted Live (sitting in on the
+// session) or Virtual (reviewing a recording afterward). Used only for session-linked
+// evaluations (startSessionEvaluation / "Evaluate This Training").
+function openEvalModeModal(onChoose){
+  document.getElementById('em-live-btn').onclick=()=>{ closeModal('eval-mode'); onChoose('live'); };
+  document.getElementById('em-virtual-btn').onclick=()=>{ closeModal('eval-mode'); onChoose('virtual'); };
+  openModal('eval-mode');
+}
+
+function _startSessionEvaluationWithMode(sessionId,mode){
+  let s=TrSessionDB.byId(sessionId); if(!s) return;
+  // Type-specific checks replacing the old status==='completed' gate:
+  //  - Live: the evaluator has the eval form open while sitting in the live session, so same-day
+  //    is the normal case -- allowed as long as the session date isn't in the future.
+  //  - Virtual: requires a recording link to actually be present to review.
+  if(mode==='live'){
+    if(s.trainingDate>_todayStr()){ toast("This session hasn't happened yet.",'info'); return; }
+  } else {
+    if(!s.recordingLink){ toast('This session has no recording link yet — check back once one is added.','info'); return; }
+  }
+  const me=Auth.user;
   const sessionEvals=EvalDB.all().filter(e=>e.sessionId===sessionId);
   const mine=sessionEvals.find(e=>e.evaluatorId===me.id);
   if(mine){
     if(mine.status==='draft'){
-      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id).then(()=>_openPrefilledEval(s)).catch(()=>{}); });
+      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id).then(()=>_openPrefilledEval(s,mode)).catch(()=>{}); });
       return;
     }
     if(mine.status==='pending_ack'){
@@ -7824,10 +7878,10 @@ function startSessionEvaluation(sessionId){
   const others=sessionEvals.filter(e=>e.status==='completed');
   if(others.length){
     const names=[...new Set(others.map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'another evaluator'; }))];
-    confirm$('Already Evaluated by Someone Else',`This session has already been evaluated by <strong>${Utils.esc(names.join(', '))}</strong>. Do you want to submit your own evaluation?`,'Submit My Own',()=>{ _openPrefilledEval(s); });
+    confirm$('Already Evaluated by Someone Else',`This session has already been evaluated by <strong>${Utils.esc(names.join(', '))}</strong>. Do you want to submit your own evaluation?`,'Submit My Own',()=>{ _openPrefilledEval(s,mode); });
     return;
   }
-  _openPrefilledEval(s);
+  _openPrefilledEval(s,mode);
 }
 
 function _initColResize(tbl){
@@ -7897,6 +7951,7 @@ function openNewEval(){
   document.getElementById('ef-evaluator-display').textContent=`${me.firstName} ${me.lastName}`;
   const _soEl=document.getElementById('ef-signoff-evaluator');if(_soEl)_soEl.textContent=`${me.firstName} ${me.lastName}`;
   document.getElementById('ef-session-id').value='';
+  document.getElementById('ef-evaluation-mode').value='';
   _updateEvalRecordingDisplay(null);
   _updateEvalSessionCodeDisplay(null);
   document.getElementById('ef-program').value='';
@@ -7931,6 +7986,7 @@ function openEvalForm(id){
   document.getElementById('ef-evaluator-display').textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   const _soElF=document.getElementById('ef-signoff-evaluator');if(_soElF)_soElF.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   document.getElementById('ef-session-id').value=ev.sessionId||'';
+  document.getElementById('ef-evaluation-mode').value=ev.evaluationMode||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
@@ -8080,6 +8136,7 @@ function _getCurrentData(){
     venueId:_resolveVenueId('ef'),
     modalityId:document.getElementById('ef-modality').value,
     sessionId:document.getElementById('ef-session-id').value||null,
+    evaluationMode:document.getElementById('ef-evaluation-mode').value||null,
     observations:_rteGet('ef-observations'),
     ratings, remarks, overallScore
   };
@@ -8129,6 +8186,7 @@ function clearEvalForm(){
   _rteSet('ef-observations','');
   document.getElementById('ef-date').value='';
   document.getElementById('ef-session-id').value='';
+  document.getElementById('ef-evaluation-mode').value='';
   _updateEvalRecordingDisplay(null);
   _updateEvalSessionCodeDisplay(null);
   document.getElementById('eval-error').classList.add('hidden');
