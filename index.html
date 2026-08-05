@@ -972,8 +972,8 @@
                       <select id="ef-venue" class="form-control" onchange="_toggleVenueOtherWrap('ef')"><option value="">— Select Venue —</option></select>
                     </div>
                     <div class="form-group" style="margin-bottom:0">
-                      <label class="form-label">Modality <span style="color:#f87171">*</span></label>
-                      <select id="ef-modality" class="form-control"><option value="">— Select Modality —</option></select>
+                      <label class="form-label">Delivery Method <span style="color:#f87171">*</span></label>
+                      <select id="ef-modality" class="form-control"><option value="">— Select Delivery Method —</option></select>
                       <div id="ef-modality-note" class="hidden" style="font-size:11.5px;color:var(--text3);margin-top:4px">Inherited from session</div>
                     </div>
                     <div class="form-group hidden" id="ef-venue-other-wrap" style="margin-bottom:0">
@@ -2078,9 +2078,8 @@
     </div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Pick a delivery type to continue — this determines which fields you'll fill in next.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="td-type-pick-grid">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="td-type-pick-grid">
         <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('ILT')">ILT</button>
-        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('VILT')">VILT</button>
         <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('Self-led')">Self-led</button>
         <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('External')">External</button>
       </div>
@@ -2122,8 +2121,8 @@
           <select id="sess-venue" class="form-control" onchange="_toggleVenueOtherWrap('sess')"><option value="">— Select Venue —</option></select>
         </div>
         <div class="form-group">
-          <label class="form-label">Modality <span class="req">*</span></label>
-          <select id="sess-modality" class="form-control"><option value="">— Select Modality —</option></select>
+          <label class="form-label">Delivery Method <span class="req">*</span></label>
+          <select id="sess-modality" class="form-control"><option value="">— Select Delivery Method —</option></select>
         </div>
       </div>
       <div class="form-group hidden" id="sess-venue-other-wrap">
@@ -3842,7 +3841,7 @@ function _dashRenderTrainer(range,prevRange,key){
         <div class="chart-wrap" style="height:175px"><canvas id="ch-role"></canvas></div>
       </div>
       <div class="dash-card">
-        <div class="dash-card-hdr"><div class="dash-card-title">Evals by Modality</div></div>
+        <div class="dash-card-hdr"><div class="dash-card-title">Evals by Delivery Method</div></div>
         <div class="chart-wrap" style="height:175px"><canvas id="ch-modality"></canvas></div>
       </div>
       <div class="dash-card">
@@ -5683,7 +5682,7 @@ async function tdDetailSave(){
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
   if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
-  if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Modality is required for ILT, Self-led, and External sessions.');
+  if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Delivery Method is required for ILT, Self-led, and External sessions.');
   if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
@@ -6698,7 +6697,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${grp==='owner'?'':_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
-      ${_tdShowsModality(s.deliveryType)?_tddInfoBlock('target','#0891b2','Modality',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):''}
+      ${_tdShowsModality(s.deliveryType)?_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):''}
       ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
       ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
@@ -7209,10 +7208,10 @@ function _tddSessionInfoEditContent(s,ownerType){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`,'tdd-batch-wrap')}
-      ${_tddInfoBlockEdit('target','#0891b2','Modality',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap')}
+      ${_tddInfoBlockEdit('target','#0891b2','Delivery Method',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap')}
       ${_tddInfoBlockEdit('target','#64748b','Format',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
         <option value="ILT" ${s.deliveryType==='ILT'?'selected':''}>ILT</option>
-        <option value="VILT" ${s.deliveryType==='VILT'?'selected':''}>VILT</option>
+        ${s.deliveryType==='VILT'?`<option value="VILT" selected>VILT</option>`:''}
         <option value="Self-led" ${s.deliveryType==='Self-led'?'selected':''}>Self-led</option>
         <option value="External" ${s.deliveryType==='External'?'selected':''}>External</option>
       </select>`)}
@@ -7337,7 +7336,7 @@ const AuditLog={
   }
 };
 function _selModuleLabel(k){
-  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Modality',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable'};
+  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable'};
   return map[k]||'Selection List';
 }
 
@@ -8190,7 +8189,7 @@ function _populateEvalDropdowns(evaluatorId, currentTrainerId){
     return `<option value="${u.id}">${label}</option>`;
   }).join('');
   document.getElementById('ef-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).sort((a,b)=>(_isOtherVenue(a.id)?1:0)-(_isOtherVenue(b.id)?1:0)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
-  document.getElementById('ef-modality').innerHTML='<option value="">— Select Modality —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
+  document.getElementById('ef-modality').innerHTML='<option value="">— Select Delivery Method —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
 }
 
 function buildAccordion(){
@@ -8372,7 +8371,7 @@ function _validateEval(forFinalize){
   // modalityId to inherit in the first place (real gap in the newer "Add Training" flow --
   // see _tdModalityNoteSet). Every other case (session had a modalityId, or the eval isn't
   // session-linked at all) still requires Modality exactly as before.
-  if(!d.modalityId && !_efModalityNotInherited) errs.push('Modality is required.');
+  if(!d.modalityId && !_efModalityNotInherited) errs.push('Delivery Method is required.');
   if(!_rteGetText('ef-observations')) errs.push('General Observations / Notes is required.');
   if(forFinalize){
     const n=Object.keys(d.ratings).length;
@@ -8472,7 +8471,7 @@ function _buildEvalHTML(ev){
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Batch No.</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(ev.batchNo||'—')}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Session Date</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.formatDate(ev.trainingDate)}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Venue</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(venue)}</div></div>
-    <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Modality</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(modality)}</div></div>
+    <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Delivery Method</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(modality)}</div></div>
   </div>
   <div style="display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,#eff6ff,#f0f9ff);border:1.5px solid #bfdbfe;border-radius:8px;padding:14px 20px;margin-bottom:18px">
     <div style="text-align:center;min-width:60px"><div style="font-size:38px;font-weight:800;color:${scColor};line-height:1">${sc?sc.toFixed(1):'—'}</div><div style="font-size:10.5px;color:#94a3b8;margin-top:2px">/ 5.0</div></div>
@@ -9599,7 +9598,7 @@ function exportCQARptCSV(){
 function exportRptCSV(){
   const rows=_rptApplyFilters(_rptScopeEvals());
   if(!rows.length){ toast('No completed evaluations to export.','info'); return; }
-  const headers=['Eval ID','Trainer','Evaluator','Program','Batch','Date','Venue','Modality','Overall Score',...EVAL_CRITERIA.map(c=>c.name),...EVAL_CRITERIA.map(c=>c.name+' Remarks'),'Observations','Sent for Acknowledgement','Acknowledged At'];
+  const headers=['Eval ID','Trainer','Evaluator','Program','Batch','Date','Venue','Delivery Method','Overall Score',...EVAL_CRITERIA.map(c=>c.name),...EVAL_CRITERIA.map(c=>c.name+' Remarks'),'Observations','Sent for Acknowledgement','Acknowledged At'];
   const lines=[headers.join(',')];
   rows.forEach(e=>{
     const trainer=DB.byId(e.trainerId), evaluator=DB.byId(e.evaluatorId);
