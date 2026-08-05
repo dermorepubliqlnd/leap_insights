@@ -2356,7 +2356,11 @@ const _FIELD_MAPS = {
     durationHours:'duration_hours', category:'category',
     // External Facilitator/Provider split (2026-07-31): free-text fields used only when
     // deliveryType==='External' (replaces sharing the Owner field with Self-led).
-    facilitatorName:'facilitator_name', trainingProvider:'training_provider'
+    facilitatorName:'facilitator_name', trainingProvider:'training_provider',
+    // Guest Trainer fallback (2026-08-05, Phase38 item 1): free-text trainer name for SMEs not in
+    // the system roster who should never get login access. Mutually exclusive with trainerId --
+    // a session has EITHER a real trainerId OR a guestTrainerName, never both.
+    guestTrainerName:'guest_trainer_name'
   },
   session_participants:{
     id:'id', sessionId:'session_id', profileId:'profile_id', externalName:'external_name',
@@ -2366,7 +2370,12 @@ const _FIELD_MAPS = {
     remarks:'remarks',
     // Manual-entry participant fields (2026-07-30) -- Add Participant / CSV are fully manual (no
     // system-user picker); role & supervisor are free text tied to the participant, not a profile lookup.
-    externalRole:'external_role', externalSupervisor:'external_supervisor'
+    // externalSupervisor kept for historical data (2026-08-05, Phase38 item 4) -- no longer
+    // collected/displayed in any UI surface going forward, column/data NOT dropped.
+    externalRole:'external_role', externalSupervisor:'external_supervisor',
+    // Employee ID (2026-08-05, Phase38 item 4): free-text, no FK/lookup, consistent with this
+    // project's fully-manual participant-entry design.
+    employeeId:'employee_id'
   },
   training_reports:{
     id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
@@ -4959,8 +4968,14 @@ function _tdPersonName(s){
   if(grp==='external'){
     return s.facilitatorName||'—';
   }
-  const t=s.trainerId?DB.byId(s.trainerId):null;
-  return t?`${t.firstName} ${t.lastName}`:'—';
+  if(s.trainerId){
+    const t=DB.byId(s.trainerId);
+    return t?`${t.firstName} ${t.lastName}`:'—';
+  }
+  // Guest Trainer fallback (Phase38 item 1): SMEs not in the system roster have no trainerId,
+  // just a free-text name -- shown with a "(Guest)" suffix everywhere this fn is used (List view,
+  // calendar chips/titles, Overview tab, Export Summary Image).
+  return s.guestTrainerName?`${s.guestTrainerName} (Guest)`:'—';
 }
 
 function _tdStatus(s){
@@ -5650,13 +5665,18 @@ async function tdDetailSave(){
   const expectedRaw=document.getElementById('tdd-expected').value.trim();
   const passingRaw=document.getElementById('tdd-passing').value.trim();
   const durationRaw=document.getElementById('tdd-duration').value.trim();
+  // Guest Trainer fallback (Phase38 item 1): mutually exclusive with the system-user trainerId --
+  // when the "guest trainer" checkbox is checked, trainerId is cleared and guestTrainerName is
+  // saved instead (and vice versa).
+  const isGuestTrainer=grp==='trainer'&&!!document.getElementById('tdd-guest-toggle')?.checked;
   const d={
     deliveryType,
     trainingProgram:document.getElementById('tdd-program').value.trim(),
     batchNo:document.getElementById('tdd-batch').value.trim(),
     trainingDate:document.getElementById('tdd-date').value,
     endDate:ownerType?(document.getElementById('tdd-enddate').value||null):null,
-    trainerId:grp==='trainer'?(document.getElementById('tdd-trainer').value||null):null,
+    trainerId:(grp==='trainer'&&!isGuestTrainer)?(document.getElementById('tdd-trainer').value||null):null,
+    guestTrainerName:(grp==='trainer'&&isGuestTrainer)?(document.getElementById('tdd-guest-name').value.trim()||null):null,
     ownerId:grp==='owner'?(document.getElementById('tdd-owner').value||null):null,
     facilitatorName:grp==='external'?document.getElementById('tdd-facilitator').value.trim():null,
     trainingProvider:grp==='external'?document.getElementById('tdd-provider').value.trim():null,
@@ -5678,11 +5698,26 @@ async function tdDetailSave(){
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
   if(grp!=='owner' && !d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
-  if(grp==='trainer' && !d.trainerId) errs.push('Please select a Trainer.');
+  // Guest Trainer fallback (Phase38 item 1): either a real system-user Trainer OR a Guest
+  // Trainer Name is required for ILT/VILT sessions, not neither (replaces the old unconditional
+  // "!d.trainerId" check).
+  if(grp==='trainer' && !d.trainerId && !d.guestTrainerName) errs.push('Please select a Trainer, or enter a Guest Trainer Name.');
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
   if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
   if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Delivery Method is required for ILT, Self-led, and External sessions.');
+  // Phase38 item 2 (Sandra's explicit request): make ALL Session Information fields required for
+  // ILT sessions except Co-Facilitator. Interpreting "all details" as the structured fields below
+  // -- Description and Assessment Type/Passing Score remain optional (freeform notes / an
+  // assessment nobody has necessarily configured). Flagged in report for Sandra to correct if she
+  // meant something broader. VILT/Self-led/External requirements are unchanged.
+  if(deliveryType==='ILT'){
+    if(!d.venueId) errs.push('Venue is required for ILT sessions.');
+    if(!d.audience) errs.push('Audience is required for ILT sessions.');
+    if(d.expectedParticipants==null) errs.push('Maximum Participants is required for ILT sessions.');
+    if(d.durationHours==null) errs.push('Duration (in Hours) is required for ILT sessions.');
+    if(!d.category) errs.push('Category is required for ILT sessions.');
+  }
   if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
@@ -5768,14 +5803,16 @@ function _tdaEnsureLoaded(sessionId){
 function _tdaPersonInfo(r){
   if(r.profileId){
     const u=DB.byId(r.profileId);
-    if(!u) return {name:'(deactivated / deleted user)', email:'', role:'—', supervisor:'—', initials:'?', avaStyle:'', inactive:true};
+    if(!u) return {name:'(deactivated / deleted user)', email:'', role:'—', supervisor:'—', employeeId:'—', initials:'?', avaStyle:'', inactive:true};
     const name=`${u.firstName} ${u.lastName}`;
     const role=Sel.nameOf(Store.POS,u.positionId)||'—';
     const sv=u.supervisorId?DB.byId(u.supervisorId):null;
     const supervisor=sv?`${sv.firstName} ${sv.lastName}`:'—';
-    return {name, email:u.email, role, supervisor, initials:Utils.initials(name), avaStyle:Utils.avatarBg(u.isAdmin), inactive:!u.isActive};
+    return {name, email:u.email, role, supervisor, employeeId:u.employeeId||'—', initials:Utils.initials(name), avaStyle:Utils.avatarBg(u.isAdmin), inactive:!u.isActive};
   }
-  return {name:r.externalName||'Unnamed Participant', email:'', role:r.externalRole||'—', supervisor:r.externalSupervisor||'—', initials:Utils.initials(r.externalName||'?'), avaStyle:Utils.avatarBg(false), inactive:false};
+  // Phase38 item 4: Employee ID is free-text on the participant row itself (employeeId), same
+  // manual-entry design as externalRole/externalSupervisor.
+  return {name:r.externalName||'Unnamed Participant', email:'', role:r.externalRole||'—', supervisor:r.externalSupervisor||'—', employeeId:r.employeeId||'—', initials:Utils.initials(r.externalName||'?'), avaStyle:Utils.avatarBg(false), inactive:false};
 }
 
 function _tdaGain(r){
@@ -5946,7 +5983,9 @@ function _tdaRenderTab(s){
       </div>
     </div>`;
 
-  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Participant','Role','Immediate Supervisor','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
+  // Phase38 item 4: Employee ID is now the very first column; Immediate Supervisor removed
+  // entirely (historical external_supervisor data/column untouched, just not shown/edited here).
+  const theadCols=['Employee ID','<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Participant','Role','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
   const thead=`<tr>${theadCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
 
   const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType):'';
@@ -5989,11 +6028,11 @@ function _tdaRowHtml(r,i,locked,assessmentType){
   const preDis=(dis||!preApplicable)?'disabled':'';
   const postDis=(dis||!postApplicable)?'disabled':'';
   return `<tr data-row-id="${r.id}">
+    <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.employeeId)}</span>`:`<input type="text" class="form-control" ${dis} style="width:90px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.employeeId||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','employeeId',this.value)">`}</td>
     <td><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
     <td><div class="tbl-user"><div class="tbl-ava" style="${p.avaStyle}">${p.initials}</div><div><div class="td-name">${Utils.esc(p.name)}${p.inactive?' <span class="txt-muted" style="font-size:11px">(inactive)</span>':''}</div>${p.email&&p.email!=='External'?`<div style="font-size:11px;color:var(--text3)">${Utils.esc(p.email)}</div>`:''}</div></div></td>
     <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.role)}</span>`:`<input type="text" class="form-control" ${dis} style="width:110px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.externalRole||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','externalRole',this.value)">`}</td>
-    <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.supervisor)}</span>`:`<input type="text" class="form-control" ${dis} style="width:130px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.externalSupervisor||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','externalSupervisor',this.value)">`}</td>
     <td><select class="form-control" ${dis} style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="_tdaSetField('${r.id}','attendanceStatus',this.value)">
       ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${r.attendanceStatus===k?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
     </select></td>
@@ -6008,11 +6047,11 @@ function _tdaRowHtml(r,i,locked,assessmentType){
 function _tdaAddPickerRowHtml(assessmentType){
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
   return `<tr style="background:#f8fafc">
+    <td><input type="text" id="tda-add-employeeid" class="form-control" style="font-size:12.5px;min-width:90px" placeholder="Employee ID"></td>
     <td></td>
     <td style="color:var(--text3)">•</td>
     <td><input type="text" id="tda-add-name" class="form-control" style="font-size:12.5px;min-width:140px" placeholder="Full name"></td>
     <td><input type="text" id="tda-add-role" class="form-control" style="font-size:12.5px;min-width:110px" placeholder="Role"></td>
-    <td><input type="text" id="tda-add-supervisor" class="form-control" style="font-size:12.5px;min-width:130px" placeholder="Supervisor"></td>
     <td><select id="tda-add-status" class="form-control" style="font-size:12.5px">
       ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${k==='pending'?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
     </select></td>
@@ -6032,13 +6071,13 @@ function _tdaToggleAddPicker(){
 function _tdaConfirmAdd(){
   const name=(document.getElementById('tda-add-name')?.value||'').trim();
   if(!name){ toast("Please enter the participant's name.",'error'); return; }
+  const employeeId=(document.getElementById('tda-add-employeeid')?.value||'').trim();
   const role=(document.getElementById('tda-add-role')?.value||'').trim();
-  const supervisor=(document.getElementById('tda-add-supervisor')?.value||'').trim();
   const status=document.getElementById('tda-add-status')?.value||'pending';
   const preRaw=document.getElementById('tda-add-pre')?.value;
   const postRaw=document.getElementById('tda-add-post')?.value;
   const remarks=(document.getElementById('tda-add-remarks')?.value||'').trim();
-  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, externalRole:role, externalSupervisor:supervisor,
+  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, externalRole:role,
     attended:false, attendanceStatus:status, preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
     remarks, notes:'', _isNew:true});
   _tdPartAddPickerOpen=false;
@@ -6108,7 +6147,9 @@ function _tdaParseCSV(text){
 }
 
 function _tdaDownloadCSVTemplate(){
-  const csv = 'Name,Role,Supervisor\nJuan Dela Cruz,Sales Associate,Maria Santos\n';
+  // Phase38 item 4: Employee ID replaces Supervisor as a template column (first position,
+  // matching the live roster table order).
+  const csv = 'Employee ID,Name,Role\nEMP-1234,Juan Dela Cruz,Sales Associate\n';
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -6127,7 +6168,8 @@ function _tdaHandleCSVFile(file){
     const {header,rows}=_tdaParseCSV(String(reader.result||''));
     const nameIdx=header.findIndex(h=>h.includes('name'));
     const roleIdx=header.findIndex(h=>h.includes('role'));
-    const supIdx=header.findIndex(h=>h.includes('supervisor'));
+    // Phase38 item 4: Employee ID replaces Supervisor in the expected CSV columns.
+    const empIdIdx=header.findIndex(h=>h.includes('employee'));
     if(nameIdx===-1){
       toast('CSV must have a Name column.','error');
       return;
@@ -6137,8 +6179,8 @@ function _tdaHandleCSVFile(file){
       const name=(cols[nameIdx]||'').trim();
       if(!name){ skippedBlank++; return; }
       const role=roleIdx>=0?(cols[roleIdx]||'').trim():'';
-      const supervisor=supIdx>=0?(cols[supIdx]||'').trim():'';
-      _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, externalRole:role, externalSupervisor:supervisor,
+      const employeeId=empIdIdx>=0?(cols[empIdIdx]||'').trim():'';
+      _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, externalRole:role,
         attended:false, attendanceStatus:'pending', preTestScore:null, postTestScore:null, remarks:'', notes:'', _isNew:true});
       added++;
     });
@@ -6152,7 +6194,7 @@ function _tdaHandleCSVFile(file){
 async function _tdaPersistRows(){
   for(const r of _tdPartRows){
     const patch={sessionId:r.sessionId, profileId:r.profileId||null, externalName:r.externalName||null,
-      externalRole:r.externalRole||null, externalSupervisor:r.externalSupervisor||null,
+      externalRole:r.externalRole||null, externalSupervisor:r.externalSupervisor||null, employeeId:r.employeeId||null,
       attendanceStatus:r.attendanceStatus||'pending', preTestScore:r.preTestScore??null, postTestScore:r.postTestScore??null,
       remarks:r.remarks||'', attended:r.attendanceStatus==='present'||r.attendanceStatus==='late', notes:r.notes||''};
     if(r._isNew){
@@ -6175,17 +6217,28 @@ async function _tdaSaveDraft(){
 }
 
 async function _tdaMarkCompleted(){
+  // Phase38 item 3: block Tag Complete if there are zero participants in the roster -- you can't
+  // complete a session with no attendance data. Sandra specifically mentioned ILT, but this check
+  // is applied to ALL delivery types since the underlying logic (no roster = nothing to complete)
+  // applies equally to VILT/Self-led/External; flagged in report in case she wants it narrowed to ILT only.
+  if(_tdPartRows.length===0){
+    toast('Cannot tag session complete — at least one participant is required.','error');
+    return;
+  }
   const pendingCount=_tdPartRows.filter(r=>r.attendanceStatus==='pending').length;
   if(pendingCount>0){
     toast(`Cannot tag session complete — ${pendingCount} participant(s) still have Pending attendance status.`,'error');
     return;
   }
-  const missingRoleOrSup=_tdPartRows.filter(r=>{
+  // Phase38 item 4: Immediate Supervisor field removed from the UI going forward -- only Role
+  // remains a required field here (the old "missing Role or Immediate Supervisor" check from
+  // phase32 is narrowed to Role only; externalSupervisor data/column is untouched historically).
+  const missingRole=_tdPartRows.filter(r=>{
     const p=_tdaPersonInfo(r);
-    return !p.role||p.role==='—'||!p.supervisor||p.supervisor==='—';
+    return !p.role||p.role==='—';
   }).length;
-  if(missingRoleOrSup>0){
-    toast(`Cannot tag session complete — ${missingRoleOrSup} participant(s) missing Role or Immediate Supervisor.`,'error');
+  if(missingRole>0){
+    toast(`Cannot tag session complete — ${missingRole} participant(s) missing Role.`,'error');
     return;
   }
   const _tdaSess=TrSessionDB.byId(_tdDetailId);
@@ -7091,6 +7144,7 @@ function _tdaAttendanceListExportHtml(s){
     const preTxt=preApplicable?(r.preTestScore??'—'):'—';
     const postTxt=postApplicable?(r.postTestScore??'—'):'—';
     return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.employeeId)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.name)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.role)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0"><span style="background:${st.bg};color:${st.fg};font-weight:600;border-radius:5px;padding:2px 8px;font-size:12px">${st.label}</span></td>
@@ -7099,8 +7153,9 @@ function _tdaAttendanceListExportHtml(s){
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${gainTxt}</td>
     </tr>`;
   }).join('');
+  // Phase38 item 4: Employee ID added as the first column (matching the live roster table order).
   return `<table style="width:100%;border-collapse:collapse;font-size:13px">
-    <tr>${th('Participant')}${th('Role')}${th('Attendance Status')}${th('Pre-Test')}${th('Post-Test')}${th('Gain')}</tr>
+    <tr>${th('Employee ID')}${th('Participant')}${th('Role')}${th('Attendance Status')}${th('Pre-Test')}${th('Post-Test')}${th('Gain')}</tr>
     ${trs}
   </table>`;
 }
@@ -7193,7 +7248,11 @@ function _tddSessionInfoEditContent(s,ownerType){
     </div>
     <div style="${gridStyle}">
       ${_tddInfoBlockEdit('filetext','var(--sky)','Program',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
-      ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control" ${smallInput}><option value="">— Select Trainer —</option></select>`,'tdd-trainer-wrap')}
+      ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control" ${smallInput}><option value="">— Select Trainer —</option></select>
+        <input type="text" id="tdd-guest-name" class="form-control hidden" ${smallInput} style="margin-top:6px" placeholder="Guest Trainer Name" value="${Utils.esc(s.guestTrainerName||'')}">
+        <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:var(--text3);font-weight:400;cursor:pointer">
+          <input type="checkbox" id="tdd-guest-toggle" onchange="_tddToggleGuestTrainer()"> This session is led by a guest trainer not in our system
+        </label>`,'tdd-trainer-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`,'tdd-owner-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Facilitator Name',`<input type="text" id="tdd-facilitator" class="form-control" ${smallInput} value="${Utils.esc(s.facilitatorName||'')}">`,'tdd-facilitator-wrap')}
       ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput}><option value="">— None —</option></select>`,'tdd-cofacilitator-wrap')}
@@ -7255,6 +7314,14 @@ function _tddPopulateEditDropdowns(s,ownerType){
   if(trainerSel){
     trainerSel.innerHTML='<option value="">— Select Trainer —</option>'+eligibleTrainers.map(u=>`<option value="${u.id}" ${u.id===s.trainerId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
   }
+  // Guest Trainer fallback (Phase38 item 1): reflect existing state on entry into edit mode
+  // without clearing whichever field is already populated (unlike _tddToggleGuestTrainer, which
+  // is the user-driven onchange handler and DOES clear the other field).
+  const guestToggle=document.getElementById('tdd-guest-toggle');
+  if(guestToggle){
+    guestToggle.checked=!s.trainerId&&!!s.guestTrainerName;
+    _tddSyncGuestTrainerVisibility(guestToggle.checked);
+  }
   const cofacSel=document.getElementById('tdd-cofacilitator');
   if(cofacSel){
     const eligibleCofac=DB.all().filter(u=>u.isActive||u.id===s.coFacilitatorId);
@@ -7271,6 +7338,25 @@ function _tddPopulateEditDropdowns(s,ownerType){
   if(modIdSel){
     modIdSel.innerHTML='<option value="">— Select —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}" ${m.id===s.modalityId?'selected':''}>${Utils.esc(m.name)}</option>`).join('');
   }
+}
+
+// Guest Trainer fallback (Phase38 item 1): mutually exclusive with the system-user Trainer
+// dropdown -- toggling shows/hides the two fields and clears whichever one is being switched
+// away from. _tddSyncGuestTrainerVisibility only toggles CSS classes (used on edit-mode entry,
+// where we must NOT clear an already-populated field); _tddToggleGuestTrainer is the user-driven
+// onchange handler and also clears the field being hidden.
+function _tddSyncGuestTrainerVisibility(isGuest){
+  const sel=document.getElementById('tdd-trainer');
+  const nameInp=document.getElementById('tdd-guest-name');
+  if(sel) sel.classList.toggle('hidden',isGuest);
+  if(nameInp) nameInp.classList.toggle('hidden',!isGuest);
+}
+function _tddToggleGuestTrainer(){
+  const guest=document.getElementById('tdd-guest-toggle').checked;
+  _tddSyncGuestTrainerVisibility(guest);
+  const sel=document.getElementById('tdd-trainer');
+  const nameInp=document.getElementById('tdd-guest-name');
+  if(guest){ if(sel) sel.value=''; } else { if(nameInp) nameInp.value=''; }
 }
 
 function _tddToggleTypeFields(){
