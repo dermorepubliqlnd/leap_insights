@@ -6230,6 +6230,8 @@ function _tdrNpsLabel(v){
 
 
 
+const AGENDA_STATUS={covered:{bg:'var(--green-lt)',fg:'var(--green)',label:'Covered'},partial:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Partially Covered'},not_covered:{bg:'var(--red-lt)',fg:'var(--red)',label:'Not Covered'}};
+
 function _tdrRenderTab(s){
   _tdrEnsureLoaded(s.id);
   const c=_tdrReport.content;
@@ -6304,7 +6306,6 @@ function _tdrRenderTab(s){
       ${feedbackBoxes}
     </div>`;
 
-  const AGENDA_STATUS={covered:{bg:'var(--green-lt)',fg:'var(--green)',label:'Covered'},partial:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Partially Covered'},not_covered:{bg:'var(--red-lt)',fg:'var(--red)',label:'Not Covered'}};
   const agendaRows=c.agendaDelivery.map((a,i)=>{
     const st=AGENDA_STATUS[a.status]||AGENDA_STATUS.covered;
     return `<tr>
@@ -6683,7 +6684,7 @@ function _tdOverviewAttendanceAssessmentBlock(s){
 // of _tdOverviewReportBlocks (2026-07-31) so the Export Summary Image feature can reuse the
 // EXACT same L1 metrics + Summary rendering without dragging along the Overview-tab-only
 // "Go to Training Report tab" link or duplicating the markup.
-function _tdrL1InnerHtml(s,report){
+function _tdrL1InnerHtml(s,report,hideFeedback){
   const c=report.content||{};
   const totalParticipants=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length;
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
@@ -6707,7 +6708,7 @@ function _tdrL1InnerHtml(s,report){
     ${feedbackBox('check','var(--green)','What learners found most valuable',c.learnersValued)}
     ${feedbackBox('alert-triangle','var(--amber)','What can be improved',c.learnersImprove)}
   </div>`;
-  return `${l1Metrics}${feedbackBoxes}`;
+  return hideFeedback?l1Metrics:`${l1Metrics}${feedbackBoxes}`;
 }
 function _tdrSummaryInnerHtml(report){
   const c=report.content||{};
@@ -6720,6 +6721,22 @@ function _tdrSummaryInnerHtml(report){
     ${summaryBox('Recommendations','bulb','var(--sky-lt)','var(--sky)',c.recommendations)}
     ${summaryBox('Pending Actions','flag','#f5f3ff','#7c3aed',c.pendingActions)}
     ${summaryBox('Additional Remarks','edit3','#f1f5f9','#64748b',c.additionalRemarks)}`;
+}
+function _tdrAgendaInnerHtml(report){
+  const rows=(report&&report.content&&report.content.agendaDelivery)||[];
+  if(!rows.length) return '<div style="font-size:12.5px;color:var(--text3)">No agenda items recorded.</div>';
+  const trs=rows.map(a=>{
+    const st=AGENDA_STATUS[a.status]||AGENDA_STATUS.covered;
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(a.item||'—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(a.facilitator||'—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0"><span style="background:${st.bg};color:${st.fg};font-weight:600;border-radius:5px;padding:2px 8px;font-size:12px">${st.label}</span></td>
+    </tr>`;
+  }).join('');
+  return `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">Topics</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">Facilitator</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">Delivery Status</th></tr>
+    ${trs}
+  </table>`;
 }
 function _tdOverviewReportBlocks(s){
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
@@ -6966,7 +6983,7 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
 }
 
 // Export Summary Image (2026-07-31, revised phase31): renders a hidden, off-DOM 4-section
-// stacked container -- 1. Session Details, 2. Attendance & Performance, 3. Summary, 4. L1
+// stacked container -- 1. Session Details, 2. Attendance & Performance, 3. Agenda, 4. Summary, 5. L1
 // Evaluation Survey (Learner Reaction) -- reusing the SAME render helpers as their respective
 // tabs (_tdaKpiColumnsHtml, _tdrSummaryInnerHtml, _tdrL1InnerHtml), captures it via html2canvas
 // at a reduced scale, and downloads a PNG. No email compose window is opened -- Sandra
@@ -6982,7 +6999,12 @@ async function _tdExportSummaryImage(sessionId){
   const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'—';
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const summaryHtml=report?_tdrSummaryInnerHtml(report):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
-  const l1Html=report?_tdrL1InnerHtml(s,report):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
+  // hideFeedback=true here: the two free-text learner-feedback callouts (What learners found
+  // most valuable / What can be improved) are omitted from the EXPORTED IMAGE only -- the 8
+  // metric cards are kept. The live Training Report tab and Overview tab are unaffected since
+  // they call _tdrL1InnerHtml without this flag.
+  const l1Html=report?_tdrL1InnerHtml(s,report,true):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
+  const agendaHtml=_tdrAgendaInnerHtml(report);
   const attendanceHtml=_tdaKpiColumnsHtml(s);
 
   const sectionTitle=(t)=>`<div style="font-weight:700;font-size:13px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">${Utils.esc(t)}</div>`;
@@ -7008,8 +7030,9 @@ async function _tdExportSummaryImage(sessionId){
   holder.innerHTML=`
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('1. Session Details')}${sessionDetailsHtml}</div>
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('2. Attendance & Performance')}${attendanceHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('3. Summary')}${summaryHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('4. L1 Evaluation Survey')}${l1Html}</div>`;
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('3. Agenda')}${agendaHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('4. Summary')}${summaryHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('5. L1 Evaluation Survey')}${l1Html}</div>`;
   document.body.appendChild(holder);
   try{
     const canvas=await html2canvas(holder,{backgroundColor:'#ffffff',scale:1.5,width:1200,windowWidth:1200});
