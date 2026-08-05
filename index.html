@@ -4928,6 +4928,11 @@ function _tdFieldGroup(deliveryType){
 
 function _tdVenueTypeFor(deliveryType){ return deliveryType==='Self-led'?'platform':'physical'; }
 
+// Modality (In-Person/Virtual, from the `modalities` lookup table via modalityId) applies to
+// ILT, Self-led, and External sessions -- VILT is excluded because it is inherently virtual by
+// definition, so asking would be redundant (2026-08-05, supersedes phase35's ILT/VILT-only gate).
+function _tdShowsModality(deliveryType){ return deliveryType==='ILT'||deliveryType==='Self-led'||deliveryType==='External'; }
+
 // Populates a Venue/Platform <select id="{prefix}-venue"> filtered by delivery type -- ILT/VILT/
 // External see physical venues, Self-led sees platform entries (relabelled "Platform" in the UI).
 // The "Other (please specify)" sentinel venue is always included regardless of its own type so
@@ -5666,7 +5671,7 @@ async function tdDetailSave(){
     recordingLink:ownerType?'':document.getElementById('tdd-recording').value.trim(),
     assessmentType:document.getElementById('tdd-assessment').value,
     passingScore:passingRaw?parseInt(passingRaw,10):null,
-    modalityId:grp==='trainer'?(document.getElementById('tdd-modalityid').value||null):null,
+    modalityId:_tdShowsModality(deliveryType)?(document.getElementById('tdd-modalityid').value||null):null,
     status:document.getElementById('tdd-status').value
   };
   const errs=[];
@@ -5678,7 +5683,7 @@ async function tdDetailSave(){
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
   if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
-  if((deliveryType==='ILT'||deliveryType==='VILT') && !d.modalityId) errs.push('Modality is required for ILT/VILT sessions.');
+  if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Modality is required for ILT, Self-led, and External sessions.');
   if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
@@ -5921,10 +5926,15 @@ function _tdaRenderTab(s){
     </div>`:'';
 
   const selCount=_tdPartSelected.size;
+  const _tdaReport=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const _tdaCanReopen=locked && !(_tdaReport&&_tdaReport.status==='submitted');
   const toolbar=locked?`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       <div style="font-weight:700;font-size:14.5px">Participant Roster</div>
-      <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">🔒 Locked — session tagged Complete</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">🔒 Locked — session tagged Complete</div>
+        ${_tdaCanReopen?`<button class="btn btn-sm btn-secondary" onclick="_tdaReopenAttendance()">Reopen Attendance &amp; Performance</button>`:''}
+      </div>
     </div>`:`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       <div style="font-weight:700;font-size:14.5px">Participant Roster</div>
@@ -6179,12 +6189,42 @@ async function _tdaMarkCompleted(){
     toast(`Cannot tag session complete — ${missingRoleOrSup} participant(s) missing Role or Immediate Supervisor.`,'error');
     return;
   }
+  const _tdaSess=TrSessionDB.byId(_tdDetailId);
+  const _tdaPreApp=_tdaPreApplicable(_tdaSess?.assessmentType), _tdaPostApp=_tdaPostApplicable(_tdaSess?.assessmentType);
+  const missingScores=_tdPartRows.filter(r=>(_tdaPreApp&&r.preTestScore==null)||(_tdaPostApp&&r.postTestScore==null)).length;
+  if(missingScores>0){
+    toast(`Cannot tag session complete — ${missingScores} participant(s) missing a required Pre-Test/Post-Test score.`,'error');
+    return;
+  }
   confirm$('Tag Session Complete','This will lock the roster and tag this training session as Complete. Continue?','Tag Complete',async()=>{
     try{
       await _tdaPersistRows();
       await TrSessionDB.update(_tdDetailId,{status:'completed'});
       renderTrainingDetail();
       toast('Session tagged Complete.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+
+// Reopen Attendance & Performance (2026-08-05): unlike the Training Report's own reopen
+// workflow (one-up supervisor approval required), this is a direct, no-approval action --
+// available right after a session is tagged Complete, up until a Training Report has actually
+// been SUBMITTED for it (once submitted, this option disappears -- see the _tdaCanReopen check
+// in _tdaRenderTab's toolbar). Logged via AuditLog so there's a record of who reopened it and
+// when; the user must then re-run _tdaMarkCompleted()'s full validation to re-lock the session.
+function _tdaReopenAttendance(){
+  const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
+  const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  if(report&&report.status==='submitted'){
+    toast('A Training Report has already been submitted for this session — Attendance & Performance can no longer be reopened.','error');
+    return;
+  }
+  confirm$('Reopen Attendance & Performance','This will unlock the participant roster for editing. No approval is required, but this action will be logged. Continue?','Reopen',async()=>{
+    try{
+      await TrSessionDB.update(_tdDetailId,{status:'scheduled'});
+      await AuditLog.record('attendance_reopened','Training Session',_tdDetailId,`Attendance & Performance reopened by ${Auth.user.firstName} ${Auth.user.lastName} on ${new Date().toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}.`);
+      renderTrainingDetail();
+      toast('Attendance & Performance reopened — the roster is now editable.','success');
     }catch(e){ /* error already surfaced */ }
   });
 }
@@ -6364,7 +6404,7 @@ function _tdrRenderTab(s){
 
   const canExportSummaryReport=s.status==='completed'&&locked;
   const exportBarReport=canExportSummaryReport?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-      <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary Image</button>
+      <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary</button>
     </div>`:'';
   return `${exportBarReport}${toolbar}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}`;
 }
@@ -6415,6 +6455,11 @@ function _tdrValidateForSubmit(){
 }
 
 function _tdrSubmitReport(){
+  const _tdrSess=TrSessionDB.byId(_tdrReport.sessionId);
+  if(!_tdrSess||_tdrSess.status!=='completed'){
+    toast('Attendance & Performance must be tagged Complete before the Training Report can be submitted.','error');
+    return;
+  }
   const missing=_tdrValidateForSubmit();
   if(missing.length){
     toast(`Please complete the following before submitting: ${missing.join(', ')}.`,'error');
@@ -6495,7 +6540,7 @@ function _tdrDenyReopen(){
   });
 }
 /* Status banner only -- Request/Approve/Deny Reopen buttons live in the Detail page's
-   persistent header now (see _tdHeaderReopenBtns), visible regardless of active tab. */
+   persistent header now (see _tdHeaderActionsMenu), visible regardless of active tab. */
 function _tdrReopenBlock(){
   const rep=_tdrReport;
   const status=rep.reopenStatus;
@@ -6519,25 +6564,43 @@ function _tdrReopenBlock(){
 // (facilitatorName is free text) so only an admin can act on those reports.
 function _tdSessionOwnerId(s){ return s.ownerId||s.trainerId||null; }
 
-// Header-level Request/Approve/Deny Reopen buttons -- rendered in the Detail page's
-// persistent header (replacing the old session Delete button there), visible from any tab.
-function _tdHeaderReopenBtns(s){
+// Header-level actions -- rendered in the Detail page's persistent header (replacing the old
+// session Delete button there), visible from any tab. Once a Training Report is submitted,
+// Export Summary and Request Reopen used to render as two separate buttons here/in the Overview
+// tab; per Sandra's phase36 request they're now folded into a single "Actions" dropdown when
+// both are simultaneously available to the current viewer (reusing the existing .th-dd/.th-ddi
+// dropdown pattern from the table column-filter menus, incl. its global outside-click handler).
+// If only one of the two applies (e.g. a non-owner/non-admin viewer who can export but can't
+// request a reopen), that one option still renders as a single plain button, not a dropdown.
+function _tdHeaderActionsMenu(s){
   _tdrEnsureLoaded(s.id);
   const rep=_tdrReport;
   const me=Auth.user;
-  if(!rep||rep._isNew||rep.status!=='submitted') return '';
+  const canExport=s.status==='completed'&&rep&&!rep._isNew&&rep.status==='submitted';
+  const exportBtn=`<button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary</button>`;
+  if(!rep||rep._isNew||rep.status!=='submitted') return canExport?exportBtn:'';
   if(rep.reopenStatus==='pending'){
     const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
     const approverId=requester?requester.supervisorId:null;
     const canApprove=!!me&&(me.isAdmin||(approverId&&approverId===me.id));
-    if(!canApprove) return '';
-    return `<button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
-      <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>`;
+    const approveBtns=canApprove?`<button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
+      <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>`:'';
+    return (canExport?exportBtn:'')+approveBtns;
   }
   const ownerId=_tdSessionOwnerId(s);
   const canRequest=!!me&&(me.isAdmin||(ownerId&&ownerId===me.id));
-  if(!canRequest) return '';
-  return `<button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">Request Reopen</button>`;
+  if(canExport&&canRequest){
+    return `<div style="position:relative;display:inline-block">
+      <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();this.nextElementSibling.classList.toggle('open')">Actions ▾</button>
+      <div class="th-dd" style="left:auto;right:0">
+        <div class="th-ddi" onclick="this.closest('.th-dd').classList.remove('open');_tdExportSummaryImage('${s.id}')">📤 Export Summary</div>
+        <div class="th-ddi" onclick="this.closest('.th-dd').classList.remove('open');_tdrRequestReopen()">🔓 Request Reopen</div>
+      </div>
+    </div>`;
+  }
+  if(canExport) return exportBtn;
+  if(canRequest) return `<button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">🔓 Request Reopen</button>`;
+  return '';
 }
 
 function renderTrainingDetail(){
@@ -6579,7 +6642,7 @@ function renderTrainingDetail(){
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${summaryLine}</div>
       </div>
       <div style="display:flex;gap:8px">
-        ${_tdHeaderReopenBtns(s)}
+        ${_tdHeaderActionsMenu(s)}
       </div>
     </div>
     <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
@@ -6635,19 +6698,19 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${grp==='owner'?'':_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
-      ${_tddInfoBlock('target','#64748b','Modality',Utils.esc(modalityLabel))}
+      ${_tdShowsModality(s.deliveryType)?_tddInfoBlock('target','#0891b2','Modality',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):''}
+      ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
       ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-      ${_tddInfoBlock('users','var(--sky)','Participants (Expected)',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
     <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('users','var(--sky)','Maximum Participants',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('clipboard','var(--sky)','Assessment',_tddAssessmentDisplay(s))}
-      ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
     </div>
     <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
       ${_tddInfoBlock('users','var(--sky)','Audience',Utils.esc(s.audience||'—'))}
-      ${grp==='trainer'?_tddInfoBlock('target','#0891b2','Format',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):''}
       ${_tddInfoBlock('edit3','#64748b','Report Prepared By',preparedBy?Utils.esc(preparedBy.firstName+' '+preparedBy.lastName):'<span style="color:var(--text3);font-weight:400">— not yet —</span>')}
     </div>
     ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
@@ -6975,13 +7038,10 @@ function _tdOverviewJourneyBlockVertical(s,ownerType){
 
 function _tddOverviewView(s,ownerType,personLabel,personName){
   const {l1, summary}=_tdOverviewReportBlocks(s);
-  const _tdrRepForExport=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
-  const canExportSummary=s.status==='completed'&&_tdrRepForExport&&_tdrRepForExport.status==='submitted';
-  const exportBar=canExportSummary?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-      <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary Image</button>
-    </div>`:'';
+  // Export Summary now lives in the Detail page's persistent header (see _tdHeaderActionsMenu),
+  // combined with Request Reopen into one dropdown when both are available (2026-08-05) -- no
+  // longer a standalone button here in the Overview tab body.
   return `
-    ${exportBar}
     <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-bottom:16px">
       <div class="card" id="tdd-session-info-card" style="padding:18px 20px">
         ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
@@ -7149,16 +7209,17 @@ function _tddSessionInfoEditContent(s,ownerType){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`,'tdd-batch-wrap')}
-      ${_tddInfoBlockEdit('target','#64748b','Modality',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
+      ${_tddInfoBlockEdit('target','#0891b2','Modality',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap')}
+      ${_tddInfoBlockEdit('target','#64748b','Format',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
         <option value="ILT" ${s.deliveryType==='ILT'?'selected':''}>ILT</option>
         <option value="VILT" ${s.deliveryType==='VILT'?'selected':''}>VILT</option>
         <option value="Self-led" ${s.deliveryType==='Self-led'?'selected':''}>Self-led</option>
         <option value="External" ${s.deliveryType==='External'?'selected':''}>External</option>
       </select>`)}
       ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
-      ${_tddInfoBlockEdit('users','var(--sky)','Participants (Expected)',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('users','var(--sky)','Maximum Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
       ${_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`)}
       ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${CATEGORY_OPTIONS.map(c=>`<option value="${c}" ${s.category===c?'selected':''}>${c}</option>`).join('')}</select>`)}
       ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:90px"><div style="font-size:9.5px;color:var(--text3);margin-bottom:2px">Assessment Type</div><select id="tdd-assessment" class="form-control" ${smallInput}>
@@ -7167,15 +7228,14 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
       </select></div><div style="width:66px;flex-shrink:0"><div style="font-size:9.5px;color:var(--text3);margin-bottom:2px;white-space:nowrap">Passing %</div><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"></div></div>`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
         <option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>
         <option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>
       </select>`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('users','var(--sky)','Audience',`<input type="text" id="tdd-audience" class="form-control" ${smallInput} value="${Utils.esc(s.audience||'')}">`)}
-      ${_tddInfoBlockEdit('target','#0891b2','Format',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap')}
       ${_tddInfoBlockEdit('edit3','#64748b','Recording Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
     </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt)">
@@ -7226,7 +7286,7 @@ function _tddToggleTypeFields(){
   document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!ownerType);
   document.getElementById('tdd-recording-wrap').classList.toggle('hidden',ownerType);
   document.getElementById('tdd-batch-wrap').classList.toggle('hidden',grp==='owner');
-  document.getElementById('tdd-modalityid-wrap').classList.toggle('hidden',grp!=='trainer');
+  document.getElementById('tdd-modalityid-wrap').classList.toggle('hidden',!_tdShowsModality(dt));
   _tdPopulateVenueOptions('tdd',dt);
   _toggleVenueOtherWrap('tdd');
 }
