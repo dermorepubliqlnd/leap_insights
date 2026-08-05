@@ -866,7 +866,6 @@
               <div></div>
               <div style="display:flex;gap:8px">
                 <button class="btn btn-primary" id="new-eval-btn">+ New Evaluation</button>
-                <button class="btn btn-primary hidden" id="new-session-btn" onclick="openSessionModal()">+ Log Training Session</button>
               </div>
             </div>
 
@@ -874,7 +873,6 @@
             <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:14px 0 16px">
               <button id="eval-tab-my"       class="eval-tab active" onclick="setEvalTab('my')">👤 My Evaluations</button>
               <button id="eval-tab-team"     class="eval-tab"        onclick="setEvalTab('team')">👥 Team Evaluations</button>
-              <button id="eval-tab-sessions" class="eval-tab"        onclick="setEvalTab('sessions')">🎥 Training Sessions</button>
             </div>
 
             <div id="eval-table-block">
@@ -923,48 +921,6 @@
               </div>
             </div>
 
-            <div id="sessions-table-block" class="hidden">
-              <div class="eval-controls">
-                <select class="eval-select" id="sf-filter-status" onchange="renderSessions()">
-                  <option value="all">All Statuses</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <select class="eval-select" id="sf-filter-trainer" onchange="renderSessions()">
-                  <option value="all">All Trainers</option>
-                </select>
-                <span class="df-date-group">
-                  <select class="eval-select" id="sf-filter-date" onchange="onSessDateFilterChange()">
-                    <option value="all">All Time</option>
-                    <option value="7d">Past 7 Days</option>
-                    <option value="1m">Past Month</option>
-                    <option value="3m">Last Quarter</option>
-                    <option value="custom">Custom Range</option>
-                  </select>
-                  <span class="df-tip-icon">i<span class="df-tip-bubble">Filters by session date</span></span>
-                </span>
-                <span class="df-custom-wrap hidden" id="sf-filter-custom">
-                  <input type="date" class="eval-select" id="sf-date-from" onchange="renderSessions()">
-                  <span style="font-size:12px;color:var(--text3)">to</span>
-                  <input type="date" class="eval-select" id="sf-date-to" onchange="onSessDateToChange()">
-                </span>
-                <button class="eval-toggle-btn" id="sf-group-trainer-btn" onclick="setSessGroupMode('trainer')">⊞ Group by Trainer</button>
-                <button class="eval-toggle-btn" id="sf-group-status-btn" onclick="setSessGroupMode('status')">⊟ Group by Status</button>
-                <button class="eval-toggle-btn" id="sf-clear-filters-btn" onclick="clearSessFilters()" style="display:none;color:var(--red);border-color:var(--red-lt)">✕ Clear Filters</button>
-                <span id="sf-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
-                <button class="eval-toggle-btn" onclick="exportSessionsCSV()" title="Download visible columns as CSV">⬇ Export CSV</button>
-                <div class="col-picker" id="sess-col-picker-wrap">
-                  <button class="eval-toggle-btn" onclick="toggleSessColPicker(event)">⋮ Columns</button>
-                  <div class="col-picker-dd" id="sess-col-picker-dd">
-                    <div class="col-picker-hdr">Show / Hide Columns</div>
-                  </div>
-                </div>
-              </div>
-              <div class="card">
-                <div id="sessions-list-body"></div>
-              </div>
-            </div>
           </div>
 
           <!-- ── EVAL FORM SUB-VIEW ── -->
@@ -993,6 +949,7 @@
                       <div class="eval-readonly" id="ef-evaluator-display">—</div>
                       <input type="hidden" id="ef-evaluator-id">
                       <input type="hidden" id="ef-session-id">
+                      <input type="hidden" id="ef-evaluation-mode">
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Trainer <span style="color:#f87171">*</span></label>
@@ -1017,6 +974,7 @@
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Modality <span style="color:#f87171">*</span></label>
                       <select id="ef-modality" class="form-control"><option value="">— Select Modality —</option></select>
+                      <div id="ef-modality-note" class="hidden" style="font-size:11.5px;color:var(--text3);margin-top:4px">Inherited from session</div>
                     </div>
                     <div class="form-group hidden" id="ef-venue-other-wrap" style="margin-bottom:0">
                       <label class="form-label">Specify Venue <span style="color:#f87171">*</span></label>
@@ -2222,6 +2180,23 @@
   </div>
 </div>
 
+<!-- ══ MODAL: EVALUATION MODE (Live vs Virtual) ═════════════ -->
+<div id="modal-eval-mode" class="modal-overlay" onclick="if(event.target===this)closeModal('eval-mode')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Evaluation Type</span>
+      <button class="modal-close" onclick="closeModal('eval-mode')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">Is this evaluation being conducted live (sitting in on the session) or by reviewing a recording afterward?</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary" id="em-live-btn" style="justify-content:flex-start">🧑‍🤝‍🧑 Live (Sit-in)</button>
+        <button class="btn btn-secondary" id="em-virtual-btn" style="justify-content:flex-start">🎥 Virtual (Recording)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: CONFIRM ═════════════════ -->
 <div id="modal-confirm" class="modal-overlay" onclick="if(event.target===this)closeModal('confirm')">
   <div class="modal modal-sm">
@@ -2235,6 +2210,28 @@
     <div class="modal-foot">
       <button class="btn btn-secondary" id="mc-cancel-btn" onclick="closeModal('confirm')">Cancel</button>
       <button class="btn btn-danger" id="mc-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: REOPEN REQUEST REASON ═════════════ -->
+<div id="modal-reopen-reason" class="modal-overlay" onclick="if(event.target===this)closeModal('reopen-reason')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Request Reopen</span>
+      <button class="modal-close" onclick="closeModal('reopen-reason')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">Request to reopen this submitted report for editing? Your direct supervisor will need to approve before it unlocks.</p>
+      <div class="form-group" style="margin-top:10px">
+        <label class="form-label">Reason for reopening <span style="color:var(--red)">*</span></label>
+        <textarea id="rr-reason" class="form-control" rows="3" placeholder="Explain why this report needs to be reopened…" oninput="document.getElementById('rr-reason-err').style.display='none'"></textarea>
+        <div id="rr-reason-err" style="display:none;color:var(--red);font-size:12.5px;margin-top:4px">Please provide a reason.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('reopen-reason')">Cancel</button>
+      <button class="btn btn-danger" onclick="_tdrSubmitReopenReason()">Request Reopen</button>
     </div>
   </div>
 </div>
@@ -2391,7 +2388,7 @@ const _FIELD_MAPS = {
     // *_id columns — MUST be verified against the live Supabase schema before go-live. If the
     // column doesn't exist, evaluation create/update calls that carry a sessionId will fail
     // loudly via the existing error Toast rather than silently, but this needs a real test.
-    sessionId:'session_id'
+    sessionId:'session_id', evaluationMode:'evaluation_mode'
   },
   idqa_reviews:{
     id:'id', code:'code', status:'status', projectTitle:'project_title', delivType:'deliv_type',
@@ -5520,7 +5517,6 @@ let _tdPartAddPickerOpen=false;
 // same pattern as the Attendance & Performance tab, so keystrokes don't round-trip on every char.
 let _tdrReport=null;
 let _tdrLoadedFor=null;
-let _tdrPreviewMode=false;
 let _tdrEditMode=false;
 
 // Minimal allow-listed rich-text sanitizer for the Summary callout fields (2026-07-30) --
@@ -5922,6 +5918,7 @@ function _tdaRenderTab(s){
         <button class="btn btn-sm btn-secondary" onclick="_tdaToggleAddPicker()">+ Add Participant</button>
         <button class="btn btn-sm btn-secondary" onclick="document.getElementById('tda-csv-input').click()">⇪ Add Multiple (CSV)</button>
         <input type="file" id="tda-csv-input" accept=".csv" style="display:none" onchange="_tdaHandleCSVFile(this.files[0])">
+        <button class="btn btn-sm btn-ghost" onclick="_tdaDownloadCSVTemplate()">⇩ Download Template</button>
         <button class="btn btn-sm btn-ghost" ${selCount?'':'disabled'} style="${selCount?'color:var(--red)':''}" onclick="_tdaBulkRemove()">Remove${selCount?` (${selCount})`:''}</button>
       </div>
     </div>`;
@@ -6087,6 +6084,19 @@ function _tdaParseCSV(text){
   return {header,rows};
 }
 
+function _tdaDownloadCSVTemplate(){
+  const csv = 'Name,Role,Supervisor\nJuan Dela Cruz,Sales Associate,Maria Santos\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'participant_upload_template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function _tdaHandleCSVFile(file){
   if(!file) return;
   const reader=new FileReader();
@@ -6206,26 +6216,36 @@ function _tdrEnsureLoaded(sessionId){
     c.pendingActions=c.pendingActions||'';
     c.additionalRemarks=c.additionalRemarks||'';
     _tdrLoadedFor=sessionId;
-    _tdrPreviewMode=false;
     _tdrEditMode=false;
   }
 }
 
+// Phase33 item 11: 5-tier NPS interpretation (replaces the old 3-tier Promoter/Passive/
+// Detractor scale) -- confirmed thresholds:
+//   < 0        Critical -- more detractors than promoters
+//   0 to 25    Needs improvement
+//   26 to 50   Good
+//   51 to 75   Very good
+//   76 to 100  Excellent
 function _tdrNpsLabel(v){
   if(v==null||v==='') return '';
   const n=Number(v);
-  if(n>=50) return 'Promoter';
-  if(n>=0) return 'Passive';
-  return 'Detractor';
+  if(n<0) return 'Critical — more detractors than promoters';
+  if(n<=25) return 'Needs improvement';
+  if(n<=50) return 'Good';
+  if(n<=75) return 'Very good';
+  return 'Excellent';
 }
 
 
+
+const AGENDA_STATUS={covered:{bg:'var(--green-lt)',fg:'var(--green)',label:'Covered'},partial:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Partially Covered'},not_covered:{bg:'var(--red-lt)',fg:'var(--red)',label:'Not Covered'}};
 
 function _tdrRenderTab(s){
   _tdrEnsureLoaded(s.id);
   const c=_tdrReport.content;
   const locked=_tdrReport.status==='submitted';
-  const readOnly=locked||_tdrPreviewMode;
+  const readOnly=locked;
   const dis=readOnly?'disabled':'';
   const totalParticipants=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length;
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
@@ -6235,13 +6255,11 @@ function _tdrRenderTab(s){
   const toolbar=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
       <div style="font-size:11.5px;color:var(--text3)">
-        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrPreviewMode?`<span style="font-weight:600">Preview mode</span> — read-only`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
+        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${_tdrPreviewMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrExitPreview()">← Exit Preview</button>`:locked?'':`
-          ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(false)">Done</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
-          <button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save Draft</button>
-          <button class="btn btn-sm btn-secondary" onclick="_tdrTogglePreview()">👁 Preview Report</button>
+        ${locked?'':`
+          ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
           <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
         `}
       </div>
@@ -6297,7 +6315,6 @@ function _tdrRenderTab(s){
       ${feedbackBoxes}
     </div>`;
 
-  const AGENDA_STATUS={covered:{bg:'var(--green-lt)',fg:'var(--green)',label:'Covered'},partial:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Partially Covered'},not_covered:{bg:'var(--red-lt)',fg:'var(--red)',label:'Not Covered'}};
   const agendaRows=c.agendaDelivery.map((a,i)=>{
     const st=AGENDA_STATUS[a.status]||AGENDA_STATUS.covered;
     return `<tr>
@@ -6353,15 +6370,6 @@ function _tdrSetAgendaField(i,field,value){
 }
 function _tdrRemoveAgendaRow(i){
   _tdrReport.content.agendaDelivery.splice(i,1);
-  renderTrainingDetail();
-}
-
-function _tdrTogglePreview(){
-  _tdrPreviewMode=true;
-  renderTrainingDetail();
-}
-function _tdrExitPreview(){
-  _tdrPreviewMode=false;
   renderTrainingDetail();
 }
 
@@ -6423,19 +6431,28 @@ function _tdrSubmitReport(){
    A fresh Request Reopen is allowed again once a request has been denied, or after
    a new submit cycle resets reopen_status back to null. ───────────────────────── */
 function _tdrRequestReopen(){
-  const reason=(prompt('Optional: reason for requesting this report be reopened (leave blank to skip)')||'').trim();
-  confirm$('Request Reopen','Request to reopen this submitted report for editing? Your direct supervisor will need to approve before it unlocks.','Request Reopen',async()=>{
+  const ta=document.getElementById('rr-reason'); if(ta) ta.value='';
+  const err=document.getElementById('rr-reason-err'); if(err) err.style.display='none';
+  openModal('reopen-reason');
+  setTimeout(()=>ta?.focus(),50);
+}
+function _tdrSubmitReopenReason(){
+  const ta=document.getElementById('rr-reason');
+  const reason=(ta?.value||'').trim();
+  if(!reason){ document.getElementById('rr-reason-err').style.display='block'; ta?.focus(); return; }
+  closeModal('reopen-reason');
+  (async()=>{
     try{
       const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
         reopenStatus:'pending', reopenRequestedBy:Auth.user.id, reopenRequestedAt:new Date().toISOString(),
-        reopenReason:reason||null, reopenDecidedBy:null, reopenDecidedAt:null};
+        reopenReason:reason, reopenDecidedBy:null, reopenDecidedAt:null};
       const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
-      await AuditLog.record('reopen_requested','Training Report',_tdrReport.id,`Reopen requested by ${Auth.user.firstName} ${Auth.user.lastName}${reason?`: "${reason}"`:''}`);
+      await AuditLog.record('reopen_requested','Training Report',_tdrReport.id,`Reopen requested by ${Auth.user.firstName} ${Auth.user.lastName}: "${reason}"`);
       renderTrainingDetail();
       toast('Reopen requested — awaiting supervisor approval.','success');
     }catch(e){ /* error already surfaced */ }
-  });
+  })();
 }
 function _tdrApproveReopen(){
   confirm$('Approve Reopen','Approve this reopen request? The report will be unlocked for editing (status returns to Draft).','Approve Reopen',async()=>{
@@ -6463,32 +6480,50 @@ function _tdrDenyReopen(){
     }catch(e){ /* error already surfaced */ }
   });
 }
+/* Status banner only -- Request/Approve/Deny Reopen buttons live in the Detail page's
+   persistent header now (see _tdHeaderReopenBtns), visible regardless of active tab. */
 function _tdrReopenBlock(){
   const rep=_tdrReport;
-  const me=Auth.user;
   const status=rep.reopenStatus;
   let html='';
   if(status==='pending'){
     const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
-    const approverId=requester?requester.supervisorId:null;
-    const canApprove=!!me&&(Auth.isAdmin||(approverId&&approverId===me.id));
     html+=`<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:#92400e">
       <div style="font-weight:700;margin-bottom:4px">🔓 Reopen Requested — awaiting supervisor approval</div>
       <div>Requested by ${Utils.esc(requester?`${requester.firstName} ${requester.lastName}`:'—')}${rep.reopenRequestedAt?` on ${new Date(rep.reopenRequestedAt).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}`:''}${rep.reopenReason?` — "${Utils.esc(rep.reopenReason)}"`:''}</div>
     </div>`;
-    if(canApprove){
-      html+=`<div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
-        <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>
-      </div>`;
-    }
     return html;
   }
   if(status==='denied'){
     html+=`<div style="font-size:12px;color:var(--text3);margin-top:14px">Reopen request was denied${rep.reopenDecidedAt?` on ${new Date(rep.reopenDecidedAt).toLocaleString('en-PH',{dateStyle:'medium'})}`:''}.</div>`;
   }
-  html+=`<div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">Request Reopen</button></div>`;
   return html;
+}
+
+// Returns the "owner" user id of a training session for reopen-permission purposes --
+// Self-led uses ownerId, ILT/VILT uses trainerId; External has no linked user account
+// (facilitatorName is free text) so only an admin can act on those reports.
+function _tdSessionOwnerId(s){ return s.ownerId||s.trainerId||null; }
+
+// Header-level Request/Approve/Deny Reopen buttons -- rendered in the Detail page's
+// persistent header (replacing the old session Delete button there), visible from any tab.
+function _tdHeaderReopenBtns(s){
+  _tdrEnsureLoaded(s.id);
+  const rep=_tdrReport;
+  const me=Auth.user;
+  if(!rep||rep._isNew||rep.status!=='submitted') return '';
+  if(rep.reopenStatus==='pending'){
+    const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
+    const approverId=requester?requester.supervisorId:null;
+    const canApprove=!!me&&(me.isAdmin||(approverId&&approverId===me.id));
+    if(!canApprove) return '';
+    return `<button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
+      <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>`;
+  }
+  const ownerId=_tdSessionOwnerId(s);
+  const canRequest=!!me&&(me.isAdmin||(ownerId&&ownerId===me.id));
+  if(!canRequest) return '';
+  return `<button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">Request Reopen</button>`;
 }
 
 function renderTrainingDetail(){
@@ -6530,7 +6565,7 @@ function renderTrainingDetail(){
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${summaryLine}</div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" style="color:#dc2626" onclick="deleteTrainingRecord('${s.id}')">Delete</button>
+        ${_tdHeaderReopenBtns(s)}
       </div>
     </div>
     <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
@@ -6658,7 +6693,7 @@ function _tdOverviewAttendanceAssessmentBlock(s){
 // of _tdOverviewReportBlocks (2026-07-31) so the Export Summary Image feature can reuse the
 // EXACT same L1 metrics + Summary rendering without dragging along the Overview-tab-only
 // "Go to Training Report tab" link or duplicating the markup.
-function _tdrL1InnerHtml(s,report){
+function _tdrL1InnerHtml(s,report,hideFeedback){
   const c=report.content||{};
   const totalParticipants=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length;
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
@@ -6682,7 +6717,7 @@ function _tdrL1InnerHtml(s,report){
     ${feedbackBox('check','var(--green)','What learners found most valuable',c.learnersValued)}
     ${feedbackBox('alert-triangle','var(--amber)','What can be improved',c.learnersImprove)}
   </div>`;
-  return `${l1Metrics}${feedbackBoxes}`;
+  return hideFeedback?l1Metrics:`${l1Metrics}${feedbackBoxes}`;
 }
 function _tdrSummaryInnerHtml(report){
   const c=report.content||{};
@@ -6695,6 +6730,22 @@ function _tdrSummaryInnerHtml(report){
     ${summaryBox('Recommendations','bulb','var(--sky-lt)','var(--sky)',c.recommendations)}
     ${summaryBox('Pending Actions','flag','#f5f3ff','#7c3aed',c.pendingActions)}
     ${summaryBox('Additional Remarks','edit3','#f1f5f9','#64748b',c.additionalRemarks)}`;
+}
+function _tdrAgendaInnerHtml(report){
+  const rows=(report&&report.content&&report.content.agendaDelivery)||[];
+  if(!rows.length) return '<div style="font-size:12.5px;color:var(--text3)">No agenda items recorded.</div>';
+  const trs=rows.map(a=>{
+    const st=AGENDA_STATUS[a.status]||AGENDA_STATUS.covered;
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(a.item||'—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(a.facilitator||'—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0"><span style="background:${st.bg};color:${st.fg};font-weight:600;border-radius:5px;padding:2px 8px;font-size:12px">${st.label}</span></td>
+    </tr>`;
+  }).join('');
+  return `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">Topics</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">Facilitator</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">Delivery Status</th></tr>
+    ${trs}
+  </table>`;
 }
 function _tdOverviewReportBlocks(s){
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
@@ -6803,6 +6854,7 @@ function _tdTrainerEvalTabHtml(s){
     return `<tr style="${rowClick?'cursor:pointer':''}" ${rowClick?`onclick="${rowClick}" title="Click to open"`:''}>
       <td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>
       <td>${Utils.esc(evName)}</td>
+      <td>${e.evaluationMode?_evalModeBadge(e.evaluationMode):'<span class="txt-muted" style="font-size:12px">—</span>'}</td>
       <td style="white-space:nowrap">${dateStr}</td>
       <td style="white-space:nowrap">${submitted}</td>
       <td>${scoreHtml}</td>
@@ -6814,7 +6866,7 @@ function _tdTrainerEvalTabHtml(s){
   return `<div class="card" style="padding:18px 20px">
     ${headerBar}
     <div class="eval-tbl-wrap"><table class="eval-tbl">
-      <thead><tr><th>Trainer</th><th>Evaluator</th><th>Session Date</th><th>Submitted</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Trainer</th><th>Evaluator</th><th>Type</th><th>Session Date</th><th>Submitted</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>
   </div>`;
@@ -6940,7 +6992,7 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
 }
 
 // Export Summary Image (2026-07-31, revised phase31): renders a hidden, off-DOM 4-section
-// stacked container -- 1. Session Details, 2. Attendance & Performance, 3. Summary, 4. L1
+// stacked container -- 1. Session Details, 2. Attendance & Performance, 3. Agenda, 4. Summary, 5. L1
 // Evaluation Survey (Learner Reaction) -- reusing the SAME render helpers as their respective
 // tabs (_tdaKpiColumnsHtml, _tdrSummaryInnerHtml, _tdrL1InnerHtml), captures it via html2canvas
 // at a reduced scale, and downloads a PNG. No email compose window is opened -- Sandra
@@ -6956,7 +7008,12 @@ async function _tdExportSummaryImage(sessionId){
   const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'—';
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const summaryHtml=report?_tdrSummaryInnerHtml(report):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
-  const l1Html=report?_tdrL1InnerHtml(s,report):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
+  // hideFeedback=true here: the two free-text learner-feedback callouts (What learners found
+  // most valuable / What can be improved) are omitted from the EXPORTED IMAGE only -- the 8
+  // metric cards are kept. The live Training Report tab and Overview tab are unaffected since
+  // they call _tdrL1InnerHtml without this flag.
+  const l1Html=report?_tdrL1InnerHtml(s,report,true):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
+  const agendaHtml=_tdrAgendaInnerHtml(report);
   const attendanceHtml=_tdaKpiColumnsHtml(s);
 
   const sectionTitle=(t)=>`<div style="font-weight:700;font-size:13px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">${Utils.esc(t)}</div>`;
@@ -6982,8 +7039,9 @@ async function _tdExportSummaryImage(sessionId){
   holder.innerHTML=`
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('1. Session Details')}${sessionDetailsHtml}</div>
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('2. Attendance & Performance')}${attendanceHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('3. Summary')}${summaryHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('4. L1 Evaluation Survey')}${l1Html}</div>`;
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('3. Agenda')}${agendaHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('4. Summary')}${summaryHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('5. L1 Evaluation Survey')}${l1Html}</div>`;
   document.body.appendChild(holder);
   try{
     const canvas=await html2canvas(holder,{backgroundColor:'#ffffff',scale:1.5,width:1200,windowWidth:1200});
@@ -7432,6 +7490,7 @@ function openEvalView(id){
   document.getElementById('ef-evaluator-display').textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   const _soEl2=document.getElementById('ef-signoff-evaluator');if(_soEl2)_soEl2.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   document.getElementById('ef-session-id').value=ev.sessionId||'';
+  document.getElementById('ef-evaluation-mode').value=ev.evaluationMode||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
@@ -7448,6 +7507,7 @@ function openEvalView(id){
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=ev.modalityId||'';
+  _tdModalityNoteSet(!!ev.sessionId);
   buildAccordion();
   const ratings=ev.ratings||{},remarks=ev.remarks||{};
   _evalLiveRemarks={}; EVAL_CRITERIA.forEach(c=>{ const rv=ratings[c.id]; if(rv) _applyRating(c.id,rv); _evalLiveRemarks[c.id]=remarks[c.id]||''; const ta=document.getElementById(`eval-rmk-${c.id}`); if(ta) ta.value=remarks[c.id]||''; const wrap=document.getElementById(`eval-rmk-wrap-${c.id}`); if(wrap){ const needsRmk=rv&&rv<5; wrap.classList.toggle('rmk-required',!!needsRmk); if(ta) ta.placeholder=needsRmk?'Remarks required for this rating…':'Remarks (optional)…'; } });
@@ -7561,26 +7621,26 @@ function _evalStatusBadge(status){
   return `<span class="badge b-emp">${status||'—'}</span>`;
 }
 
+// Phase33 item 6: small badge showing whether a session-linked evaluation was conducted Live
+// (sit-in) or Virtual (recording review). Returns '' for manual/no-session evals with no mode.
+function _evalModeBadge(mode){
+  if(mode==='live')    return '<span class="badge" style="background:#dbeafe;color:#1d4ed8;white-space:nowrap">🧑\u200d🤝\u200d🧑 Live</span>';
+  if(mode==='virtual') return '<span class="badge" style="background:#ede9fe;color:#6d28d9;white-space:nowrap">🎥 Virtual</span>';
+  return '';
+}
+
 function renderEvaluations(){
+  // Guard against a stale 'sessions' value left in localStorage from before the Training
+  // Sessions sub-tab was removed (phase33 item 7) -- fall back to My Evaluations.
+  if(_evalTab==='sessions'){ _evalTab='my'; localStorage.setItem('leap_eval_tab','my'); }
   showEvalSubview('list');
   const me=Auth.user, access=Auth.formAccess(me);
   const allEvals=EvalDB.all();
   const canConduct=access.trainerEval||me.isAdmin; // trainer eval section
   const myTabBtn=document.getElementById('eval-tab-my');
   const teamTabBtn=document.getElementById('eval-tab-team');
-  const sessTabBtn=document.getElementById('eval-tab-sessions');
   if(myTabBtn)  myTabBtn.classList.toggle('active',_evalTab==='my');
   if(teamTabBtn) teamTabBtn.classList.toggle('active',_evalTab==='team');
-  if(sessTabBtn) sessTabBtn.classList.toggle('active',_evalTab==='sessions');
-  document.getElementById('eval-table-block')?.classList.toggle('hidden',_evalTab==='sessions');
-  document.getElementById('sessions-table-block')?.classList.toggle('hidden',_evalTab!=='sessions');
-  const newSessBtn=document.getElementById('new-session-btn');
-  if(newSessBtn) newSessBtn.classList.toggle('hidden',_evalTab!=='sessions');
-  if(_evalTab==='sessions'){
-    const newBtn2=document.getElementById('new-eval-btn'); if(newBtn2) newBtn2.style.display='none';
-    renderSessions();
-    return;
-  }
   const myEvals=allEvals.filter(e=>e.trainerId===me.id&&(me.isAdmin||e.status!=='draft'));
   const teamEvals=me.isAdmin?allEvals:allEvals.filter(e=>e.evaluatorId===me.id);
   const myPending=myEvals.filter(e=>e.status==='pending_ack').length;
@@ -7670,7 +7730,7 @@ function renderEvaluations(){
     :`<th>${c.label}</th>`
   ).join('')}</tr></thead>`;
   function cellFor(col,ev,tName,evName,score,submitted,canEdit,canView,sessCode){
-    if(col==='code')      return `<td><span class="eval-code">${Utils.esc(ev.code||'—')}</span></td>`;
+    if(col==='code')      return `<td><span class="eval-code">${Utils.esc(ev.code||'—')}</span>${ev.evaluationMode?` ${_evalModeBadge(ev.evaluationMode)}`:''}</td>`;
     if(col==='sessioncode') return `<td>${sessCode?`<span class="eval-code">${Utils.esc(sessCode)}</span>`:'<span class="txt-muted" style="font-size:12px">—</span>'}</td>`;
     if(col==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>`;
     if(col==='evaluator') return `<td>${Utils.esc(evName)}</td>`;
@@ -7745,420 +7805,10 @@ function renderEvaluations(){
   setTimeout(()=>document.querySelectorAll('#eval-list-body .eval-tbl').forEach(_initColResize),50);
 }
 
-const SESSION_COLS=[
-  {id:'code',      label:'Session ID',       sort:'code'},
-  {id:'trainer',   label:'Trainer',          sort:'trainer'},
-  {id:'program',   label:'Training Program', sort:'program'},
-  {id:'batch',     label:'Batch',            sort:'batch'},
-  {id:'date',      label:'Session Date',     sort:'date'},
-  {id:'venue',     label:'Venue',            sort:'venue'},
-  {id:'modality',  label:'Modality',         sort:'modality'},
-  {id:'recording', label:'Recording',        sort:null},
-  {id:'participants', label:'Participants',  sort:'participants'},
-  {id:'duration',  label:'Duration',         sort:'duration'},
-  {id:'status',    label:'Status',           sort:'status'},
-  {id:'evaluated', label:'Evaluated',        sort:'evalrank'},
-  {id:'evalcount', label:'Eval Count',       sort:'evalcount'},
-  {id:'actions',   label:'Actions',          sort:null},
-];
-let _sessCols={};
-let _sessColWidths={};
-let _lastSessVisible=[];
-let _sessSort={col:'date',dir:'desc'};
-let _sessGroupMode='none';
-let _sessGroupCollapsed={};
+/* — legacy Training Sessions sub-tab (Evaluations > Trainer) removed 2026-08-05, phase33 item 7 —
+   startSessionEvaluation()/_openPrefilledEval() below remain -- they are still used by the
+   Training Calendar Detail page ('Evaluate This Training') and are unrelated to that removed tab. */
 
-function sessSortBy(col){
-  if(_sessSort.col===col){ _sessSort.dir=_sessSort.dir==='asc'?'desc':'asc'; }
-  else { _sessSort={col,dir:col==='date'?'desc':'asc'}; }
-  renderSessions();
-}
-function setSessGroupMode(mode){
-  _sessGroupMode=_sessGroupMode===mode?'none':mode;
-  document.getElementById('sf-group-trainer-btn')?.classList.toggle('on',_sessGroupMode==='trainer');
-  document.getElementById('sf-group-status-btn')?.classList.toggle('on',_sessGroupMode==='status');
-  renderSessions();
-}
-function toggleSessGroupRow(tid){
-  _sessGroupCollapsed[tid]=!_sessGroupCollapsed[tid];
-  renderSessions();
-}
-function onSessDateFilterChange(){
-  const val=(document.getElementById('sf-filter-date')||{}).value||'all';
-  const wrap=document.getElementById('sf-filter-custom');
-  if(wrap) wrap.classList.toggle('hidden', val!=='custom');
-  renderSessions();
-}
-function onSessDateToChange(){
-  const fromEl=document.getElementById('sf-date-from');
-  const toEl=document.getElementById('sf-date-to');
-  if(fromEl&&toEl&&fromEl.value&&toEl.value){
-    const d1=new Date(fromEl.value+'T00:00:00');
-    const d2=new Date(toEl.value+'T00:00:00');
-    if(d2<d1){ toast('End date cannot be before start date.','error'); toEl.value=fromEl.value; }
-  }
-  renderSessions();
-}
-function clearSessFilters(){
-  ['sf-filter-status','sf-filter-trainer','sf-filter-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='all'; });
-  document.getElementById('sf-filter-custom')?.classList.add('hidden');
-  const dfFrom=document.getElementById('sf-date-from'); if(dfFrom) dfFrom.value='';
-  const dfTo=document.getElementById('sf-date-to'); if(dfTo) dfTo.value='';
-  _sessGroupMode='none'; _sessGroupCollapsed={};
-  document.getElementById('sf-group-trainer-btn')?.classList.remove('on');
-  document.getElementById('sf-group-status-btn')?.classList.remove('on');
-  renderSessions();
-}
-function exportSessionsCSV(){
-  if(!_lastSessVisible.length){ toast('No records to export.','info'); return; }
-  const esc=v=>{const s=String(v==null?'':v).replace(/"/g,'""');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s}"`:s;};
-  const statusLabel=s=>s==='completed'?'Completed':s==='cancelled'?'Cancelled':'Scheduled';
-  const headers=['Session ID','Trainer','Training Program','Batch No.','Session Date','Venue','Modality','Recording Link','Participants','Duration (hh:mm)','Status','Submitted Evaluations'];
-  const rows=[headers.map(esc).join(',')];
-  const allEvalsCsv=EvalDB.all();
-  _lastSessVisible.forEach(s=>{
-    const trainer=DB.byId(s.trainerId);
-    const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'';
-    const venue=Sel.nameOf(Store.VENUES,s.venueId)||'';
-    const modality=Sel.nameOf(Store.MODALS,s.modalityId)||'';
-    const submitted=allEvalsCsv.filter(e=>e.sessionId===s.id&&(e.status==='pending_ack'||e.status==='completed')).length;
-    rows.push([s.code||'',tName,s.trainingProgram||'',s.batchNo||'',s.trainingDate||'',venue,modality,s.recordingLink||'',s.numParticipants!=null?s.numParticipants:'',s.duration||'',statusLabel(s.status),submitted].map(esc).join(','));
-  });
-  const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_TrainingSessions_${new Date().toISOString().slice(0,10)}.csv`; a.click();
-  toast(`Exported ${_lastSessVisible.length} record${_lastSessVisible.length!==1?'s':''}.`,'success');
-}
-
-function _getVisibleSessCols(){ return SESSION_COLS.filter(c=>_sessCols[c.id]!==false); }
-
-function toggleSessColPicker(e){
-  e.stopPropagation();
-  const dd=document.getElementById('sess-col-picker-dd');
-  if(!dd) return;
-  dd.innerHTML='<div class="col-picker-hdr">Show / Hide Columns</div>'+
-    SESSION_COLS.map(c=>{
-      const locked=c.id==='actions';
-      return `<div class="col-picker-item${locked?' locked':''}">
-        <input type="checkbox" id="scp-${c.id}" ${locked||_sessCols[c.id]!==false?'checked':''} ${locked?'disabled':''} onchange="toggleSessCol('${c.id}',this.checked)" onclick="event.stopPropagation()">
-        <label for="scp-${c.id}">${c.label}${locked?' <span style="font-size:10px;color:var(--text3)">(always on)</span>':''}</label>
-      </div>`;
-    }).join('');
-  dd.classList.toggle('open');
-}
-
-function toggleSessCol(colId,visible){
-  _sessCols[colId]=visible;
-  renderSessions();
-}
-
-function _initSessColResize(tbl){
-  if(!tbl) return;
-  const ths=[...tbl.querySelectorAll('thead th')];
-  ths.forEach(th=>{
-    const idx=th.cellIndex;
-    if(_sessColWidths[idx]) th.style.width=_sessColWidths[idx];
-    if(th.querySelector('.col-rsz')) return;
-    const r=document.createElement('div'); r.className='col-rsz'; th.appendChild(r);
-    r.addEventListener('mousedown',e=>{
-      const startX=e.pageX, startW=th.offsetWidth;
-      let dragged=false;
-      r.classList.add('rsz-active');
-      const onMove=ev=>{ dragged=true; th.style.width=Math.max(48,startW+ev.pageX-startX)+'px'; };
-      const onUp=()=>{
-        r.classList.remove('rsz-active');
-        document.removeEventListener('mousemove',onMove);
-        document.removeEventListener('mouseup',onUp);
-        if(dragged){
-          tbl.style.tableLayout='fixed';
-          let total=0;
-          ths.forEach(t2=>{ const w=t2.offsetWidth; t2.style.width=w+'px'; _sessColWidths[t2.cellIndex]=w+'px'; total+=w; });
-          tbl.style.width=total+'px';
-          const noClick=ev=>{ ev.stopImmediatePropagation(); th.removeEventListener('click',noClick,true); };
-          th.addEventListener('click',noClick,true);
-        }
-      };
-      document.addEventListener('mousemove',onMove);
-      document.addEventListener('mouseup',onUp);
-      e.preventDefault(); e.stopPropagation();
-    });
-  });
-  if(ths.some(t=>_sessColWidths[t.cellIndex])){
-    tbl.style.tableLayout='fixed';
-    let total=0;
-    ths.forEach(t=>{ total+=t.offsetWidth; });
-    tbl.style.width=total+'px';
-  }
-}
-
-function _evalCountCell(evs,me){
-  const submitted=evs.filter(e=>e.status==='pending_ack'||e.status==='completed');
-  if(!submitted.length) return '<span class="txt-muted" style="font-size:12px">—</span>';
-  return `<span style="font-weight:700;color:var(--text)">${submitted.length}</span>`;
-}
-
-function renderSessions(){
-  const me=Auth.user, access=Auth.formAccess(me);
-  const canConduct=access.trainerEval||me.isAdmin;
-  // Backfill Session ID for any legacy sessions logged before codes existed.
-  TrSessionDB.all().filter(s=>!s.code).forEach(s=>{
-    const code=generateSessionCode();
-    s.code=code; // reflect immediately in this render pass; persisted in the background below
-    TrSessionDB.update(s.id,{code}).catch(()=>{});
-  });
-  const all=TrSessionDB.all();
-  const trainerFilter=document.getElementById('sf-filter-trainer');
-  if(trainerFilter){
-    const trainerIds=[...new Set(all.map(s=>s.trainerId).filter(Boolean))];
-    const cur=trainerFilter.value;
-    trainerFilter.innerHTML='<option value="all">All Trainers</option>'+trainerIds.map(id=>{ const u=DB.byId(id)||{firstName:'?',lastName:'(inactive)'}; return `<option value="${id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`; }).join('');
-    if(trainerIds.includes(cur)) trainerFilter.value=cur;
-  }
-  const statusF=(document.getElementById('sf-filter-status')||{}).value||'all';
-  const trainerF=(document.getElementById('sf-filter-trainer')||{}).value||'all';
-  const dateF=(document.getElementById('sf-filter-date')||{}).value||'all';
-  const _hasActiveFilter=statusF!=='all'||trainerF!=='all'||dateF!=='all'||_sessGroupMode!=='none';
-  const _cfBtn=document.getElementById('sf-clear-filters-btn');
-  if(_cfBtn) _cfBtn.style.display=_hasActiveFilter?'':'none';
-  let visible=all;
-  if(statusF!=='all') visible=visible.filter(s=>s.status===statusF);
-  if(trainerF!=='all') visible=visible.filter(s=>s.trainerId===trainerF);
-  if(dateF!=='all'){
-    const now=new Date(); now.setHours(23,59,59,999);
-    let fromDate=null, toDate=now;
-    if(dateF==='7d'){ fromDate=new Date(); fromDate.setDate(fromDate.getDate()-7); fromDate.setHours(0,0,0,0); }
-    else if(dateF==='1m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-1); fromDate.setHours(0,0,0,0); }
-    else if(dateF==='3m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-3); fromDate.setHours(0,0,0,0); }
-    else if(dateF==='custom'){
-      const fv=(document.getElementById('sf-date-from')||{}).value;
-      const tv=(document.getElementById('sf-date-to')||{}).value;
-      if(fv) fromDate=new Date(fv+'T00:00:00');
-      if(tv) toDate=new Date(tv+'T23:59:59');
-    }
-    visible=visible.filter(s=>{
-      if(!s.trainingDate) return false;
-      const d=new Date(s.trainingDate+'T00:00:00');
-      if(fromDate&&d<fromDate) return false;
-      if(d>toDate) return false;
-      return true;
-    });
-  }
-  const allEvals=EvalDB.all();
-  function evalInfoFor(sessId){
-    return allEvals.filter(e=>e.sessionId===sessId).map(e=>({...e,canView:e.status!=='draft'&&(e.trainerId===me.id||e.evaluatorId===me.id||me.isAdmin)}));
-  }
-  function _evalRank(sessId){
-    const evs=allEvals.filter(e=>e.sessionId===sessId);
-    if(evs.some(e=>e.status==='completed')) return 3;
-    if(evs.some(e=>e.status==='pending_ack')) return 2;
-    if(evs.some(e=>e.status==='draft')) return 1;
-    return 0;
-  }
-  function _evalSubmittedCount(sessId){
-    return allEvals.filter(e=>e.sessionId===sessId&&(e.status==='pending_ack'||e.status==='completed')).length;
-  }
-  const {col,dir}=_sessSort;
-  visible=[...visible].sort((a,b)=>{
-    let va,vb;
-    if(col==='date'){va=a.trainingDate||'';vb=b.trainingDate||'';}
-    else if(col==='code'){va=a.code||'';vb=b.code||'';}
-    else if(col==='trainer'){const u=DB.byId(a.trainerId),v=DB.byId(b.trainerId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:'';}
-    else if(col==='program'){va=a.trainingProgram||'';vb=b.trainingProgram||'';}
-    else if(col==='batch'){va=a.batchNo||'';vb=b.batchNo||'';}
-    else if(col==='venue'){va=Sel.nameOf(Store.VENUES,a.venueId)||'';vb=Sel.nameOf(Store.VENUES,b.venueId)||'';}
-    else if(col==='modality'){va=Sel.nameOf(Store.MODALS,a.modalityId)||'';vb=Sel.nameOf(Store.MODALS,b.modalityId)||'';}
-    else if(col==='participants'){va=a.numParticipants??-1;vb=b.numParticipants??-1;}
-    else if(col==='duration'){va=_durationToMinutes(a.duration);vb=_durationToMinutes(b.duration);}
-    else if(col==='status'){va=a.status||'';vb=b.status||'';}
-    else if(col==='evalrank'){va=_evalRank(a.id);vb=_evalRank(b.id);}
-    else if(col==='evalcount'){va=_evalSubmittedCount(a.id);vb=_evalSubmittedCount(b.id);}
-    else{va='';vb='';}
-    if(va<vb) return dir==='asc'?-1:1;
-    if(va>vb) return dir==='asc'?1:-1;
-    return 0;
-  });
-  const countEl=document.getElementById('sf-count');
-  if(countEl) countEl.textContent=`${visible.length} session${visible.length!==1?'s':''}`;
-  const body=document.getElementById('sessions-list-body');
-  _lastSessVisible=visible;
-  if(!visible.length){
-    body.innerHTML=`<div class="empty-state"><div class="empty-ico">🎥</div><div class="empty-title">No training sessions logged</div><div style="font-size:13px;color:var(--text3);margin-top:4px">Click "+ Log Training Session" to get started.</div></div>`;
-    return;
-  }
-  const visCols=_getVisibleSessCols();
-  function sortTh(s){ const a=_sessSort.col===s; return a?(_sessSort.dir==='asc'?'sort-asc':'sort-desc'):''; }
-  const thead=`<thead><tr>${visCols.map(c=>c.sort
-    ?`<th class="${sortTh(c.sort)}" onclick="sessSortBy('${c.sort}')">${c.label}</th>`
-    :`<th>${c.label}</th>`
-  ).join('')}</tr></thead>`;
-  function cellFor(colId,s,ctx){
-    if(colId==='code')      return `<td style="white-space:nowrap"><span class="eval-code">${Utils.esc(s.code||'—')}</span></td>`;
-    if(colId==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(ctx.tName)}</strong></td>`;
-    if(colId==='program')   return `<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(s.trainingProgram||'—')}</td>`;
-    if(colId==='batch')     return `<td>${Utils.esc(s.batchNo||'—')}</td>`;
-    if(colId==='date')      return `<td style="white-space:nowrap">${Utils.formatDate(s.trainingDate)}</td>`;
-    if(colId==='venue')     return `<td>${Utils.esc(ctx.venue)}</td>`;
-    if(colId==='modality')  return `<td>${Utils.esc(ctx.modality)}</td>`;
-    if(colId==='recording') return `<td>${ctx.rec}</td>`;
-    if(colId==='participants') return `<td style="text-align:center">${s.numParticipants!=null?s.numParticipants:'<span class="txt-muted">—</span>'}</td>`;
-    if(colId==='duration')  return `<td style="white-space:nowrap">${s.duration?Utils.esc(s.duration):'<span class="txt-muted">—</span>'}</td>`;
-    if(colId==='status')    return `<td>${_sessionStatusBadge(s.status)}${ctx.overdue?' <span class="badge" style="background:#fee2e2;color:#dc2626" title="Session date has passed — mark Completed and add the recording link">⚠ Overdue</span>':''}</td>`;
-    if(colId==='evaluated') return `<td>${ctx.evalBadge}</td>`;
-    if(colId==='evalcount') return `<td>${_evalCountCell(ctx.evs,me)}</td>`;
-    if(colId==='actions')   return `<td><div class="td-acts">${ctx.editBtn}${ctx.delBtn}${ctx.evalBtn}</div></td>`;
-    return '<td></td>';
-  }
-  function rowHtml(s){
-    const trainer=DB.byId(s.trainerId);
-    const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'—';
-    const venue=Sel.nameOf(Store.VENUES,s.venueId)||'—';
-    const modality=Sel.nameOf(Store.MODALS,s.modalityId)||'—';
-    const rec=s.recordingLink?`<a href="${Utils.esc(s.recordingLink)}" target="_blank" rel="noopener" style="color:var(--pri)">▶ View</a>`:'<span class="txt-muted">—</span>';
-    const evs=evalInfoFor(s.id);
-    let evalBadge='<span class="txt-muted" style="font-size:12px">Not yet evaluated</span>';
-    if(evs.length){
-      const _names=(list)=>[...new Set(list.filter(e=>e.canView).map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'Evaluator'; }))];
-      const completed=evs.filter(e=>e.status==='completed');
-      const pending=evs.filter(e=>e.status==='pending_ack');
-      const drafts=evs.filter(e=>e.status==='draft');
-      const chips=[];
-      if(completed.length){
-        const names=_names(completed);
-        const label=names.length?`Completed & Acknowledged — ${names.join(', ')}`:`Completed & Acknowledged (${completed.length})`;
-        chips.push(`<span class="badge" style="background:#dcfce7;color:#15803d;display:inline-block;margin:1px 0" title="${Utils.esc(label)}">✅ ${Utils.esc(label)}</span>`);
-      }
-      if(pending.length){
-        const names=_names(pending);
-        const label=names.length?`Pending Acknowledgement — ${names.join(', ')}`:`Pending Acknowledgement (${pending.length})`;
-        chips.push(`<span class="badge" style="background:#fef9c3;color:#a16207;display:inline-block;margin:1px 0" title="${Utils.esc(label)}">🕒 ${Utils.esc(label)}</span>`);
-      }
-      if(drafts.length){
-        chips.push(`<span class="badge" style="background:#e0e7ff;color:#4338ca;display:inline-block;margin:1px 0" title="Draft — not yet submitted, not visible to others until finalized">📝 Draft In Progress${drafts.length>1?` (${drafts.length})`:''}</span>`);
-      }
-      evalBadge=`<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">${chips.join('')}</div>`;
-    }
-    let evalBtn='';
-    if(canConduct&&s.trainerId!==me.id&&s.status==='completed'){
-      evalBtn=`<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();startSessionEvaluation('${s.id}')">Evaluate</button>`;
-    }
-    const editBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openSessionModal('${s.id}')" style="min-width:60px;text-align:center">Edit</button>`;
-    const delBtn=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteSession('${s.id}')" title="Delete session" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
-    const overdue=s.status==='scheduled'&&s.trainingDate&&s.trainingDate<_todayStr();
-    const ctx={tName,venue,modality,rec,evalBadge,evs,evalBtn,editBtn,delBtn,overdue};
-    return `<tr>${visCols.map(c=>cellFor(c.id,s,ctx)).join('')}</tr>`;
-  }
-  function groupAccordion(groups,headerFn){
-    let html='';
-    Object.entries(groups).forEach(([key,rows])=>{
-      const collapsed=!!_sessGroupCollapsed[key];
-      html+=`<div style="margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
-        <div class="eval-group-hdr" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:${collapsed?'none':'1px solid var(--border)'}" onclick="toggleSessGroupRow('${key}')">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:13px">${collapsed?'▶':'▼'}</span>
-            ${headerFn(key)}
-            <span style="font-weight:400;color:var(--text3)">${rows.length} session${rows.length!==1?'s':''}</span>
-          </div>
-        </div>
-        ${collapsed?'':`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`}
-      </div>`;
-    });
-    return html||'<div class="empty-state"><div class="empty-ico">🎥</div><div class="empty-title">No training sessions found</div></div>';
-  }
-  if(_sessGroupMode==='trainer'){
-    const groups={};
-    visible.forEach(s=>{ const id=s.trainerId||'__none__'; if(!groups[id]) groups[id]=[]; groups[id].push(s); });
-    body.innerHTML=groupAccordion(groups,(k)=>{ const u=DB.byId(k); return `<span>👤 ${Utils.esc(u?`${u.firstName} ${u.lastName}`:'Unknown')}</span>`; });
-  } else if(_sessGroupMode==='status'){
-    const order=['scheduled','completed','cancelled'];
-    const groups={};
-    order.forEach(st=>{ const rows=visible.filter(s=>s.status===st); if(rows.length) groups[st]=rows; });
-    body.innerHTML=groupAccordion(groups,(k)=>_sessionStatusBadge(k));
-  } else {
-    body.innerHTML=`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${visible.map(rowHtml).join('')}</tbody></table></div>`;
-  }
-  setTimeout(()=>document.querySelectorAll('#sessions-list-body .eval-tbl').forEach(t=>_initSessColResize(t)),50);
-}
-
-function openSessionModal(id){
-  document.getElementById('sess-error').classList.add('hidden');
-  const s=id?TrSessionDB.byId(id):null;
-  const eligible=DB.all().filter(u=>u.positionId==='pos_6'&&(u.isActive||u.id===(s&&s.trainerId)));
-  document.getElementById('sess-trainer').innerHTML='<option value="">— Select Trainer —</option>'+eligible.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
-  document.getElementById('sess-venue').innerHTML='<option value="">— Select Venue —</option>'+Sel.active(Store.VENUES).filter(v=>v.type==='physical'||_isOtherVenue(v.id)).sort((a,b)=>(_isOtherVenue(a.id)?1:0)-(_isOtherVenue(b.id)?1:0)).map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
-  document.getElementById('sess-modality').innerHTML='<option value="">— Select Modality —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}">${Utils.esc(m.name)}</option>`).join('');
-  document.getElementById('sess-id').value=id||'';
-  document.getElementById('sess-modal-title').textContent=id?'Edit Training Session':'Log Training Session';
-  document.getElementById('sess-trainer').value=s?.trainerId||'';
-  document.getElementById('sess-program').value=s?.trainingProgram||'';
-  document.getElementById('sess-batch').value=s?.batchNo||'';
-  document.getElementById('sess-date').value=s?.trainingDate||'';
-  document.getElementById('sess-venue').value=s?.venueId||'';
-  document.getElementById('sess-venue-other').value='';
-  _toggleVenueOtherWrap('sess');
-  document.getElementById('sess-modality').value=s?.modalityId||'';
-  document.getElementById('sess-recording').value=s?.recordingLink||'';
-  document.getElementById('sess-participants').value=s?.numParticipants??'';
-  document.getElementById('sess-duration').value=s?.duration||'';
-  document.getElementById('sess-status').value=s?.status||'scheduled';
-  openModal('session');
-}
-
-async function saveSessionModal(){
-  const id=document.getElementById('sess-id').value||null;
-  const participantsRaw=document.getElementById('sess-participants').value.trim();
-  const durationRaw=document.getElementById('sess-duration').value.trim();
-  const d={
-    trainerId:document.getElementById('sess-trainer').value,
-    trainingProgram:document.getElementById('sess-program').value.trim(),
-    batchNo:document.getElementById('sess-batch').value.trim(),
-    trainingDate:document.getElementById('sess-date').value,
-    venueId:_resolveVenueId('sess'),
-    modalityId:document.getElementById('sess-modality').value,
-    recordingLink:document.getElementById('sess-recording').value.trim(),
-    numParticipants:participantsRaw?parseInt(participantsRaw,10):null,
-    duration:durationRaw,
-    status:document.getElementById('sess-status').value
-  };
-  const errs=[];
-  if(!d.trainerId) errs.push('Please select a Trainer.');
-  if(!d.trainingProgram) errs.push('Training Program / Title is required.');
-  if(!d.batchNo) errs.push('Batch No. is required.');
-  if(!d.trainingDate) errs.push('Session Date is required.');
-  if(!document.getElementById('sess-venue').value) errs.push('Venue is required.');
-  if(_isOtherVenue(document.getElementById('sess-venue').value)&&!(document.getElementById('sess-venue-other')?.value||'').trim()) errs.push('Please specify the venue name.');
-  if(!d.modalityId) errs.push('Modality is required.');
-  if(d.status==='completed'&&!d.recordingLink) errs.push('A recording link is required before a session can be marked Completed.');
-  if(d.status==='completed'&&(!participantsRaw||isNaN(d.numParticipants)||d.numParticipants<=0)) errs.push('Number of Participants is required (greater than 0) before a session can be marked Completed.');
-  if(d.status==='completed'&&!durationRaw) errs.push('Session Duration is required before a session can be marked Completed.');
-  else if(durationRaw&&!/^\d{1,3}:[0-5]\d$/.test(durationRaw)) errs.push('Session Duration must be in hh:mm format (e.g. 02:30).');
-  const errEl=document.getElementById('sess-error');
-  if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
-  errEl.classList.add('hidden');
-  const saveBtn=document.querySelector('#modal-session .btn-primary'); const origTxt=saveBtn?saveBtn.textContent:'';
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
-  try{
-    d.venueId=await _ensureVenueId('sess',d.venueId);
-    if(id){ await TrSessionDB.update(id,d); toast('Training session updated.','success'); }
-    else { const me=Auth.user; await TrSessionDB.create({...d,code:generateSessionCode()}); toast('Training session logged.','success'); }
-    closeModal('session');
-    renderSessions();
-  }catch(e){ /* error already surfaced */ }
-  finally{ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} }
-}
-
-function deleteSession(id){
-  const s=TrSessionDB.byId(id); if(!s) return;
-  const hasEvals=EvalDB.all().some(e=>e.sessionId===id);
-  const trainer=DB.byId(s.trainerId);
-  const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'this trainer';
-  confirm$('Delete Training Session',
-    `Delete the logged session for <strong>${Utils.esc(tName)}</strong>${s.trainingProgram?` (${Utils.esc(s.trainingProgram)})`:''}?${hasEvals?'<br><br><strong style="color:#dc2626">This session has evaluation(s) attached. They will NOT be deleted, but will lose their link back to this session.</strong>':''}<br><br>This cannot be undone.`,
-    'Delete',async()=>{
-      try{ await TrSessionDB.delete(id); toast('Training session deleted.','success'); renderSessions(); }
-      catch(e){ /* error already surfaced by TrSessionDB.delete */ }
-    }
-  );
-}
 
 function _updateEvalRecordingDisplay(link){
   const wrap=document.getElementById('ef-recording-wrap');
@@ -8181,9 +7831,10 @@ function openDraftChoiceModal(onContinue,onDelete){
   openModal('draft-choice');
 }
 
-function _openPrefilledEval(s){
+function _openPrefilledEval(s,mode){
   openNewEval();
   document.getElementById('ef-session-id').value=s.id;
+  document.getElementById('ef-evaluation-mode').value=mode||'';
   document.getElementById('ef-trainer').value=s.trainerId;
   document.getElementById('ef-program').value=s.trainingProgram||'';
   document.getElementById('ef-batch').value=s.batchNo||'';
@@ -8192,8 +7843,22 @@ function _openPrefilledEval(s){
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=s.modalityId||'';
+  // Modality is inherited from the session's own Modality field (set on the Training Calendar
+  // record) -- disable the dropdown here and label it clearly so it's not mistaken for a
+  // separately-entered value. See _tdModalityNoteSet.
+  _tdModalityNoteSet(true);
   _updateEvalRecordingDisplay(s.recordingLink);
   _updateEvalSessionCodeDisplay(s.code);
+}
+
+// Toggles the eval form's Modality dropdown between "inherited from session" (disabled, with
+// a small note) and normal manual-entry mode. inherited=true when the eval was opened via a
+// session (Evaluate This Training / resuming a session-linked draft).
+function _tdModalityNoteSet(inherited){
+  const sel=document.getElementById('ef-modality');
+  const note=document.getElementById('ef-modality-note');
+  if(sel) sel.disabled=!!inherited;
+  if(note) note.classList.toggle('hidden',!inherited);
 }
 
 function startSessionEvaluation(sessionId){
@@ -8203,12 +7868,37 @@ function startSessionEvaluation(sessionId){
   const canConduct=access.trainerEval||me.isAdmin;
   if(!canConduct){ toast("You don't have access to conduct evaluations.",'error'); return; }
   if(s.trainerId===me.id){ toast("You can't evaluate your own session.",'error'); return; }
-  if(s.status!=='completed'){ toast('Only completed sessions can be evaluated.','info'); return; }
+  // Phase33 item 6: ask Live (Sit-in) vs Virtual (Recording) before proceeding -- this replaces
+  // the old blanket "session must be Completed" gate with type-specific checks below.
+  openEvalModeModal(mode=>{ _startSessionEvaluationWithMode(sessionId,mode); });
+}
+
+// Small modal asking whether the evaluation is being conducted Live (sitting in on the
+// session) or Virtual (reviewing a recording afterward). Used only for session-linked
+// evaluations (startSessionEvaluation / "Evaluate This Training").
+function openEvalModeModal(onChoose){
+  document.getElementById('em-live-btn').onclick=()=>{ closeModal('eval-mode'); onChoose('live'); };
+  document.getElementById('em-virtual-btn').onclick=()=>{ closeModal('eval-mode'); onChoose('virtual'); };
+  openModal('eval-mode');
+}
+
+function _startSessionEvaluationWithMode(sessionId,mode){
+  let s=TrSessionDB.byId(sessionId); if(!s) return;
+  // Type-specific checks replacing the old status==='completed' gate:
+  //  - Live: the evaluator has the eval form open while sitting in the live session, so same-day
+  //    is the normal case -- allowed as long as the session date isn't in the future.
+  //  - Virtual: requires a recording link to actually be present to review.
+  if(mode==='live'){
+    if(s.trainingDate>_todayStr()){ toast("This session hasn't happened yet.",'info'); return; }
+  } else {
+    if(!s.recordingLink){ toast('This session has no recording link yet — check back once one is added.','info'); return; }
+  }
+  const me=Auth.user;
   const sessionEvals=EvalDB.all().filter(e=>e.sessionId===sessionId);
   const mine=sessionEvals.find(e=>e.evaluatorId===me.id);
   if(mine){
     if(mine.status==='draft'){
-      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id).then(()=>_openPrefilledEval(s)).catch(()=>{}); });
+      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id).then(()=>_openPrefilledEval(s,mode)).catch(()=>{}); });
       return;
     }
     if(mine.status==='pending_ack'){
@@ -8221,10 +7911,10 @@ function startSessionEvaluation(sessionId){
   const others=sessionEvals.filter(e=>e.status==='completed');
   if(others.length){
     const names=[...new Set(others.map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'another evaluator'; }))];
-    confirm$('Already Evaluated by Someone Else',`This session has already been evaluated by <strong>${Utils.esc(names.join(', '))}</strong>. Do you want to submit your own evaluation?`,'Submit My Own',()=>{ _openPrefilledEval(s); });
+    confirm$('Already Evaluated by Someone Else',`This session has already been evaluated by <strong>${Utils.esc(names.join(', '))}</strong>. Do you want to submit your own evaluation?`,'Submit My Own',()=>{ _openPrefilledEval(s,mode); });
     return;
   }
-  _openPrefilledEval(s);
+  _openPrefilledEval(s,mode);
 }
 
 function _initColResize(tbl){
@@ -8294,6 +7984,7 @@ function openNewEval(){
   document.getElementById('ef-evaluator-display').textContent=`${me.firstName} ${me.lastName}`;
   const _soEl=document.getElementById('ef-signoff-evaluator');if(_soEl)_soEl.textContent=`${me.firstName} ${me.lastName}`;
   document.getElementById('ef-session-id').value='';
+  document.getElementById('ef-evaluation-mode').value='';
   _updateEvalRecordingDisplay(null);
   _updateEvalSessionCodeDisplay(null);
   document.getElementById('ef-program').value='';
@@ -8307,6 +7998,7 @@ function openNewEval(){
   _populateEvalDropdowns(me.id);
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
+  _tdModalityNoteSet(false);
   buildAccordion();
   updateEvalScore();
   showEvalSubview('form');
@@ -8327,6 +8019,7 @@ function openEvalForm(id){
   document.getElementById('ef-evaluator-display').textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   const _soElF=document.getElementById('ef-signoff-evaluator');if(_soElF)_soElF.textContent=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
   document.getElementById('ef-session-id').value=ev.sessionId||'';
+  document.getElementById('ef-evaluation-mode').value=ev.evaluationMode||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
@@ -8344,6 +8037,7 @@ function openEvalForm(id){
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=ev.modalityId||'';
+  _tdModalityNoteSet(!!ev.sessionId);
   buildAccordion();
   const ratings=ev.ratings||{}, remarks=ev.remarks||{};
   _evalLiveRemarks={}; EVAL_CRITERIA.forEach(c=>{ const rv=ratings[c.id]; if(rv) _applyRating(c.id,rv); _evalLiveRemarks[c.id]=remarks[c.id]||''; const ta=document.getElementById(`eval-rmk-${c.id}`); if(ta) ta.value=remarks[c.id]||''; const wrap=document.getElementById(`eval-rmk-wrap-${c.id}`); if(wrap){ const needsRmk=rv&&rv<5; wrap.classList.toggle('rmk-required',!!needsRmk); if(ta) ta.placeholder=needsRmk?'Remarks required for this rating…':'Remarks (optional)…'; } });
@@ -8475,6 +8169,7 @@ function _getCurrentData(){
     venueId:_resolveVenueId('ef'),
     modalityId:document.getElementById('ef-modality').value,
     sessionId:document.getElementById('ef-session-id').value||null,
+    evaluationMode:document.getElementById('ef-evaluation-mode').value||null,
     observations:_rteGet('ef-observations'),
     ratings, remarks, overallScore
   };
@@ -8524,6 +8219,7 @@ function clearEvalForm(){
   _rteSet('ef-observations','');
   document.getElementById('ef-date').value='';
   document.getElementById('ef-session-id').value='';
+  document.getElementById('ef-evaluation-mode').value='';
   _updateEvalRecordingDisplay(null);
   _updateEvalSessionCodeDisplay(null);
   document.getElementById('eval-error').classList.add('hidden');
@@ -11720,10 +11416,11 @@ function wireEvents(){
     document.querySelectorAll('.th-dd').forEach(d=>d.classList.remove('open'));
     const cpdd=document.getElementById('col-picker-dd');
     if(cpdd) cpdd.classList.remove('open');
-    const scpdd=document.getElementById('sess-col-picker-dd');
-    if(scpdd) scpdd.classList.remove('open');
   });
-  document.getElementById('new-eval-btn').addEventListener('click',()=>setEvalTab('sessions'));
+  // "+ New Evaluation" used to jump to the (now-removed) Training Sessions sub-tab to pick a
+  // session; the only remaining way to start an evaluation is from a session's own "Evaluate
+  // This Training" action on the Training Calendar Detail page (phase33 item 7).
+  document.getElementById('new-eval-btn').addEventListener('click',()=>{ showView('training-delivery'); toast('Open a session and click "Evaluate This Training" to start a new evaluation.','info'); });
   document.getElementById('eval-draft-btn').addEventListener('click',saveEvalDraft);
   document.getElementById('eval-finalize-btn').addEventListener('click',finalizeEval);
   document.getElementById('new-idqa-btn').addEventListener('click',openNewIDQA);
