@@ -5475,6 +5475,18 @@ function deleteTrainingRecord(id){
     toast("Completed sessions can't be deleted. Contact an admin if this needs to change.",'error');
     return;
   }
+  // Non-admin guard (2026-08-05): a non-completed session that already has an evaluation or a
+  // training report attached can only be deleted by an admin -- deleting it out from under those
+  // records would orphan them. Admins may bypass this specific check; the completed-status block
+  // above still applies to everyone with no exception.
+  if(!Auth.user.isAdmin){
+    const hasEval=EvalDB.all().some(e=>e.sessionId===id);
+    const hasReport=TrainingReportsDB.all().some(r=>r.sessionId===id);
+    if(hasEval||hasReport){
+      toast('This session has evaluations or a training report attached — only an admin can delete it.','error');
+      return;
+    }
+  }
   confirm$('Delete Training',
     `Delete <strong>${Utils.esc(s.trainingProgram||'this training')}</strong>${s.batchNo?` (Batch ${Utils.esc(s.batchNo)})`:''}? This cannot be undone.`,
     'Delete',async()=>{
@@ -6997,6 +7009,40 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
 // tabs (_tdaKpiColumnsHtml, _tdrSummaryInnerHtml, _tdrL1InnerHtml), captures it via html2canvas
 // at a reduced scale, and downloads a PNG. No email compose window is opened -- Sandra
 // confirmed she just wants the PNG download, nothing else.
+// Attendance List for the Export Summary Image (2026-08-05) -- the actual participant roster,
+// as opposed to the aggregate KPI cards already shown in the Attendance & Performance section
+// above it. Columns are trimmed down from the live Attendance & Performance tab (which also has
+// Immediate Supervisor, Remarks, and checkbox/action columns) to keep the exported image focused,
+// matching the same "keep the export focused" principle already applied to the Agenda section
+// (which drops Remarks/Notes present on the live tab).
+function _tdaAttendanceListExportHtml(s){
+  _tdaEnsureLoaded(s.id);
+  const rows=_tdPartRows;
+  if(!rows.length) return '<div style="font-size:12.5px;color:var(--text3)">No participants recorded.</div>';
+  const preApplicable=_tdaPreApplicable(s.assessmentType), postApplicable=_tdaPostApplicable(s.assessmentType);
+  const th=(t)=>`<th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">${Utils.esc(t)}</th>`;
+  const trs=rows.map(r=>{
+    const p=_tdaPersonInfo(r);
+    const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending;
+    const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
+    const gainTxt=gain===null?'—':`${gain>0?'+':''}${gain}`;
+    const preTxt=preApplicable?(r.preTestScore??'—'):'—';
+    const postTxt=postApplicable?(r.postTestScore??'—'):'—';
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.name)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.role)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0"><span style="background:${st.bg};color:${st.fg};font-weight:600;border-radius:5px;padding:2px 8px;font-size:12px">${st.label}</span></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${preTxt}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${postTxt}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${gainTxt}</td>
+    </tr>`;
+  }).join('');
+  return `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr>${th('Participant')}${th('Role')}${th('Attendance Status')}${th('Pre-Test')}${th('Post-Test')}${th('Gain')}</tr>
+    ${trs}
+  </table>`;
+}
+
 async function _tdExportSummaryImage(sessionId){
   const s=TrSessionDB.byId(sessionId);
   if(!s){ toast('Session not found.','error'); return; }
@@ -7015,6 +7061,7 @@ async function _tdExportSummaryImage(sessionId){
   const l1Html=report?_tdrL1InnerHtml(s,report,true):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
   const agendaHtml=_tdrAgendaInnerHtml(report);
   const attendanceHtml=_tdaKpiColumnsHtml(s);
+  const attendanceListHtml=_tdaAttendanceListExportHtml(s);
 
   const sectionTitle=(t)=>`<div style="font-weight:700;font-size:13px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">${Utils.esc(t)}</div>`;
   const sessionDetailsHtml=`
@@ -7039,9 +7086,10 @@ async function _tdExportSummaryImage(sessionId){
   holder.innerHTML=`
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('1. Session Details')}${sessionDetailsHtml}</div>
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('2. Attendance & Performance')}${attendanceHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('3. Agenda')}${agendaHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('4. Summary')}${summaryHtml}</div>
-    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('5. L1 Evaluation Survey')}${l1Html}</div>`;
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('3. Attendance List')}${attendanceListHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('4. Agenda')}${agendaHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:16px">${sectionTitle('5. Summary')}${summaryHtml}</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px">${sectionTitle('6. L1 Evaluation Survey')}${l1Html}</div>`;
   document.body.appendChild(holder);
   try{
     const canvas=await html2canvas(holder,{backgroundColor:'#ffffff',scale:1.5,width:1200,windowWidth:1200});
@@ -7226,6 +7274,12 @@ function _selModuleLabel(k){
 
 /* ── EVALUATIONS ──────────────────── */
 let _evalId=null;
+// True when the currently-open eval form is session-linked but that session has no modalityId
+// set to inherit (2026-08-05 fix -- the newer Training Calendar "Add Training" flow doesn't
+// collect Modality at all, so there is nothing to actually inherit). When true, Modality is
+// treated as optional in _validateEval instead of required. Reset by _tdModalityNoteSet on every
+// eval-form open (new/edit/view/prefilled) so it always reflects the currently-open eval.
+let _efModalityNotInherited=false;
 let _evalReadOnly=false;
 let _evalLiveRemarks={};
 let _evalTab='my';
@@ -7507,7 +7561,7 @@ function openEvalView(id){
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
   document.getElementById('ef-modality').value=ev.modalityId||'';
-  _tdModalityNoteSet(!!ev.sessionId);
+  _tdModalityNoteSet(!!ev.sessionId, !!(ev.sessionId&&TrSessionDB.byId(ev.sessionId)?.modalityId));
   buildAccordion();
   const ratings=ev.ratings||{},remarks=ev.remarks||{};
   _evalLiveRemarks={}; EVAL_CRITERIA.forEach(c=>{ const rv=ratings[c.id]; if(rv) _applyRating(c.id,rv); _evalLiveRemarks[c.id]=remarks[c.id]||''; const ta=document.getElementById(`eval-rmk-${c.id}`); if(ta) ta.value=remarks[c.id]||''; const wrap=document.getElementById(`eval-rmk-wrap-${c.id}`); if(wrap){ const needsRmk=rv&&rv<5; wrap.classList.toggle('rmk-required',!!needsRmk); if(ta) ta.placeholder=needsRmk?'Remarks required for this rating…':'Remarks (optional)…'; } });
@@ -7845,19 +7899,30 @@ function _openPrefilledEval(s,mode){
   document.getElementById('ef-modality').value=s.modalityId||'';
   // Modality is inherited from the session's own Modality field (set on the Training Calendar
   // record) -- disable the dropdown here and label it clearly so it's not mistaken for a
-  // separately-entered value. See _tdModalityNoteSet.
-  _tdModalityNoteSet(true);
+  // separately-entered value. See _tdModalityNoteSet. If the session has no modalityId (real gap
+  // in the newer "Add Training" flow), there's nothing to inherit -- the dropdown stays enabled
+  // and Modality becomes optional for this eval (handled inside _tdModalityNoteSet).
+  _tdModalityNoteSet(true, !!s.modalityId);
   _updateEvalRecordingDisplay(s.recordingLink);
   _updateEvalSessionCodeDisplay(s.code);
 }
 
 // Toggles the eval form's Modality dropdown between "inherited from session" (disabled, with
-// a small note) and normal manual-entry mode. inherited=true when the eval was opened via a
-// session (Evaluate This Training / resuming a session-linked draft).
-function _tdModalityNoteSet(inherited){
+// a small note) and normal manual-entry mode.
+//   sessionLinked  = true when the eval was opened via a session (Evaluate This Training /
+//                    resuming or viewing a session-linked eval).
+//   hasModalityId  = true when that session actually has a modalityId set to inherit.
+// Only sessionLinked && hasModalityId counts as "inherited" (disable dropdown, show note) --
+// a session-linked eval whose session has NO modalityId (real gap in the newer Training
+// Calendar "Add Training" flow, which never collects Modality) has nothing to inherit, so the
+// dropdown stays enabled and the misleading note is not shown; _efModalityNotInherited is set
+// so _validateEval can treat Modality as optional in that specific case (2026-08-05).
+function _tdModalityNoteSet(sessionLinked,hasModalityId){
   const sel=document.getElementById('ef-modality');
   const note=document.getElementById('ef-modality-note');
-  if(sel) sel.disabled=!!inherited;
+  const inherited=!!sessionLinked&&!!hasModalityId;
+  _efModalityNotInherited=!!sessionLinked&&!hasModalityId;
+  if(sel) sel.disabled=inherited;
   if(note) note.classList.toggle('hidden',!inherited);
 }
 
@@ -7998,7 +8063,7 @@ function openNewEval(){
   _populateEvalDropdowns(me.id);
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
-  _tdModalityNoteSet(false);
+  _tdModalityNoteSet(false, false);
   buildAccordion();
   updateEvalScore();
   showEvalSubview('form');
@@ -8234,7 +8299,11 @@ function _validateEval(forFinalize){
   if(!d.trainingDate)     errs.push('Date is required.');
   if(!d.venueId)          errs.push('Venue is required.');
   if(_isOtherVenue(document.getElementById('ef-venue').value)&&!(document.getElementById('ef-venue-other')?.value||'').trim()) errs.push('Please specify the venue name.');
-  if(!d.modalityId)       errs.push('Modality is required.');
+  // Modality is optional only when this eval is session-linked and that session had no
+  // modalityId to inherit in the first place (real gap in the newer "Add Training" flow --
+  // see _tdModalityNoteSet). Every other case (session had a modalityId, or the eval isn't
+  // session-linked at all) still requires Modality exactly as before.
+  if(!d.modalityId && !_efModalityNotInherited) errs.push('Modality is required.');
   if(!_rteGetText('ef-observations')) errs.push('General Observations / Notes is required.');
   if(forFinalize){
     const n=Object.keys(d.ratings).length;
