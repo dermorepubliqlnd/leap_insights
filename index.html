@@ -72,6 +72,22 @@
     .pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px;line-height:1}
     .pw-toggle:hover{color:var(--text2)}
 
+    /* ── MULTI-SELECT DROPDOWN (e.g. Audience — 2026-08-06) ──
+       Closed by default, shows selected values as comma text + caret. Click opens a checklist
+       panel; works well even for long option lists since the panel scrolls independently. */
+    .msdd{position:relative}
+    .msdd-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;min-height:20px}
+    .msdd-trigger-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+    .msdd-trigger-text.ph{color:var(--text3)}
+    .msdd-caret{flex-shrink:0;color:var(--text3);font-size:11px;transition:transform .15s}
+    .msdd.open .msdd-caret{transform:rotate(180deg)}
+    .msdd-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-lg);max-height:220px;overflow-y:auto;padding:6px}
+    .msdd.open .msdd-panel{display:block}
+    .msdd-opt{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px}
+    .msdd-opt:hover{background:var(--bg2,#f8fafc)}
+    .msdd-opt input{cursor:pointer;flex-shrink:0}
+    .msdd-empty{padding:10px 8px;font-size:12.5px;color:var(--text3)}
+
     /* ── PASSWORD STRENGTH ── */
     .pw-strength{height:4px;border-radius:2px;margin-top:6px;background:var(--border);overflow:hidden}
     .pw-strength-bar{height:100%;width:0;border-radius:2px;transition:width .2s,background .2s}
@@ -5280,7 +5296,7 @@ function renderTDList(rows){
       <td>${_tdTypeBadge(s.deliveryType)}</td>
       <td style="font-size:13px">${Utils.esc(_tdPersonName(s))}</td>
       <td style="font-size:13px">${_tdDateCell(s)}</td>
-      <td style="font-size:13px">${(s.audience&&s.audience.length)?Utils.esc(s.audience.join(', ')):'—'}</td>
+      <td style="font-size:13px">${(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'—'}</td>
       <td>${_tdStatusBadge(_tdStatus(s))}</td>
       <td>${_tdDocStatus(s)}</td>
       <td>${_tdReportSLA(s)}</td>
@@ -7022,7 +7038,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-      ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(s.audience.join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('users','var(--sky)','Maximum Participants',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
     <div style="${gridStyle};margin-top:18px">
@@ -7496,25 +7512,72 @@ async function _tdExportSummaryImage(sessionId){
 // (Sel.active(Store.CATEGORIES)) instead of this hardcoded array. Kept as a fallback of the
 // original 4 defaults only in case the categories table is ever empty on a fresh environment.
 const CATEGORY_OPTIONS_FALLBACK=['Onboarding','Leadership','Professional Development','Technical'];
+// 2026-08-06 (per Sandra): Category options are always shown alphabetically, regardless of the
+// order they were added in Settings.
 function _categoryOptionNames(){
   const active=Sel.active(Store.CATEGORIES).map(c=>c.name);
-  return active.length?active:CATEGORY_OPTIONS_FALLBACK;
+  return (active.length?active:CATEGORY_OPTIONS_FALLBACK).slice().sort((a,b)=>a.localeCompare(b));
 }
 
 // 2026-08-06 (per Sandra): Audience can now be tagged with more than one value (e.g. a session
 // aimed at both "People Leaders" and "Sales Leaders"), sourced from the "Audiences" Settings
 // list rather than free text. Stored on training_sessions.audience as a text[] in Supabase.
-function _audienceOptionNames(){ return Sel.active(Store.AUDIENCES).map(a=>a.name); }
+// Options and any displayed/selected list are always shown alphabetically.
+function _audienceOptionNames(){ return Sel.active(Store.AUDIENCES).map(a=>a.name).sort((a,b)=>a.localeCompare(b)); }
+function _sortedNames(arr){ return (arr||[]).slice().sort((a,b)=>a.localeCompare(b)); }
+
+// 2026-08-06 (per Sandra): rebuilt Audience as a closed-by-default dropdown with a checklist
+// panel (rather than an always-open <select multiple>), since the Audiences list can get long.
+// State lives in _msddState (not the DOM) since a dropdown-with-checkboxes has no native
+// multi-value form element to read from directly.
+const _msddState={};        // id -> array of currently-selected names
+const _msddPlaceholder={};  // id -> placeholder text shown when nothing is selected
 function _audienceMultiSelectHtml(id, selected){
-  const sel=new Set(selected||[]);
-  const names=_audienceOptionNames();
-  const opts=names.map(n=>`<option value="${Utils.esc(n)}" ${sel.has(n)?'selected':''}>${Utils.esc(n)}</option>`).join('');
-  return `<select id="${id}" class="form-control" multiple style="min-height:76px">${opts}</select><div style="font-size:11px;color:var(--text3);margin-top:3px">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</div>`;
+  return _msddHtml(id, _audienceOptionNames(), selected, 'Select audience(s)…');
 }
-function _readMultiSelect(id){
-  const el=document.getElementById(id); if(!el) return [];
-  return Array.from(el.selectedOptions||[]).map(o=>o.value);
+function _msddHtml(id, names, selected, placeholder){
+  _msddState[id]=_sortedNames(selected);
+  _msddPlaceholder[id]=placeholder;
+  const sel=new Set(_msddState[id]);
+  const hasSel=_msddState[id].length>0;
+  const text=hasSel?_msddState[id].join(', '):placeholder;
+  const opts=names.length
+    ? names.map(n=>`<label class="msdd-opt"><input type="checkbox" value="${Utils.esc(n)}" ${sel.has(n)?'checked':''} onchange="_msddToggle('${id}',this.value,this.checked)"> ${Utils.esc(n)}</label>`).join('')
+    : `<div class="msdd-empty">No options yet — add some in Settings → Lists.</div>`;
+  return `<div class="msdd" id="${id}-wrap">
+    <div class="msdd-trigger form-control" onclick="_msddOpenToggle('${id}')">
+      <span class="msdd-trigger-text${hasSel?'':' ph'}" id="${id}-triggertext">${Utils.esc(text)}</span>
+      <span class="msdd-caret">▾</span>
+    </div>
+    <div class="msdd-panel" id="${id}-panel">${opts}</div>
+  </div>`;
 }
+function _msddOpenToggle(id){
+  const wrap=document.getElementById(`${id}-wrap`); if(!wrap) return;
+  const wasOpen=wrap.classList.contains('open');
+  document.querySelectorAll('.msdd.open').forEach(w=>w.classList.remove('open'));
+  if(!wasOpen) wrap.classList.add('open');
+}
+if(!window.__msddOutsideClickBound){
+  window.__msddOutsideClickBound=true;
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.msdd')) document.querySelectorAll('.msdd.open').forEach(w=>w.classList.remove('open'));
+  });
+}
+function _msddToggle(id,name,checked){
+  const arr=_msddState[id]=_msddState[id]||[];
+  const i=arr.indexOf(name);
+  if(checked && i<0) arr.push(name);
+  if(!checked && i>=0) arr.splice(i,1);
+  _msddState[id]=_sortedNames(arr);
+  const el=document.getElementById(`${id}-triggertext`);
+  if(el){
+    const hasSel=_msddState[id].length>0;
+    el.textContent=hasSel?_msddState[id].join(', '):(_msddPlaceholder[id]||'');
+    el.classList.toggle('ph',!hasSel);
+  }
+}
+function _readMultiSelect(id){ return (_msddState[id]||[]).slice(); }
 
 function _tddInfoBlockEdit(iconName,color,label,inputHtml,wrapId){
   return `<div ${wrapId?`id="${wrapId}"`:''} style="display:flex;gap:9px;align-items:flex-start;min-width:0">
