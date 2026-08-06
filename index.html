@@ -4860,7 +4860,16 @@ function renderSelList(tab){
   const isAdmin=Auth.isAdmin;
   const addBtn=`<button class="btn btn-primary btn-sm" onclick='openAddSel("${tab.key}","${singLabel}")'>+ Add ${singLabel}</button>`;
   const inactiveToggle=inactiveCount>0?`<button class="btn btn-sm btn-secondary" onclick="_settingsShowInactive['${tab.key}']=!_settingsShowInactive['${tab.key}'];renderSettings()" style="font-size:12px">${showInactive?'Hide Inactive':'Show Inactive ('+inactiveCount+')'}</button>`:'';
-  const hdrControls=`<div style="display:flex;gap:8px;align-items:center">${inactiveToggle}${addBtn}</div>`;
+  // CSV bulk-import + template (2026-08-06, per Sandra): Audiences and Departments only, since
+  // those two are the flat name-only lists people actually need to bulk-load (e.g. a full
+  // department list at rollout). Other lists (Positions, Venues, Delivery Method, Categories,
+  // Deliverable Types) have extra fields (type/isID/isCD) that don't fit a one-column CSV, so
+  // they keep the manual Add/Edit flow only.
+  const isCsvListTab=(tab.key===Store.AUDIENCES||tab.key===Store.DEPARTMENTS);
+  const csvControls=isCsvListTab?`<button class="btn btn-sm btn-secondary" onclick="document.getElementById('sel-csv-input').click()">⇪ Import CSV</button>
+    <input type="file" id="sel-csv-input" accept=".csv" style="display:none" onchange="_selHandleCSVFile('${tab.key}',this.files[0]);this.value=''">
+    <button class="btn btn-sm btn-ghost" onclick="_selDownloadCSVTemplate('${tab.key}')">⇩ Template</button>`:'';
+  const hdrControls=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${inactiveToggle}${csvControls}${addBtn}</div>`;
 
   function rowActions(item){
     const editBtn=`<button class="btn btn-sm btn-secondary" onclick='openEditSel("${tab.key}","${item.id}")'>Edit</button>`;
@@ -4971,6 +4980,41 @@ function toggleSel(key,id){
   confirm$(`${item.isActive?'Deactivate':'Activate'} Item`,`${item.isActive?'Deactivate':'Activate'} <strong>${Utils.esc(item.name)}</strong>?`,'Confirm',async()=>{
     try{ await Sel.toggle(key,id); renderSettings(); }catch(e){ /* error already surfaced */ }
   });
+}
+
+// CSV bulk-import + template for name-only Settings lists (Audiences, Departments) (2026-08-06,
+// per Sandra). Same _tdaParseCSV parser reused elsewhere (Attendance roster / Agenda Templates
+// CSV import). One column: Name. Rows matching an existing item (case-insensitive, via
+// Sel.byName) are skipped rather than added as a duplicate, mirroring _tdaResolveDepartmentId's
+// auto-create-if-missing behavior on the Attendance roster's own CSV import.
+function _selDownloadCSVTemplate(key){
+  const example=key===Store.DEPARTMENTS?'Sales':'New Hires';
+  const csv=`Name\n${example}\n`;
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`${key}_upload_template.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function _selHandleCSVFile(key,file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    const {header,rows}=_tdaParseCSV(String(reader.result||''));
+    const nameIdx=header.findIndex(h=>h.includes('name'));
+    if(nameIdx===-1){ toast('CSV must have a Name column.','error'); return; }
+    let added=0, skippedDup=0, skippedBlank=0;
+    for(const cols of rows){
+      const name=(cols[nameIdx]||'').trim();
+      if(!name){ skippedBlank++; continue; }
+      if(Sel.byName(key,name)){ skippedDup++; continue; }
+      try{ await Sel.add(key,{name}); added++; }catch(e){ /* error already surfaced */ }
+    }
+    renderSettings();
+    toast(`${added} item(s) imported${skippedDup?`, ${skippedDup} duplicate(s) skipped`:''}${skippedBlank?`, ${skippedBlank} blank row(s) skipped`:''}.`, added?'success':'warning');
+  };
+  reader.readAsText(file);
 }
 
 
