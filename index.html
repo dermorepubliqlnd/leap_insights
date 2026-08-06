@@ -1592,7 +1592,7 @@
                 <input type="text" id="td-f-program" class="form-control" placeholder="Search program…" oninput="tdSetFilter('program',this.value)">
               </div>
               <div class="form-group" style="margin:0;min-width:170px">
-                <label class="form-label" style="margin-bottom:4px">Trainer / Owner</label>
+                <label class="form-label" style="margin-bottom:4px">Trainer</label>
                 <select id="td-f-person" class="form-control" onchange="tdSetFilter('person',this.value)">
                   <option value="all">All</option>
                 </select>
@@ -5640,10 +5640,13 @@ function _tdFilteredRows(){
     if(tdF.status!=='all' && st!==tdF.status) return false;
     if(tdF.type!=='all' && (s.deliveryType||'')!==tdF.type) return false;
     if(tdF.program && !(s.trainingProgram||'').toLowerCase().includes(tdF.program.toLowerCase())) return false;
+    // Trainer filter (2026-08-06, per Sandra): narrowed from "Trainer / Owner" to Trainer only --
+    // Self-led sessions' Owner is a different concept (who's accountable for the session, not who
+    // delivered it) and was confusing people using this filter to find a specific trainer's
+    // sessions. Self-led sessions simply won't match any Trainer filter value now (grp!=='trainer'
+    // sessions have no trainerId to match against, same as External already had no match here).
     if(tdF.person!=='all'){
-      const grp=_tdFieldGroup(s.deliveryType);
-      const pid=grp==='owner'?s.ownerId:(grp==='trainer'?s.trainerId:null);
-      if(pid!==tdF.person) return false;
+      if(_tdFieldGroup(s.deliveryType)!=='trainer' || s.trainerId!==tdF.person) return false;
     }
     if(tdF.audience!=='all' && !(s.audience||[]).includes(tdF.audience)) return false;
     if(tdF.daterange!=='all'){
@@ -5709,7 +5712,7 @@ function _tdPopulateFilterOptions(){
   const personSel=document.getElementById('td-f-person');
   if(personSel && personSel.options.length<=1){
     const ids=new Set();
-    all.forEach(s=>{ const grp=_tdFieldGroup(s.deliveryType); const pid=grp==='owner'?s.ownerId:(grp==='trainer'?s.trainerId:null); if(pid) ids.add(pid); });
+    all.forEach(s=>{ if(_tdFieldGroup(s.deliveryType)==='trainer' && s.trainerId) ids.add(s.trainerId); });
     const people=[...ids].map(id=>DB.byId(id)).filter(Boolean).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
     personSel.innerHTML='<option value="all">All</option>'+people.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
     personSel.value=tdF.person;
