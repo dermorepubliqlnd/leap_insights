@@ -88,6 +88,13 @@
     .msdd-opt input{cursor:pointer;flex-shrink:0}
     .msdd-empty{padding:10px 8px;font-size:12.5px;color:var(--text3)}
 
+    /* ── TRAINING CALENDAR LIST-VIEW COLUMN ENGINE (Phase46, 2026-08-06) ── */
+    .td-col-resizer{position:absolute;top:0;right:0;bottom:0;width:8px;cursor:col-resize;z-index:1}
+    .td-col-resizer:hover{background:var(--border)}
+    .td-col-panel{position:absolute;top:calc(100% + 4px);right:0;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:8px;min-width:220px;max-height:340px;overflow-y:auto;z-index:20}
+    .td-col-panel-item{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:5px 8px;border-radius:5px;cursor:pointer}
+    .td-col-panel-item:hover{background:var(--hover-bg,#f1f5f9)}
+
     /* ── PASSWORD STRENGTH ── */
     .pw-strength{height:4px;border-radius:2px;margin-top:6px;background:var(--border);overflow:hidden}
     .pw-strength-bar{height:100%;width:0;border-radius:2px;transition:width .2s,background .2s}
@@ -2431,7 +2438,11 @@ const _FIELD_MAPS = {
     // Guest Trainer fallback (2026-08-05, Phase38 item 1): free-text trainer name for SMEs not in
     // the system roster who should never get login access. Mutually exclusive with trainerId --
     // a session has EITHER a real trainerId OR a guestTrainerName, never both.
-    guestTrainerName:'guest_trainer_name'
+    guestTrainerName:'guest_trainer_name',
+    // Phase46 (2026-08-06): creator metadata (set once at creation, never touched on update) and
+    // the same Guest fallback pattern extended to Co-Facilitator -- mutually exclusive with
+    // coFacilitatorId, same as guestTrainerName/trainerId above.
+    createdBy:'created_by', coFacilitatorGuestName:'co_facilitator_guest_name'
   },
   session_participants:{
     id:'id', sessionId:'session_id', profileId:'profile_id', externalName:'external_name',
@@ -5043,6 +5054,89 @@ let tdPage=1;
 let tdPageSize=10;   // Phase39 item 4: mutable page size, selectable 10/25/50 via #td-pagesize control
 let tdCalCursor=new Date(); tdCalCursor.setDate(1);
 
+// List view column engine (Phase46, 2026-08-06, per Sandra): sortable-by-any-column-header,
+// resizable, hideable, reorderable columns. Session ID is pinned first / never movable or
+// hideable; Actions is pinned last / never movable or hideable (so the row's action buttons
+// can never be hidden away entirely) -- every other column can be sorted, hidden, resized, and
+// dragged into any order. Preferences are per-browser (localStorage), not per-user-in-DB, same
+// pattern as every other small UI flag in this app (see the Store comment above).
+let _tdSort={col:'created',dir:'desc'}; // default = latest-created entries on top, per Sandra
+const _TD_COL_DEFS=[
+  {id:'sid', label:'Session ID', width:110, locked:'start',
+    sortVal:s=>s.code||s.id||'',
+    cell:s=>`<a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:var(--pri);text-decoration:none;font-weight:600">${Utils.esc(s.code||s.id||'')}</a>`},
+  {id:'program', label:'Program / Implementation', width:220,
+    sortVal:s=>(s.trainingProgram||'').toLowerCase(),
+    cell:s=>`<div style="font-weight:600;font-size:13px"><a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:inherit;text-decoration:none">${Utils.esc(s.trainingProgram||'—')}</a></div><div style="font-size:11.5px;color:var(--text3)">Batch ${Utils.esc(s.batchNo||'—')}</div>`},
+  {id:'type', label:'Type', width:110,
+    sortVal:s=>s.deliveryType||'',
+    cell:s=>_tdTypeBadge(s.deliveryType)},
+  {id:'person', label:'Trainer / Owner / Facilitator', width:170,
+    sortVal:s=>_tdPersonName(s).toLowerCase(),
+    cell:s=>`<span style="font-size:13px">${Utils.esc(_tdPersonName(s))}</span>`},
+  {id:'date', label:'Date / Period', width:150,
+    sortVal:s=>s.trainingDate||'',
+    cell:s=>`<span style="font-size:13px">${_tdDateCell(s)}</span>`},
+  {id:'audience', label:'Audience', width:160,
+    sortVal:s=>((s.audience&&s.audience.length)?_sortedNames(s.audience).join(', '):'').toLowerCase(),
+    cell:s=>`<span style="font-size:13px">${(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'—'}</span>`},
+  {id:'status', label:'Status', width:110,
+    sortVal:s=>_tdStatus(s),
+    cell:s=>_tdStatusBadge(_tdStatus(s))},
+  {id:'doc', label:'Documentation', width:140,
+    sortVal:s=>_tdDocStatusText(s),
+    cell:s=>_tdDocStatus(s)},
+  {id:'sla', label:'Report SLA', width:130,
+    sortVal:s=>{const d=_tdReportSLADays(s); return d==null?-1:d;},
+    cell:s=>_tdReportSLA(s)},
+  {id:'recording', label:'Recording', width:110,
+    sortVal:s=>s.recordingLink?1:0,
+    cell:s=>`<span style="font-size:13px">${_tdRecordingCell(s)}</span>`},
+  {id:'eval', label:'Trainer Evaluation', width:140,
+    sortVal:s=>_tdEvalStatusText(s),
+    cell:s=>_tdEvalStatus(s)},
+  {id:'created', label:'Created', width:140,
+    sortVal:s=>s.createdAt||'',
+    cell:s=>`<div style="font-size:12.5px">${s.createdAt?Utils.esc(new Date(s.createdAt).toLocaleDateString()):'—'}</div><div style="font-size:10.5px;color:var(--text3)">${s.createdBy?Utils.esc(_tdCreatorName(s.createdBy)):''}</div>`},
+  {id:'actions', label:'Actions', width:150, locked:'end', noSort:true,
+    cell:s=>`<div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openTrainingDetail('${s.id}')">View</button><button class="btn btn-sm btn-ghost" style="color:#dc2626" onclick="deleteTrainingRecord('${s.id}')">Delete</button></div>`}
+];
+const _TD_COL_PREFS_KEY='leap_td_col_prefs_v1';
+function _tdDefaultColOrder(){ return _TD_COL_DEFS.map(c=>c.id); }
+let _tdColOrder=_tdDefaultColOrder();
+let _tdColHidden={};
+let _tdColWidths={};
+(function _tdLoadColPrefs(){
+  const saved=Store.get(_TD_COL_PREFS_KEY);
+  if(saved && Array.isArray(saved.order)){
+    const known=new Set(_TD_COL_DEFS.map(c=>c.id));
+    let order=saved.order.filter(id=>known.has(id));
+    _TD_COL_DEFS.forEach(c=>{ if(!order.includes(c.id)) order.push(c.id); });
+    order=order.filter(id=>id!=='sid'&&id!=='actions');
+    _tdColOrder=['sid',...order,'actions'];
+    _tdColHidden=saved.hidden||{};
+    _tdColWidths=saved.widths||{};
+  }
+})();
+function _tdSaveColPrefs(){ Store.set(_TD_COL_PREFS_KEY,{order:_tdColOrder,hidden:_tdColHidden,widths:_tdColWidths}); }
+function _tdVisibleCols(){ return _tdColOrder.map(id=>_TD_COL_DEFS.find(c=>c.id===id)).filter(c=>c&&!_tdColHidden[c.id]); }
+function _tdRowComparator(a,b){
+  const col=_TD_COL_DEFS.find(c=>c.id===_tdSort.col);
+  if(!col||col.noSort) return 0;
+  let va=col.sortVal(a), vb=col.sortVal(b);
+  if(va==null) va=''; if(vb==null) vb='';
+  let cmp = (typeof va==='number'&&typeof vb==='number') ? (va-vb) : String(va).localeCompare(String(vb));
+  return _tdSort.dir==='asc'?cmp:-cmp;
+}
+function tdSortBy(colId){
+  const col=_TD_COL_DEFS.find(c=>c.id===colId);
+  if(!col||col.noSort) return;
+  if(_tdSort.col===colId) _tdSort.dir=_tdSort.dir==='asc'?'desc':'asc';
+  else { _tdSort.col=colId; _tdSort.dir='desc'; }
+  tdPage=1;
+  renderTrainingDelivery();
+}
+
 const TD_TYPE_COLORS={
   'ILT':{bg:'#eff6ff',fg:'#1d4ed8',dot:'#3b82f6'},
   'VILT':{bg:'#f5f3ff',fg:'#6d28d9',dot:'#8b5cf6'},
@@ -5189,6 +5283,30 @@ function _tdEvalStatus(s){
   return done?'<span class="badge" style="background:#dcfce7;color:#15803d">Evaluated</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8">Ready for Eval</span>';
 }
 
+// Plain-text mirrors of the badge-producing functions above, used only as sortable values for
+// the List view's Documentation/Report SLA/Trainer Evaluation columns (Phase46, 2026-08-06).
+function _tdDocStatusText(s){
+  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  if(!rep) return 'Report Pending';
+  const map={approved:'Report Approved',submitted:'Report Submitted',returned:'Report Returned',draft:'Report Draft'};
+  return map[rep.status]||'Report Pending';
+}
+function _tdReportSLADays(s){
+  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  if(!rep||!rep.submittedAt) return null;
+  return _tdBusinessDaysBetween(s.trainingDate,rep.submittedAt);
+}
+function _tdEvalStatusText(s){
+  if(_tdIsOwnerType(s.deliveryType)) return 'N/A';
+  const evs=EvalDB.all().filter(e=>e.sessionId===s.id);
+  if(!evs.length) return s.recordingLink?'Ready for Eval':'N/A';
+  const done=evs.find(e=>e.status==='completed'||e.status==='pending_ack');
+  return done?'Evaluated':'Ready for Eval';
+}
+function _tdCreatorName(id){
+  const u=DB.byId(id);
+  return u?(u.firstName+' '+u.lastName):'—';
+}
 function _tdRecordingCell(s){
   if(_tdIsOwnerType(s.deliveryType)) return '<span style="color:var(--text3)">N/A</span>';
   return s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener" style="font-size:12.5px">▶ View</a>`:'<span style="color:var(--text3)">— none —</span>';
@@ -5222,7 +5340,7 @@ function _tdFilteredRows(){
       if(tdF.daterange==='thisyear'){ if(d.getFullYear()!==today.getFullYear()) return false; }
     }
     return true;
-  }).sort((a,b)=>(b.trainingDate||'').localeCompare(a.trainingDate||''));
+  }).sort(_tdRowComparator);
 }
 
 function tdSetFilter(key,val){ tdF[key]=val; tdPage=1; renderTrainingDelivery(); }
@@ -5300,6 +5418,105 @@ function renderTrainingDelivery(){
   if(tdViewMode==='calendar') renderTDCalendar(rows); else renderTDList(rows);
 }
 
+// Column header cell: click anywhere on the label to sort (all columns except Actions are
+// sortable); the small resizer handle on the right edge drag-resizes the column without
+// triggering a sort; non-locked headers are draggable to reorder (Session ID/Actions excluded).
+function _tdThHtml(col){
+  const sortable=!col.noSort;
+  const isSorted=_tdSort.col===col.id;
+  const arrow=isSorted?(_tdSort.dir==='asc'?' ▲':' ▼'):'';
+  const draggableAttr=col.locked?'':'draggable="true"';
+  const dragHandlers=col.locked?'':`ondragstart="_tdColDragStart(event,'${col.id}')" ondragover="_tdColDragOver(event)" ondrop="_tdColDrop(event,'${col.id}')" ondragend="_tdColDragEnd(event)"`;
+  return `<th data-col="${col.id}" style="position:relative;${sortable?'cursor:pointer;':''}user-select:none" ${draggableAttr} ${dragHandlers} ${sortable?`onclick="tdSortBy('${col.id}')"`:''} title="${col.locked?'Fixed column':(sortable?'Click to sort · drag to reorder':'')}">
+    <span>${Utils.esc(col.label)}${arrow}</span>
+    <span class="td-col-resizer" onmousedown="_tdColResizeStart(event,'${col.id}')" onclick="event.stopPropagation()"></span>
+  </th>`;
+}
+function _tdColgroupHtml(cols){
+  return `<colgroup>${cols.map(c=>`<col style="width:${(_tdColWidths[c.id]||c.width)}px">`).join('')}</colgroup>`;
+}
+function _tdRowHtmlDynamic(s,cols){
+  return `<tr>${cols.map(c=>`<td>${c.cell(s)}</td>`).join('')}</tr>`;
+}
+let _tdColPanelOpen=false;
+function _tdColManagerButtonHtml(){
+  const hideable=_TD_COL_DEFS.filter(c=>!c.locked);
+  return `<div style="position:relative">
+    <button class="btn btn-sm btn-secondary" onclick="_tdToggleColPanel()">⚙ Columns</button>
+    <div id="td-col-panel" class="td-col-panel ${_tdColPanelOpen?'':'hidden'}">
+      <div style="font-size:11px;color:var(--text3);padding:2px 8px 8px">Show/hide columns. Drag a column header to reorder it — Session ID and Actions stay fixed.</div>
+      ${hideable.map(c=>`<label class="td-col-panel-item"><input type="checkbox" ${_tdColHidden[c.id]?'':'checked'} onchange="_tdToggleColHidden('${c.id}',this.checked)"> ${Utils.esc(c.label)}</label>`).join('')}
+      <div style="border-top:1px solid var(--border-lt);margin-top:6px;padding-top:6px">
+        <a href="javascript:void(0)" onclick="_tdResetColPrefs()" style="font-size:11.5px;color:var(--pri);text-decoration:none">Reset to default</a>
+      </div>
+    </div>
+  </div>`;
+}
+function _tdToggleColPanel(){ _tdColPanelOpen=!_tdColPanelOpen; renderTDList(_tdFilteredRows()); }
+function _tdToggleColHidden(id,checked){
+  _tdColHidden[id]=!checked;
+  _tdSaveColPrefs();
+  renderTDList(_tdFilteredRows());
+}
+function _tdResetColPrefs(){
+  _tdColOrder=_tdDefaultColOrder();
+  _tdColHidden={};
+  _tdColWidths={};
+  _tdSaveColPrefs();
+  renderTDList(_tdFilteredRows());
+}
+// Drag-resize: mousedown on a header's resizer handle tracks the pointer and live-resizes the
+// matching <col> element; final width is committed to _tdColWidths + localStorage on mouseup.
+let _tdResizeState=null;
+function _tdColResizeStart(e,colId){
+  e.preventDefault(); e.stopPropagation();
+  const th=e.target.closest('th');
+  if(!th) return;
+  _tdResizeState={colId,startX:e.clientX,startWidth:th.getBoundingClientRect().width};
+  document.addEventListener('mousemove',_tdColResizeMove);
+  document.addEventListener('mouseup',_tdColResizeEnd);
+}
+function _tdColResizeMove(e){
+  if(!_tdResizeState) return;
+  const newWidth=Math.max(60,Math.round(_tdResizeState.startWidth+(e.clientX-_tdResizeState.startX)));
+  const table=document.getElementById('td-list-table');
+  if(!table) return;
+  const cols=_tdVisibleCols();
+  const idx=cols.findIndex(c=>c.id===_tdResizeState.colId);
+  const colEl=table.querySelectorAll('colgroup col')[idx];
+  if(colEl) colEl.style.width=newWidth+'px';
+  _tdResizeState.liveWidth=newWidth;
+}
+function _tdColResizeEnd(){
+  if(_tdResizeState){
+    _tdColWidths[_tdResizeState.colId]=_tdResizeState.liveWidth||_tdResizeState.startWidth;
+    _tdSaveColPrefs();
+  }
+  _tdResizeState=null;
+  document.removeEventListener('mousemove',_tdColResizeMove);
+  document.removeEventListener('mouseup',_tdColResizeEnd);
+}
+// Drag-reorder: native HTML5 drag-and-drop on header cells. Session ID/Actions are excluded
+// (not draggable, and never a valid drop target) so they always stay pinned first/last.
+let _tdDragColId=null;
+function _tdColDragStart(e,colId){ _tdDragColId=colId; if(e.dataTransfer) e.dataTransfer.effectAllowed='move'; }
+function _tdColDragOver(e){ e.preventDefault(); }
+function _tdColDrop(e,targetColId){
+  e.preventDefault();
+  if(!_tdDragColId||_tdDragColId===targetColId) return;
+  const targetDef=_TD_COL_DEFS.find(c=>c.id===targetColId);
+  if(targetDef&&targetDef.locked){ _tdDragColId=null; return; }
+  const order=_tdColOrder.filter(id=>id!==_tdDragColId);
+  const targetIdx=order.indexOf(targetColId);
+  order.splice(targetIdx,0,_tdDragColId);
+  const mid=order.filter(id=>id!=='sid'&&id!=='actions');
+  _tdColOrder=['sid',...mid,'actions'];
+  _tdSaveColPrefs();
+  _tdDragColId=null;
+  renderTDList(_tdFilteredRows());
+}
+function _tdColDragEnd(){ _tdDragColId=null; }
+
 function renderTDList(rows){
   const wrap=document.getElementById('td-list-wrap');
   if(!rows.length){
@@ -5310,26 +5527,7 @@ function renderTDList(rows){
   if(tdPage>totalPages) tdPage=totalPages;
   const start=(tdPage-1)*tdPageSize;
   const pageRows=rows.slice(start,start+tdPageSize);
-  const rowHtml=(s)=>`<tr>
-      <td class="mono"><a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:var(--pri);text-decoration:none;font-weight:600">${Utils.esc(s.code||s.id||'')}</a></td>
-      <td>
-        <div style="font-weight:600;font-size:13px"><a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:inherit;text-decoration:none">${Utils.esc(s.trainingProgram||'—')}</a></div>
-        <div style="font-size:11.5px;color:var(--text3)">Batch ${Utils.esc(s.batchNo||'—')}</div>
-      </td>
-      <td>${_tdTypeBadge(s.deliveryType)}</td>
-      <td style="font-size:13px">${Utils.esc(_tdPersonName(s))}</td>
-      <td style="font-size:13px">${_tdDateCell(s)}</td>
-      <td style="font-size:13px">${(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'—'}</td>
-      <td>${_tdStatusBadge(_tdStatus(s))}</td>
-      <td>${_tdDocStatus(s)}</td>
-      <td>${_tdReportSLA(s)}</td>
-      <td style="font-size:13px">${_tdRecordingCell(s)}</td>
-      <td>${_tdEvalStatus(s)}</td>
-      <td><div class="td-acts">
-        <button class="btn btn-sm btn-secondary" onclick="openTrainingDetail('${s.id}')">View</button>
-        <button class="btn btn-sm btn-ghost" style="color:#dc2626" onclick="deleteTrainingRecord('${s.id}')">Delete</button>
-      </div></td>
-    </tr>`;
+  const cols=_tdVisibleCols();
   const pager=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12.5px;color:var(--text3)">Showing ${rows.length?start+1:0}–${Math.min(start+tdPageSize,rows.length)} of ${rows.length}</div>
@@ -5349,9 +5547,11 @@ function renderTDList(rows){
       </div>
     </div>`;
   wrap.innerHTML=`<div class="card" style="padding-bottom:0">
-    <div class="eval-tbl-wrap" style="max-height:calc(100vh - 380px);min-height:220px;overflow-y:auto"><table class="eval-tbl">
-    <thead style="position:sticky;top:0;z-index:2"><tr><th>Session ID</th><th>Program / Implementation</th><th>Type</th><th>Trainer / Owner / Facilitator</th><th>Date / Period</th><th>Audience</th><th>Status</th><th>Documentation</th><th>Report SLA</th><th>Recording</th><th>Trainer Evaluation</th><th>Actions</th></tr></thead>
-    <tbody>${pageRows.map(rowHtml).join('')}</tbody>
+    <div style="display:flex;justify-content:flex-end;padding:8px 4px 0">${_tdColManagerButtonHtml()}</div>
+    <div class="eval-tbl-wrap" style="max-height:calc(100vh - 380px);min-height:220px;overflow-y:auto"><table class="eval-tbl" id="td-list-table" style="table-layout:fixed">
+    ${_tdColgroupHtml(cols)}
+    <thead style="position:sticky;top:0;z-index:2"><tr>${cols.map(_tdThHtml).join('')}</tr></thead>
+    <tbody>${pageRows.map(s=>_tdRowHtmlDynamic(s,cols)).join('')}</tbody>
   </table></div>${pager}</div>`;
 }
 
@@ -5505,7 +5705,10 @@ function renderTDCalendar(rows){
     }
   }
   const headerCellsHtml=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<div style="grid-row:1;grid-column:${i+1};background:#f8fafc;border:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3);box-sizing:border-box">${d}</div>`).join('');
-  const legend=Object.entries(TD_TYPE_COLORS).map(([k,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${c.dot};display:inline-block"></span>${k}</span>`).join('');
+  // VILT excluded from the calendar legend only (2026-08-06, per Sandra -- "we only have 3 now").
+  // TD_TYPE_COLORS itself still keeps VILT for legacy record badge coloring, and the List view's
+  // Type filter dropdown still legitimately offers VILT for filtering historical records.
+  const legend=Object.entries(TD_TYPE_COLORS).filter(([k])=>k!=='VILT').map(([k,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${c.dot};display:inline-block"></span>${k}</span>`).join('');
   wrap.innerHTML=`<div class="card" style="padding:14px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:8px">
@@ -5620,7 +5823,7 @@ async function saveTrainingModal(){
       closeModal('training');
       renderTrainingDelivery();
     } else {
-      const rec=await TrSessionDB.create({...d,code:generateSessionCode()});
+      const rec=await TrSessionDB.create({...d,code:generateSessionCode(),createdBy:Auth.user.id});
       toast('Training added.','success');
       closeModal('training');
       openTrainingDetail(rec.id);
@@ -5748,7 +5951,8 @@ async function _tdCreateFromTypePick(deliveryType){
     const rec=await TrSessionDB.create({
       deliveryType,
       code:generateSessionCode(),
-      status:'scheduled'
+      status:'scheduled',
+      createdBy:Auth.user.id
     });
     closeModal('td-type-pick');
     openTrainingDetail(rec.id);
@@ -5812,6 +6016,10 @@ async function tdDetailSave(){
   // guestTrainerName is saved instead (and vice versa).
   const trainerSelVal=document.getElementById('tdd-trainer')?.value||'';
   const isGuestTrainer=grp==='trainer'&&trainerSelVal==='__SME__';
+  // Same Guest fallback pattern extended to Co-Facilitator (Phase46, 2026-08-06): mutually
+  // exclusive with coFacilitatorId.
+  const cofacSelVal=document.getElementById('tdd-cofacilitator')?.value||'';
+  const isGuestCofac=grp==='trainer'&&cofacSelVal==='__SME__';
   const d={
     deliveryType,
     trainingProgram:document.getElementById('tdd-program').value.trim(),
@@ -5823,7 +6031,8 @@ async function tdDetailSave(){
     ownerId:grp==='owner'?(document.getElementById('tdd-owner').value||null):null,
     facilitatorName:grp==='external'?document.getElementById('tdd-facilitator').value.trim():null,
     trainingProvider:grp==='external'?document.getElementById('tdd-provider').value.trim():null,
-    coFacilitatorId:grp==='trainer'?(document.getElementById('tdd-cofacilitator').value||null):null,
+    coFacilitatorId:(grp==='trainer'&&!isGuestCofac)?(cofacSelVal||null):null,
+    coFacilitatorGuestName:(grp==='trainer'&&isGuestCofac)?(document.getElementById('tdd-cofacilitator-guest-name').value.trim()||null):null,
     venueId:_resolveVenueId('tdd')||null,
     audience:_readMultiSelect('tdd-audience'),
     expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
@@ -6606,12 +6815,13 @@ function _tdrRenderTab(s){
     return `<tr>
       <td><input type="text" class="form-control" style="min-width:220px" placeholder="Topic" value="${Utils.esc(a.item||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'item',this.value)"></td>
       <td>
-        <select class="form-control" style="min-width:110px" ${dis} onchange="_tdrSetAgendaFacilitator(${i},this.value)">
+        ${facOther
+          ? `<div style="display:flex;gap:4px;align-items:center"><input type="text" class="form-control" style="min-width:110px" placeholder="Enter name" value="${Utils.esc(a.facilitator||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'facilitator',this.value)">${dis?'':`<a href="javascript:void(0)" onclick="_tdrClearAgendaFacilitatorOther(${i})" title="Choose from list" style="font-size:12px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>`}</div>`
+          : `<select class="form-control" style="min-width:110px" ${dis} onchange="_tdrSetAgendaFacilitator(${i},this.value)">
           <option value="">— Select —</option>
-          ${_tdrFacOpts.map(n=>`<option value="${Utils.esc(n)}" ${!facOther&&a.facilitator===n?'selected':''}>${Utils.esc(n)}</option>`).join('')}
-          <option value="__OTHER__" ${facOther?'selected':''}>Others</option>
-        </select>
-        <input type="text" class="form-control ${facOther?'':'hidden'}" style="min-width:110px;margin-top:4px" placeholder="Enter name" value="${facOther?Utils.esc(a.facilitator||''):''}" ${dis} onblur="_tdrSetAgendaField(${i},'facilitator',this.value)">
+          ${_tdrFacOpts.map(n=>`<option value="${Utils.esc(n)}" ${a.facilitator===n?'selected':''}>${Utils.esc(n)}</option>`).join('')}
+          <option value="__OTHER__">Others</option>
+        </select>`}
       </td>
       <td><select class="form-control" style="background:${st.bg};color:${st.fg};font-weight:600" ${dis} onchange="_tdrSetAgendaField(${i},'status',this.value)">
         ${Object.keys(AGENDA_STATUS).map(k=>`<option value="${k}" ${a.status===k?'selected':''}>${AGENDA_STATUS[k].label}</option>`).join('')}
@@ -6664,6 +6874,8 @@ function _tdrAgendaFacilitatorOptions(s){
   if(s.coFacilitatorId){
     const cf=DB.byId(s.coFacilitatorId);
     if(cf) opts.push(`${cf.firstName} ${cf.lastName}`);
+  } else if(s.coFacilitatorGuestName){
+    opts.push(s.coFacilitatorGuestName);
   }
   return opts;
 }
@@ -6671,6 +6883,14 @@ function _tdrSetAgendaFacilitator(i,value){
   const row=_tdrReport.content.agendaDelivery[i]; if(!row) return;
   if(value==='__OTHER__'){ row.facilitator=''; row._facOther=true; }
   else { row.facilitator=value; row._facOther=false; }
+  renderTrainingDetail();
+}
+// Swap-in-place back to the dropdown (Phase46, 2026-08-06, per Sandra -- matches the same
+// "✕ Choose from list" pattern used by the Trainer/Co-Facilitator Guest fallback fields, instead
+// of showing the select and a revealed free-text box at the same time).
+function _tdrClearAgendaFacilitatorOther(i){
+  const row=_tdrReport.content.agendaDelivery[i]; if(!row) return;
+  row.facilitator=''; row._facOther=false;
   renderTrainingDetail();
 }
 function _tdrAddAgendaRow(){
@@ -7037,6 +7257,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
   const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null;
   const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
   const coFac=s.coFacilitatorId?DB.byId(s.coFacilitatorId):null;
+  const coFacDisplay=coFac?(coFac.firstName+' '+coFac.lastName):(s.coFacilitatorGuestName?s.coFacilitatorGuestName+' (Guest)':null);
   const grp=_tdFieldGroup(s.deliveryType);
   const modalityLabel=_TD_MODALITY_LABEL[s.deliveryType]||s.deliveryType||'—';
   const naVal='<span style="color:var(--text3);font-weight:400">— n/a —</span>';
@@ -7054,7 +7275,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
-      ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFac?Utils.esc(coFac.firstName+' '+coFac.lastName):'<span style="color:var(--text3);font-weight:400">— none —</span>'):(grp==='external'?_tddInfoBlock('filetext','#7c3aed','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):'')}
+      ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>'):(grp==='external'?_tddInfoBlock('filetext','#7c3aed','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):'')}
       ${_tddInfoBlock('calendar','var(--amber)','Date'+(ownerType?' / Period':'')+' & Time',_tdDateCell(s))}
       ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
@@ -7649,7 +7870,11 @@ function _tddSessionInfoEditContent(s,ownerType){
         </div>`,'tdd-trainer-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`,'tdd-owner-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Facilitator Name',`<input type="text" id="tdd-facilitator" class="form-control" ${smallInput} value="${Utils.esc(s.facilitatorName||'')}">`,'tdd-facilitator-wrap')}
-      ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput}><option value="">— None —</option></select>`,'tdd-cofacilitator-wrap')}
+      ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput} onchange="_tddCofacSelectChange()"><option value="">— None —</option></select>
+        <div id="tdd-cofacilitator-guest-wrap" class="hidden" style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="tdd-cofacilitator-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Co-Facilitator Name">
+          <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
+        </div>`,'tdd-cofacilitator-wrap')}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
       <div style="grid-column:${ownerType?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;flex-direction:column;gap:6px;max-width:170px">
         <input type="date" id="tdd-date" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.trainingDate||''}">
@@ -7714,8 +7939,18 @@ function _tddPopulateEditDropdowns(s,ownerType){
   }
   const cofacSel=document.getElementById('tdd-cofacilitator');
   if(cofacSel){
-    const eligibleCofac=DB.all().filter(u=>u.isActive||u.id===s.coFacilitatorId);
-    cofacSel.innerHTML='<option value="">— None —</option>'+eligibleCofac.map(u=>`<option value="${u.id}" ${u.id===s.coFacilitatorId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
+    // Co-Facilitator options limited to the Trainer roster (pos_6), same guest-fallback pattern
+    // as the main Trainer field above (Phase46, 2026-08-06, per Sandra).
+    const eligibleCofac=DB.all().filter(u=>u.positionId==='pos_6'&&(u.isActive||u.id===s.coFacilitatorId));
+    cofacSel.innerHTML='<option value="">— None —</option>'+eligibleCofac.map(u=>`<option value="${u.id}" ${u.id===s.coFacilitatorId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('')+'<option value="__SME__">Guest (type name)</option>';
+    const isGuestCofacOnEntry=!s.coFacilitatorId&&!!s.coFacilitatorGuestName;
+    if(isGuestCofacOnEntry){
+      cofacSel.value='__SME__';
+      _tddShowCofacGuestInput(s.coFacilitatorGuestName);
+    }else{
+      cofacSel.classList.remove('hidden');
+      document.getElementById('tdd-cofacilitator-guest-wrap')?.classList.add('hidden');
+    }
   }
   const ownerSel=document.getElementById('tdd-owner');
   if(ownerSel){
@@ -7752,6 +7987,29 @@ function _tddClearGuestTrainer(){
   const sel=document.getElementById('tdd-trainer');
   const wrap=document.getElementById('tdd-guest-name-wrap');
   const inp=document.getElementById('tdd-guest-name');
+  if(inp) inp.value='';
+  if(wrap) wrap.classList.add('hidden');
+  if(sel){ sel.classList.remove('hidden'); sel.value=''; }
+}
+
+// Same Guest fallback swap pattern applied to Co-Facilitator (Phase46, 2026-08-06, per Sandra):
+// "Guest (type name)" sentinel swaps the select for a free-text input in the same slot.
+function _tddShowCofacGuestInput(name){
+  const sel=document.getElementById('tdd-cofacilitator');
+  const wrap=document.getElementById('tdd-cofacilitator-guest-wrap');
+  const inp=document.getElementById('tdd-cofacilitator-guest-name');
+  if(sel) sel.classList.add('hidden');
+  if(wrap) wrap.classList.remove('hidden');
+  if(inp) inp.value=name||'';
+}
+function _tddCofacSelectChange(){
+  const sel=document.getElementById('tdd-cofacilitator');
+  if(sel && sel.value==='__SME__') _tddShowCofacGuestInput('');
+}
+function _tddClearCofacGuest(){
+  const sel=document.getElementById('tdd-cofacilitator');
+  const wrap=document.getElementById('tdd-cofacilitator-guest-wrap');
+  const inp=document.getElementById('tdd-cofacilitator-guest-name');
   if(inp) inp.value='';
   if(wrap) wrap.classList.add('hidden');
   if(sel){ sel.classList.remove('hidden'); sel.value=''; }
