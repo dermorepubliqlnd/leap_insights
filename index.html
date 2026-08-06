@@ -8372,13 +8372,16 @@ function _tddSessionInfoEditContent(s,ownerType){
           <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
         </div>`,'tdd-cofacilitator-wrap')}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
-      <div style="grid-column:${showsDateRange?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(showsDateRange?' / Period':''),`<div style="display:flex;align-items:flex-end;gap:8px">
-        <input type="date" id="tdd-date" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.trainingDate||''}">
-        <div ${showsDateRange?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;flex-direction:column;gap:3px">
-          <span style="font-size:11px;color:var(--text3);line-height:1.2">→ End Date</span>
-          <input type="date" id="tdd-enddate" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.endDate||''}">
+      ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(showsDateRange?' / Period':''),`<div style="display:flex;gap:6px">
+        <div style="display:flex;flex-direction:column;flex:1;min-width:0">
+          <input type="date" id="tdd-date" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.trainingDate||''}">
+          <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">${showsDateRange?'Start Date':'Date'}</div>
         </div>
-      </div>`)}</div>
+        <div ${showsDateRange?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;flex-direction:column;flex:1;min-width:0">
+          <input type="date" id="tdd-enddate" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.endDate||''}">
+          <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">End Date</div>
+        </div>
+      </div>`)}
       ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
