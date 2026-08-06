@@ -1978,6 +1978,15 @@
           </div>
         </div>
       </div>
+      <div id="ms-venue-fields" class="hidden">
+        <div class="form-group" style="margin-top:4px">
+          <label class="form-label">Venue Type</label>
+          <div style="display:flex;gap:18px;margin-top:2px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="ms-venue-type" id="ms-venue-type-physical" value="physical"> Physical <span style="color:var(--text3);font-size:11.5px">(ILT / External)</span></label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="ms-venue-type" id="ms-venue-type-platform" value="platform"> Platform <span style="color:var(--text3);font-size:11.5px">(Self-led / SLT)</span></label>
+          </div>
+        </div>
+      </div>
       <div class="modal-err" id="ms-error"></div>
     </div>
     <div class="modal-foot">
@@ -4499,8 +4508,8 @@ async function submitFirstLoginPassword(e){
 const STABS=[
   {id:'deliverables',label:'Deliverable Types',  key:Store.DELIVERABLES, isDeliv:true, desc:'Types of ID/CD work products. Apply to ID QA and/or CD QA form dropdowns.'},
   {id:'positions',   label:'Positions',           key:Store.POS, desc:'Job positions assignable to users.'},
-  {id:'venues',      label:'Venues',              key:Store.VENUES, desc:'Physical or platform venues for ILT sessions.'},
-  {id:'modalities',  label:'Modalities',          key:Store.MODALS, desc:'Delivery Method options for sessions and evaluations.'},
+  {id:'venues',      label:'Venues',              key:Store.VENUES, desc:'Physical venues (used by ILT/External) or online platforms (used by Self-led). Set the type when adding or editing.'},
+  {id:'modalities',  label:'Delivery Method',     key:Store.MODALS, desc:'Delivery Method options for ILT/Self-led/External sessions and evaluations.', sing:'Delivery Method'},
   {id:'categories',  label:'Categories',          key:Store.CATEGORIES, desc:'Training categories used on ILT sessions.', sing:'Category'},
   {id:'audiences',   label:'Audiences',           key:Store.AUDIENCES, desc:'Audience tags — sessions can have more than one.', sing:'Audience'}
 ];
@@ -4629,17 +4638,24 @@ function renderSelList(tab){
     return;
   }
 
-  // ── Standard lists (Positions, Venues, Modalities) ──
+  // ── Standard lists (Positions, Venues, Delivery Method) ──
+  // 2026-08-06 (per Sandra): Venues shows an extra Type column (Physical vs Platform) — Physical
+  // venues populate ILT/External sessions' Venue dropdown, Platform venues populate Self-led
+  // sessions' Venue dropdown (see _tdVenueTypeFor). One list, one toggle, instead of two lists.
+  const isVenueTab=tab.key===Store.VENUES;
+  const typeTh=isVenueTab?'<th style="width:110px">Type</th>':'';
   const listHtml=items.length?`<table class="stg-tbl">
     <thead><tr>
       <th style="cursor:pointer;user-select:none" onclick="_settingsSortToggle('${tab.key}')">Name ${sortArrow}</th>
+      ${typeTh}
       <th style="width:80px">Status</th>
       <th>Actions</th>
     </tr></thead>
     <tbody>${items.map(item=>{
       const stat=item.isActive?'<span class="badge b-active">Active</span>':'<span class="badge b-inactive">Inactive</span>';
       const rowStyle=item.isActive?'':'opacity:.55';
-      return `<tr style="${rowStyle}"><td>${Utils.esc(item.name)}${item.isDefault?' <span class="txt-muted txt-sm">(built-in)</span>':''}</td><td>${stat}</td><td>${rowActions(item)}</td></tr>`;
+      const typeTd=isVenueTab?`<td>${item.type==='platform'?'<span class="flag-chip fc-idqa">Platform</span>':'<span class="flag-chip fc-trainer">Physical</span>'}</td>`:'';
+      return `<tr style="${rowStyle}"><td>${Utils.esc(item.name)}${item.isDefault?' <span class="txt-muted txt-sm">(built-in)</span>':''}${(isVenueTab&&_isOtherVenue(item.id))?' <span class="txt-muted txt-sm">(always available)</span>':''}</td>${typeTd}<td>${stat}</td><td>${rowActions(item)}</td></tr>`;
     }).join('')}</tbody></table>`
     :`<div class="empty-state"><div class="empty-ico">📋</div><div class="empty-title">No items yet</div></div>`;
   pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">${tab.label}</strong></div>${hdrControls}</div><div class="card" style="padding:0;overflow:hidden">${listHtml}</div>`;
@@ -4647,11 +4663,14 @@ function renderSelList(tab){
 
 function openAddSel(key,label){
   const isDeliv=STABS.find(t=>t.key===key)?.isDeliv||false;
+  const isVenue=key===Store.VENUES;
   document.getElementById('ms-type').value=key; document.getElementById('ms-id').value='';
   document.getElementById('ms-name').value=''; document.getElementById('ms-title').textContent=`Add ${label}`;
   document.getElementById('ms-error').style.display='none';
   document.getElementById('ms-deliv-fields').classList.toggle('hidden',!isDeliv);
   if(isDeliv){document.getElementById('ms-deliv-id').checked=false;document.getElementById('ms-deliv-cd').checked=false;}
+  document.getElementById('ms-venue-fields').classList.toggle('hidden',!isVenue);
+  if(isVenue){document.getElementById('ms-venue-type-physical').checked=true;document.getElementById('ms-venue-type-platform').checked=false;}
   document.getElementById('ms-save').onclick=saveSel; openModal('sel');
 }
 
@@ -4659,12 +4678,15 @@ function openEditSel(key,id){
   const item=Sel.byId(key,id); if(!item) return;
   const tab=STABS.find(t=>t.key===key);
   const isDeliv=tab?.isDeliv||false;
+  const isVenue=key===Store.VENUES;
   document.getElementById('ms-type').value=key; document.getElementById('ms-id').value=id;
   document.getElementById('ms-name').value=item.name;
   document.getElementById('ms-title').textContent=`Edit ${tab?.sing||tab?.label.replace(/Types$/,'Type').replace(/s$/,'')||'Item'}`;
   document.getElementById('ms-error').style.display='none';
   document.getElementById('ms-deliv-fields').classList.toggle('hidden',!isDeliv);
   if(isDeliv){document.getElementById('ms-deliv-id').checked=!!item.isID;document.getElementById('ms-deliv-cd').checked=!!item.isCD;}
+  document.getElementById('ms-venue-fields').classList.toggle('hidden',!isVenue);
+  if(isVenue){const isPlatform=item.type==='platform';document.getElementById('ms-venue-type-physical').checked=!isPlatform;document.getElementById('ms-venue-type-platform').checked=isPlatform;}
   document.getElementById('ms-save').onclick=saveSel; openModal('sel');
 }
 
@@ -4679,6 +4701,7 @@ async function saveSel(){
   const data={name};
   const tab2=STABS.find(t=>t.key===key);
   if(tab2?.isDeliv){data.isID=document.getElementById('ms-deliv-id').checked;data.isCD=document.getElementById('ms-deliv-cd').checked;}
+  if(key===Store.VENUES){data.type=document.getElementById('ms-venue-type-platform').checked?'platform':'physical';}
   const saveBtn=document.getElementById('ms-save'); const origTxt=saveBtn?saveBtn.textContent:'';
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
