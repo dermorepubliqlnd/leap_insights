@@ -4627,7 +4627,12 @@ function renderAgendaTemplateDrawer(){
     <div class="drawer-sec-title" style="margin-top:16px">Agenda Items</div>
     <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Duration is for your own planning reference only — it isn't carried into the live Training Report, only the Topic is pulled in.</div>
     <div id="atpl-items">${rows}</div>
-    <button class="btn btn-sm btn-secondary" onclick="_atplAddItemRow()">+ Add Item</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-secondary" onclick="_atplAddItemRow()">+ Add Item</button>
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('atpl-csv-input').click()">⇪ Import CSV</button>
+      <input type="file" id="atpl-csv-input" accept=".csv" style="display:none" onchange="_atplHandleCSVFile(this.files[0])">
+      <button class="btn btn-sm btn-ghost" onclick="_atplDownloadCSVTemplate()">⇩ Download Template</button>
+    </div>
     <div class="modal-err hidden" id="atpl-error" style="margin-top:12px"></div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-primary btn-sm" onclick="saveAgendaTemplate()">Save Template</button>
@@ -4638,6 +4643,53 @@ function _atplSetTitle(v){ if(_atplDraft) _atplDraft.title=v; }
 function _atplSetItemField(i,field,val){ if(_atplDraft&&_atplDraft.items[i]) _atplDraft.items[i][field]=val; }
 function _atplAddItemRow(){ if(!_atplDraft) return; _atplDraft.items.push({topic:'',duration:''}); renderAgendaTemplateDrawer(); }
 function _atplRemoveItemRow(i){ if(!_atplDraft) return; _atplDraft.items.splice(i,1); if(!_atplDraft.items.length) _atplDraft.items.push({topic:'',duration:''}); renderAgendaTemplateDrawer(); }
+
+// CSV import/template for Agenda Templates (Phase50, 2026-08-06, per Sandra) -- same pattern as
+// the Participant Roster's "Add Multiple (CSV)" / "Download Template" (_tdaHandleCSVFile /
+// _tdaDownloadCSVTemplate / _tdaParseCSV), just with Topic/Duration columns instead of
+// Employee ID/Name/Role. Imported rows are APPENDED to whatever items are already in the
+// drawer (including the blank starter row, which is dropped if still empty), never replacing.
+function _atplDownloadCSVTemplate(){
+  const csv = 'Topic,Duration\nIntroduction to Dermo,30 mins\nMission & Vision,30 mins\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'agenda_template_upload_template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function _atplHandleCSVFile(file){
+  if(!file||!_atplDraft) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const {header,rows}=_tdaParseCSV(String(reader.result||''));
+    const topicIdx=header.findIndex(h=>h.includes('topic')||h.includes('agenda'));
+    const durationIdx=header.findIndex(h=>h.includes('duration'));
+    if(topicIdx===-1){
+      toast('CSV must have a Topic column.','error');
+      return;
+    }
+    // drop the blank starter row before appending imported ones, but keep any real rows the
+    // user had already typed in
+    _atplDraft.items=_atplDraft.items.filter(i=>(i.topic||'').trim());
+    let added=0, skippedBlank=0;
+    rows.forEach(cols=>{
+      const topic=(cols[topicIdx]||'').trim();
+      if(!topic){ skippedBlank++; return; }
+      const duration=durationIdx>=0?(cols[durationIdx]||'').trim():'';
+      _atplDraft.items.push({topic,duration});
+      added++;
+    });
+    if(!_atplDraft.items.length) _atplDraft.items.push({topic:'',duration:''});
+    renderAgendaTemplateDrawer();
+    toast(`${added} agenda item(s) imported${skippedBlank?`, ${skippedBlank} row(s) skipped (blank topic)`:''}.`, added?'success':'warning');
+  };
+  reader.readAsText(file);
+  document.getElementById('atpl-csv-input').value='';
+}
 
 async function saveAgendaTemplate(){
   if(!_atplDraft) return;
