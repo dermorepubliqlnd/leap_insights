@@ -1582,7 +1582,6 @@
                 <select id="td-f-type" class="form-control" onchange="tdSetFilter('type',this.value)">
                   <option value="all">All Types</option>
                   <option value="ILT">ILT</option>
-                  <option value="VILT">VILT</option>
                   <option value="Self-led">Self-led</option>
                   <option value="External">External</option>
                 </select>
@@ -5071,7 +5070,7 @@ const _TD_COL_DEFS=[
   {id:'type', label:'Type', width:110,
     sortVal:s=>s.deliveryType||'',
     cell:s=>_tdTypeBadge(s.deliveryType)},
-  {id:'person', label:'Trainer / Owner / Facilitator', width:170,
+  {id:'person', label:'Trainer', width:170,
     sortVal:s=>_tdPersonName(s).toLowerCase(),
     cell:s=>`<span style="font-size:13px">${Utils.esc(_tdPersonName(s))}</span>`},
   {id:'date', label:'Date / Period', width:150,
@@ -5548,7 +5547,7 @@ function renderTDList(rows){
     </div>`;
   wrap.innerHTML=`<div class="card" style="padding-bottom:0">
     <div style="display:flex;justify-content:flex-end;padding:8px 4px 0">${_tdColManagerButtonHtml()}</div>
-    <div class="eval-tbl-wrap" style="max-height:calc(100vh - 380px);min-height:220px;overflow-y:auto"><table class="eval-tbl" id="td-list-table" style="table-layout:fixed">
+    <div class="eval-tbl-wrap" style="max-height:calc(100vh - 300px);min-height:220px;overflow-y:auto"><table class="eval-tbl" id="td-list-table" style="table-layout:fixed">
     ${_tdColgroupHtml(cols)}
     <thead style="position:sticky;top:0;z-index:2"><tr>${cols.map(_tdThHtml).join('')}</tr></thead>
     <tbody>${pageRows.map(s=>_tdRowHtmlDynamic(s,cols)).join('')}</tbody>
