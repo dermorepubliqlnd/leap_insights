@@ -6639,12 +6639,12 @@ function _tdaKpiColumnsHtml(s,forExport){
       <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Attendance Summary${isMultiDay?` <span style="font-weight:400;color:var(--text3)">(${dayList.length} days)</span>`:''}</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         ${_tdaKpiCard('users','#0369a1','Participants',total)}
+        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',unitTotal>0?rate+'%':'—',unitTotal>0?`${present+late+leftEarly} of ${unitTotal}`:'','var(--text3)')}
         ${_tdaKpiCard('check','var(--green)',"Present",pct(present,unitTotal)||'—',`${present} of ${unitTotal}`,'var(--green)','var(--green)')}
         ${_tdaKpiCard('clock','var(--amber)',"Late",pct(late,unitTotal)||'—',`${late} of ${unitTotal}`,'var(--amber)','var(--amber)')}
         ${_tdaKpiCard('clock','var(--orange)',"Left Early",pct(leftEarly,unitTotal)||'—',`${leftEarly} of ${unitTotal}`,'var(--orange)','var(--orange)')}
         ${_tdaKpiCard('x','var(--red)',"Absent",pct(absent,unitTotal)||'—',`${absent} of ${unitTotal}`,'var(--red)','var(--red)')}
         ${forExport?'':_tdaKpiCard('question','#64748b',"Pending",pct(pending,unitTotal)||'—',`${pending} of ${unitTotal}`,'#64748b','#64748b')}
-        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',unitTotal>0?rate+'%':'—',unitTotal>0?`${present+late+leftEarly} of ${unitTotal}`:'','var(--text3)')}
       </div>
     </div>`;
 
@@ -7803,12 +7803,12 @@ function _tdOverviewAttendanceAssessmentBlock(s){
       <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Attendance Summary${isMultiDay?` <span style="font-weight:400;color:var(--text3)">(${dayList.length} days)</span>`:''}</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         ${_tdaKpiCard('users','#0369a1','Participants',total)}
+        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',unitTotal>0?rate+'%':'—',unitTotal>0?`${present+late+leftEarly} of ${unitTotal}`:'','var(--text3)')}
         ${_tdaKpiCard('check','var(--green)',"Present",pct(present,unitTotal)||'—',`${present} of ${unitTotal}`,'var(--green)','var(--green)')}
         ${_tdaKpiCard('clock','var(--amber)',"Late",pct(late,unitTotal)||'—',`${late} of ${unitTotal}`,'var(--amber)','var(--amber)')}
         ${_tdaKpiCard('clock','var(--orange)',"Left Early",pct(leftEarly,unitTotal)||'—',`${leftEarly} of ${unitTotal}`,'var(--orange)','var(--orange)')}
         ${_tdaKpiCard('x','var(--red)',"Absent",pct(absent,unitTotal)||'—',`${absent} of ${unitTotal}`,'var(--red)','var(--red)')}
         ${_tdaKpiCard('question','#64748b',"Pending",pct(pending,unitTotal)||'—',`${pending} of ${unitTotal}`,'#64748b','#64748b')}
-        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',unitTotal>0?rate+'%':'—',unitTotal>0?`${present+late+leftEarly} of ${unitTotal}`:'','var(--text3)')}
       </div>
     </div>`;
   const assessLabel=s.assessmentType&&s.assessmentType!=='None'?s.assessmentType:'None configured';
