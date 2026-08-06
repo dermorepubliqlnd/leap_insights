@@ -1710,6 +1710,19 @@
   </div>
 </div>
 
+<!-- ══ PANEL: MANAGE LIST (Positions / Venues / Modalities / Deliverable Types / Categories / Audiences) ════════════ -->
+<div id="modal-listmanage" class="drawer-overlay" onclick="if(event.target===this)closeListManageDrawer()">
+  <div class="drawer" onclick="event.stopPropagation()" style="width:min(80vw,720px)">
+    <div class="drawer-hdr">
+      <div class="drawer-hdr-meta">
+        <div class="drawer-title" id="lm-title">Manage List</div>
+      </div>
+      <button class="modal-close" onclick="closeListManageDrawer()" style="width:32px;height:32px;font-size:16px;flex-shrink:0">✕</button>
+    </div>
+    <div class="drawer-body" id="lm-body"></div>
+  </div>
+</div>
+
 <!-- ══ PANEL: ADD/EDIT USER ════════════ -->
 <div id="modal-user" class="drawer-overlay" onclick="if(event.target===this)closeModal('user')">
   <div class="drawer" onclick="event.stopPropagation()">
@@ -2022,9 +2035,8 @@
           <label class="form-label" id="td-venue-other-label">Specify Venue</label>
           <input type="text" id="td-venue-other" class="form-control" placeholder="Enter venue/platform name">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="td-audience-wrap">
           <label class="form-label">Audience</label>
-          <input type="text" id="td-audience" class="form-control" placeholder="e.g. Sales Leaders, All Employees">
         </div>
       </div>
       <div class="form-row-3">
@@ -2372,6 +2384,8 @@ const _FIELD_MAPS = {
   venues:{ id:'id', name:'name', isActive:'is_active', type:'type' },
   modalities:{ id:'id', name:'name', isActive:'is_active' },
   deliverables:{ id:'id', name:'name', isID:'is_id', isCD:'is_cd', isDefault:'is_default', isActive:'is_active' },
+  categories:{ id:'id', name:'name', isActive:'is_active' },
+  audiences:{ id:'id', name:'name', isActive:'is_active' },
   training_sessions:{
     id:'id', code:'code', trainerId:'trainer_id', trainingProgram:'training_program', batchNo:'batch_no',
     trainingDate:'training_date', venueId:'venue_id', modalityId:'modality_id', recordingLink:'recording_link',
@@ -2485,7 +2499,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -2544,6 +2558,7 @@ const Utils = {
 const Store = {
   SESSION:'leap_session_v1', FIRSTRUN:`leap_frun_${STORE_VER}`,
   POS:'positions', VENUES:'venues', MODALS:'modalities', DELIVERABLES:'deliverables',
+  CATEGORIES:'categories', AUDIENCES:'audiences',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -4459,22 +4474,61 @@ async function submitFirstLoginPassword(e){
 }
 
 /* ── SETTINGS ─────────────────────── */
+// 2026-08-06 (per Sandra): consolidated from 5 separate tabs (one per list, plus Data & Backup)
+// into a single "Lists" overview page — each list here gets a summary row with a "Manage List"
+// button that opens a side drawer (reusing the existing .drawer-overlay/.drawer component,
+// same one used for Add/Edit User) showing the exact same add/edit/deactivate/delete UI that
+// used to live in its own tab. Data & Backup remains its own top-level section since it isn't a
+// list of selectable items in the same sense.
 const STABS=[
-  {id:'deliverables',label:'Deliverable Types',  key:Store.DELIVERABLES, isDeliv:true},
-  {id:'positions',   label:'Positions',           key:Store.POS},
-  {id:'venues',      label:'Venues',              key:Store.VENUES},
-  {id:'modalities',  label:'Modalities',          key:Store.MODALS},
-  {id:'backup',      label:'Data & Backup',        isBackup:true}
+  {id:'deliverables',label:'Deliverable Types',  key:Store.DELIVERABLES, isDeliv:true, desc:'Types of ID/CD work products. Apply to ID QA and/or CD QA form dropdowns.'},
+  {id:'positions',   label:'Positions',           key:Store.POS, desc:'Job positions assignable to users.'},
+  {id:'venues',      label:'Venues',              key:Store.VENUES, desc:'Physical or platform venues for ILT sessions.'},
+  {id:'modalities',  label:'Modalities',          key:Store.MODALS, desc:'Delivery Method options for sessions and evaluations.'},
+  {id:'categories',  label:'Categories',          key:Store.CATEGORIES, desc:'Training categories used on ILT sessions.', sing:'Category'},
+  {id:'audiences',   label:'Audiences',           key:Store.AUDIENCES, desc:'Audience tags — sessions can have more than one.', sing:'Audience'}
 ];
-let activeStab='deliverables';
+let activeSettingsSection='lists'; // 'lists' | 'backup'
+let _settingsDrawerTabId=null;     // which STABS.id is currently open in the drawer, or null
 let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
 let _settingsShowInactive={};  // per-key: true=show inactive, false=hide
 
 function renderSettings(){
-  document.getElementById('stabs').innerHTML=STABS.map(t=>`<div class="stab${t.id===activeStab?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
-  document.querySelectorAll('.stab').forEach(el=>el.addEventListener('click',()=>{activeStab=el.dataset.stab;renderSettings();}));
-  document.getElementById('stab-panes').innerHTML=STABS.map(t=>`<div class="stab-pane${t.id===activeStab?' active':''}" id="spane-${t.id}"></div>`).join('');
-  const tab=STABS.find(t=>t.id===activeStab); if(tab){ if(tab.isBackup) renderBackupPane(); else renderSelList(tab); }
+  const sections=[{id:'lists',label:'Lists'},{id:'backup',label:'Data & Backup'}];
+  document.getElementById('stabs').innerHTML=sections.map(t=>`<div class="stab${t.id===activeSettingsSection?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
+  document.querySelectorAll('#stabs .stab').forEach(el=>el.addEventListener('click',()=>{activeSettingsSection=el.dataset.stab;renderSettings();}));
+  document.getElementById('stab-panes').innerHTML=
+    `<div class="stab-pane${activeSettingsSection==='lists'?' active':''}" id="spane-lists"></div>`+
+    `<div class="stab-pane${activeSettingsSection==='backup'?' active':''}" id="spane-backup"></div>`;
+  if(activeSettingsSection==='lists') renderListsOverview(); else renderBackupPane();
+  renderListManageDrawer();
+}
+
+function renderListsOverview(){
+  const pane=document.getElementById('spane-lists'); if(!pane) return;
+  const rows=STABS.map(t=>{
+    const all=Sel.all(t.key);
+    const activeCount=all.filter(i=>i.isActive).length;
+    return `<tr>
+      <td><strong style="font-size:13.5px">${Utils.esc(t.label)}</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">${Utils.esc(t.desc||'')}</div></td>
+      <td style="font-size:13px;color:var(--text2)">${activeCount} active${all.length!==activeCount?` &nbsp;·&nbsp; ${all.length-activeCount} inactive`:''}</td>
+      <td><button class="btn btn-sm btn-secondary" onclick="openListManageDrawer('${t.id}')">Manage List</button></td>
+    </tr>`;
+  }).join('');
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Lists</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Dropdown options used across ILT sessions, evaluations, ID QA and CD QA forms.</div></div></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="stg-tbl"><thead><tr><th>List</th><th style="width:200px">Items</th><th style="width:140px">Actions</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+function openListManageDrawer(tabId){ _settingsDrawerTabId=tabId; renderListManageDrawer(); openModal('listmanage'); }
+function closeListManageDrawer(){ closeModal('listmanage'); }
+
+function renderListManageDrawer(){
+  const tab=STABS.find(t=>t.id===_settingsDrawerTabId);
+  const titleEl=document.getElementById('lm-title');
+  if(titleEl) titleEl.textContent=tab?`Manage ${tab.label}`:'Manage List';
+  if(tab) renderSelList(tab);
 }
 
 // Returns count of records referencing this item ID, per store key
@@ -4482,6 +4536,11 @@ function _selRefCount(key, id){
   if(key===Store.POS)   return DB.all().filter(u=>u.positionId===id).length;
   if(key===Store.VENUES) return EvalDB.all().filter(e=>e.venueId===id).length;
   if(key===Store.MODALS) return EvalDB.all().filter(e=>e.modalityId===id).length;
+  // Category and Audience are stored on training_sessions as plain display strings (Category:
+  // one name; Audience: an array of names) rather than foreign-key ids, matching how
+  // Deliverables already work — so ref-count by NAME match, not id.
+  if(key===Store.CATEGORIES){ const item=Sel.byId(key,id); return item?TrSessionDB.all().filter(s=>s.category===item.name).length:0; }
+  if(key===Store.AUDIENCES){ const item=Sel.byId(key,id); return item?TrSessionDB.all().filter(s=>(s.audience||[]).includes(item.name)).length:0; }
   return 0; // deliverables stored as strings — safe to delete
 }
 function _selIsRefSafe(key){ return key===Store.DELIVERABLES; }
@@ -4514,10 +4573,10 @@ function renderSelList(tab){
   const items=_settingsSortItems(tab.key, rawItems);
   const allItems=Sel.all(tab.key);
   const inactiveCount=allItems.filter(i=>!i.isActive).length;
-  const pane=document.getElementById(`spane-${tab.id}`);
+  const pane=document.getElementById('lm-body');
   const asc=_settingsSortAsc[tab.key]!==false;
   const sortArrow=asc?'▲':'▼';
-  const singLabel=tab.label.replace(/s$/,'').replace(/Types$/,'Type');
+  const singLabel=tab.sing||tab.label.replace(/s$/,'').replace(/Types$/,'Type');
   const isAdmin=Auth.isAdmin;
   const addBtn=`<button class="btn btn-primary btn-sm" onclick='openAddSel("${tab.key}","${singLabel}")'>+ Add ${singLabel}</button>`;
   const inactiveToggle=inactiveCount>0?`<button class="btn btn-sm btn-secondary" onclick="_settingsShowInactive['${tab.key}']=!_settingsShowInactive['${tab.key}'];renderSettings()" style="font-size:12px">${showInactive?'Hide Inactive':'Show Inactive ('+inactiveCount+')'}</button>`:'';
@@ -4586,7 +4645,7 @@ function openEditSel(key,id){
   const isDeliv=tab?.isDeliv||false;
   document.getElementById('ms-type').value=key; document.getElementById('ms-id').value=id;
   document.getElementById('ms-name').value=item.name;
-  document.getElementById('ms-title').textContent=`Edit ${tab?.label.replace(/Types$/,'Type').replace(/s$/,'')||'Item'}`;
+  document.getElementById('ms-title').textContent=`Edit ${tab?.sing||tab?.label.replace(/Types$/,'Type').replace(/s$/,'')||'Item'}`;
   document.getElementById('ms-error').style.display='none';
   document.getElementById('ms-deliv-fields').classList.toggle('hidden',!isDeliv);
   if(isDeliv){document.getElementById('ms-deliv-id').checked=!!item.isID;document.getElementById('ms-deliv-cd').checked=!!item.isCD;}
@@ -4627,7 +4686,7 @@ function toggleSel(key,id){
 // point-in-time snapshot, but no longer the app's actual persistence mechanism.
 const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
-  'deliverables','positions','venues','modalities',
+  'deliverables','positions','venues','modalities','categories','audiences',
   'training_sessions','audit_log','session_participants','training_reports'
 ];
 
@@ -5114,7 +5173,7 @@ function _tdFilteredRows(){
       const pid=grp==='owner'?s.ownerId:(grp==='trainer'?s.trainerId:null);
       if(pid!==tdF.person) return false;
     }
-    if(tdF.audience!=='all' && (s.audience||'')!==tdF.audience) return false;
+    if(tdF.audience!=='all' && !(s.audience||[]).includes(tdF.audience)) return false;
     if(tdF.daterange!=='all'){
       const d=s.trainingDate?new Date(s.trainingDate):null;
       if(!d) return false;
@@ -5185,7 +5244,7 @@ function _tdPopulateFilterOptions(){
   }
   const audSel=document.getElementById('td-f-audience');
   if(audSel && audSel.options.length<=1){
-    const auds=[...new Set(all.map(s=>s.audience).filter(Boolean))].sort();
+    const auds=[...new Set(all.flatMap(s=>s.audience||[]))].sort();
     audSel.innerHTML='<option value="all">All Audiences</option>'+auds.map(a=>`<option value="${Utils.esc(a)}">${Utils.esc(a)}</option>`).join('');
     audSel.value=tdF.audience;
   }
@@ -5221,7 +5280,7 @@ function renderTDList(rows){
       <td>${_tdTypeBadge(s.deliveryType)}</td>
       <td style="font-size:13px">${Utils.esc(_tdPersonName(s))}</td>
       <td style="font-size:13px">${_tdDateCell(s)}</td>
-      <td style="font-size:13px">${Utils.esc(s.audience||'—')}</td>
+      <td style="font-size:13px">${(s.audience&&s.audience.length)?Utils.esc(s.audience.join(', ')):'—'}</td>
       <td>${_tdStatusBadge(_tdStatus(s))}</td>
       <td>${_tdDocStatus(s)}</td>
       <td>${_tdReportSLA(s)}</td>
@@ -5449,6 +5508,7 @@ function openTrainingModal(id){
   const activeUsers=DB.all().filter(u=>u.isActive||u.id===(s&&s.ownerId)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
   document.getElementById('td-owner').innerHTML='<option value="">— Select Owner —</option>'+activeUsers.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
   _tdPopulateVenueOptions('td',s?.deliveryType||'',s?.venueId||'');
+  document.getElementById('td-audience-wrap').innerHTML='<label class="form-label">Audience</label>'+_audienceMultiSelectHtml('td-audience',s?.audience||[]);
 
   document.getElementById('td-id').value=id||'';
   document.getElementById('td-modal-title').textContent=id?'Edit Training':'Add Training';
@@ -5463,7 +5523,6 @@ function openTrainingModal(id){
   document.getElementById('td-provider').value=s?.trainingProvider||'';
   document.getElementById('td-venue').value=s?.venueId||'';
   document.getElementById('td-venue-other').value='';
-  document.getElementById('td-audience').value=s?.audience||'';
   document.getElementById('td-expected').value=s?.expectedParticipants??'';
   document.getElementById('td-recording').value=s?.recordingLink||'';
   document.getElementById('td-assessment').value=s?.assessmentType||'None';
@@ -5491,7 +5550,7 @@ async function saveTrainingModal(){
     facilitatorName:grp==='external'?document.getElementById('td-facilitator').value.trim():null,
     trainingProvider:grp==='external'?document.getElementById('td-provider').value.trim():null,
     venueId:_resolveVenueId('td')||null,
-    audience:document.getElementById('td-audience').value.trim(),
+    audience:_readMultiSelect('td-audience'),
     expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
     recordingLink:ownerType?'':document.getElementById('td-recording').value.trim(),
     assessmentType:document.getElementById('td-assessment').value,
@@ -5727,7 +5786,7 @@ async function tdDetailSave(){
     trainingProvider:grp==='external'?document.getElementById('tdd-provider').value.trim():null,
     coFacilitatorId:grp==='trainer'?(document.getElementById('tdd-cofacilitator').value||null):null,
     venueId:_resolveVenueId('tdd')||null,
-    audience:document.getElementById('tdd-audience').value.trim(),
+    audience:_readMultiSelect('tdd-audience'),
     expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
     durationHours:durationRaw?parseFloat(durationRaw):null,
     category:document.getElementById('tdd-category').value||null,
@@ -5760,7 +5819,7 @@ async function tdDetailSave(){
   // VILT/Self-led/External requirements are unchanged.
   if(deliveryType==='ILT'){
     if(!d.venueId) errs.push('Venue is required for ILT sessions.');
-    if(!d.audience) errs.push('Audience is required for ILT sessions.');
+    if(!d.audience || !d.audience.length) errs.push('Audience is required for ILT sessions.');
     if(d.expectedParticipants==null) errs.push('Maximum Participants is required for ILT sessions.');
     if(d.durationHours==null) errs.push('Duration (in Hours) is required for ILT sessions.');
     if(!d.category) errs.push('Category is required for ILT sessions.');
@@ -6963,7 +7022,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-      ${_tddInfoBlock('users','var(--sky)','Audience',Utils.esc(s.audience||'—'))}
+      ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(s.audience.join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('users','var(--sky)','Maximum Participants',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
     <div style="${gridStyle};margin-top:18px">
@@ -7433,7 +7492,29 @@ async function _tdExportSummaryImage(sessionId){
   }
 }
 
-const CATEGORY_OPTIONS=['Onboarding','Leadership','Professional Development','Technical'];
+// 2026-08-06 (per Sandra): Category options now come from the "Categories" Settings list
+// (Sel.active(Store.CATEGORIES)) instead of this hardcoded array. Kept as a fallback of the
+// original 4 defaults only in case the categories table is ever empty on a fresh environment.
+const CATEGORY_OPTIONS_FALLBACK=['Onboarding','Leadership','Professional Development','Technical'];
+function _categoryOptionNames(){
+  const active=Sel.active(Store.CATEGORIES).map(c=>c.name);
+  return active.length?active:CATEGORY_OPTIONS_FALLBACK;
+}
+
+// 2026-08-06 (per Sandra): Audience can now be tagged with more than one value (e.g. a session
+// aimed at both "People Leaders" and "Sales Leaders"), sourced from the "Audiences" Settings
+// list rather than free text. Stored on training_sessions.audience as a text[] in Supabase.
+function _audienceOptionNames(){ return Sel.active(Store.AUDIENCES).map(a=>a.name); }
+function _audienceMultiSelectHtml(id, selected){
+  const sel=new Set(selected||[]);
+  const names=_audienceOptionNames();
+  const opts=names.map(n=>`<option value="${Utils.esc(n)}" ${sel.has(n)?'selected':''}>${Utils.esc(n)}</option>`).join('');
+  return `<select id="${id}" class="form-control" multiple style="min-height:76px">${opts}</select><div style="font-size:11px;color:var(--text3);margin-top:3px">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</div>`;
+}
+function _readMultiSelect(id){
+  const el=document.getElementById(id); if(!el) return [];
+  return Array.from(el.selectedOptions||[]).map(o=>o.value);
+}
 
 function _tddInfoBlockEdit(iconName,color,label,inputHtml,wrapId){
   return `<div ${wrapId?`id="${wrapId}"`:''} style="display:flex;gap:9px;align-items:flex-start;min-width:0">
@@ -7489,9 +7570,9 @@ function _tddSessionInfoEditContent(s,ownerType){
       ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${CATEGORY_OPTIONS.map(c=>`<option value="${c}" ${s.category===c?'selected':''}>${c}</option>`).join('')}</select>`)}
+      ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`)}
       ${_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`)}
-      ${_tddInfoBlockEdit('users','var(--sky)','Audience',`<input type="text" id="tdd-audience" class="form-control" ${smallInput} value="${Utils.esc(s.audience||'')}">`)}
+      ${_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[]))}
       ${_tddInfoBlockEdit('users','var(--sky)','Maximum Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
@@ -7648,7 +7729,7 @@ const AuditLog={
   }
 };
 function _selModuleLabel(k){
-  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable'};
+  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience'};
   return map[k]||'Selection List';
 }
 
@@ -8665,18 +8746,14 @@ function updateEvalScore(){
   }
 }
 
+// 2026-08-06 (per Sandra): Clear should only reset the scoring/remarks portion of the form --
+// Trainer, Training Program/Title, Batch No., Session Date, Venue, and Delivery Method are
+// session-linked details and must be retained (clearing them used to also blow away the link
+// to the session this evaluation belongs to). Only criteria ratings, remarks, and the general
+// observations note are cleared now.
 function clearEvalForm(){
   EVAL_CRITERIA.forEach(c=>{ [1,2,3,4,5].forEach(n=>{ const b=document.getElementById(`eval-rb-${c.id}-${n}`); if(b) b.classList.remove('sel'); }); _evalLiveRemarks[c.id]=''; const ta=document.getElementById(`eval-rmk-${c.id}`); if(ta) ta.value=''; });
-  ['ef-trainer','ef-venue','ef-modality'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('ef-venue-other').value='';
-  _toggleVenueOtherWrap('ef');
-  ['ef-program','ef-batch'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   _rteSet('ef-observations','');
-  document.getElementById('ef-date').value='';
-  document.getElementById('ef-session-id').value='';
-  document.getElementById('ef-evaluation-mode').value='';
-  _updateEvalRecordingDisplay(null);
-  _updateEvalSessionCodeDisplay(null);
   document.getElementById('eval-error').classList.add('hidden');
   updateEvalScore();
 }
