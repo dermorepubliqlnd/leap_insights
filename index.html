@@ -7876,7 +7876,7 @@ function _tddSessionInfoEditContent(s,ownerType){
           <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
         </div>`,'tdd-cofacilitator-wrap')}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
-      <div style="grid-column:${ownerType?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;flex-direction:column;gap:6px;max-width:170px">
+      <div style="grid-column:${ownerType?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;align-items:flex-end;gap:8px">
         <input type="date" id="tdd-date" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.trainingDate||''}">
         <div ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;flex-direction:column;gap:3px">
           <span style="font-size:11px;color:var(--text3);line-height:1.2">→ End Date</span>
