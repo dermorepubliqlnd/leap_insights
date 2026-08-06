@@ -7532,10 +7532,14 @@ function _sortedNames(arr){ return (arr||[]).slice().sort((a,b)=>a.localeCompare
 // multi-value form element to read from directly.
 const _msddState={};        // id -> array of currently-selected names
 const _msddPlaceholder={};  // id -> placeholder text shown when nothing is selected
-function _audienceMultiSelectHtml(id, selected){
-  return _msddHtml(id, _audienceOptionNames(), selected, 'Select audience(s)…');
+// 2026-08-06 (per Sandra): optional extraStyle lets a caller match the trigger's height/font to
+// whatever compact/regular sizing the surrounding fields already use (e.g. the Session Detail
+// edit view's smallInputStyle) — without it, the dropdown used the default .form-control padding
+// and looked taller than its neighboring fields.
+function _audienceMultiSelectHtml(id, selected, extraStyle){
+  return _msddHtml(id, _audienceOptionNames(), selected, 'Select audience(s)…', extraStyle);
 }
-function _msddHtml(id, names, selected, placeholder){
+function _msddHtml(id, names, selected, placeholder, extraStyle){
   _msddState[id]=_sortedNames(selected);
   _msddPlaceholder[id]=placeholder;
   const sel=new Set(_msddState[id]);
@@ -7545,7 +7549,7 @@ function _msddHtml(id, names, selected, placeholder){
     ? names.map(n=>`<label class="msdd-opt"><input type="checkbox" value="${Utils.esc(n)}" ${sel.has(n)?'checked':''} onchange="_msddToggle('${id}',this.value,this.checked)"> ${Utils.esc(n)}</label>`).join('')
     : `<div class="msdd-empty">No options yet — add some in Settings → Lists.</div>`;
   return `<div class="msdd" id="${id}-wrap">
-    <div class="msdd-trigger form-control" onclick="_msddOpenToggle('${id}')">
+    <div class="msdd-trigger form-control" ${extraStyle?`style="${extraStyle}"`:''} onclick="_msddOpenToggle('${id}')">
       <span class="msdd-trigger-text${hasSel?'':' ph'}" id="${id}-triggertext">${Utils.esc(text)}</span>
       <span class="msdd-caret">▾</span>
     </div>
@@ -7590,7 +7594,8 @@ function _tddInfoBlockEdit(iconName,color,label,inputHtml,wrapId){
 }
 
 function _tddSessionInfoEditContent(s,ownerType){
-  const smallInput='style="font-size:13px;padding:5px 8px"';
+  const smallInputStyle='font-size:13px;padding:5px 8px';
+  const smallInput=`style="${smallInputStyle}"`;
   const gridStyle='display:grid;grid-template-columns:repeat(4,1fr);gap:18px 12px';
   // Guest Trainer fallback (Phase39 item 1, simplifies Phase38's separate-checkbox design):
   // the Trainer <select> itself is the trigger -- choosing the "SME / Guest" sentinel option
@@ -7635,7 +7640,7 @@ function _tddSessionInfoEditContent(s,ownerType){
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`)}
       ${_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`)}
-      ${_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[]))}
+      ${_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],smallInputStyle))}
       ${_tddInfoBlockEdit('users','var(--sky)','Maximum Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
