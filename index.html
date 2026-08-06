@@ -6540,7 +6540,7 @@ function _tdrRenderTab(s){
       ${summaryField('challengesImprovement','Challenges & Areas for Improvement','alert-triangle','var(--amber-lt)','var(--amber)','What could be better next time...')}
       ${summaryField('recommendations','Recommendations','bulb','var(--sky-lt)','var(--sky)','Suggestions for future runs...')}
       ${summaryField('pendingActions','Pending Actions','flag','#f5f3ff','#7c3aed','Anything still outstanding...')}
-      ${summaryField('additionalRemarks','Additional Remarks','edit3','#f1f5f9','#64748b','Anything else worth noting...')}
+      ${summaryField('additionalRemarks','Additional Remarks (Optional)','edit3','#f1f5f9','#64748b','Anything else worth noting... (optional)')}
     </div>`;
 
   const canExportSummaryReport=s.status==='completed'&&locked;
@@ -6615,7 +6615,9 @@ function _tdrValidateForSubmit(){
   const metricLabels={responses:'Responses',contentRating:'Content Rating',materialsRating:'Materials Rating',facilitationRating:'Facilitation Rating',overallSatisfaction:'Overall Satisfaction',csat:'CSAT',nps:'NPS'};
   Object.keys(metricLabels).forEach(k=>{ if(c[k]===null||c[k]===undefined||c[k]==='') missing.push(metricLabels[k]); });
   if(!c.agendaDelivery||!c.agendaDelivery.length) missing.push('at least one Agenda Delivery row');
-  const summaryLabels={winsHighlights:'Wins & Highlights',challengesImprovement:'Challenges & Areas for Improvement',recommendations:'Recommendations',pendingActions:'Pending Actions',additionalRemarks:'Additional Remarks'};
+  // 2026-08-06 (per Sandra): Additional Remarks is optional on the Training Report -- a report
+  // can be submitted even if it's left blank. All other summary fields remain required.
+  const summaryLabels={winsHighlights:'Wins & Highlights',challengesImprovement:'Challenges & Areas for Improvement',recommendations:'Recommendations',pendingActions:'Pending Actions'};
   Object.keys(summaryLabels).forEach(k=>{ if(!c[k]||!String(c[k]).trim()) missing.push(summaryLabels[k]); });
   return missing;
 }
