@@ -6965,23 +6965,30 @@ function _tdaHandleCSVFile(file){
       toast('CSV must have a Name column.','error');
       return;
     }
-    let added=0, skippedBlank=0;
+    let added=0, skippedBlank=0, skippedDup=0;
     const deptCache=new Map();
+    // Duplicate check (2026-08-06, QA pass, per Sandra): re-importing the same CSV (or a file with
+    // overlapping rows) shouldn't double-add the same person. Employee ID is the reliable key
+    // here (unlike Name, which can collide) -- rows with a blank Employee ID skip the dup check
+    // entirely and are always added, since there's nothing reliable to match them against.
+    const existingEmpIds=new Set(_tdPartRows.filter(r=>r.employeeId).map(r=>r.employeeId.trim().toLowerCase()));
     for(const cols of rows){
       const name=(cols[nameIdx]||'').trim();
       if(!name){ skippedBlank++; continue; }
+      const employeeId=empIdIdx>=0?(cols[empIdIdx]||'').trim():'';
+      if(employeeId && existingEmpIds.has(employeeId.toLowerCase())){ skippedDup++; continue; }
       const deptName=deptIdx>=0?(cols[deptIdx]||'').trim():'';
       const departmentId=deptName?await _tdaResolveDepartmentId(deptName,deptCache):null;
-      const employeeId=empIdIdx>=0?(cols[empIdIdx]||'').trim():'';
       const preRaw=preIdx>=0?(cols[preIdx]||'').trim():'';
       const postRaw=postIdx>=0?(cols[postIdx]||'').trim():'';
       _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, departmentId,
         attended:false, attendanceStatus:'pending', preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
         remarks:'', notes:'', _isNew:true});
+      if(employeeId) existingEmpIds.add(employeeId.toLowerCase());
       added++;
     }
     renderTrainingDetail();
-    toast(`${added} participant(s) added${skippedBlank?`, ${skippedBlank} row(s) skipped (blank name)`:''}.`, added?'success':'warning');
+    toast(`${added} participant(s) added${skippedDup?`, ${skippedDup} duplicate(s) skipped (Employee ID already in roster)`:''}${skippedBlank?`, ${skippedBlank} row(s) skipped (blank name)`:''}.`, added?'success':'warning');
   };
   reader.readAsText(file);
   document.getElementById('tda-csv-input').value='';
