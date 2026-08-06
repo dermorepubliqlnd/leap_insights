@@ -5582,7 +5582,11 @@ function _tdBusinessDaysBetween(startDateStr,endDateStr){
 function _tdReportSLA(s){
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep||!rep.submittedAt) return '<span class="txt-muted">—</span>';
-  const days=_tdBusinessDaysBetween(s.trainingDate,rep.submittedAt);
+  // 2026-08-06 QA fix: anchor to the session's END date (falls back to trainingDate for
+  // single-day sessions) -- multi-day ILT/Self-led/External sessions were previously measured
+  // from Day 1, so a 2-day session already had 1 of its 2 SLA days gone before the session even
+  // finished.
+  const days=_tdBusinessDaysBetween(s.endDate||s.trainingDate,rep.submittedAt);
   if(days==null) return '<span class="txt-muted">—</span>';
   if(days<=2) return `<span class="badge" style="background:#dcfce7;color:#15803d">Within SLA (${days}d)</span>`;
   return `<span class="badge" style="background:#fee2e2;color:#dc2626">Passed SLA (${days}d)</span>`;
@@ -5609,7 +5613,7 @@ function _tdDocStatusText(s){
 function _tdReportSLADays(s){
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep||!rep.submittedAt) return null;
-  return _tdBusinessDaysBetween(s.trainingDate,rep.submittedAt);
+  return _tdBusinessDaysBetween(s.endDate||s.trainingDate,rep.submittedAt);
 }
 function _tdEvalStatusText(s){
   if(_tdIsOwnerType(s.deliveryType)) return 'N/A';
