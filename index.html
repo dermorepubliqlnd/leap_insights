@@ -2235,6 +2235,38 @@
   </div>
 </div>
 
+<!-- ══ MODAL: RECORDING EXEMPTION REQUEST (2026-08-06) ═════════════ -->
+<div id="modal-recording-exemption" class="modal-overlay" onclick="if(event.target===this)closeModal('recording-exemption')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Request Recording Exemption</span>
+      <button class="modal-close" onclick="closeModal('recording-exemption')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">This session has no Recording Link saved. Request an exemption to submit the report without one — your direct supervisor will need to approve it first.</p>
+      <div class="form-group" style="margin-top:10px">
+        <label class="form-label">Reason <span style="color:var(--red)">*</span></label>
+        <select id="re-reason" class="form-control" oninput="document.getElementById('re-err').style.display='none'">
+          <option value="">— Select —</option>
+          <option value="Technical/equipment/storage failure">Technical/equipment/storage failure</option>
+          <option value="Recording not required for this session">Recording not required for this session</option>
+          <option value="Trainer forgot to start recording">Trainer forgot to start recording</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note <span style="color:var(--red)">*</span></label>
+        <textarea id="re-note" class="form-control" rows="3" placeholder="Brief description of what happened…" oninput="document.getElementById('re-err').style.display='none'"></textarea>
+        <div id="re-err" style="display:none;color:var(--red);font-size:12.5px;margin-top:4px">Please select a reason and enter a note.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('recording-exemption')">Cancel</button>
+      <button class="btn btn-danger" onclick="_tdrSubmitRecordingExemption()">Request Exemption</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: TEMP PASSWORD REVEAL ═════════════ -->
 <div id="modal-pw-reveal" class="modal-overlay" onclick="if(event.target===this)closeModal('pw-reveal')">
   <div class="modal modal-sm">
@@ -5711,6 +5743,7 @@ async function tdDetailSave(){
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
   if(grp!=='owner' && !d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
+  if(!d.description) errs.push('Description is required.');
   // Guest Trainer fallback (Phase38 item 1): either a real system-user Trainer OR a Guest
   // Trainer Name is required for ILT/VILT sessions, not neither (replaces the old unconditional
   // "!d.trainerId" check).
@@ -5721,9 +5754,10 @@ async function tdDetailSave(){
   if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Delivery Method is required for ILT, Self-led, and External sessions.');
   // Phase38 item 2 (Sandra's explicit request): make ALL Session Information fields required for
   // ILT sessions except Co-Facilitator. Interpreting "all details" as the structured fields below
-  // -- Description and Assessment Type/Passing Score remain optional (freeform notes / an
-  // assessment nobody has necessarily configured). Flagged in report for Sandra to correct if she
-  // meant something broader. VILT/Self-led/External requirements are unchanged.
+  // -- Assessment Type/Passing Score remain optional (an assessment nobody has necessarily
+  // configured). Description was also optional here until 2026-08-06, when Sandra asked for it to
+  // be required for every session, not just ILT -- see the unconditional check above.
+  // VILT/Self-led/External requirements are unchanged.
   if(deliveryType==='ILT'){
     if(!d.venueId) errs.push('Venue is required for ILT sessions.');
     if(!d.audience) errs.push('Audience is required for ILT sessions.');
@@ -5975,15 +6009,12 @@ function _tdaRenderTab(s){
     </div>`:'';
 
   const selCount=_tdPartSelected.size;
-  const _tdaReport=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
-  const _tdaCanReopen=locked && !(_tdaReport&&_tdaReport.status==='submitted');
+  const _tdaReopenBlockReason=_tdaReopenBlockedReason(s);
+  const _tdaCanReopen=locked && !_tdaReopenBlockReason;
   const toolbar=locked?`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       <div style="font-weight:700;font-size:14.5px">Participant Roster</div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">🔒 Locked — session tagged Complete</div>
-        ${_tdaCanReopen?`<button class="btn btn-sm btn-secondary" onclick="_tdaReopenAttendance()">Reopen Attendance &amp; Performance</button>`:''}
-      </div>
+      <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">🔒 Locked — session tagged Complete</div>
     </div>`:`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       <div style="font-weight:700;font-size:14.5px">Participant Roster</div>
@@ -5998,7 +6029,7 @@ function _tdaRenderTab(s){
 
   // Phase38 item 4: Employee ID is now the very first column; Immediate Supervisor removed
   // entirely (historical external_supervisor data/column untouched, just not shown/edited here).
-  const theadCols=['Employee ID','<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Participant','Role','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
+  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Role','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
   const thead=`<tr>${theadCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
 
   const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType):'';
@@ -6014,7 +6045,13 @@ function _tdaRenderTab(s){
       <span>Gain = Post-Test − Pre-Test</span>
     </div>`;
 
-  const actionBar=locked?'':`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+  // Reopen Attendance button moved to the bottom of the list (2026-08-06, per Sandra) --
+  // previously sat in the top toolbar next to the "Locked" indicator.
+  const actionBar=locked?(_tdaCanReopen?`<div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="_tdaReopenAttendance()">Reopen Attendance &amp; Performance</button>
+    </div>`:(_tdaReopenBlockReason?`<div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <div style="font-size:11.5px;color:var(--text3);text-align:right;max-width:380px">🔒 ${Utils.esc(_tdaReopenBlockReason)}</div>
+    </div>`:'')):`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
       <button class="btn btn-secondary" onclick="_tdaSaveDraft()">Save Draft</button>
       <button class="btn btn-primary" onclick="_tdaMarkCompleted()">Tag Session Complete</button>
     </div>`;
@@ -6041,9 +6078,9 @@ function _tdaRowHtml(r,i,locked,assessmentType){
   const preDis=(dis||!preApplicable)?'disabled':'';
   const postDis=(dis||!postApplicable)?'disabled':'';
   return `<tr data-row-id="${r.id}">
-    <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.employeeId)}</span>`:`<input type="text" class="form-control" ${dis} style="width:90px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.employeeId||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','employeeId',this.value)">`}</td>
     <td><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
+    <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.employeeId)}</span>`:`<input type="text" class="form-control" ${dis} style="width:90px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.employeeId||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','employeeId',this.value)">`}</td>
     <td><div class="tbl-user"><div class="tbl-ava" style="${p.avaStyle}">${p.initials}</div><div><div class="td-name">${Utils.esc(p.name)}${p.inactive?' <span class="txt-muted" style="font-size:11px">(inactive)</span>':''}</div>${p.email&&p.email!=='External'?`<div style="font-size:11px;color:var(--text3)">${Utils.esc(p.email)}</div>`:''}</div></div></td>
     <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.role)}</span>`:`<input type="text" class="form-control" ${dis} style="width:110px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.externalRole||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','externalRole',this.value)">`}</td>
     <td><select class="form-control" ${dis} style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="_tdaSetField('${r.id}','attendanceStatus',this.value)">
@@ -6060,9 +6097,9 @@ function _tdaRowHtml(r,i,locked,assessmentType){
 function _tdaAddPickerRowHtml(assessmentType){
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
   return `<tr style="background:#f8fafc">
-    <td><input type="text" id="tda-add-employeeid" class="form-control" style="font-size:12.5px;min-width:90px" placeholder="Employee ID"></td>
     <td></td>
     <td style="color:var(--text3)">•</td>
+    <td><input type="text" id="tda-add-employeeid" class="form-control" style="font-size:12.5px;min-width:90px" placeholder="Employee ID"></td>
     <td><input type="text" id="tda-add-name" class="form-control" style="font-size:12.5px;min-width:140px" placeholder="Full name"></td>
     <td><input type="text" id="tda-add-role" class="form-control" style="font-size:12.5px;min-width:110px" placeholder="Role"></td>
     <td><select id="tda-add-status" class="form-control" style="font-size:12.5px">
@@ -6271,17 +6308,45 @@ async function _tdaMarkCompleted(){
   });
 }
 
-// Reopen Attendance & Performance (2026-08-05): unlike the Training Report's own reopen
-// workflow (one-up supervisor approval required), this is a direct, no-approval action --
-// available right after a session is tagged Complete, up until a Training Report has actually
-// been SUBMITTED for it (once submitted, this option disappears -- see the _tdaCanReopen check
-// in _tdaRenderTab's toolbar). Logged via AuditLog so there's a record of who reopened it and
-// when; the user must then re-run _tdaMarkCompleted()'s full validation to re-lock the session.
-function _tdaReopenAttendance(){
-  const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
+// Reopen Attendance & Performance (2026-08-05, guardrails extended 2026-08-06): unlike the
+// Training Report's own reopen workflow (one-up supervisor approval required), this is a direct,
+// no-approval action -- available right after a session is tagged Complete, gated by
+// _tdaReopenBlockedReason() below (see the _tdaCanReopen check in _tdaRenderTab's actionBar).
+// Logged via AuditLog so there's a record of who reopened it and when; the user must then re-run
+// _tdaMarkCompleted()'s full validation to re-lock the session.
+//
+// Three independent guardrails, any one of which blocks the reopen (2026-08-06, per Sandra):
+//  1. A Training Report has already been SUBMITTED for this session (the original 2026-08-05
+//     rule) -- reopening becomes possible again only if that report is later reopened itself via
+//     the supervisor-approved report-reopen flow, which resets its status back to 'draft'.
+//  2. An evaluation has already been conducted for this session (any non-draft record in
+//     leap_evals_v1 linked via sessionId) -- once a trainer's been evaluated against this
+//     session's delivery, attendance data underneath it is frozen.
+//  3. More than 7 days have passed since the Training Report's submittedAt timestamp -- even a
+//     report that's since been reopened-and-resubmitted resets this clock (submittedAt is
+//     restamped on every (re)submit, see _tdrSubmitReport/_tdrSubmitReopenReason).
+function _tdaReopenBlockedReason(s){
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(report&&report.status==='submitted'){
-    toast('A Training Report has already been submitted for this session — Attendance & Performance can no longer be reopened.','error');
+    return 'A Training Report has already been submitted for this session — Attendance & Performance can no longer be reopened.';
+  }
+  const evalDone=EvalDB.all().some(e=>e.sessionId===s.id&&e.status!=='draft');
+  if(evalDone){
+    return 'An evaluation has already been conducted for this session — Attendance & Performance can no longer be reopened.';
+  }
+  if(report&&report.submittedAt){
+    const daysSince=(Date.now()-new Date(report.submittedAt).getTime())/86400000;
+    if(daysSince>7){
+      return 'It has been more than a week since the Training Report was submitted — Attendance & Performance can no longer be reopened.';
+    }
+  }
+  return null;
+}
+function _tdaReopenAttendance(){
+  const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
+  const blockReason=_tdaReopenBlockedReason(s);
+  if(blockReason){
+    toast(blockReason,'error');
     return;
   }
   confirm$('Reopen Attendance & Performance','This will unlock the participant roster for editing. No approval is required, but this action will be logged. Continue?','Reopen',async()=>{
@@ -6370,6 +6435,7 @@ function _tdrRenderTab(s){
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
   const npsLbl=_tdrNpsLabel(c.nps);
   const savedNote=_tdrReport._isNew?'Not saved yet.':`Last saved ${Utils.esc(new Date(_tdrReport.updatedAt).toLocaleString())}`;
+  const _tdrRecEx=_tdrRecordingExemptionInfo(s,c);
 
   const toolbar=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
@@ -6379,6 +6445,7 @@ function _tdrRenderTab(s){
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${locked?'':`
           ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
+          ${_tdrRecEx.requestBtn}
           <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
         `}
       </div>
@@ -6434,11 +6501,20 @@ function _tdrRenderTab(s){
       ${feedbackBoxes}
     </div>`;
 
+  const _tdrFacOpts=_tdrAgendaFacilitatorOptions(s);
   const agendaRows=c.agendaDelivery.map((a,i)=>{
     const st=AGENDA_STATUS[a.status]||AGENDA_STATUS.covered;
+    const facOther=!!a._facOther||(!!a.facilitator&&!_tdrFacOpts.includes(a.facilitator));
     return `<tr>
       <td><input type="text" class="form-control" style="min-width:220px" placeholder="Topic" value="${Utils.esc(a.item||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'item',this.value)"></td>
-      <td><input type="text" class="form-control" style="min-width:110px" placeholder="Facilitator" value="${Utils.esc(a.facilitator||'')}" ${dis} onblur="_tdrSetAgendaField(${i},'facilitator',this.value)"></td>
+      <td>
+        <select class="form-control" style="min-width:110px" ${dis} onchange="_tdrSetAgendaFacilitator(${i},this.value)">
+          <option value="">— Select —</option>
+          ${_tdrFacOpts.map(n=>`<option value="${Utils.esc(n)}" ${!facOther&&a.facilitator===n?'selected':''}>${Utils.esc(n)}</option>`).join('')}
+          <option value="__OTHER__" ${facOther?'selected':''}>Others</option>
+        </select>
+        <input type="text" class="form-control ${facOther?'':'hidden'}" style="min-width:110px;margin-top:4px" placeholder="Enter name" value="${facOther?Utils.esc(a.facilitator||''):''}" ${dis} onblur="_tdrSetAgendaField(${i},'facilitator',this.value)">
+      </td>
       <td><select class="form-control" style="background:${st.bg};color:${st.fg};font-weight:600" ${dis} onchange="_tdrSetAgendaField(${i},'status',this.value)">
         ${Object.keys(AGENDA_STATUS).map(k=>`<option value="${k}" ${a.status===k?'selected':''}>${AGENDA_STATUS[k].label}</option>`).join('')}
       </select></td>
@@ -6471,7 +6547,7 @@ function _tdrRenderTab(s){
   const exportBarReport=canExportSummaryReport?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
       <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary</button>
     </div>`:'';
-  return `${exportBarReport}${toolbar}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}`;
+  return `${exportBarReport}${toolbar}${_tdrRecEx.banner}${_tdrRecEx.approveBtns}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}${locked?_tdrReopenActionsBar(s):''}`;
 }
 
 function _tdrSetField(field,value){
@@ -6479,8 +6555,33 @@ function _tdrSetField(field,value){
   _tdrReport.content[field]=numericFields.includes(field)?(value===''?null:Number(value)):value;
 }
 
+// Agenda facilitator auto-fill (2026-08-06, per Sandra): the Facilitator field on each Agenda
+// Delivery row now offers the session's own Trainer and Co-Facilitator (pulled straight from
+// Session Information) as select options, plus an "Others" option that reveals a free-text
+// field for anyone who actually delivered a topic but wasn't set up as Trainer/Co-Facilitator.
+function _tdrAgendaFacilitatorOptions(s){
+  const opts=[];
+  const trainerName=_tdPersonName(s);
+  if(trainerName&&trainerName!=='—') opts.push(trainerName);
+  if(s.coFacilitatorId){
+    const cf=DB.byId(s.coFacilitatorId);
+    if(cf) opts.push(`${cf.firstName} ${cf.lastName}`);
+  }
+  return opts;
+}
+function _tdrSetAgendaFacilitator(i,value){
+  const row=_tdrReport.content.agendaDelivery[i]; if(!row) return;
+  if(value==='__OTHER__'){ row.facilitator=''; row._facOther=true; }
+  else { row.facilitator=value; row._facOther=false; }
+  renderTrainingDetail();
+}
 function _tdrAddAgendaRow(){
-  _tdrReport.content.agendaDelivery.push({item:'',facilitator:'',status:'covered',remarks:''});
+  // New rows default the Facilitator to the session's Trainer (first in the auto-pulled list),
+  // per Sandra's "automatically pull identified Trainer and co-Faci" ask -- editable/changeable
+  // via the same select, including switching to Co-Facilitator or Others.
+  const s=TrSessionDB.byId(_tdrReport.sessionId);
+  const defaultFacilitator=s?(_tdrAgendaFacilitatorOptions(s)[0]||''):'';
+  _tdrReport.content.agendaDelivery.push({item:'',facilitator:defaultFacilitator,status:'covered',remarks:''});
   renderTrainingDetail();
 }
 function _tdrSetAgendaField(i,field,value){
@@ -6525,6 +6626,20 @@ function _tdrSubmitReport(){
     toast('Attendance & Performance must be tagged Complete before the Training Report can be submitted.','error');
     return;
   }
+  // 2026-08-06 (per Sandra): a report cannot be submitted before the session date arrives --
+  // same-day submission is allowed (e.g. a session on Aug 10 can be submitted starting Aug 10).
+  if(_tdrSess.trainingDate && _tdrSess.trainingDate>_todayStr()){
+    toast('The Training Report cannot be submitted before the session date. You can submit starting on the day of the session.','error');
+    return;
+  }
+  // 2026-08-06 (per Sandra): a recording link is required to submit, unless a supervisor-approved
+  // Recording Exemption is on file (see the Recording Exemption workflow below).
+  const _tdrRecExemption=_tdrReport.content.recordingExemption;
+  const _tdrRecExempt=!!(_tdrRecExemption&&_tdrRecExemption.status==='approved');
+  if(!_tdrSess.recordingLink && !_tdrRecExempt){
+    toast('A Recording Link must be saved before the report can be submitted. If the session genuinely wasn\'t recorded, click "Request Recording Exemption" instead.','error');
+    return;
+  }
   const missing=_tdrValidateForSubmit();
   if(missing.length){
     toast(`Please complete the following before submitting: ${missing.join(', ')}.`,'error');
@@ -6544,6 +6659,98 @@ function _tdrSubmitReport(){
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
       renderTrainingDetail();
       toast('Training report submitted.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+
+/* ── RECORDING EXEMPTION WORKFLOW (2026-08-06, per Sandra) ────────────────────────────────
+   A report can't be submitted without the session's Recording Link saved, UNLESS a supervisor-
+   approved exemption is on file. Stored inside content.recordingExemption (jsonb -- no new DB
+   columns needed, mirrors the shape of the top-level reopen_* columns but as a nested object)
+   since adding real columns to training_reports would need a live Supabase migration this
+   session can't run. Lifecycle: null -> 'pending' (requested) -> 'approved' (submit unblocked)
+                                                                 -> 'denied' (still blocked,
+   trainer can request again). Gated on the requester's direct supervisor (profiles.supervisor_id),
+   same one-up pattern as the Reopen workflow below, or any admin. ───────────────────────────── */
+function _tdrRecordingExemptionInfo(s,c){
+  const ex=c.recordingExemption;
+  const me=Auth.user;
+  const hasRecording=!!s.recordingLink;
+  let requestBtn='', banner='', approveBtns='';
+  if(!hasRecording){
+    if(!ex||ex.status==='denied'){
+      requestBtn=`<button class="btn btn-sm btn-secondary" onclick="_tdrRequestRecordingExemption()">🎥 Request Recording Exemption</button>`;
+      if(ex&&ex.status==='denied'){
+        banner=`<div style="font-size:12px;color:var(--text3);margin-top:8px">Previous recording exemption request was denied${ex.decidedAt?` on ${new Date(ex.decidedAt).toLocaleString('en-PH',{dateStyle:'medium'})}`:''}. You may request again.</div>`;
+      }
+    } else if(ex.status==='pending'){
+      const requester=ex.requestedBy?DB.byId(ex.requestedBy):null;
+      const approverId=requester?requester.supervisorId:null;
+      const canApprove=!!me&&(me.isAdmin||(approverId&&approverId===me.id));
+      banner=`<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:#92400e">
+        <div style="font-weight:700;margin-bottom:4px">🎥 Recording Exemption Requested — awaiting supervisor approval</div>
+        <div>Requested by ${Utils.esc(requester?`${requester.firstName} ${requester.lastName}`:'—')}${ex.requestedAt?` on ${new Date(ex.requestedAt).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}`:''} — <strong>${Utils.esc(ex.reason||'')}</strong>: "${Utils.esc(ex.note||'')}"</div>
+      </div>`;
+      if(canApprove){
+        approveBtns=`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+          <button class="btn btn-sm btn-primary" onclick="_tdrApproveRecordingExemption()">Approve Exemption</button>
+          <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyRecordingExemption()">Deny Exemption</button>
+        </div>`;
+      }
+    } else if(ex.status==='approved'){
+      banner=`<div style="font-size:12px;color:var(--green);margin-top:8px">✓ Recording exemption approved${ex.decidedAt?` on ${new Date(ex.decidedAt).toLocaleString('en-PH',{dateStyle:'medium'})}`:''} — this report can be submitted without a recording link.</div>`;
+    }
+  }
+  return {requestBtn,banner,approveBtns};
+}
+function _tdrRequestRecordingExemption(){
+  const sel=document.getElementById('re-reason'); if(sel) sel.value='';
+  const ta=document.getElementById('re-note'); if(ta) ta.value='';
+  const err=document.getElementById('re-err'); if(err) err.style.display='none';
+  openModal('recording-exemption');
+}
+function _tdrSubmitRecordingExemption(){
+  const reason=(document.getElementById('re-reason').value||'').trim();
+  const note=(document.getElementById('re-note').value||'').trim();
+  if(!reason||!note){ document.getElementById('re-err').style.display='block'; return; }
+  closeModal('recording-exemption');
+  (async()=>{
+    try{
+      _tdrReport.content.recordingExemption={
+        status:'pending', reason, note,
+        requestedBy:Auth.user.id, requestedAt:new Date().toISOString(),
+        decidedBy:null, decidedAt:null
+      };
+      const patch={sessionId:_tdrReport.sessionId, status:_tdrReport.status||'draft', content:_tdrReport.content};
+      const saved=_tdrReport._isNew?await TrainingReportsDB.create({...patch, id:_tdrReport.id}):await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('recording_exemption_requested','Training Report',_tdrReport.id,`Recording exemption requested by ${Auth.user.firstName} ${Auth.user.lastName}: "${reason} — ${note}"`);
+      renderTrainingDetail();
+      toast('Recording exemption requested — awaiting supervisor approval.','success');
+    }catch(e){ /* error already surfaced */ }
+  })();
+}
+function _tdrApproveRecordingExemption(){
+  confirm$('Approve Recording Exemption','Approve this exemption? The report can then be submitted without a recording link.','Approve Exemption',async()=>{
+    try{
+      _tdrReport.content.recordingExemption={...(_tdrReport.content.recordingExemption||{}), status:'approved', decidedBy:Auth.user.id, decidedAt:new Date().toISOString()};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,{sessionId:_tdrReport.sessionId, status:_tdrReport.status, content:_tdrReport.content});
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('recording_exemption_approved','Training Report',_tdrReport.id,`Recording exemption approved by ${Auth.user.firstName} ${Auth.user.lastName}`);
+      renderTrainingDetail();
+      toast('Recording exemption approved.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdrDenyRecordingExemption(){
+  confirm$('Deny Recording Exemption','Deny this exemption request? The report will still require a recording link to submit.','Deny Exemption',async()=>{
+    try{
+      _tdrReport.content.recordingExemption={...(_tdrReport.content.recordingExemption||{}), status:'denied', decidedBy:Auth.user.id, decidedAt:new Date().toISOString()};
+      const saved=await TrainingReportsDB.update(_tdrReport.id,{sessionId:_tdrReport.sessionId, status:_tdrReport.status, content:_tdrReport.content});
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await AuditLog.record('recording_exemption_denied','Training Report',_tdrReport.id,`Recording exemption denied by ${Auth.user.firstName} ${Auth.user.lastName}`);
+      renderTrainingDetail();
+      toast('Recording exemption denied.','success');
     }catch(e){ /* error already surfaced */ }
   });
 }
@@ -6604,8 +6811,8 @@ function _tdrDenyReopen(){
     }catch(e){ /* error already surfaced */ }
   });
 }
-/* Status banner only -- Request/Approve/Deny Reopen buttons live in the Detail page's
-   persistent header now (see _tdHeaderActionsMenu), visible regardless of active tab. */
+/* Status banner only -- Request/Approve/Deny Reopen buttons live at the bottom of the Training
+   Report tab now (see _tdrReopenActionsBar), not in the header (2026-08-06, per Sandra). */
 function _tdrReopenBlock(){
   const rep=_tdrReport;
   const status=rep.reopenStatus;
@@ -6629,43 +6836,32 @@ function _tdrReopenBlock(){
 // (facilitatorName is free text) so only an admin can act on those reports.
 function _tdSessionOwnerId(s){ return s.ownerId||s.trainerId||null; }
 
-// Header-level actions -- rendered in the Detail page's persistent header (replacing the old
-// session Delete button there), visible from any tab. Once a Training Report is submitted,
-// Export Summary and Request Reopen used to render as two separate buttons here/in the Overview
-// tab; per Sandra's phase36 request they're now folded into a single "Actions" dropdown when
-// both are simultaneously available to the current viewer (reusing the existing .th-dd/.th-ddi
-// dropdown pattern from the table column-filter menus, incl. its global outside-click handler).
-// If only one of the two applies (e.g. a non-owner/non-admin viewer who can export but can't
-// request a reopen), that one option still renders as a single plain button, not a dropdown.
-function _tdHeaderActionsMenu(s){
-  _tdrEnsureLoaded(s.id);
+// Reopen action bar -- rendered at the BOTTOM of the Training Report tab (2026-08-06, per
+// Sandra), not in the Detail page's header. Previously Export Summary and Request Reopen were
+// folded into a single header-level "Actions" dropdown (phase36); Sandra asked to drop that
+// dropdown entirely, keep the Training Report tab's own standalone Export Summary button (see
+// exportBarReport in _tdrRenderTab) as the only Export Summary entry point, and move
+// Request/Approve/Deny Reopen down to the bottom of the tab instead.
+function _tdrReopenActionsBar(s){
   const rep=_tdrReport;
   const me=Auth.user;
-  const canExport=s.status==='completed'&&rep&&!rep._isNew&&rep.status==='submitted';
-  const exportBtn=`<button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary</button>`;
-  if(!rep||rep._isNew||rep.status!=='submitted') return canExport?exportBtn:'';
+  if(!rep||rep._isNew||rep.status!=='submitted') return '';
   if(rep.reopenStatus==='pending'){
     const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
     const approverId=requester?requester.supervisorId:null;
     const canApprove=!!me&&(me.isAdmin||(approverId&&approverId===me.id));
-    const approveBtns=canApprove?`<button class="btn btn-sm btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
-      <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>`:'';
-    return (canExport?exportBtn:'')+approveBtns;
+    if(!canApprove) return '';
+    return `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
+      <button class="btn btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>
+    </div>`;
   }
   const ownerId=_tdSessionOwnerId(s);
   const canRequest=!!me&&(me.isAdmin||(ownerId&&ownerId===me.id));
-  if(canExport&&canRequest){
-    return `<div style="position:relative;display:inline-block">
-      <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();this.nextElementSibling.classList.toggle('open')">Actions ▾</button>
-      <div class="th-dd" style="left:auto;right:0">
-        <div class="th-ddi" onclick="this.closest('.th-dd').classList.remove('open');_tdExportSummaryImage('${s.id}')">📤 Export Summary</div>
-        <div class="th-ddi" onclick="this.closest('.th-dd').classList.remove('open');_tdrRequestReopen()">🔓 Request Reopen</div>
-      </div>
-    </div>`;
-  }
-  if(canExport) return exportBtn;
-  if(canRequest) return `<button class="btn btn-sm btn-secondary" onclick="_tdrRequestReopen()">🔓 Request Reopen</button>`;
-  return '';
+  if(!canRequest) return '';
+  return `<div style="display:flex;justify-content:flex-end;margin-top:16px">
+    <button class="btn btn-secondary" onclick="_tdrRequestReopen()">🔓 Request Reopen</button>
+  </div>`;
 }
 
 function renderTrainingDetail(){
@@ -6705,9 +6901,6 @@ function renderTrainingDetail(){
           ${_tdTypeBadge(s.deliveryType)}
         </div>
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${summaryLine}</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        ${_tdHeaderActionsMenu(s)}
       </div>
     </div>
     <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
@@ -7101,9 +7294,10 @@ function _tdOverviewJourneyBlockVertical(s,ownerType){
 
 function _tddOverviewView(s,ownerType,personLabel,personName){
   const {l1, summary}=_tdOverviewReportBlocks(s);
-  // Export Summary now lives in the Detail page's persistent header (see _tdHeaderActionsMenu),
-  // combined with Request Reopen into one dropdown when both are available (2026-08-05) -- no
-  // longer a standalone button here in the Overview tab body.
+  // Export Summary lives only on the Training Report tab (exportBarReport in _tdrRenderTab) --
+  // the header-level "Actions" dropdown that used to combine it with Request Reopen was removed
+  // 2026-08-06 per Sandra; Request/Approve/Deny Reopen now live at the bottom of that same tab
+  // (see _tdrReopenActionsBar).
   return `
     <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-bottom:16px">
       <div class="card" id="tdd-session-info-card" style="padding:18px 20px">
@@ -7299,12 +7493,12 @@ function _tddSessionInfoEditContent(s,ownerType){
       ${_tddInfoBlockEdit('users','var(--sky)','Maximum Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:90px"><div style="font-size:9.5px;color:var(--text3);margin-bottom:2px">Assessment Type</div><select id="tdd-assessment" class="form-control" ${smallInput}>
+      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
         <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
         <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
-      </select></div><div style="width:66px;flex-shrink:0"><div style="font-size:9.5px;color:var(--text3);margin-bottom:2px;white-space:nowrap">Passing %</div><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"></div></div>`)}
+      </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
       ${_tddInfoBlockEdit('edit3','#64748b','Recording Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
       ${_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
@@ -8117,6 +8311,27 @@ function startSessionEvaluation(sessionId){
   const canConduct=access.trainerEval||me.isAdmin;
   if(!canConduct){ toast("You don't have access to conduct evaluations.",'error'); return; }
   if(s.trainerId===me.id){ toast("You can't evaluate your own session.",'error'); return; }
+  // 2026-08-06 (per Sandra): check for an existing evaluation by THIS evaluator on this session
+  // first, before asking Live vs Virtual -- reversed from the old sequence, where the eval-type
+  // modal always appeared first and the "you already have a draft" notice only surfaced
+  // afterward. If there's nothing to resolve here, only then do we ask the eval type and run the
+  // type-specific date/recording checks in _startSessionEvaluationWithMode.
+  const sessionEvals=EvalDB.all().filter(e=>e.sessionId===sessionId);
+  const mine=sessionEvals.find(e=>e.evaluatorId===me.id);
+  if(mine){
+    if(mine.status==='draft'){
+      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{
+        EvalDB.delete(mine.id).then(()=>openEvalModeModal(mode=>{ _startSessionEvaluationWithMode(sessionId,mode); })).catch(()=>{});
+      });
+      return;
+    }
+    if(mine.status==='pending_ack'){
+      confirm$('Already Submitted','You already submitted an evaluation for this session — it\'s awaiting the trainer\'s acknowledgement.','View It',()=>{ showView('evaluations'); openEvalView(mine.id); },true);
+      return;
+    }
+    confirm$('Already Evaluated','You already completed an evaluation for this session. Only one evaluation per evaluator is allowed per session.','View It',()=>{ showView('evaluations'); openEvalView(mine.id); },true);
+    return;
+  }
   // Phase33 item 6: ask Live (Sit-in) vs Virtual (Recording) before proceeding -- this replaces
   // the old blanket "session must be Completed" gate with type-specific checks below.
   openEvalModeModal(mode=>{ _startSessionEvaluationWithMode(sessionId,mode); });
@@ -8143,20 +8358,9 @@ function _startSessionEvaluationWithMode(sessionId,mode){
     if(!s.recordingLink){ toast('This session has no recording link yet — check back once one is added.','info'); return; }
   }
   const me=Auth.user;
+  // The "do I already have an eval on this session" check now runs upstream in
+  // startSessionEvaluation(), before the eval-mode modal -- see 2026-08-06 note there.
   const sessionEvals=EvalDB.all().filter(e=>e.sessionId===sessionId);
-  const mine=sessionEvals.find(e=>e.evaluatorId===me.id);
-  if(mine){
-    if(mine.status==='draft'){
-      openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{ EvalDB.delete(mine.id).then(()=>_openPrefilledEval(s,mode)).catch(()=>{}); });
-      return;
-    }
-    if(mine.status==='pending_ack'){
-      confirm$('Already Submitted','You already submitted an evaluation for this session — it\'s awaiting the trainer\'s acknowledgement.','View It',()=>{ showView('evaluations'); openEvalView(mine.id); },true);
-      return;
-    }
-    confirm$('Already Evaluated','You already completed an evaluation for this session. Only one evaluation per evaluator is allowed per session.','View It',()=>{ showView('evaluations'); openEvalView(mine.id); },true);
-    return;
-  }
   const others=sessionEvals.filter(e=>e.status==='completed');
   if(others.length){
     const names=[...new Set(others.map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'another evaluator'; }))];
@@ -11657,7 +11861,21 @@ function wireEvents(){
   // point specifically, NOT inside renderTrainingDelivery() (which also runs on internal
   // re-renders like filter changes) and NOT inside the List/Calendar toggle buttons themselves
   // (which must keep respecting the user's current choice).
-  document.querySelectorAll('.nav-item[data-view],.nav-sub-item[data-view]').forEach(el=>el.addEventListener('click',()=>guardedLeave(()=>{ if(el.dataset.view==='training-delivery') tdViewMode='list'; showView(el.dataset.view); })));
+  document.querySelectorAll('.nav-item[data-view],.nav-sub-item[data-view]').forEach(el=>el.addEventListener('click',()=>guardedLeave(()=>{
+    if(el.dataset.view==='training-delivery'){
+      tdViewMode='list';
+      // 2026-08-06 fix: a nav click into Training Calendar must also back out of the Detail page
+      // (td-detail-wrap) if one is open -- resetting tdViewMode alone only affects the List/Calendar
+      // toggle inside the browse view, which stays hidden behind the still-visible Detail page.
+      if(_tdDetailId){
+        disarmLeaveGuard();
+        _tdDetailId=null; _tdDetailEditing=false;
+        document.getElementById('td-detail-wrap').classList.add('hidden');
+        document.getElementById('td-browse-wrap').classList.remove('hidden');
+      }
+    }
+    showView(el.dataset.view);
+  })));
   document.getElementById('add-user-btn').addEventListener('click',openAddUser);
   document.getElementById('mu-save').addEventListener('click',saveUser);
   document.getElementById('mu-admin').addEventListener('change',function(){document.getElementById('mu-perm-note').style.display=this.checked?'block':'none'; _onAdminToggle();});
