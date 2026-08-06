@@ -2445,6 +2445,12 @@ const _FIELD_MAPS = {
   deliverables:{ id:'id', name:'name', isID:'is_id', isCD:'is_cd', isDefault:'is_default', isActive:'is_active' },
   categories:{ id:'id', name:'name', isActive:'is_active' },
   audiences:{ id:'id', name:'name', isActive:'is_active' },
+  // Departments (2026-08-06): tags session attendees, independent of the employee's Position --
+  // replaces the free-text Role field in the Attendance & Performance roster.
+  departments:{ id:'id', name:'name', isActive:'is_active' },
+  // Attendance Settings (2026-08-06): single row ('default') holding the point deduction applied
+  // per Late / Left Early day when computing an attendee's Attendance Score on multi-day sessions.
+  attendance_settings:{ id:'id', lateDeduction:'late_deduction', leftEarlyDeduction:'left_early_deduction', updatedAt:'updated_at' },
   // Agenda Templates (Phase49, 2026-08-06): title + a jsonb array of {topic,duration} items,
   // a genuinely different shape from the flat name-only lists above (Categories/Audiences/etc.)
   // -- managed via a bespoke Settings drawer, not the generic renderSelList single-name-field UI.
@@ -2488,7 +2494,12 @@ const _FIELD_MAPS = {
     externalRole:'external_role', externalSupervisor:'external_supervisor',
     // Employee ID (2026-08-05, Phase38 item 4): free-text, no FK/lookup, consistent with this
     // project's fully-manual participant-entry design.
-    employeeId:'employee_id'
+    employeeId:'employee_id',
+    // Department (2026-08-06, per Sandra) replaces externalRole going forward -- a real Sel-backed
+    // lookup (Store.DEPARTMENTS) instead of free text, applies to both profile-linked and external
+    // rows alike. attendanceByDay backs the per-day status grid on multi-day sessions only --
+    // single-day sessions keep using attendanceStatus exactly as before.
+    departmentId:'department_id', attendanceByDay:'attendance_by_day'
   },
   training_reports:{
     id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
@@ -2566,7 +2577,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -2626,6 +2637,7 @@ const Store = {
   SESSION:'leap_session_v1', FIRSTRUN:`leap_frun_${STORE_VER}`,
   POS:'positions', VENUES:'venues', MODALS:'modalities', DELIVERABLES:'deliverables',
   CATEGORIES:'categories', AUDIENCES:'audiences', AGENDA_TEMPLATES:'agenda_templates',
+  DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -4553,7 +4565,8 @@ const STABS=[
   {id:'venues',      label:'Venues',              key:Store.VENUES, desc:'Physical venues (used by ILT/External) or online platforms (used by Self-led). Set the type when adding or editing.'},
   {id:'modalities',  label:'Delivery Method',     key:Store.MODALS, desc:'Delivery Method options for ILT/Self-led/External sessions and evaluations.', sing:'Delivery Method'},
   {id:'categories',  label:'Categories',          key:Store.CATEGORIES, desc:'Training categories used on ILT sessions.', sing:'Category'},
-  {id:'audiences',   label:'Audiences',           key:Store.AUDIENCES, desc:'Audience tags — sessions can have more than one.', sing:'Audience'}
+  {id:'audiences',   label:'Audiences',           key:Store.AUDIENCES, desc:'Audience tags — sessions can have more than one.', sing:'Audience'},
+  {id:'departments', label:'Departments',         key:Store.DEPARTMENTS, desc:'Departments assignable to session attendees in the Attendance & Performance roster.', sing:'Department'}
 ];
 let activeSettingsSection='lists'; // 'lists' | 'backup'
 let _settingsDrawerTabId=null;     // which STABS.id is currently open in the drawer, or null
@@ -4561,17 +4574,65 @@ let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
 let _settingsShowInactive={};  // per-key: true=show inactive, false=hide
 
 function renderSettings(){
-  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'backup',label:'Data & Backup'}];
+  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'attendance',label:'Attendance'},{id:'backup',label:'Data & Backup'}];
   document.getElementById('stabs').innerHTML=sections.map(t=>`<div class="stab${t.id===activeSettingsSection?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
   document.querySelectorAll('#stabs .stab').forEach(el=>el.addEventListener('click',()=>{activeSettingsSection=el.dataset.stab;renderSettings();}));
   document.getElementById('stab-panes').innerHTML=
     `<div class="stab-pane${activeSettingsSection==='lists'?' active':''}" id="spane-lists"></div>`+
     `<div class="stab-pane${activeSettingsSection==='templates'?' active':''}" id="spane-templates"></div>`+
+    `<div class="stab-pane${activeSettingsSection==='attendance'?' active':''}" id="spane-attendance"></div>`+
     `<div class="stab-pane${activeSettingsSection==='backup'?' active':''}" id="spane-backup"></div>`;
   if(activeSettingsSection==='lists') renderListsOverview();
   else if(activeSettingsSection==='templates') renderAgendaTemplatesOverview();
+  else if(activeSettingsSection==='attendance') renderAttendanceSettingsPane();
   else renderBackupPane();
   renderListManageDrawer();
+}
+
+// Attendance Settings (2026-08-06, per Sandra): point deductions applied per Late / Left Early
+// day when computing an attendee's Attendance Score on multi-day ILT/Self-led/External sessions.
+// Backed by a single row ('default') in attendance_settings -- editable here, read everywhere
+// else via Sel-style helpers (_attendanceSettings()).
+function _attendanceSettings(){
+  const row=Cache.data[Store.ATTENDANCE_SETTINGS]&&Cache.data[Store.ATTENDANCE_SETTINGS][0];
+  return { lateDeduction:row&&row.lateDeduction!=null?Number(row.lateDeduction):0.25, leftEarlyDeduction:row&&row.leftEarlyDeduction!=null?Number(row.leftEarlyDeduction):0.25 };
+}
+function renderAttendanceSettingsPane(){
+  const pane=document.getElementById('spane-attendance'); if(!pane) return;
+  const cfg=_attendanceSettings();
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Attendance Scoring</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Point deductions applied per day marked Late or Left Early when computing an attendee's Attendance Score on multi-day sessions. Present = 1.0, Absent = 0.</div></div></div>
+    <div class="card" style="padding:18px 20px;max-width:420px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label class="form-label">Late deduction (per day)</label>
+          <input type="number" id="astg-late" class="form-control" style="width:120px" min="0" max="1" step="0.05" value="${cfg.lateDeduction}">
+        </div>
+        <div>
+          <label class="form-label">Left Early deduction (per day)</label>
+          <input type="number" id="astg-leftearly" class="form-control" style="width:120px" min="0" max="1" step="0.05" value="${cfg.leftEarlyDeduction}">
+        </div>
+      </div>
+      <div class="modal-err hidden" id="astg-error" style="margin-top:12px"></div>
+      <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="saveAttendanceSettings()">Save</button>
+    </div>`;
+}
+async function saveAttendanceSettings(){
+  const late=parseFloat(document.getElementById('astg-late').value);
+  const leftEarly=parseFloat(document.getElementById('astg-leftearly').value);
+  const errEl=document.getElementById('astg-error');
+  if(isNaN(late)||late<0||late>1||isNaN(leftEarly)||leftEarly<0||leftEarly>1){
+    errEl.textContent='Deductions must be between 0 and 1.'; errEl.classList.remove('hidden'); return;
+  }
+  errEl.classList.add('hidden');
+  const patch={lateDeduction:late, leftEarlyDeduction:leftEarly};
+  const row=patchToSnake(Store.ATTENDANCE_SETTINGS,patch);
+  const {data,error}=await sb.from(Store.ATTENDANCE_SETTINGS).update(row).eq('id','default').select().single();
+  if(error){ _surfaceDbError(error,'Save'); return; }
+  const saved=rowToCamel(Store.ATTENDANCE_SETTINGS,data);
+  const arr=Cache.data[Store.ATTENDANCE_SETTINGS];
+  const i=arr.findIndex(x=>x.id==='default');
+  if(i>=0) arr[i]=saved; else arr.push(saved);
+  toast('Attendance scoring settings saved.','success');
 }
 
 // Agenda Templates (Phase49, 2026-08-06, per Sandra): reusable ILT agenda blueprints. Settings
@@ -4920,6 +4981,7 @@ function toggleSel(key,id){
 const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
+  'departments','attendance_settings',
   'training_sessions','audit_log','session_participants','training_reports'
 ];
 
@@ -5338,6 +5400,28 @@ function renderTrainingDashboard(){ /* placeholder — see #view-training-dashbo
 // (Owner dropdown vs Trainer/Co-Facilitator vs free-text Facilitator+Provider) is a 3-way split
 // -- see _tdFieldGroup below (2026-07-31, External Facilitator/Provider split).
 function _tdIsOwnerType(deliveryType){ return deliveryType==='Self-led'||deliveryType==='External'; }
+
+// Start/End Date range (2026-08-06, per Sandra): ILT sessions can now span multiple days too,
+// same as Self-led/External -- distinct from _tdIsOwnerType, which still only governs the
+// Owner-vs-Trainer field split and the recording-link requirement (unchanged, ILT still needs
+// exactly one recording link and one Trainer field regardless of how many days it spans).
+function _tdShowsDateRange(deliveryType){ return deliveryType==='ILT'||_tdIsOwnerType(deliveryType); }
+
+// Inclusive list of every calendar day (YYYY-MM-DD) a session actually runs, in order. Single-day
+// sessions (or sessions whose type doesn't support a date range) return just the one date --
+// existing single-day attendance behavior is untouched. Does NOT skip weekends: the session's own
+// Start/End Date IS the definition of which days it runs, so no day-of-week filtering here.
+function _tdSessionDayList(s){
+  const start=s.trainingDate;
+  if(!start) return [];
+  if(!s.endDate||s.endDate===start) return [start];
+  const startD=new Date(start+'T00:00:00'), endD=new Date(s.endDate+'T00:00:00');
+  if(isNaN(startD.getTime())||isNaN(endD.getTime())||endD<startD) return [start];
+  const days=[];
+  const cur=new Date(startD);
+  while(cur<=endD){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  return days;
+}
 
 function _tdFieldGroup(deliveryType){
   if(deliveryType==='Self-led') return 'owner';
@@ -5922,7 +6006,7 @@ function _tdToggleTypeFields(){
   document.getElementById('td-owner-wrap').classList.toggle('hidden',grp!=='owner');
   document.getElementById('td-facilitator-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('td-provider-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('td-enddate-wrap').classList.toggle('hidden',!ownerType);
+  document.getElementById('td-enddate-wrap').classList.toggle('hidden',!_tdShowsDateRange(dt));
   document.getElementById('td-recording-wrap').classList.toggle('hidden',ownerType);
   document.getElementById('td-batch-wrap').classList.toggle('hidden',grp==='owner');
   _tdPopulateVenueOptions('td',dt);
@@ -5973,7 +6057,7 @@ async function saveTrainingModal(){
     trainingProgram:document.getElementById('td-program').value.trim(),
     batchNo:document.getElementById('td-batch').value.trim(),
     trainingDate:document.getElementById('td-date').value,
-    endDate:ownerType?(document.getElementById('td-enddate').value||null):null,
+    endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('td-enddate').value||null):null,
     trainerId:grp==='trainer'?(document.getElementById('td-trainer').value||null):null,
     ownerId:grp==='owner'?(document.getElementById('td-owner').value||null):null,
     facilitatorName:grp==='external'?document.getElementById('td-facilitator').value.trim():null,
@@ -5995,7 +6079,7 @@ async function saveTrainingModal(){
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
   if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
-  if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
+  if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('td-venue').value)&&!(document.getElementById('td-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
   const errEl=document.getElementById('td-error');
@@ -6212,7 +6296,7 @@ async function tdDetailSave(){
     trainingProgram:document.getElementById('tdd-program').value.trim(),
     batchNo:document.getElementById('tdd-batch').value.trim(),
     trainingDate:document.getElementById('tdd-date').value,
-    endDate:ownerType?(document.getElementById('tdd-enddate').value||null):null,
+    endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('tdd-enddate').value||null):null,
     trainerId:(grp==='trainer'&&!isGuestTrainer)?(trainerSelVal||null):null,
     guestTrainerName:(grp==='trainer'&&isGuestTrainer)?(document.getElementById('tdd-guest-name').value.trim()||null):null,
     ownerId:grp==='owner'?(document.getElementById('tdd-owner').value||null):null,
@@ -6259,7 +6343,7 @@ async function tdDetailSave(){
     if(d.durationHours==null) errs.push('Duration (in Hours) is required for ILT sessions.');
     if(!d.category) errs.push('Category is required for ILT sessions.');
   }
-  if(ownerType && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
+  if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
   const errEl=document.getElementById('tdd-error');
@@ -6342,18 +6426,22 @@ function _tdaEnsureLoaded(sessionId){
 }
 
 function _tdaPersonInfo(r){
+  // Department (2026-08-06, per Sandra) replaces Role in the Attendance roster -- it's a per-row
+  // selection (session_participants.department_id) rather than derived from the profile's
+  // Position, since profiles have no department field by design. Applies the same way to both
+  // profile-linked and external/manual participants.
+  const department=r.departmentId?(Sel.nameOf(Store.DEPARTMENTS,r.departmentId)||'—'):'—';
   if(r.profileId){
     const u=DB.byId(r.profileId);
-    if(!u) return {name:'(deactivated / deleted user)', email:'', role:'—', supervisor:'—', employeeId:'—', initials:'?', avaStyle:'', inactive:true};
+    if(!u) return {name:'(deactivated / deleted user)', email:'', department, supervisor:'—', employeeId:'—', initials:'?', avaStyle:'', inactive:true};
     const name=`${u.firstName} ${u.lastName}`;
-    const role=Sel.nameOf(Store.POS,u.positionId)||'—';
     const sv=u.supervisorId?DB.byId(u.supervisorId):null;
     const supervisor=sv?`${sv.firstName} ${sv.lastName}`:'—';
-    return {name, email:u.email, role, supervisor, employeeId:u.employeeId||'—', initials:Utils.initials(name), avaStyle:Utils.avatarBg(u.isAdmin), inactive:!u.isActive};
+    return {name, email:u.email, department, supervisor, employeeId:u.employeeId||'—', initials:Utils.initials(name), avaStyle:Utils.avatarBg(u.isAdmin), inactive:!u.isActive};
   }
   // Phase38 item 4: Employee ID is free-text on the participant row itself (employeeId), same
-  // manual-entry design as externalRole/externalSupervisor.
-  return {name:r.externalName||'Unnamed Participant', email:'', role:r.externalRole||'—', supervisor:r.externalSupervisor||'—', employeeId:r.employeeId||'—', initials:Utils.initials(r.externalName||'?'), avaStyle:Utils.avatarBg(false), inactive:false};
+  // manual-entry design as externalSupervisor.
+  return {name:r.externalName||'Unnamed Participant', email:'', department, supervisor:r.externalSupervisor||'—', employeeId:r.employeeId||'—', initials:Utils.initials(r.externalName||'?'), avaStyle:Utils.avatarBg(false), inactive:false};
 }
 
 function _tdaGain(r){
@@ -6388,9 +6476,43 @@ function _tdaPostApplicable(assessmentType){
 const _TDA_STATUS_STYLE={
   present:{bg:'var(--green-lt)',fg:'var(--green)',label:'Present'},
   late:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Late'},
+  leftearly:{bg:'#ffedd5',fg:'var(--orange)',label:'Left Early'},
   absent:{bg:'var(--red-lt)',fg:'var(--red)',label:'Absent'},
   pending:{bg:'#f1f5f9',fg:'#64748b',label:'Pending'}
 };
+
+// Multi-day attendance (2026-08-06, per Sandra): single-day sessions are completely untouched --
+// they keep using the plain session_participants.attendance_status column exactly as before.
+// Only when a session's Start/End Date actually spans more than one calendar day (_tdSessionDayList
+// returns >1 entry, e.g. an ILT/Self-led/External session with an End Date set) does the
+// Attendance Status column become one status-per-day instead, backed by the
+// session_participants.attendance_by_day jsonb column.
+function _tdaDayList(s){ return _tdSessionDayList(s); }
+function _tdaIsMultiDay(s){ return _tdaDayList(s).length>1; }
+function _tdaGetDayStatus(r,date){ return (r.attendanceByDay&&r.attendanceByDay[date])||'pending'; }
+function _tdaSetDayStatus(r,date,value){
+  r.attendanceByDay=r.attendanceByDay?{...r.attendanceByDay}:{};
+  r.attendanceByDay[date]=value;
+}
+// Point value for one day's status -- Present=1, Absent/Pending=0, Late/Left Early get the
+// admin-configured deduction from Settings > Attendance (default .25 each).
+function _tdaDayPoint(status){
+  const cfg=_attendanceSettings();
+  if(status==='present') return 1;
+  if(status==='late') return 1-cfg.lateDeduction;
+  if(status==='leftearly') return 1-cfg.leftEarlyDeduction;
+  return 0; // absent or pending
+}
+// The one attendance metric shown per attendee on multi-day sessions: a point-weighted score
+// across every day in the range (e.g. "1.75/2"), NOT a simple attended/total day count --
+// Late and Left Early days contribute partial credit instead of counting as a full miss or hit.
+function _tdaAttendanceScore(r,dayList){
+  const total=dayList.length;
+  if(!total) return {points:0, total:0, label:'—'};
+  const points=dayList.reduce((sum,d)=>sum+_tdaDayPoint(_tdaGetDayStatus(r,d)),0);
+  const rounded=Math.round(points*100)/100;
+  return {points:rounded, total, label:`${rounded}/${total}`};
+}
 
 const _TDA_ICON_PATHS={
   users:'<path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7 9v-1.2a3 3 0 0 0-2.2-2.9M15.5 4.2a3.5 3.5 0 0 1 0 6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -6437,11 +6559,20 @@ function _tdaKpiColumnsHtml(s){
   _tdaEnsureLoaded(s.id);
   const all=_tdPartRows;
   const total=all.length;
-  const present=all.filter(r=>r.attendanceStatus==='present').length;
-  const late=all.filter(r=>r.attendanceStatus==='late').length;
-  const absent=all.filter(r=>r.attendanceStatus==='absent').length;
-  const pending=all.filter(r=>r.attendanceStatus==='pending').length;
-  const rate=total>0?Math.round(((present+late)/total)*100):0;
+  // Multi-day sessions (2026-08-06): these cards count attendance UNITS, not participants -- a
+  // 2-day session with 10 participants has 20 units. Single-day sessions have exactly one unit
+  // per participant, so this is a pure generalization that reproduces the old counts exactly.
+  const dayList=_tdaDayList(s);
+  const isMultiDay=dayList.length>1;
+  const statusOf=(r,d)=>isMultiDay?_tdaGetDayStatus(r,d):(r.attendanceStatus||'pending');
+  const unitTotal=isMultiDay?total*dayList.length:total;
+  const countStatus=(st)=>isMultiDay?all.reduce((sum,r)=>sum+dayList.filter(d=>statusOf(r,d)===st).length,0):all.filter(r=>statusOf(r,null)===st).length;
+  const present=countStatus('present');
+  const late=countStatus('late');
+  const leftEarly=countStatus('leftearly');
+  const absent=countStatus('absent');
+  const pending=countStatus('pending');
+  const rate=unitTotal>0?Math.round(((present+late+leftEarly)/unitTotal)*100):0;
 
   const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType));
   const preRows=all.filter(r=>r.preTestScore!=null), postRows=all.filter(r=>r.postTestScore!=null);
@@ -6456,14 +6587,15 @@ function _tdaKpiColumnsHtml(s){
 
   const attendanceCards=`
     <div>
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Attendance Summary</div>
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Attendance Summary${isMultiDay?` <span style="font-weight:400;color:var(--text3)">(${dayList.length} days)</span>`:''}</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         ${_tdaKpiCard('users','#0369a1','Participants',total)}
-        ${_tdaKpiCard('check','var(--green)',"Present",pct(present,total)||'—',`${present} of ${total}`,'var(--green)','var(--green)')}
-        ${_tdaKpiCard('clock','var(--amber)',"Late",pct(late,total)||'—',`${late} of ${total}`,'var(--amber)','var(--amber)')}
-        ${_tdaKpiCard('x','var(--red)',"Absent",pct(absent,total)||'—',`${absent} of ${total}`,'var(--red)','var(--red)')}
-        ${_tdaKpiCard('question','#64748b',"Pending",pct(pending,total)||'—',`${pending} of ${total}`,'#64748b','#64748b')}
-        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',total>0?rate+'%':'—',total>0?`${present+late} of ${total}`:'','var(--text3)')}
+        ${_tdaKpiCard('check','var(--green)',"Present",pct(present,unitTotal)||'—',`${present} of ${unitTotal}`,'var(--green)','var(--green)')}
+        ${_tdaKpiCard('clock','var(--amber)',"Late",pct(late,unitTotal)||'—',`${late} of ${unitTotal}`,'var(--amber)','var(--amber)')}
+        ${_tdaKpiCard('clock','var(--orange)',"Left Early",pct(leftEarly,unitTotal)||'—',`${leftEarly} of ${unitTotal}`,'var(--orange)','var(--orange)')}
+        ${_tdaKpiCard('x','var(--red)',"Absent",pct(absent,unitTotal)||'—',`${absent} of ${unitTotal}`,'var(--red)','var(--red)')}
+        ${_tdaKpiCard('question','#64748b',"Pending",pct(pending,unitTotal)||'—',`${pending} of ${unitTotal}`,'#64748b','#64748b')}
+        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',unitTotal>0?rate+'%':'—',unitTotal>0?`${present+late+leftEarly} of ${unitTotal}`:'','var(--text3)')}
       </div>
     </div>`;
 
@@ -6491,7 +6623,9 @@ function _tdaRenderTab(s){
   _tdaEnsureLoaded(s.id);
   const all=_tdPartRows;
   const total=all.length;
-  const pending=all.filter(r=>r.attendanceStatus==='pending').length;
+  const dayList=_tdaDayList(s);
+  const isMultiDay=dayList.length>1;
+  const pending=isMultiDay?all.filter(r=>dayList.some(d=>_tdaGetDayStatus(r,d)==='pending')).length:all.filter(r=>r.attendanceStatus==='pending').length;
   const rows=all;
   const locked=s.status==='completed';
 
@@ -6499,7 +6633,7 @@ function _tdaRenderTab(s){
 
   const warnBanner=pending>0?`
     <div style="background:var(--amber-lt);border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#92400e;margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span>⚠ ${pending} participant(s) have <strong>Pending</strong> attendance status. Mark actual attendance before completing this session.</span>
+      <span>⚠ ${pending} participant(s) have <strong>Pending</strong> attendance status${isMultiDay?' on at least one day':''}. Mark actual attendance before completing this session.</span>
     </div>`:'';
 
   const selCount=_tdPartSelected.size;
@@ -6523,19 +6657,25 @@ function _tdaRenderTab(s){
 
   // Phase38 item 4: Employee ID is now the very first column; Immediate Supervisor removed
   // entirely (historical external_supervisor data/column untouched, just not shown/edited here).
-  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Role','Attendance Status','Pre-Test','Post-Test','Gain','Remarks',''];
+  // Department (2026-08-06, per Sandra) replaces Role. Multi-day sessions (endDate spans >1 day)
+  // get one status column per day plus a single "Attendance Score" column instead of the one
+  // "Attendance Status" column single-day sessions keep.
+  const dayHeaders=isMultiDay?dayList.map((d,i)=>`Day ${i+1}<div style="font-size:9.5px;color:var(--text3);font-weight:400">${d.slice(5)}</div>`):['Attendance Status'];
+  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Department',...dayHeaders,...(isMultiDay?['Attendance Score']:[]),'Pre-Test','Post-Test','Gain','Remarks',''];
   const thead=`<tr>${theadCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
 
-  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType):'';
-  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType)).join('');
-  const emptyRow=`<tr><td colspan="11" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.</td></tr>`;
+  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType,dayList):'';
+  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType,dayList)).join('');
+  const emptyRow=`<tr><td colspan="${theadCols.length}" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.</td></tr>`;
   const tbody=addRow+(bodyRows||(addRow?'':emptyRow));
 
   const legend=`<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);margin-top:10px">
       <span>● <span style="color:var(--green)">Present</span></span>
       <span>● <span style="color:var(--amber)">Late</span></span>
+      <span>● <span style="color:var(--orange)">Left Early</span></span>
       <span>● <span style="color:var(--red)">Absent</span></span>
       <span>● <span style="color:#64748b">Pending</span></span>
+      ${isMultiDay?'<span>Attendance Score = points across all days ÷ total days (Late/Left Early = partial credit, set in Settings)</span>':''}
       <span>Gain = Post-Test − Pre-Test</span>
     </div>`;
 
@@ -6562,24 +6702,40 @@ function _tdaRenderTab(s){
   `;
 }
 
-function _tdaRowHtml(r,i,locked,assessmentType){
+function _tdaDeptSelectHtml(r,dis){
+  return `<select class="form-control" ${dis} style="width:110px;padding:5px 8px;font-size:12.5px" onchange="_tdaSetField('${r.id}','departmentId',this.value||null)">
+    <option value="">— Select —</option>
+    ${Sel.active(Store.DEPARTMENTS).map(d=>`<option value="${d.id}" ${r.departmentId===d.id?'selected':''}>${Utils.esc(d.name)}</option>`).join('')}
+  </select>`;
+}
+function _tdaStatusSelectHtml(value,onchange,dis){
+  const st=_TDA_STATUS_STYLE[value]||_TDA_STATUS_STYLE.pending;
+  return `<select class="form-control" ${dis} style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="${onchange}">
+    ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${value===k?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
+  </select>`;
+}
+
+function _tdaRowHtml(r,i,locked,assessmentType,dayList){
   const p=_tdaPersonInfo(r);
-  const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending;
+  const isMultiDay=(dayList||[]).length>1;
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
   const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
   const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
   const dis=locked?'disabled':'';
   const preDis=(dis||!preApplicable)?'disabled':'';
   const postDis=(dis||!postApplicable)?'disabled':'';
+  const statusCells=isMultiDay
+    ?dayList.map(d=>`<td>${_tdaStatusSelectHtml(_tdaGetDayStatus(r,d),`_tdaSetDayField('${r.id}','${d}',this.value)`,dis)}</td>`).join('')
+    :`<td>${_tdaStatusSelectHtml(r.attendanceStatus||'pending',`_tdaSetField('${r.id}','attendanceStatus',this.value)`,dis)}</td>`;
+  const scoreCell=isMultiDay?`<td style="font-weight:600">${_tdaAttendanceScore(r,dayList).label}</td>`:'';
   return `<tr data-row-id="${r.id}">
     <td><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
     <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.employeeId)}</span>`:`<input type="text" class="form-control" ${dis} style="width:90px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.employeeId||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','employeeId',this.value)">`}</td>
     <td><div class="tbl-user"><div class="tbl-ava" style="${p.avaStyle}">${p.initials}</div><div><div class="td-name">${Utils.esc(p.name)}${p.inactive?' <span class="txt-muted" style="font-size:11px">(inactive)</span>':''}</div>${p.email&&p.email!=='External'?`<div style="font-size:11px;color:var(--text3)">${Utils.esc(p.email)}</div>`:''}</div></div></td>
-    <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.role)}</span>`:`<input type="text" class="form-control" ${dis} style="width:110px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.externalRole||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','externalRole',this.value)">`}</td>
-    <td><select class="form-control" ${dis} style="padding:5px 8px;font-size:12.5px;background:${st.bg};color:${st.fg};font-weight:600;border-color:transparent" onchange="_tdaSetField('${r.id}','attendanceStatus',this.value)">
-      ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${r.attendanceStatus===k?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
-    </select></td>
+    <td>${_tdaDeptSelectHtml(r,dis)}</td>
+    ${statusCells}
+    ${scoreCell}
     <td>${preApplicable?`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${postApplicable?`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${gainHtml}</td>
@@ -6588,17 +6744,23 @@ function _tdaRowHtml(r,i,locked,assessmentType){
   </tr>`;
 }
 
-function _tdaAddPickerRowHtml(assessmentType){
+function _tdaAddPickerRowHtml(assessmentType,dayList){
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
+  const isMultiDay=(dayList||[]).length>1;
+  // At add-time, a single status dropdown sets the SAME initial status for every day of a
+  // multi-day session (per-day edits happen afterward in the main grid) -- avoids cluttering the
+  // add-row with one dropdown per day.
+  const statusCell=`<td><select id="tda-add-status" class="form-control" style="font-size:12.5px">
+      ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${k==='pending'?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
+    </select></td>`;
   return `<tr style="background:#f8fafc">
     <td></td>
     <td style="color:var(--text3)">•</td>
     <td><input type="text" id="tda-add-employeeid" class="form-control" style="font-size:12.5px;min-width:90px" placeholder="Employee ID"></td>
     <td><input type="text" id="tda-add-name" class="form-control" style="font-size:12.5px;min-width:140px" placeholder="Full name"></td>
-    <td><input type="text" id="tda-add-role" class="form-control" style="font-size:12.5px;min-width:110px" placeholder="Role"></td>
-    <td><select id="tda-add-status" class="form-control" style="font-size:12.5px">
-      ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${k==='pending'?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
-    </select></td>
+    <td><select id="tda-add-dept" class="form-control" style="font-size:12.5px;min-width:110px"><option value="">— Select —</option>${Sel.active(Store.DEPARTMENTS).map(d=>`<option value="${d.id}">${Utils.esc(d.name)}</option>`).join('')}</select></td>
+    ${isMultiDay?dayList.map(()=>'<td style="color:var(--text3)">—</td>').join(''):statusCell}
+    ${isMultiDay?'<td style="color:var(--text3)">—</td>':''}
     <td>${preApplicable?'<input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${postApplicable?'<input type="number" id="tda-add-post" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td style="color:var(--text3)">—</td>
@@ -6616,13 +6778,17 @@ function _tdaConfirmAdd(){
   const name=(document.getElementById('tda-add-name')?.value||'').trim();
   if(!name){ toast("Please enter the participant's name.",'error'); return; }
   const employeeId=(document.getElementById('tda-add-employeeid')?.value||'').trim();
-  const role=(document.getElementById('tda-add-role')?.value||'').trim();
-  const status=document.getElementById('tda-add-status')?.value||'pending';
+  const departmentId=document.getElementById('tda-add-dept')?.value||null;
+  const statusEl=document.getElementById('tda-add-status');
+  const status=statusEl?statusEl.value:'pending';
   const preRaw=document.getElementById('tda-add-pre')?.value;
   const postRaw=document.getElementById('tda-add-post')?.value;
   const remarks=(document.getElementById('tda-add-remarks')?.value||'').trim();
-  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, externalRole:role,
-    attended:false, attendanceStatus:status, preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
+  const s=TrSessionDB.byId(_tdDetailId);
+  const dayList=s?_tdaDayList(s):[];
+  const attendanceByDay=dayList.length>1?Object.fromEntries(dayList.map(d=>[d,status])):{};
+  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, departmentId,
+    attended:false, attendanceStatus:status, attendanceByDay, preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
     remarks, notes:'', _isNew:true});
   _tdPartAddPickerOpen=false;
   renderTrainingDetail();
@@ -6636,6 +6802,12 @@ function _tdaSetField(rowId,field,value){
   } else {
     r[field]=value;
   }
+  renderTrainingDetail();
+}
+
+function _tdaSetDayField(rowId,date,value){
+  const r=_tdPartRows.find(x=>x.id===rowId); if(!r) return;
+  _tdaSetDayStatus(r,date,value);
   renderTrainingDetail();
 }
 
@@ -6692,8 +6864,11 @@ function _tdaParseCSV(text){
 
 function _tdaDownloadCSVTemplate(){
   // Phase38 item 4: Employee ID replaces Supervisor as a template column (first position,
-  // matching the live roster table order).
-  const csv = 'Employee ID,Name,Role\nEMP-1234,Juan Dela Cruz,Sales Associate\n';
+  // matching the live roster table order). Department replaces Role (2026-08-06, per Sandra) --
+  // matched against the Departments Settings list on import, auto-creating one if it doesn't
+  // already exist (same pattern as the "Other" venue auto-create). Pre-Test/Post-Test columns
+  // added (2026-08-06, per Sandra) so scores can be bulk-imported instead of typed in one by one.
+  const csv = 'Employee ID,Name,Department,Pre-Test,Post-Test\nEMP-1234,Juan Dela Cruz,Sales,80,95\n';
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -6705,13 +6880,29 @@ function _tdaDownloadCSVTemplate(){
   URL.revokeObjectURL(url);
 }
 
+async function _tdaResolveDepartmentId(name,cacheMap){
+  const trimmed=(name||'').trim();
+  if(!trimmed) return null;
+  const key=trimmed.toLowerCase();
+  if(cacheMap.has(key)) return cacheMap.get(key);
+  const existing=Sel.byName(Store.DEPARTMENTS,trimmed);
+  if(existing){ cacheMap.set(key,existing.id); return existing.id; }
+  try{
+    const created=await Sel.add(Store.DEPARTMENTS,{name:trimmed});
+    cacheMap.set(key,created.id);
+    return created.id;
+  }catch(e){ cacheMap.set(key,null); return null; }
+}
+
 function _tdaHandleCSVFile(file){
   if(!file) return;
   const reader=new FileReader();
-  reader.onload=()=>{
+  reader.onload=async()=>{
     const {header,rows}=_tdaParseCSV(String(reader.result||''));
     const nameIdx=header.findIndex(h=>h.includes('name'));
-    const roleIdx=header.findIndex(h=>h.includes('role'));
+    const deptIdx=header.findIndex(h=>h.includes('department'));
+    const preIdx=header.findIndex(h=>h.includes('pre'));
+    const postIdx=header.findIndex(h=>h.includes('post'));
     // Phase38 item 4: Employee ID replaces Supervisor in the expected CSV columns.
     const empIdIdx=header.findIndex(h=>h.includes('employee'));
     if(nameIdx===-1){
@@ -6719,15 +6910,20 @@ function _tdaHandleCSVFile(file){
       return;
     }
     let added=0, skippedBlank=0;
-    rows.forEach(cols=>{
+    const deptCache=new Map();
+    for(const cols of rows){
       const name=(cols[nameIdx]||'').trim();
-      if(!name){ skippedBlank++; return; }
-      const role=roleIdx>=0?(cols[roleIdx]||'').trim():'';
+      if(!name){ skippedBlank++; continue; }
+      const deptName=deptIdx>=0?(cols[deptIdx]||'').trim():'';
+      const departmentId=deptName?await _tdaResolveDepartmentId(deptName,deptCache):null;
       const employeeId=empIdIdx>=0?(cols[empIdIdx]||'').trim():'';
-      _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, externalRole:role,
-        attended:false, attendanceStatus:'pending', preTestScore:null, postTestScore:null, remarks:'', notes:'', _isNew:true});
+      const preRaw=preIdx>=0?(cols[preIdx]||'').trim():'';
+      const postRaw=postIdx>=0?(cols[postIdx]||'').trim():'';
+      _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, departmentId,
+        attended:false, attendanceStatus:'pending', preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
+        remarks:'', notes:'', _isNew:true});
       added++;
-    });
+    }
     renderTrainingDetail();
     toast(`${added} participant(s) added${skippedBlank?`, ${skippedBlank} row(s) skipped (blank name)`:''}.`, added?'success':'warning');
   };
@@ -6736,11 +6932,17 @@ function _tdaHandleCSVFile(file){
 }
 
 async function _tdaPersistRows(){
+  const _tdaSessForPersist=TrSessionDB.byId(_tdDetailId);
+  const _tdaDaysForPersist=_tdaSessForPersist?_tdaDayList(_tdaSessForPersist):[];
+  const _tdaMultiForPersist=_tdaDaysForPersist.length>1;
   for(const r of _tdPartRows){
+    const attended=_tdaMultiForPersist
+      ?_tdaDaysForPersist.some(d=>{const st=_tdaGetDayStatus(r,d); return st==='present'||st==='late'||st==='leftearly';})
+      :(r.attendanceStatus==='present'||r.attendanceStatus==='late');
     const patch={sessionId:r.sessionId, profileId:r.profileId||null, externalName:r.externalName||null,
-      externalRole:r.externalRole||null, externalSupervisor:r.externalSupervisor||null, employeeId:r.employeeId||null,
-      attendanceStatus:r.attendanceStatus||'pending', preTestScore:r.preTestScore??null, postTestScore:r.postTestScore??null,
-      remarks:r.remarks||'', attended:r.attendanceStatus==='present'||r.attendanceStatus==='late', notes:r.notes||''};
+      departmentId:r.departmentId||null, externalSupervisor:r.externalSupervisor||null, employeeId:r.employeeId||null,
+      attendanceStatus:r.attendanceStatus||'pending', attendanceByDay:r.attendanceByDay||{}, preTestScore:r.preTestScore??null, postTestScore:r.postTestScore??null,
+      remarks:r.remarks||'', attended, notes:r.notes||''};
     if(r._isNew){
       const saved=await SessionParticipantsDB.create({...patch, id:r.id});
       r._isNew=false;
@@ -6769,20 +6971,22 @@ async function _tdaMarkCompleted(){
     toast('Cannot tag session complete — at least one participant is required.','error');
     return;
   }
-  const pendingCount=_tdPartRows.filter(r=>r.attendanceStatus==='pending').length;
+  const _tdaSessForComplete=TrSessionDB.byId(_tdDetailId);
+  const _tdaDaysForComplete=_tdaSessForComplete?_tdaDayList(_tdaSessForComplete):[];
+  const _tdaMultiForComplete=_tdaDaysForComplete.length>1;
+  const pendingCount=_tdaMultiForComplete
+    ?_tdPartRows.filter(r=>_tdaDaysForComplete.some(d=>_tdaGetDayStatus(r,d)==='pending')).length
+    :_tdPartRows.filter(r=>r.attendanceStatus==='pending').length;
   if(pendingCount>0){
-    toast(`Cannot tag session complete — ${pendingCount} participant(s) still have Pending attendance status.`,'error');
+    toast(`Cannot tag session complete — ${pendingCount} participant(s) still have Pending attendance status${_tdaMultiForComplete?' on at least one day':''}.`,'error');
     return;
   }
-  // Phase38 item 4: Immediate Supervisor field removed from the UI going forward -- only Role
-  // remains a required field here (the old "missing Role or Immediate Supervisor" check from
-  // phase32 is narrowed to Role only; externalSupervisor data/column is untouched historically).
-  const missingRole=_tdPartRows.filter(r=>{
-    const p=_tdaPersonInfo(r);
-    return !p.role||p.role==='—';
-  }).length;
-  if(missingRole>0){
-    toast(`Cannot tag session complete — ${missingRole} participant(s) missing Role.`,'error');
+  // Department (2026-08-06, per Sandra) replaces Role as the one required tagging field here
+  // (the old "missing Role or Immediate Supervisor" check from phase32 was already narrowed to
+  // just Role in phase38; externalSupervisor data/column stays untouched historically).
+  const missingDept=_tdPartRows.filter(r=>!r.departmentId).length;
+  if(missingDept>0){
+    toast(`Cannot tag session complete — ${missingDept} participant(s) missing Department.`,'error');
     return;
   }
   const _tdaSess=TrSessionDB.byId(_tdDetailId);
@@ -7504,7 +7708,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
       ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>'):(grp==='external'?_tddInfoBlock('filetext','#7c3aed','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):'')}
-      ${_tddInfoBlock('calendar','var(--amber)','Date'+(ownerType?' / Period':'')+' & Time',_tdDateCell(s))}
+      ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
       ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
     <div style="${gridStyle};margin-top:18px">
@@ -7526,11 +7730,15 @@ function _tdOverviewAttendanceAssessmentBlock(s){
   const all=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
   const total=all.length;
   if(!total) return '<div style="font-size:12.5px;color:var(--text3)">No participants added yet — see the Attendance &amp; Performance tab.</div>';
-  const present=all.filter(r=>r.attendanceStatus==='present').length;
-  const late=all.filter(r=>r.attendanceStatus==='late').length;
-  const absent=all.filter(r=>r.attendanceStatus==='absent').length;
-  const pending=all.filter(r=>r.attendanceStatus==='pending').length;
-  const rate=total>0?Math.round(((present+late)/total)*100):0;
+  const dayList=_tdaDayList(s), isMultiDay=dayList.length>1;
+  const unitTotal=isMultiDay?total*dayList.length:total;
+  const countStatus=(st)=>isMultiDay?all.reduce((sum,r)=>sum+dayList.filter(d=>_tdaGetDayStatus(r,d)===st).length,0):all.filter(r=>(r.attendanceStatus||'pending')===st).length;
+  const present=countStatus('present');
+  const late=countStatus('late');
+  const leftEarly=countStatus('leftearly');
+  const absent=countStatus('absent');
+  const pending=countStatus('pending');
+  const rate=unitTotal>0?Math.round(((present+late+leftEarly)/unitTotal)*100):0;
   const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType));
   const preRows=all.filter(r=>r.preTestScore!=null), postRows=all.filter(r=>r.postTestScore!=null);
   const avgPre=preRows.length?Math.round(preRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/preRows.length):null;
@@ -7543,14 +7751,15 @@ function _tdOverviewAttendanceAssessmentBlock(s){
   const pct=(n,d)=>d>0?Math.round((n/d)*100)+'%':'';
   const attendanceCards=`
     <div>
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Attendance Summary</div>
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Attendance Summary${isMultiDay?` <span style="font-weight:400;color:var(--text3)">(${dayList.length} days)</span>`:''}</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         ${_tdaKpiCard('users','#0369a1','Participants',total)}
-        ${_tdaKpiCard('check','var(--green)',"Present",pct(present,total)||'—',`${present} of ${total}`,'var(--green)','var(--green)')}
-        ${_tdaKpiCard('clock','var(--amber)',"Late",pct(late,total)||'—',`${late} of ${total}`,'var(--amber)','var(--amber)')}
-        ${_tdaKpiCard('x','var(--red)',"Absent",pct(absent,total)||'—',`${absent} of ${total}`,'var(--red)','var(--red)')}
-        ${_tdaKpiCard('question','#64748b',"Pending",pct(pending,total)||'—',`${pending} of ${total}`,'#64748b','#64748b')}
-        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',total>0?rate+'%':'—',total>0?`${present+late} of ${total}`:'','var(--text3)')}
+        ${_tdaKpiCard('check','var(--green)',"Present",pct(present,unitTotal)||'—',`${present} of ${unitTotal}`,'var(--green)','var(--green)')}
+        ${_tdaKpiCard('clock','var(--amber)',"Late",pct(late,unitTotal)||'—',`${late} of ${unitTotal}`,'var(--amber)','var(--amber)')}
+        ${_tdaKpiCard('clock','var(--orange)',"Left Early",pct(leftEarly,unitTotal)||'—',`${leftEarly} of ${unitTotal}`,'var(--orange)','var(--orange)')}
+        ${_tdaKpiCard('x','var(--red)',"Absent",pct(absent,unitTotal)||'—',`${absent} of ${unitTotal}`,'var(--red)','var(--red)')}
+        ${_tdaKpiCard('question','#64748b',"Pending",pct(pending,unitTotal)||'—',`${pending} of ${unitTotal}`,'#64748b','#64748b')}
+        ${_tdaKpiCard('trend','#7c3aed','Attendance Rate',unitTotal>0?rate+'%':'—',unitTotal>0?`${present+late+leftEarly} of ${unitTotal}`:'','var(--text3)')}
       </div>
     </div>`;
   const assessLabel=s.assessmentType&&s.assessmentType!=='None'?s.assessmentType:'None configured';
@@ -7783,7 +7992,10 @@ function _tdOverviewStageDot(state){
 function _tdOverviewJourneySteps(s,ownerType){
   const partRows=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
   const totalP=partRows.length;
-  const pendingP=partRows.filter(r=>!r.attendanceStatus||r.attendanceStatus==='pending').length;
+  const _tdojDayList=_tdaDayList(s);
+  const pendingP=_tdojDayList.length>1
+    ?partRows.filter(r=>_tdojDayList.some(d=>_tdaGetDayStatus(r,d)==='pending')).length
+    :partRows.filter(r=>!r.attendanceStatus||r.attendanceStatus==='pending').length;
   const markedP=totalP-pendingP;
   const computedStatus=_tdStatus(s);
 
@@ -7889,19 +8101,22 @@ function _tdaAttendanceListExportHtml(s){
   const rows=_tdPartRows;
   if(!rows.length) return '<div style="font-size:12.5px;color:var(--text3)">No participants recorded.</div>';
   const preApplicable=_tdaPreApplicable(s.assessmentType), postApplicable=_tdaPostApplicable(s.assessmentType);
+  const dayList=_tdaDayList(s), isMultiDay=dayList.length>1;
   const th=(t)=>`<th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">${Utils.esc(t)}</th>`;
   const trs=rows.map(r=>{
     const p=_tdaPersonInfo(r);
-    const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending;
     const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
     const gainTxt=gain===null?'—':`${gain>0?'+':''}${gain}`;
     const preTxt=preApplicable?(r.preTestScore??'—'):'—';
     const postTxt=postApplicable?(r.postTestScore??'—'):'—';
+    const attendanceCell=isMultiDay
+      ?`<span style="font-weight:600">${_tdaAttendanceScore(r,dayList).label}</span>`
+      :(()=>{ const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending; return `<span style="background:${st.bg};color:${st.fg};font-weight:600;border-radius:5px;padding:2px 8px;font-size:12px">${st.label}</span>`; })();
     return `<tr>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.employeeId)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.name)}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.role)}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0"><span style="background:${st.bg};color:${st.fg};font-weight:600;border-radius:5px;padding:2px 8px;font-size:12px">${st.label}</span></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.department)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${attendanceCell}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${preTxt}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${postTxt}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${gainTxt}</td>
@@ -7909,7 +8124,7 @@ function _tdaAttendanceListExportHtml(s){
   }).join('');
   // Phase38 item 4: Employee ID added as the first column (matching the live roster table order).
   return `<table style="width:100%;border-collapse:collapse;font-size:13px">
-    <tr>${th('Employee ID')}${th('Participant')}${th('Role')}${th('Attendance Status')}${th('Pre-Test')}${th('Post-Test')}${th('Gain')}</tr>
+    <tr>${th('Employee ID')}${th('Participant')}${th('Department')}${th(isMultiDay?'Attendance Score':'Attendance Status')}${th('Pre-Test')}${th('Post-Test')}${th('Gain')}</tr>
     ${trs}
   </table>`;
 }
@@ -8074,6 +8289,7 @@ function _tddSessionInfoEditContent(s,ownerType){
   // swaps the SAME field slot from the dropdown to a text input (never both visible at once).
   // "Choose from list" (✕) switches back and clears the guest name.
   const isGuestOnEntry=!s.trainerId&&!!s.guestTrainerName;
+  const showsDateRange=_tdShowsDateRange(s.deliveryType);
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
@@ -8104,9 +8320,9 @@ function _tddSessionInfoEditContent(s,ownerType){
           <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
         </div>`,'tdd-cofacilitator-wrap')}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
-      <div style="grid-column:${ownerType?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(ownerType?' / Period':''),`<div style="display:flex;align-items:flex-end;gap:8px">
+      <div style="grid-column:${showsDateRange?'span 2':'auto'}">${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(showsDateRange?' / Period':''),`<div style="display:flex;align-items:flex-end;gap:8px">
         <input type="date" id="tdd-date" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.trainingDate||''}">
-        <div ${ownerType?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;flex-direction:column;gap:3px">
+        <div ${showsDateRange?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;flex-direction:column;gap:3px">
           <span style="font-size:11px;color:var(--text3);line-height:1.2">→ End Date</span>
           <input type="date" id="tdd-enddate" class="form-control" style="font-size:13px;padding:5px 8px;width:160px;max-width:160px" value="${s.endDate||''}">
         </div>
@@ -8252,7 +8468,7 @@ function _tddToggleTypeFields(){
   document.getElementById('tdd-owner-wrap').classList.toggle('hidden',grp!=='owner');
   document.getElementById('tdd-facilitator-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('tdd-provider-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!ownerType);
+  document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!_tdShowsDateRange(dt));
   document.getElementById('tdd-recording-wrap').classList.toggle('hidden',ownerType);
   document.getElementById('tdd-batch-wrap').classList.toggle('hidden',grp==='owner');
   document.getElementById('tdd-modalityid-wrap').classList.toggle('hidden',!_tdShowsModality(dt));
@@ -8306,7 +8522,7 @@ const AuditLog={
   }
 };
 function _selModuleLabel(k){
-  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience'};
+  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience',[Store.DEPARTMENTS]:'Department'};
   return map[k]||'Selection List';
 }
 
