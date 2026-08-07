@@ -2480,7 +2480,8 @@ const _FIELD_MAPS = {
   // Checklist Templates (Phase D2, 2026-08-07, per Sandra): title + a jsonb array of
   // {task,description,timelineDays,mandatory,phase} items. Same bespoke-drawer pattern as Agenda
   // Templates above (title+items don't fit the generic single-name Sel list UI). `phase` is
-  // single-select: 'pre'|'during'|'post' (Pre-Training / During Training / Post-Training).
+  // single-select: 'pre'|'post' (Pre-Training / Post-Training). During Training removed 2026-08-07
+  // (round 5, per Sandra -- only Pre and Post are tracked).
   // `timelineDays` (round 2, 2026-08-07): a plain non-negative day count -- the +/- sign shown to
   // the trainer is derived automatically from `phase` (see _cktplTimelineLabel), never hand-typed.
   checklist_templates:{ id:'id', title:'title', items:'items', isActive:'is_active', createdAt:'created_at', updatedAt:'updated_at' },
@@ -4835,7 +4836,9 @@ function deleteAgendaTemplate(id){
 // richer per-item shape (Task/Description/Due-Ideal Timeline/Mandatory/Phase) instead of
 // Topic/Duration. CRUD only in this phase -- no session-facing UI reads this yet (see Phase D2
 // Overview template-selector and Checklist-tab work, tracked separately).
-const CKTPL_PHASES=[{id:'pre',label:'Pre-Training',color:'#0369a1',bg:'#e0f2fe'},{id:'during',label:'During Training',color:'#b45309',bg:'#fef3c7'},{id:'post',label:'Post-Training',color:'#15803d',bg:'#dcfce7'}];
+// During Training removed 2026-08-07 (round 5, per Sandra: only Pre and Post are tracked) -- was
+// {id:'during',label:'During Training',color:'#b45309',bg:'#fef3c7'} between these two.
+const CKTPL_PHASES=[{id:'pre',label:'Pre-Training',color:'#0369a1',bg:'#e0f2fe'},{id:'post',label:'Post-Training',color:'#15803d',bg:'#dcfce7'}];
 function _cktplPhaseInfo(id){ return CKTPL_PHASES.find(p=>p.id===id)||CKTPL_PHASES[0]; }
 
 function renderChecklistTemplatesOverview(){
@@ -4862,11 +4865,11 @@ let _cktplDraft=null; // {id:null|string, title:'', items:[{task,description,tim
 function _cktplBlankItem(){ return {task:'',description:'',timelineDays:0,mandatory:false,phase:'pre'}; }
 // Auto-signed Timeline label (2026-08-07, per Sandra: sign should follow Phase automatically, not be
 // hand-typed) -- Pre-Training counts DOWN to the training day (shown as "-N day(s) before"),
-// Post-Training counts UP from it ("+N day(s) after"), During Training/During Training has no
-// meaningful offset so it's always "Day of" regardless of the stored number.
+// Post-Training counts UP from it ("+N day(s) after"). During Training removed 2026-08-07 (round 5)
+// -- only Pre and Post are tracked now, so every item is one or the other.
 function _cktplTimelineLabel(phase,days){
   const n=Number(days)||0;
-  if(phase==='during'||n===0) return 'Day of';
+  if(n===0) return 'Day of';
   const unit=n===1?'day':'days';
   return phase==='post'?`+${n} ${unit} after`:`-${n} ${unit} before`;
 }
@@ -4914,7 +4917,7 @@ function renderChecklistTemplateDrawer(){
       <input type="text" class="form-control" id="cktpl-title-input" placeholder="e.g. Standard ILT Trainer Checklist" value="${Utils.esc(_cktplDraft.title)}" oninput="_cktplSetTitle(this.value)">
     </div>
     <div class="drawer-sec-title" style="margin-top:16px">Checklist Items</div>
-    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Pick one phase per item (Pre-Training / During Training / Post-Training) — this controls which Checklist-tab column it shows under once a session runs against this template. Timeline is just a number of days -- the +/- sign is applied automatically based on Phase (Pre-Training counts down to the training day, Post-Training counts up from it); During Training/During Training always shows "Day of".</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Pick one phase per item (Pre-Training / Post-Training) — this controls which Checklist-tab column it shows under once a session runs against this template. Timeline is just a number of days -- the +/- sign is applied automatically based on Phase (Pre-Training counts down to the training day, Post-Training counts up from it).</div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead>
@@ -4924,8 +4927,7 @@ function renderChecklistTemplateDrawer(){
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:var(--text2)">Mandatory</th>
             <th style="text-align:left;padding:6px 4px;font-weight:600;color:var(--text2)">Timeline (days)</th>
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[0].color}">Pre-Training</th>
-            <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[1].color}">During Training</th>
-            <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[2].color}">Post-Training</th>
+            <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[1].color}">Post-Training</th>
             <th></th>
           </tr>
         </thead>
@@ -4960,7 +4962,7 @@ function _cktplRemoveItemRow(i){ if(!_cktplDraft) return; _cktplDraft.items.spli
 // blob and built once via openpyxl (verified round-trip: 2 data validations, both sheets intact)
 // rather than assembled client-side -- far less fragile than hand-rolling OOXML/data-validation
 // XML in the browser. Columns: Task, Description, Timeline (days), Mandatory, Phase.
-const CKTPL_TEMPLATE_XLSX_B64='UEsDBBQAAAAIAEZwB11Gx01IlQAAAM0AAAAQAAAAZG9jUHJvcHMvYXBwLnhtbE3PTQvCMAwG4L9SdreZih6kDkQ9ip68zy51hbYpbYT67+0EP255ecgboi6JIia2mEXxLuRtMzLHDUDWI/o+y8qhiqHke64x3YGMsRoPpB8eA8OibdeAhTEMOMzit7Dp1C5GZ3XPlkJ3sjpRJsPiWDQ6sScfq9wcChDneiU+ixNLOZcrBf+LU8sVU57mym/8ZAW/B7oXUEsDBBQAAAAIAEZwB12bNgo67gAAACsCAAARAAAAZG9jUHJvcHMvY29yZS54bWzNks9KxDAQh19Fcm8nbaFK6Oay4klBcEHxFpLZ3WDzh2Sk3be3rbtdRB/AY2Z++eYbmE5HoUPC5xQiJrKYb0bX+yx03LAjURQAWR/RqVxOCT819yE5RdMzHSAq/aEOCDXnLTgkZRQpmIFFXIlMdkYLnVBRSGe80Ss+fqZ+gRkN2KNDTxmqsgIm54nxNPYdXAEzjDC5/F1AsxKX6p/YpQPsnByzXVPDMJRDs+SmHSp4e3p8WdYtrM+kvMbpV7aCThE37DL5tdne7x6YrHndFvyu4Lc73gpei6p5n11/+F2FXTB2b/+x8UVQdvDrLuQXUEsDBBQAAAAIAEZwB12ZXJwjEAYAAJwnAAATAAAAeGwvdGhlbWUvdGhlbWUxLnhtbO1aW3PaOBR+76/QeGf2bQvGNoG2tBNzaXbbtJmE7U4fhRFYjWx5ZJGEf79HNhDLlg3tkk26mzwELOn7zkVH5+g4efPuLmLohoiU8nhg2S/b1ru3L97gVzIkEUEwGaev8MAKpUxetVppAMM4fckTEsPcgosIS3gUy9Zc4FsaLyPW6rTb3VaEaWyhGEdkYH1eLGhA0FRRWm9fILTlHzP4FctUjWWjARNXQSa5iLTy+WzF/NrePmXP6TodMoFuMBtYIH/Ob6fkTlqI4VTCxMBqZz9Wa8fR0kiAgsl9lAW6Sfaj0xUIMg07Op1YznZ89sTtn4zK2nQ0bRrg4/F4OLbL0otwHATgUbuewp30bL+kQQm0o2nQZNj22q6RpqqNU0/T933f65tonAqNW0/Ta3fd046Jxq3QeA2+8U+Hw66JxqvQdOtpJif9rmuk6RZoQkbj63oSFbXlQNMgAFhwdtbM0gOWXin6dZQa2R273UFc8FjuOYkR/sbFBNZp0hmWNEZynZAFDgA3xNFMUHyvQbaK4MKS0lyQ1s8ptVAaCJrIgfVHgiHF3K/99Ze7yaQzep19Os5rlH9pqwGn7bubz5P8c+jkn6eT101CznC8LAnx+yNbYYcnbjsTcjocZ0J8z/b2kaUlMs/v+QrrTjxnH1aWsF3Pz+SejHIju932WH32T0duI9epwLMi15RGJEWfyC265BE4tUkNMhM/CJ2GmGpQHAKkCTGWoYb4tMasEeATfbe+CMjfjYj3q2+aPVehWEnahPgQRhrinHPmc9Fs+welRtH2Vbzco5dYFQGXGN80qjUsxdZ4lcDxrZw8HRMSzZQLBkGGlyQmEqk5fk1IE/4rpdr+nNNA8JQvJPpKkY9psyOndCbN6DMawUavG3WHaNI8ev4F+Zw1ChyRGx0CZxuzRiGEabvwHq8kjpqtwhErQj5iGTYacrUWgbZxqYRgWhLG0XhO0rQR/FmsNZM+YMjszZF1ztaRDhGSXjdCPmLOi5ARvx6GOEqa7aJxWAT9nl7DScHogstm/bh+htUzbCyO90fUF0rkDyanP+kyNAejmlkJvYRWap+qhzQ+qB4yCgXxuR4+5Xp4CjeWxrxQroJ7Af/R2jfCq/iCwDl/Ln3Ppe+59D2h0rc3I31nwdOLW95GblvE+64x2tc0LihjV3LNyMdUr5Mp2DmfwOz9aD6e8e362SSEr5pZLSMWkEuBs0EkuPyLyvAqxAnoZFslCctU02U3ihKeQhtu6VP1SpXX5a+5KLg8W+Tpr6F0PizP+Txf57TNCzNDt3JL6raUvrUmOEr0scxwTh7LDDtnPJIdtnegHTX79l125COlMFOXQ7gaQr4Dbbqd3Do4npiRuQrTUpBvw/npxXga4jnZBLl9mFdt59jR0fvnwVGwo+88lh3HiPKiIe6hhpjPw0OHeXtfmGeVxlA0FG1srCQsRrdguNfxLBTgZGAtoAeDr1EC8lJVYDFbxgMrkKJ8TIxF6HDnl1xf49GS49umZbVuryl3GW0iUjnCaZgTZ6vK3mWxwVUdz1Vb8rC+aj20FU7P/lmtyJ8MEU4WCxJIY5QXpkqi8xlTvucrScRVOL9FM7YSlxi84+bHcU5TuBJ2tg8CMrm7Oal6ZTFnpvLfLQwJLFuIWRLiTV3t1eebnK56Inb6l3fBYPL9cMlHD+U751/0XUOufvbd4/pukztITJx5xREBdEUCI5UcBhYXMuRQ7pKQBhMBzZTJRPACgmSmHICY+gu98gy5KRXOrT45f0Usg4ZOXtIlEhSKsAwFIRdy4+/vk2p3jNf6LIFthFQyZNUXykOJwT0zckPYVCXzrtomC4Xb4lTNuxq+JmBLw3punS0n/9te1D20Fz1G86OZ4B6zh3OberjCRaz/WNYe+TLfOXDbOt4DXuYTLEOkfsF9ioqAEativrqvT/klnDu0e/GBIJv81tuk9t3gDHzUq1qlZCsRP0sHfB+SBmOMW/Q0X48UYq2msa3G2jEMeYBY8wyhZjjfh0WaGjPVi6w5jQpvQdVA5T/b1A1o9g00HJEFXjGZtjaj5E4KPNz+7w2wwsSO4e2LvwFQSwMEFAAAAAgARnAHXePSpcipAwAA2QoAABgAAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWzFVk1v4zYQ/SuEDkULZCN/ZVuktovGdtEAzcJI0i16pKWxRYTiaMlRtO6v75CSVccraffWiy0O5z3OPA6HnFdoX1wGQOJzro1bRBlRcRvHLskgl+4aCzA8s0ebS+KhPcSusCDTAMp1PBmN3se5VCZazoNta5dzLEkrA1srXJnn0h7vQGO1iMbRyfCoDhl5Q7ycF/IAT0B/FlvLo7hlSVUOxik0wsJ+Ef06vt3MvH9w+KigcmffwmeyQ3zxg/t0EY0iz2xAHJ8KrcJagrD4A/a0Aq2ZbxIJmZB6hS27LaIdEmHu5zlKksSmvcV/wIQ1QQP7cizFF841SUPqU/zUxBu16figzr9Pkf8WdGWddtLBCvVfKqVsEf0UiRT2stT0iNXv0Gh14/kS1C78iqr2nXIaSek4mgbMEeTK1P/yc6PxGWA26gFMGsDkAjCe9QCmDWB6CRj3AGYNYHYJeN8DuGkAIfW4zj0It5Ykl3OLlbDem9n8R1C/3ulFpIyvwSeyPKsYR8tn6V7mMTGTH8dJg7obRq3BJVYVfvM7wKuvLMk17G3i+1Qe3Q8dBOthggdpUklojx3QzTB0m3FRvYXFrFgr26SVbdLHYKGQFgRZPuDKHHgzCKyS2nXJ2M+iDImME+G+4AT/C40yFU6rFLqYVjWTbymvy/E8fj2Xq2+VvzupNgOpvXtu0hrQaNpqNO0hWqFJy4SEJALeKpOA4N6ZdBbaAMde2VxIrbm/WFKJ4jbDWjl1MJAK1Vl50zOVRhcq9a3Uo1Kf+7q0ftu/QahZK9Ssh+up3OWK/qslri201CVTH8MK80IDQSgh19Bl0IYnHgOlILnr0ms2UFV9S/bo1ee+RUeDZRWfdS8+1/Kj5EMgfW9xIsHSUH0s306dbpT15HZ9M+L27TKs1haLNVbG33TBcG+Kkh7AOb5OW+PGWrTnRi4xrO60NC+hcYCff1akefbevPolBRiyx2ZqEW01cBvhmkbkv+8+lUg/syr1h0DbmD5gY+E7Mw+7knKAKQd4HYmCbQU1y7Qd7ZfTBO/NN7IzFx0LJtHKEevk3yWlluNlxKCrDxjN49Y0j9+q2KfqZnK7+Z9VRb4gcB9Uo8wCiMK3bvd1LUOL/0LGKlNJJla+C3md3vF54OLSZW6YTDmhCPKQhxOlScH2q3reJa8umsHVm2IfVv7C4OpH34O0B8WFr/kZxTJe/8jXva0fO/WA32tBz/q1FT4zfnuC9Q48v0ek08A/ENrX7PJfUEsDBBQAAAAIAEZwB12MvFPqXAQAAKIKAAAYAAAAeGwvd29ya3NoZWV0cy9zaGVldDIueG1spVZbbxo7EP4rI7+01Qm7XHIrAqSckKqR2hSRpFUfze7AWuzaW9sL4d+fGS8sRDnZlyIBvs3MN58/jz3aGrt2GaKHlyLXbiwy78thHLskw0K6yJSoaWZpbCE9de0qdqVFmQajIo/73e5lXEilxWQUxmZ2MjKVz5XGmQVXFYW0u38xN9ux6InDwFytMs8D8WRUyhU+on8uZ5Z6ceMlVQVqp4wGi8uxuOkNb3oDNggrfircupM2cCoLY9bcuU/HosuIMMfEswtJfxu8xTxnT4Tjz96paGKy4Wn74P1LSJ6SWUiHtyb/pVKfjcW1gBSXssr93Gy/4j6hC/aXmNyFX9jWa3vdroCkct4Ue2uCUChd/8uXPRNxbRiiTqWXk5E1W7A8S+64EaCPRV8ABVOaWX70lmYV2fnJt7ubGdwTaQTGQacDtxkm61w5D09YlLn0CM9lbmQ6hK/k+smMYk9x2TpO6EvxmqD9Jmg/BB28CfrGZNCYDN4xqXH2Ivii8hyUBqMR2LpEC0mDVnksaAp8hiAO0MmZXEQwNfqDp7VSrzAsyEiPZE1eopZ0zhts563Y+hE8Sbdm9lxmrActCwSzDKG86aQGPmK0ikDM0aHd0KAl/Su9gg3qCsWnCOb4p1IW0zY8Fw2ei1Y8A8oYXWJVGYRMsExoyZz056XKI3jMzJa4MjVERkN0SAcSXCGJ5sxsaEDppQGVGH0g9igO4vUMtCHeQ/gz9rVGLMOyhZE2hcQUJR2itowum4wuWzM6J4bpbPMwfEzlzn3irCTQJpMgdFUsCC0RzlNn0AVjoTAWeefh4ccT+F2JtPyfmHZIrQIliqBTvmWZK0xBVnTQpFcJJb8LxzblnGcZtYYtCVw1CVy1JcC1cuiIDRwLKoZBBGIC9acDM4udp70khsRbpeksTn/8eni1Q6wXSnCvpQGMQQxCxrBAKrckoxag1w3Q678Bapx/i/R5BktriveQ9hlpv0Yqlx5tK9DPDdDPfwF0WlkGcYQq8y3Hd0H3JHQxJXxmKVgKjHuvIZIE6YPITIEopRkaKFkEZ+AMCYu6SwLSpule91h6u62qvojgu9Sp9MbuGEepkjWI3+gEC1g8GHHkNbWmTBk76Z1qflVomLaiOLkAeq0oLqNa5kcEp3IUZ0TVazJpiOG90kI70js6vsxkiolK0cE2U0nWFMjM4kll6VBl2du5MB8KO++bg0pT1W7N+ngD9d67guqsr6gGSq7EWdjSnCtYhhoqIkLcFyWX8dvHn/HdS4K54Fxe17/mckyt3JJw6KBW4ZokvBHUDpi0+d3s283t3WOTiqNb3VrUnurM3uveBfFvccMPk/o8g5MbdhFI2odrTf54l/baL9PrCH6bChLJD6UOb1ZAHrg4RALpQeodeKq7p5vLUD/w+TlYHe/aReW90f8LMT55ofDr7bu0K0UbnOOSEHajK7rRbP0gqjvelOGpszDkswjN+tLmBTS/NMYfOvwOap6lk/8AUEsDBBQAAAAIAEZwB108KyBEzAIAAIoMAAANAAAAeGwvc3R5bGVzLnhtbN1X246bMBD9FcQHlBC2NFRJpC1SpEpttdLuQ1+dYIglX6gxKenX14MJ5OKJtqs+VCXaxZ4zZ+aMPXZ2l405cvq8p9QEneCyWYV7Y+qPUdTs9lSQ5p2qqbRIqbQgxk51FTW1pqRogCR4NJ/N0kgQJsP1UrZiI0wT7FQrzSqchdF6WSo5WR5CZ7CuRNDgQPgqzAlnW816XyIYPzrzHAw7xZUOjJVCV2EMluaXg2M3A5VDHMGk0mCMXAb3ezu4T9F0tbXSZpv+ues/5kpu3C5lDFD/aqwL43wsOQmdYb2siTFUy42d9JzeeAMFw/jlWNuaK02O8fx9+GpCozgrIGWVn1c728Qf5o99mDPqGLR/WeVbpQuqR+1xeDKtl5yWxtI1q/bwNqqOADRGCTsoGKmUJH1hJ8YwsGF3lPNn6LTv5UXsrgxcy3wuoFsCWL/T0Aoahi6Mm0D882gu9lnYhzeFDWp2UOZTa6uR/fxHqwx90rRkXT/vyjE/Fj2eos+vopO65sdHziopqKv91QnXS3LiBQeqDdtB2+3slLpm70pc0hwv+K9Lsg0RBj81qV9oZ4YDdFdc8i+Ii4b2OevRiw4drQFcWKvwG9yDfEoXbFvGDZPDbM+KgsqbRrXhDdnai/YivvUvaElabl5GcBVO46+0YK3IRq8nWILBaxp/gQMZp+P9ZnMxWdCOFvkwtVfA5V3QP0C4RqY78RbBOA7zI4BheTAFGMexsDz/Uz0LtB6HYdoWXmSBchYox7F8SN5/sDx+TmYff6VZliRpiq1onnsV5Ni6pSn8+KNh2oCB5YFMf7bW+G7jHXK/D7A9vdchWKV4J2KV4msNiH/dgJFl/t3G8gAD2wWsdyC/Pw/0lJ+TJLCrmDbsBONIlmEI9KK/R9MUWZ0UPv79wU5JkmSZHwHMryBJMAROI45gCkADhiTuD+er76Po9D0VTf99rH8DUEsDBBQAAAAIAEZwB12XirscwAAAABMCAAALAAAAX3JlbHMvLnJlbHOdkrluwzAMQH/F0J4wB9AhiDNl8RYE+QFWog/YEgWKRZ2/r9qlcZALGXk9PBLcHmlA7TiktoupGP0QUmla1bgBSLYlj2nOkUKu1CweNYfSQETbY0OwWiw+QC4ZZre9ZBanc6RXiFzXnaU92y9PQW+ArzpMcUJpSEszDvDN0n8y9/MMNUXlSiOVWxp40+X+duBJ0aEiWBaaRcnToh2lfx3H9pDT6a9jIrR6W+j5cWhUCo7cYyWMcWK0/jWCyQ/sfgBQSwMEFAAAAAgARnAHXb2VWyFHAQAAsQIAAA8AAAB4bC93b3JrYm9vay54bWy1UtFqwzAM/JXgD1jSsBVWmr2sbC2Mrayl726iNKK2FWyl2fr1UxLCAoOxlz3JOonz3dnLlvz5SHSOPqxxIVMVc72I45BXYHW4oRqcTEryVrO0/hSH2oMuQgXA1sRpksxjq9Gph+XItfXxtCGGnJGcgB1wQGjD97xrowsGPKJB/sxUfzagIosOLV6hyFSiolBRuyaPV3KszS73ZEymZsPgAJ4x/wHvOpF7fQw9wvr4rkVIpuaJEJboA/cbPb8WjReQ5aFrmJ7QMPiVZnj21NToTh2NuIgnNvocxjqEuPB/iZHKEnNYUd5YcDzk6MF0Al2osA4qctpCpvZga4GhsyR3bIrBHgs0CcsvUAZ+U/QK/0/NmtpoTxMt6S9a0j6tMaICSnRQvApPEFyeK9/6qCu9p/T2bnYvz9IY8yjYm3shXYyJj7/l4QtQSwMEFAAAAAgARnAHXY33LFq0AAAAiQIAABoAAAB4bC9fcmVscy93b3JrYm9vay54bWwucmVsc8WSTQqDMBBGrxJygI7a0kVRV924LV4g6PiD0YTMlOrta3WhgS66ka7CNyHvezCJH6gVt2agprUkxl4PlMiG2d4AqGiwV3QyFof5pjKuVzxHV4NVRadqhCgIruD2DJnGe6bIJ4u/EE1VtQXeTfHsceAvYHgZ11GDyFLkytXIiYRRb2OC5QhPM1mKrEyky8pQwr+FIk8oOlCIeNJIm82avfrzgfU8v8WtfYnr0N/J5eMA3s9L31BLAwQUAAAACABGcAddbqckvB4BAABXBAAAEwAAAFtDb250ZW50X1R5cGVzXS54bWzFlM9OwzAMxl+lynVqMnbggNZdgCvswAuE1l2j5p9ib3Rvj9tuk0CjYioSl0aN7e/n+IuyfjtGwKxz1mMhGqL4oBSWDTiNMkTwHKlDcpr4N+1U1GWrd6BWy+W9KoMn8JRTryE26yeo9d5S9tzxNprgC5HAosgex8SeVQgdozWlJo6rg6++UfITQXLlkIONibjgBKGuEvrIz4BT3esBUjIVZFud6EU7zlKdVUhHCyinJa70GOralFCFcu+4RGJMoCtsAMhZOYoupsnEE4bxezebP8hMATlzm0JEdizB7bizJX11HlkIEpnpI16ILD37fNC7XUH1SzaP9yOkdvAD1bDMn/FXjy/6N/ax+sc+3kNo//qq96t02vgzXw3vyeYTUEsBAhQDFAAAAAgARnAHXUbHTUiVAAAAzQAAABAAAAAAAAAAAAAAAIABAAAAAGRvY1Byb3BzL2FwcC54bWxQSwECFAMUAAAACABGcAddmzYKOu4AAAArAgAAEQAAAAAAAAAAAAAAgAHDAAAAZG9jUHJvcHMvY29yZS54bWxQSwECFAMUAAAACABGcAddmVycIxAGAACcJwAAEwAAAAAAAAAAAAAAgAHgAQAAeGwvdGhlbWUvdGhlbWUxLnhtbFBLAQIUAxQAAAAIAEZwB13j0qXIqQMAANkKAAAYAAAAAAAAAAAAAACAgSEIAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWxQSwECFAMUAAAACABGcAddjLxT6lwEAACiCgAAGAAAAAAAAAAAAAAAgIEADAAAeGwvd29ya3NoZWV0cy9zaGVldDIueG1sUEsBAhQDFAAAAAgARnAHXTwrIETMAgAAigwAAA0AAAAAAAAAAAAAAIABkhAAAHhsL3N0eWxlcy54bWxQSwECFAMUAAAACABGcAddl4q7HMAAAAATAgAACwAAAAAAAAAAAAAAgAGJEwAAX3JlbHMvLnJlbHNQSwECFAMUAAAACABGcAddvZVbIUcBAACxAgAADwAAAAAAAAAAAAAAgAFyFAAAeGwvd29ya2Jvb2sueG1sUEsBAhQDFAAAAAgARnAHXY33LFq0AAAAiQIAABoAAAAAAAAAAAAAAIAB5hUAAHhsL19yZWxzL3dvcmtib29rLnhtbC5yZWxzUEsBAhQDFAAAAAgARnAHXW6nJLweAQAAVwQAABMAAAAAAAAAAAAAAIAB0hYAAFtDb250ZW50X1R5cGVzXS54bWxQSwUGAAAAAAoACgCEAgAAIRgAAAAA';
+const CKTPL_TEMPLATE_XLSX_B64='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';
 function _cktplDownloadTemplate(){
   const bin=atob(CKTPL_TEMPLATE_XLSX_B64);
   const bytes=new Uint8Array(bin.length);
@@ -4979,7 +4981,8 @@ function _cktplParsePhase(raw){
   const v=(raw||'').trim().toLowerCase();
   if(v.startsWith('pre')) return 'pre';
   if(v.startsWith('post')) return 'post';
-  if(v.startsWith('during')||v.startsWith('training proper')||v.startsWith('proper')) return 'during';
+  // During Training removed 2026-08-07 (round 5) -- any legacy 'during'/'training proper' value in
+  // an old export/import file just falls through to the default below.
   return 'pre';
 }
 function _cktplParseMandatory(raw){
@@ -5061,7 +5064,7 @@ async function saveChecklistTemplate(){
   // mandatory count) plus warnings for anything easy to miss in a long list (blank-Task rows that
   // get silently dropped above, or duplicate task names) rather than committing immediately.
   const blankSkipped=rawCount-items.length;
-  const counts={pre:0,during:0,post:0};
+  const counts={pre:0,post:0};
   items.forEach(i=>{ counts[i.phase]=(counts[i.phase]||0)+1; });
   const mandCount=items.filter(i=>i.mandatory).length;
   const taskLower=items.map(i=>i.task.toLowerCase());
@@ -5071,7 +5074,7 @@ async function saveChecklistTemplate(){
   if(dupes.length) warn+=`<div style="color:#b45309;margin-top:6px">⚠ ${dupes.length} duplicate task name${dupes.length!==1?'s':''} found (e.g. "${Utils.esc(dupes[0])}") -- double-check these aren't accidental repeats.</div>`;
   const summaryHtml=`<div style="text-align:left">
     <div>"<strong>${Utils.esc(title)}</strong>" will be saved with <strong>${items.length}</strong> item${items.length!==1?'s':''}:</div>
-    <div style="margin-top:6px">Pre-Training: <strong>${counts.pre||0}</strong> &nbsp;•&nbsp; During Training: <strong>${counts.during||0}</strong> &nbsp;•&nbsp; Post-Training: <strong>${counts.post||0}</strong></div>
+    <div style="margin-top:6px">Pre-Training: <strong>${counts.pre||0}</strong> &nbsp;•&nbsp; Post-Training: <strong>${counts.post||0}</strong></div>
     <div style="margin-top:4px">Mandatory: <strong>${mandCount}</strong> of ${items.length}</div>
     ${warn}
   </div>`;
@@ -6796,8 +6799,10 @@ function _tdAuditRenderTab(s){
 
 /* ── CHECKLIST TAB (Phase D2, 2026-08-07, per Sandra) ─────────────────────────────────────
    ILT-only tab next to Overview. Renders the session's assigned Checklist Template (picked on
-   Overview -- see _tdChecklistTemplateDisplay/tdd-checklisttpl) as a 3-column board (Pre-Training
-   / During Training / Post-Training), tracking Status + Completed On per item. Deliberately backed
+   Overview -- see _tdChecklistTemplateDisplay/tdd-checklisttpl) as a 2-column board (Pre-Training
+   / Post-Training -- During Training removed 2026-08-07, round 5), tracking Status + Completed On
+   per item, plus a lock guardrail once each phase passes its cutoff (see _tdcklPhaseLocked).
+   Deliberately backed
    by its own `session_checklists` table (one row per session, a SNAPSHOT of the template's items
    at initialization time), NOT a live read of checklist_templates -- so a later edit to the
    template never retroactively alters a session's already-recorded checklist history. Status
@@ -6914,13 +6919,29 @@ function _tdcklAddDays(dateStr,delta){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
 }
+// Adds N *working* days (Mon-Fri, no PH holiday calendar per Sandra) to a date -- used only by the
+// Pre-Training lock guardrail below, which is deliberately measured in working days rather than
+// calendar days (2 working days gives a trainer through the next business day to finish pre-work,
+// regardless of weekends landing in between).
+function _tdcklAddWorkingDays(dateStr,n){
+  if(!dateStr) return null;
+  const d=new Date(dateStr+'T00:00:00');
+  let added=0;
+  while(added<n){
+    d.setDate(d.getDate()+1);
+    const dow=d.getDay();
+    if(dow!==0&&dow!==6) added++;
+  }
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 // Target Date anchor: Pre-Training counts back from the session's start date; Post-Training counts
 // forward from the session's END date (so a multi-day ILT's "after" items land after the whole
-// thing wraps, not after day one); During Training is always the start date itself (T0).
+// thing wraps, not after day one). During Training removed 2026-08-07 (round 5) -- only Pre and
+// Post are tracked now.
 function _tdcklTargetDate(s,phase,timelineDays){
   const n=Number(timelineDays)||0;
   if(phase==='post') return _tdcklAddDays(s.endDate||s.trainingDate,n);
-  if(phase==='during') return s.trainingDate||null;
   return _tdcklAddDays(s.trainingDate,-n);
 }
 function _tdcklTargetDateLabel(s,phase,timelineDays){
@@ -6928,7 +6949,6 @@ function _tdcklTargetDateLabel(s,phase,timelineDays){
   if(!dateStr) return '—';
   const md=new Date(dateStr+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const n=Number(timelineDays)||0;
-  if(phase==='during') return md;
   if(n===0) return `${md} (T0)`;
   return phase==='post'?`${md} (T+${n})`:`${md} (T-${n})`;
 }
@@ -6937,6 +6957,31 @@ function _tdcklComputeStatus(it,targetDateStr){
   if(it.completedOn) return 'completed';
   if(targetDateStr && _todayStr()>=targetDateStr) return 'pending';
   return 'not_started';
+}
+// Lock guardrail (2026-08-07, round 5, per Sandra): once a phase locks, its items can no longer be
+// completed/un-completed, marked N/A, deleted, or added to for that session -- Pre-Training locks 2
+// WORKING days after the session start date; Post-Training locks at 5 CALENDAR days after the
+// session end date, OR the moment the Training Report is submitted for this session, whichever
+// comes first (submitting the report is itself a strong signal that post-training wrap-up is done,
+// so there's no reason to wait out the full 5 days once that's happened). Locking is purely a
+// render-time/action-time check against dates + the report's status -- nothing is written to the
+// checklist item itself, so un-submitting a report or nothing changing about the dates
+// transparently unlocks it again (e.g. if a report submission is ever reopened).
+function _tdcklPhaseLocked(s,phase){
+  if(!s) return false;
+  if(phase==='pre'){
+    const lockDate=_tdcklAddWorkingDays(s.trainingDate,2);
+    return !!(lockDate && _todayStr()>=lockDate);
+  }
+  if(phase==='post'){
+    const end=s.endDate||s.trainingDate;
+    const lockDate=_tdcklAddDays(end,5);
+    if(lockDate && _todayStr()>=lockDate) return true;
+    const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+    if(report && report.status==='submitted') return true;
+    return false;
+  }
+  return false;
 }
 // Small inline status icon for the table (distinct from the 42px KPI-card icons elsewhere) --
 // empty grey ring / amber clock / green check, or a blue "N/A" pill matching the legend.
@@ -6965,8 +7010,25 @@ function _tdcklLinearBar(pct,color,width){
   return `<div style="width:${width||'70px'};height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;flex-shrink:0"><div style="width:${Math.max(0,Math.min(100,pct))}%;height:100%;background:${color}"></div></div>`;
 }
 
+// _tdcklGuardLocked: shared guard called at the top of every checklist-item mutation (2026-08-07,
+// round 5) -- looks up the item's own session via row.sessionId and refuses the action if that
+// item's phase is currently locked (see _tdcklPhaseLocked). This is defense-in-depth on top of the
+// UI already disabling/hiding the same controls once locked -- protects against a stale render
+// (e.g. two browser tabs open, or the lock threshold crossing mid-session) still showing an
+// enabled control.
+function _tdcklGuardLocked(row,phase){
+  const s=TrSessionDB.byId(row.sessionId);
+  if(s && _tdcklPhaseLocked(s,phase)){
+    toast(`${_cktplPhaseInfo(phase).label} is locked for this session and can no longer be edited.`,'warning');
+    renderTrainingDetail();
+    return true;
+  }
+  return false;
+}
 async function _tdcklSetCompletedOn(rowId,itemIndex,dateStr){
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
+  const cur=(row.items||[])[itemIndex]; if(!cur) return;
+  if(_tdcklGuardLocked(row,cur.phase||'pre')) return;
   const val=dateStr||null;
   const items=(row.items||[]).map((it,i)=>i===itemIndex?{...it,completedOn:val,completedOnTs:val?new Date().toISOString():null,isNA:val?false:it.isNA}:it);
   try{
@@ -6977,6 +7039,7 @@ async function _tdcklSetCompletedOn(rowId,itemIndex,dateStr){
 async function _tdcklToggleNA(rowId,itemIndex){
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
   const cur=(row.items||[])[itemIndex]; if(!cur) return;
+  if(_tdcklGuardLocked(row,cur.phase||'pre')) return;
   const turningOn=!cur.isNA;
   const items=(row.items||[]).map((it,i)=>i===itemIndex?{...it,isNA:turningOn,completedOn:turningOn?null:it.completedOn,completedOnTs:turningOn?null:it.completedOnTs}:it);
   try{
@@ -6991,6 +7054,7 @@ async function _tdcklToggleNA(rowId,itemIndex){
 async function _tdcklAddCustomItem(rowId,phase,taskText){
   const task=(taskText||'').trim(); if(!task) return;
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
+  if(_tdcklGuardLocked(row,phase)) return;
   const items=[...(row.items||[]),{task,description:'',timelineDays:0,mandatory:false,phase,completedOn:null,completedOnTs:null,isNA:false,custom:true}];
   try{
     await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
@@ -7004,6 +7068,7 @@ async function _tdcklAddCustomItem(rowId,phase,taskText){
 function _tdcklDeleteItem(rowId,itemIndex){
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
   const it=(row.items||[])[itemIndex]; if(!it) return;
+  if(_tdcklGuardLocked(row,it.phase||'pre')) return;
   confirm$('Remove Checklist Item',`Remove "<strong>${Utils.esc(it.task)}</strong>" from this session's checklist? This only affects this session -- the Checklist Template itself is unchanged.`,'Remove',async()=>{
     const items=(row.items||[]).filter((_,i)=>i!==itemIndex);
     try{
@@ -7013,7 +7078,10 @@ function _tdcklDeleteItem(rowId,itemIndex){
     }catch(e){ /* error already surfaced */ }
   });
 }
-function _tdcklAddItemRowHtml(rowId,phaseId){
+function _tdcklAddItemRowHtml(rowId,phaseId,locked){
+  if(locked){
+    return `<div style="margin-top:8px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px">${_tdIconSvg('lock','#94a3b8',13)} This phase is locked -- items can no longer be added.</div>`;
+  }
   const inputId=`tdckl-newitem-${rowId}-${phaseId}`;
   return `<div style="margin-top:8px">
     <div style="display:flex;gap:6px">
@@ -7032,6 +7100,7 @@ function _tdcklLegendHtml(){
     <span style="display:flex;align-items:center;gap:4px"><svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#64748b" stroke-width="1.6"/></svg> Not Started</span>
     <span style="display:flex;align-items:center;gap:4px"><span class="badge" style="background:#f8fafc;color:#94a3b8;font-size:9.5px">N/A</span> Not Applicable</span>
     <span style="display:flex;align-items:center;gap:4px;color:#dc2626;font-weight:700">* <span style="color:var(--text3);font-weight:400">Mandatory</span></span>
+    <span style="display:flex;align-items:center;gap:4px">${_tdIconSvg('lock','#64748b',15)} Locked</span>
   </div>`;
 }
 
@@ -7052,7 +7121,10 @@ function _tdcklBoardHtml(s,row){
     const applicable=colItems.filter(it=>it._status!=='na').length;
     const completed=colItems.filter(it=>it._status==='completed').length;
     const pct=applicable>0?Math.round((completed/applicable)*100):0;
-    const showTargetCol=p.id!=='during';
+    // Lock guardrail (2026-08-07, round 5): Pre-Training locks 2 working days after session start;
+    // Post-Training locks 5 calendar days after session end, or on report submission -- whichever
+    // is first. See _tdcklPhaseLocked for the exact logic.
+    const locked=_tdcklPhaseLocked(s,p.id);
     const rowsHtml=colItems.length?colItems.map(it=>{
       const iconHtml=_tdcklStatusIconHtml(it._status);
       const completedOnVal=it.completedOn||'';
@@ -7061,22 +7133,24 @@ function _tdcklBoardHtml(s,row){
       return `<tr>
         <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${it._i+1}</td>
         <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}</td>
-        ${showTargetCol?`<td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>`:''}
+        <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>
         <td style="padding:6px 4px;vertical-align:top">
-          <span style="display:inline-flex;align-items:center;gap:5px;cursor:pointer" title="${it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable'}" onclick="_tdcklToggleNA('${row.id}',${it._i})">${iconHtml}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>
         </td>
         <td style="padding:6px 4px;vertical-align:top;white-space:nowrap">
-          <input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${it.isNA?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">
+          <input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${(it.isNA||locked)?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">
         </td>
-        <td style="padding:6px 2px;vertical-align:top"><button class="btn btn-sm btn-ghost" style="color:var(--red);padding:2px 5px" title="Remove item" onclick="_tdcklDeleteItem('${row.id}',${it._i})">✕</button></td>
+        <td style="padding:6px 2px;vertical-align:top">${locked?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red);padding:2px 5px" title="Remove item" onclick="_tdcklDeleteItem('${row.id}',${it._i})">✕</button>`}</td>
       </tr>`;
-    }).join(''):`<tr><td colspan="${showTargetCol?6:5}" style="font-size:11.5px;color:var(--text3);padding:10px 4px">No items in this phase.</td></tr>`;
+    }).join(''):`<tr><td colspan="6" style="font-size:11.5px;color:var(--text3);padding:10px 4px">No items in this phase.</td></tr>`;
+    const lockBadge=locked?`<span title="Locked -- no further edits allowed for this phase" style="display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;margin-left:6px">${_tdIconSvg('lock','#64748b',10)} LOCKED</span>`:'';
     return `<div>
       <div style="background:${p.bg};border-radius:8px 8px 0 0;padding:10px 12px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <div style="display:flex;align-items:center;gap:6px">
             ${_tdIconSvg('clipboard',p.color,17)}
             <span style="font-weight:700;font-size:12px;color:${p.color};letter-spacing:.3px">${p.label.toUpperCase()}</span>
+            ${lockBadge}
           </div>
           <span style="font-size:10.5px;color:var(--text3)">${colItems.length} item${colItems.length!==1?'s':''}</span>
         </div>
@@ -7090,14 +7164,14 @@ function _tdcklBoardHtml(s,row){
           <thead><tr style="border-bottom:1px solid var(--border-lt)">
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px;width:22px">#</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Checklist Item</th>
-            ${showTargetCol?'<th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Target Date</th>':''}
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Target Date</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Status</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Completed On</th>
             <th style="padding:4px;width:20px"></th>
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
-        ${_tdcklAddItemRowHtml(row.id,p.id)}
+        ${_tdcklAddItemRowHtml(row.id,p.id,locked)}
       </div>
     </div>`;
   }).join('');
@@ -7121,7 +7195,7 @@ function _tdcklBoardHtml(s,row){
       ${_tdcklLegendHtml()}
     </div>
     ${summaryRow}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px">${cols}</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:14px">${cols}</div>
   </div>`;
 }
 
@@ -7250,7 +7324,8 @@ const _TDA_ICON_PATHS={
   user:'<circle cx="12" cy="8.2" r="3.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 20.5v-1.1a4.6 4.6 0 0 1 4.6-4.6h4.2a4.6 4.6 0 0 1 4.6 4.6v1.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
   heart:'<path d="M12 20.3s-7-4.3-9.3-8.4C1.3 8.7 2.7 4.8 6.3 4.4c2-.2 3.7 1 4.7 2.6.9-1.6 2.7-2.8 4.7-2.6 3.6.4 5 4.3 3.6 7.5C19 16 12 20.3 12 20.3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
   calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
-  mappin:'<path d="M19 10.5c0 6-7 11-7 11s-7-5-7-11a7 7 0 1 1 14 0Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="10.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+  mappin:'<path d="M19 10.5c0 6-7 11-7 11s-7-5-7-11a7 7 0 1 1 14 0Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="10.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  lock:'<rect x="5" y="11" width="14" height="9.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="15.5" r="1.3" fill="currentColor"/>'
 };
 function _tdIconSvg(name,color,size){
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="color:${color};flex-shrink:0" >${_TDA_ICON_PATHS[name]||''}</svg>`;
