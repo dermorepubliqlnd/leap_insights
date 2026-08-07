@@ -6604,9 +6604,16 @@ function _tdIconSvg(name,color,size){
 function _tdaIcon(name,color){
   return `<svg width="42" height="42" viewBox="0 0 24 24" style="color:${color};flex-shrink:0;margin-top:1px">${_TDA_ICON_PATHS[name]||''}</svg>`;
 }
-function _tdaKpiCard(iconName,iconColor,label,value,sub,subColor,valueColor){
+// iconBg (2026-08-07, per Sandra -- "shape fill color" on the Completion Rate card): optional
+// colored-circle backdrop behind the icon, used by the completion-rate color coding so the card
+// reads red/amber/green at a glance, not just the number. Omitted (undefined) on every existing
+// call site, so this is purely additive -- default rendering for all other KPI cards is unchanged.
+function _tdaKpiCard(iconName,iconColor,label,value,sub,subColor,valueColor,iconBg){
+  const iconHtml=iconBg
+    ?`<div style="width:42px;height:42px;border-radius:50%;background:${iconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${_tdIconSvg(iconName,iconColor,22)}</div>`
+    :_tdaIcon(iconName,iconColor);
   return `<div class="card" style="padding:12px;display:flex;gap:9px;align-items:center;min-height:76px;box-sizing:border-box">
-    ${_tdaIcon(iconName,iconColor)}
+    ${iconHtml}
     <div style="min-width:0">
       <div style="font-size:11.5px;color:var(--text3);line-height:1.2;white-space:nowrap">${label}</div>
       <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px;flex-wrap:nowrap;white-space:nowrap">
@@ -7276,10 +7283,14 @@ function _tdrRenderTab(s){
     // Completion KPIs (2026-08-07, per Sandra): Completed/In Progress/Not Started are no longer
     // manually typed here -- they're rolled up straight from the Per-Cluster Breakdown table
     // below, so there's exactly one place headcount is captured and the top-line metrics can't
-    // silently drift from the cluster-level detail.
+    // silently drift from the cluster-level detail. Completed itself is now DERIVED per cluster
+    // row (Required minus In Progress minus Not Started) rather than typed -- every required
+    // participant is in exactly one of the three buckets, so there's nothing left to manually
+    // enter once the other two are known. See _tdrClusterRowCompleted/_tdrClusterTotals.
     const clusterTotals=_tdrClusterTotals(c);
     const hasClusterRows=(c.clusterRows||[]).length>0;
     const completionRate=(required!=null&&required>0&&hasClusterRows)?Math.round((clusterTotals.completed/required)*100):null;
+    const compColor=_tdrCompletionColor(completionRate);
     // Required-headcount guardrail (2026-08-07, per Sandra): the cluster breakdown's Required
     // column should collectively add up to the session's own Required Participants -- e.g. a
     // session set to 400 required participants but whose clusters only account for 350 between
@@ -7295,7 +7306,7 @@ function _tdrRenderTab(s){
       ${mismatchBanner}
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
         ${_tdaKpiCard('users','#0369a1','Required Participants',required??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-        ${_tdaKpiCard('target','var(--sky)','Completion Rate',completionRate!=null?completionRate+'%':'—')}
+        ${_tdaKpiCard('target',completionRate!=null?compColor.fg:'var(--sky)','Completion Rate',completionRate!=null?completionRate+'%':'—',null,null,completionRate!=null?compColor.fg:undefined,completionRate!=null?compColor.bg:undefined)}
         ${_tdaKpiCard('check','var(--green)','Completed',hasClusterRows?clusterTotals.completed:'—')}
         ${_tdaKpiCard('clock','var(--amber)','In Progress',hasClusterRows?clusterTotals.inProgress:'—')}
         ${_tdaKpiCard('x','#64748b','Not Started',hasClusterRows?clusterTotals.notStarted:'—')}
@@ -7307,23 +7318,43 @@ function _tdrRenderTab(s){
         ${completionMetrics}
       </div>`;
 
-    const clusterRowsHtml=(c.clusterRows||[]).map((row,i)=>`<tr>
+    // Per-Cluster Breakdown (2026-08-07, per Sandra): column order is Cluster Head, Completion
+    // Rate, Required, Completed, In Progress, Not Started -- Participants dropped entirely (no
+    // longer needed now that Completion Rate lives at cluster level too), Completion Rate and
+    // Completed are both computed/read-only (color-coded same thresholds as the KPI card above),
+    // and only Required/In Progress/Not Started are ever typed in. Rows whose In Progress + Not
+    // Started exceeds Required are flagged (can't have more people mid/not-started than the
+    // cluster actually requires) with a tinted row background instead of a silent negative number.
+    const centerTh='style="text-align:center"', centerTd='style="text-align:center"';
+    const clusterRowsHtml=(c.clusterRows||[]).map((row,i)=>{
+      const rowReq=row.required!=null?Number(row.required):null;
+      const rowDone=_tdrClusterRowCompleted(row);
+      const rowRate=(rowReq!=null&&rowReq>0)?Math.round((rowDone/rowReq)*100):null;
+      const rowColor=_tdrCompletionColor(rowRate);
+      const overCount=_tdrClusterRowOvercount(row);
+      return `<tr ${overCount?'style="background:var(--red-lt)" title="In Progress + Not Started exceeds Required for this cluster"':''}>
       <td><input type="text" class="form-control" style="min-width:160px" placeholder="Cluster Head" value="${Utils.esc(row.clusterHead||'')}" ${dis} onblur="_tdrSetClusterField(${i},'clusterHead',this.value)"></td>
-      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.required??''}" ${dis} onblur="_tdrSetClusterField(${i},'required',this.value)"></td>
-      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.participants??''}" ${dis} onblur="_tdrSetClusterField(${i},'participants',this.value)"></td>
-      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.completed??''}" ${dis} onblur="_tdrSetClusterField(${i},'completed',this.value)"></td>
-      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.inProgress??''}" ${dis} onblur="_tdrSetClusterField(${i},'inProgress',this.value)"></td>
-      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.notStarted??''}" ${dis} onblur="_tdrSetClusterField(${i},'notStarted',this.value)"></td>
+      <td ${centerTd}><span style="font-weight:700;color:${rowRate!=null?rowColor.fg:'var(--text3)'}">${rowRate!=null?rowRate+'%':'—'}</span></td>
+      <td ${centerTd}><input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.required??''}" ${dis} onblur="_tdrSetClusterField(${i},'required',this.value)"></td>
+      <td ${centerTd}>${rowReq!=null?rowDone:'—'}</td>
+      <td ${centerTd}><input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.inProgress??''}" ${dis} onblur="_tdrSetClusterField(${i},'inProgress',this.value)"></td>
+      <td ${centerTd}><input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.notStarted??''}" ${dis} onblur="_tdrSetClusterField(${i},'notStarted',this.value)"></td>
       <td>${readOnly?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveClusterRow(${i})" title="Remove">✕</button>`}</td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
     const clusterCard=`
       <div class="card" style="padding:18px 20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div style="font-weight:700;font-size:14.5px">3. Per-Cluster Breakdown</div>
-          ${readOnly?'':`<button class="btn btn-sm btn-secondary" onclick="_tdrAddClusterRow()">+ Add Cluster</button>`}
+          ${readOnly?'':`<div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-secondary" onclick="_tdrAddClusterRow()">+ Add Cluster</button>
+            <button class="btn btn-sm btn-secondary" onclick="document.getElementById('tdr-cluster-csv-input').click()">⇪ Import CSV</button>
+            <input type="file" id="tdr-cluster-csv-input" accept=".csv" style="display:none" onchange="_tdrClusterHandleCSVFile(this.files[0])">
+            <button class="btn btn-sm btn-ghost" onclick="_tdrClusterDownloadCSVTemplate()">⇩ Download Template</button>
+          </div>`}
         </div>
         ${(c.clusterRows||[]).length?`<div class="eval-tbl-wrap"><table class="eval-tbl">
-          <tr><th>Cluster Head</th><th>Required</th><th>Participants</th><th>Completed</th><th>In Progress</th><th>Not Started</th><th></th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No clusters yet. Click "+ Add Cluster" to break down completion by cluster.</div>'}
+          <tr><th>Cluster Head</th><th ${centerTh}>Completion Rate</th><th ${centerTh}>Required</th><th ${centerTh}>Completed</th><th ${centerTh}>In Progress</th><th ${centerTh}>Not Started</th><th></th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No clusters yet. Click "+ Add Cluster" to break down completion by cluster.</div>'}
       </div>`;
 
     return `${toolbar}${locked?_tdrReopenBlock():''}${l1CardSlt}${completionCard}${clusterCard}${locked?_tdrReopenActionsBar(s):''}`;
@@ -7434,32 +7465,107 @@ function _tdrSetField(field,value){
 // Self-led cluster breakdown table (2026-08-06, Phase66): freeform rows, not tied to Departments
 // or any other existing list -- Cluster Head is just a name typed in per row, same add/remove-row
 // pattern as Agenda Delivery above.
+// Participants/Completed dropped from the manual schema (2026-08-07, per Sandra) -- Participants
+// wasn't needed once Completion Rate lives at cluster level, and Completed is now DERIVED (see
+// _tdrClusterRowCompleted) rather than typed. Old records saved before this change may still carry
+// leftover `participants`/`completed` keys in Supabase -- harmless, just unused going forward.
 function _tdrAddClusterRow(){
-  _tdrReport.content.clusterRows.push({clusterHead:'',required:null,participants:null,completed:null,inProgress:null,notStarted:null});
+  _tdrReport.content.clusterRows.push({clusterHead:'',required:null,inProgress:null,notStarted:null});
   renderTrainingDetail();
 }
 function _tdrSetClusterField(i,field,value){
   const row=_tdrReport.content.clusterRows[i]; if(!row) return;
-  const numericFields=['required','participants','completed','inProgress','notStarted'];
+  const numericFields=['required','inProgress','notStarted'];
   row[field]=numericFields.includes(field)?(value===''?null:Number(value)):value;
 }
 function _tdrRemoveClusterRow(i){
   _tdrReport.content.clusterRows.splice(i,1);
   renderTrainingDetail();
 }
+// Completed is derived, not entered (2026-08-07, per Sandra): every required participant in a
+// cluster is in exactly one of Completed/In Progress/Not Started at any moment, so Completed =
+// Required - In Progress - Not Started is an identity, not an estimate -- entering it separately
+// would just be redundant, driftable data. Clamped to 0 (never negative) if a typo makes In
+// Progress + Not Started exceed Required -- see _tdrClusterRowOvercount for the accompanying flag.
+function _tdrClusterRowCompleted(row){
+  const req=Number(row.required)||0, ip=Number(row.inProgress)||0, ns=Number(row.notStarted)||0;
+  return Math.max(0, req-ip-ns);
+}
+function _tdrClusterRowOvercount(row){
+  const req=Number(row.required)||0, ip=Number(row.inProgress)||0, ns=Number(row.notStarted)||0;
+  return req>0 && (ip+ns)>req;
+}
+// Color coding for Completion Rate (2026-08-07, per Sandra, matches her existing <65%/66-85%/
+// >86% legend): reused everywhere a completion rate shows -- the Completion Summary KPI card,
+// each Per-Cluster Breakdown row, and the Overview tab's Completion metrics widget.
+function _tdrCompletionColor(rate){
+  if(rate==null) return {fg:'var(--text3)',bg:null};
+  if(rate<66) return {fg:'var(--red)',bg:'var(--red-lt)'};
+  if(rate<=85) return {fg:'var(--amber)',bg:'var(--amber-lt)'};
+  return {fg:'var(--green)',bg:'var(--green-lt)'};
+}
 // Rolls up the Per-Cluster Breakdown table into session-level totals (2026-08-07, per Sandra):
 // feeds the Completion Summary KPI cards (Completed/In Progress/Not Started, and the Required
 // column total used by the required-headcount guardrail) so those numbers are always derived
-// from the cluster detail rather than typed twice.
+// from the cluster detail rather than typed twice. Completed is summed from the same derived
+// per-row value the table itself displays (_tdrClusterRowCompleted), so the KPI card and the
+// table can never disagree.
 function _tdrClusterTotals(c){
   return (c.clusterRows||[]).reduce((a,r)=>{
     a.required+=Number(r.required)||0;
-    a.participants+=Number(r.participants)||0;
-    a.completed+=Number(r.completed)||0;
     a.inProgress+=Number(r.inProgress)||0;
     a.notStarted+=Number(r.notStarted)||0;
+    a.completed+=_tdrClusterRowCompleted(r);
     return a;
-  },{required:0,participants:0,completed:0,inProgress:0,notStarted:0});
+  },{required:0,completed:0,inProgress:0,notStarted:0});
+}
+// CSV import/template for the Per-Cluster Breakdown (2026-08-07, per Sandra) -- same
+// _tdaParseCSV/pattern as the Attendance roster and Agenda Template CSV imports. Only Cluster
+// Head/Required/In Progress/Not Started are collected -- Completed isn't a column at all since
+// it's derived on render, not stored from the file.
+function _tdrClusterDownloadCSVTemplate(){
+  const csv = 'Cluster Head,Required,In Progress,Not Started\nJuan Dela Cruz,50,10,5\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'slt_cluster_breakdown_template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function _tdrClusterHandleCSVFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const {header,rows}=_tdaParseCSV(String(reader.result||''));
+    const headIdx=header.findIndex(h=>h.includes('cluster')||h.includes('head'));
+    const reqIdx=header.findIndex(h=>h.includes('required'));
+    const ipIdx=header.findIndex(h=>h.includes('progress'));
+    const nsIdx=header.findIndex(h=>h.includes('not started')||h.includes('notstarted'));
+    if(headIdx===-1){
+      toast('CSV must have a Cluster Head column.','error');
+      return;
+    }
+    const toNum=(v)=>(v===undefined||v==='')?null:Number(v);
+    let added=0, skippedBlank=0;
+    rows.forEach(cols=>{
+      const clusterHead=(cols[headIdx]||'').trim();
+      if(!clusterHead){ skippedBlank++; return; }
+      _tdrReport.content.clusterRows.push({
+        clusterHead,
+        required:reqIdx>=0?toNum(cols[reqIdx]):null,
+        inProgress:ipIdx>=0?toNum(cols[ipIdx]):null,
+        notStarted:nsIdx>=0?toNum(cols[nsIdx]):null
+      });
+      added++;
+    });
+    renderTrainingDetail();
+    toast(`${added} cluster row(s) imported${skippedBlank?`, ${skippedBlank} row(s) skipped (blank Cluster Head)`:''}.`, added?'success':'warning');
+  };
+  reader.readAsText(file);
+  document.getElementById('tdr-cluster-csv-input').value='';
 }
 
 // Agenda facilitator auto-fill (2026-08-06, per Sandra): the Facilitator field on each Agenda
@@ -8139,6 +8245,90 @@ function _tdOverviewReportBlocks(s){
   return {l1, summary};
 }
 
+// Self-led Overview widgets (2026-08-07, per Sandra): replaces the generic ILT-shaped sections
+// 2/3/4 (Attendance & Assessment Performance / Session L1 Report / Evaluations) with Self-led's
+// own data -- Completion Metrics, Per-Cluster Data, Survey L1 Data -- read from the same
+// training_reports record the Training Report tab writes to (via TrainingReportsDB directly,
+// NOT the _tdrReport module-level state, since Overview can render before that tab is ever
+// opened). Reuses _tdrClusterTotals/_tdrClusterRowCompleted/_tdrCompletionColor so the numbers
+// here can never disagree with the Training Report tab's own numbers.
+function _tdOverviewSltBlocks(s){
+  const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const emptyNote='<div style="font-size:12.5px;color:var(--text3)">No training report has been started yet — see the Training Report tab.</div>';
+  const goToReport='<div style="margin-top:12px"><a href="javascript:void(0)" onclick="tdDetailSwitchTab(\'report\')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600">Go to Training Report tab for details →</a></div>';
+  if(!report){
+    return {
+      completion:`<div class="card" style="padding:18px 20px;margin-bottom:16px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">2. Completion Metrics</div>${emptyNote}${goToReport}</div>`,
+      cluster:`<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">3. Per-Cluster Data</div>${emptyNote}${goToReport}</div>`,
+      survey:`<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">4. Survey L1 Data</div>${emptyNote}${goToReport}</div>`
+    };
+  }
+  const c=report.content||{};
+  const required=s.expectedParticipants;
+  const clusterRows=c.clusterRows||[];
+  const hasClusterRows=clusterRows.length>0;
+  const clusterTotals=_tdrClusterTotals(c);
+  const completionRate=(required!=null&&required>0&&hasClusterRows)?Math.round((clusterTotals.completed/required)*100):null;
+  const compColor=_tdrCompletionColor(completionRate);
+  const requiredMismatch=hasClusterRows&&required!=null&&clusterTotals.required!==required;
+  const mismatchBanner=requiredMismatch?`
+    <div style="background:var(--red-lt);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;color:#991b1b">
+      <div style="font-weight:700;margin-bottom:2px">⚠ Cluster breakdown doesn't add up</div>
+      <div>The Per-Cluster Breakdown's Required column totals <strong>${clusterTotals.required}</strong>, but this session's Required Participants is set to <strong>${required}</strong>.</div>
+    </div>`:'';
+  const completion=`<div class="card" style="padding:18px 20px;margin-bottom:16px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Completion Metrics</div>
+    ${mismatchBanner}
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+      ${_tdaKpiCard('users','#0369a1','Required Participants',required??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tdaKpiCard('target',completionRate!=null?compColor.fg:'var(--sky)','Completion Rate',completionRate!=null?completionRate+'%':'—',null,null,completionRate!=null?compColor.fg:undefined,completionRate!=null?compColor.bg:undefined)}
+      ${_tdaKpiCard('check','var(--green)','Completed',hasClusterRows?clusterTotals.completed:'—')}
+      ${_tdaKpiCard('clock','var(--amber)','In Progress',hasClusterRows?clusterTotals.inProgress:'—')}
+      ${_tdaKpiCard('x','#64748b','Not Started',hasClusterRows?clusterTotals.notStarted:'—')}
+    </div>
+    ${goToReport}
+  </div>`;
+
+  const ctd='style="text-align:center"';
+  const clusterRowsHtml=clusterRows.map(row=>{
+    const rowReq=row.required!=null?Number(row.required):null;
+    const rowDone=_tdrClusterRowCompleted(row);
+    const rowRate=(rowReq!=null&&rowReq>0)?Math.round((rowDone/rowReq)*100):null;
+    const rowColor=_tdrCompletionColor(rowRate);
+    return `<tr>
+      <td>${Utils.esc(row.clusterHead||'—')}</td>
+      <td ${ctd}><span style="font-weight:700;color:${rowRate!=null?rowColor.fg:'var(--text3)'}">${rowRate!=null?rowRate+'%':'—'}</span></td>
+      <td ${ctd}>${row.required??'—'}</td>
+      <td ${ctd}>${rowReq!=null?rowDone:'—'}</td>
+      <td ${ctd}>${row.inProgress??'—'}</td>
+      <td ${ctd}>${row.notStarted??'—'}</td>
+    </tr>`;
+  }).join('');
+  const cluster=`<div class="card" style="padding:18px 20px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Per-Cluster Data</div>
+    ${clusterRows.length?`<div class="eval-tbl-wrap"><table class="eval-tbl">
+      <tr><th>Cluster Head</th><th ${ctd}>Completion Rate</th><th ${ctd}>Required</th><th ${ctd}>Completed</th><th ${ctd}>In Progress</th><th ${ctd}>Not Started</th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No cluster breakdown recorded yet.</div>'}
+    ${goToReport}
+  </div>`;
+
+  const npsLbl=_tdrNpsLabel(c.nps);
+  const roVal=(v)=>(v!=null&&v!=='')?Utils.esc(String(v)):'—';
+  const survey=`<div class="card" style="padding:18px 20px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">4. Survey L1 Data</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+      ${_tdaKpiCard('target','#c2410c','Content Intuitiveness',roVal(c.contentIntuitiveness),'/ 5')}
+      ${_tdaKpiCard('filetext','var(--sky)','Content Relevance',roVal(c.contentRelevance),'/ 5')}
+      ${_tdaKpiCard('clipboard','#7c3aed','Material Interactivity',roVal(c.materialInteractivity),'/ 5')}
+      ${_tdaKpiCard('edit3','var(--amber)','Material Design',roVal(c.materialDesign),'/ 5')}
+      ${_tdaKpiCard('heart','var(--red)','Learner Satisfaction',roVal(c.learnerSatisfaction),'/ 5')}
+      ${_tdaKpiCard('trend','var(--green)','NPS',c.nps??'—',npsLbl)}
+    </div>
+    ${goToReport}
+  </div>`;
+
+  return {completion, cluster, survey};
+}
+
 function _tdOverviewEvaluationsBlock(s,ownerType){
   if(ownerType){
     return `<div class="card" style="padding:18px 20px">
@@ -8267,6 +8457,43 @@ function _tdOverviewStageDot(state){
    data-driven status strip. Stages support 3 states -- pending/in_progress/done -- so partial
    completion (e.g. half the roster assessed) shows as in_progress rather than a binary toggle. */
 function _tdOverviewJourneySteps(s,ownerType){
+  // Self-led progress steps (2026-08-07, per Sandra): entirely different sequence from the ILT
+  // steps below -- Scheduled, Ongoing, Completion Tracked, Report Submitted. There's no separate
+  // Attendance/Assessed/Evaluated concept for Self-led. "Ongoing" tracks the session's own
+  // Start/End Date range (pending before it starts, done once it's ended). "Completion Tracked"
+  // runs CONCURRENTLY with Ongoing rather than after it, per Sandra: completion is tracked
+  // throughout the implementation period, not as a follow-up step -- so it goes in_progress as
+  // soon as any cluster row exists, and done once the cluster breakdown reconciles with Required
+  // Participants (same check as the required-headcount guardrail on the Training Report tab).
+  if(ownerType){
+    const steps=[{label:'Scheduled',state:'done'}];
+    const today=_todayStr(), start=s.trainingDate, end=s.endDate||s.trainingDate;
+    let ongoingState='pending', ongoingSub=null;
+    if(start){
+      if(today<start){ ongoingState='pending'; }
+      else if(end && today>end){ ongoingState='done'; ongoingSub=`Ended ${Utils.formatDate(end)}`; }
+      else { ongoingState='in_progress'; }
+    }
+    steps.push({label:'Ongoing',state:ongoingState,sub:ongoingSub});
+
+    const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+    const c=report?(report.content||{}):{};
+    const hasClusterRows=(c.clusterRows||[]).length>0;
+    const required=s.expectedParticipants;
+    const clusterTotals=_tdrClusterTotals(c);
+    const reconciled=hasClusterRows && required!=null && clusterTotals.required===required;
+    let compState='pending', compSub=null;
+    if(hasClusterRows){
+      compState=reconciled?'done':'in_progress';
+      compSub=`${clusterTotals.required} of ${required??'—'} required tracked`;
+    }
+    steps.push({label:'Completion Tracked',state:compState,sub:compSub});
+
+    const reportState=report?(report.status==='submitted'?'done':'in_progress'):'pending';
+    steps.push({label:'Report Submitted',state:reportState});
+    return steps;
+  }
+
   const partRows=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
   const totalP=partRows.length;
   const _tdojDayList=_tdaDayList(s);
@@ -8331,6 +8558,33 @@ function _tdOverviewJourneyBlockVertical(s,ownerType){
 }
 
 function _tddOverviewView(s,ownerType,personLabel,personName){
+  // Self-led Overview (2026-08-07, per Sandra): sections 2/3/4 are entirely different from the
+  // ILT layout below -- Completion Metrics + Per-Cluster Data in the wider left column (the
+  // cluster table needs the width for its 6 columns), Survey L1 Data in the right column where
+  // Summary/Actions used to sit (neither applies to Self-led). Section 1 (Session Information)
+  // and the journey/progress block are shared with the ILT path below (the journey steps
+  // themselves already branch on ownerType inside _tdOverviewJourneySteps).
+  if(ownerType){
+    const {completion,cluster,survey}=_tdOverviewSltBlocks(s);
+    return `
+      <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:stretch;margin-bottom:16px">
+        <div class="card" id="tdd-session-info-card" style="padding:18px 20px;height:100%;box-sizing:border-box">
+          ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
+        </div>
+        ${_tdOverviewJourneyBlockVertical(s,ownerType)}
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
+        <div>
+          ${completion}
+          ${cluster}
+        </div>
+        <div>
+          ${survey}
+        </div>
+      </div>
+    `;
+  }
+
   const {l1, summary}=_tdOverviewReportBlocks(s);
   // Export Summary lives only on the Training Report tab (exportBarReport in _tdrRenderTab) --
   // the header-level "Actions" dropdown that used to combine it with Request Reopen was removed
