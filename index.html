@@ -5481,7 +5481,9 @@ function _tdVenueTypeFor(deliveryType){ return deliveryType==='Self-led'?'platfo
 // Modality (In-Person/Virtual, from the `modalities` lookup table via modalityId) applies to
 // ILT, Self-led, and External sessions -- VILT is excluded because it is inherently virtual by
 // definition, so asking would be redundant (2026-08-05, supersedes phase35's ILT/VILT-only gate).
-function _tdShowsModality(deliveryType){ return deliveryType==='ILT'||deliveryType==='Self-led'||deliveryType==='External'; }
+// Delivery Method (2026-08-06, per Sandra): Self-led sessions don't need a Delivery Method
+// field at all -- removed from that set, ILT/External still show it.
+function _tdShowsModality(deliveryType){ return deliveryType==='ILT'||deliveryType==='External'; }
 
 // Populates a Venue/Platform <select id="{prefix}-venue"> filtered by delivery type -- ILT/VILT/
 // External see physical venues, Self-led sees platform entries (relabelled "Platform" in the UI).
@@ -7169,6 +7171,20 @@ function _tdrEnsureLoaded(sessionId){
     c.recommendations=c.recommendations||'';
     c.pendingActions=c.pendingActions||'';
     c.additionalRemarks=c.additionalRemarks||'';
+    // Self-led Training Report (2026-08-06, Phase66, per Sandra): a completely different set of
+    // content fields, only ever surfaced for mandatory Self-led sessions (the Report tab is
+    // hidden entirely otherwise). No Agenda Delivery / Summary for this session type -- Survey
+    // L1 ratings + a completion/cluster breakdown instead. All manual entry (no per-participant
+    // survey-collection or attendance-tracking mechanism exists for Self-led sessions).
+    c.contentIntuitiveness=c.contentIntuitiveness??null;
+    c.contentRelevance=c.contentRelevance??null;
+    c.materialInteractivity=c.materialInteractivity??null;
+    c.materialDesign=c.materialDesign??null;
+    c.learnerSatisfaction=c.learnerSatisfaction??null;
+    c.completed=c.completed??null;
+    c.inProgress=c.inProgress??null;
+    c.notStarted=c.notStarted??null;
+    c.clusterRows=c.clusterRows||[];
     _tdrLoadedFor=sessionId;
     _tdrEditMode=false;
   }
@@ -7225,6 +7241,70 @@ function _tdrRenderTab(s){
   const _tdrRatingBox=(field,val,max)=>l1Editing
     ?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="0" max="${max}" step="0.1" placeholder="—" value="${val??''}" ${dis} onblur="_tdrSetField('${field}',this.value)">`
     :((val!=null&&val!=='')?Utils.esc(String(val)):'—');
+  const _tdrCountBox=(field,val)=>l1Editing
+    ?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="0" step="1" placeholder="—" value="${val??''}" ${dis} onblur="_tdrSetField('${field}',this.value)">`
+    :((val!=null&&val!=='')?Utils.esc(String(val)):'—');
+
+  // Self-led Training Report (2026-08-06, Phase66, per Sandra's explicit spec): entirely
+  // different content from the ILT/External layout below -- Survey (L1) Evaluation Data with a
+  // different KPI set, no Agenda Delivery, no Summary. Only ever rendered when isMandatory (the
+  // Report tab itself is hidden for non-mandatory Self-led sessions, per Phase65).
+  const grp=_tdFieldGroup(s.deliveryType);
+  if(grp==='owner'){
+    const surveyMetrics=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${_tdaKpiCard('target','#c2410c','Content Intuitiveness',_tdrRatingBox('contentIntuitiveness',c.contentIntuitiveness,5),'/ 5')}
+        ${_tdaKpiCard('filetext','var(--sky)','Content Relevance',_tdrRatingBox('contentRelevance',c.contentRelevance,5),'/ 5')}
+        ${_tdaKpiCard('clipboard','#7c3aed','Material Interactivity',_tdrRatingBox('materialInteractivity',c.materialInteractivity,5),'/ 5')}
+        ${_tdaKpiCard('edit3','var(--amber)','Material Design',_tdrRatingBox('materialDesign',c.materialDesign,5),'/ 5')}
+        ${_tdaKpiCard('heart','var(--red)','Learner Satisfaction',_tdrRatingBox('learnerSatisfaction',c.learnerSatisfaction,5),'/ 5')}
+        ${_tdaKpiCard('trend','var(--green)','NPS',l1Editing?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="-100" max="100" placeholder="—" value="${c.nps??''}" ${dis} onblur="_tdrSetField('nps',this.value)">`:(c.nps??'—'),npsLbl)}
+      </div>`;
+    const l1CardSlt=`
+      <div class="card" style="padding:18px 20px;margin-bottom:16px">
+        <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">1. Survey (L1) Evaluation Data</div>
+        ${surveyMetrics}
+      </div>`;
+
+    // Required Participants is NOT re-entered here -- pulled straight from the session's own
+    // field (Session Information, Overview tab) so there's exactly one place it's set.
+    const required=s.expectedParticipants;
+    const completionRate=(required!=null&&required>0&&c.completed!=null)?Math.round((c.completed/required)*100):null;
+    const completionMetrics=`
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+        ${_tdaKpiCard('users','#0369a1','Required Participants',required??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+        ${_tdaKpiCard('target','var(--sky)','Completion Rate',completionRate!=null?completionRate+'%':'—')}
+        ${_tdaKpiCard('check','var(--green)','Completed',_tdrCountBox('completed',c.completed))}
+        ${_tdaKpiCard('clock','var(--amber)','In Progress',_tdrCountBox('inProgress',c.inProgress))}
+        ${_tdaKpiCard('x','#64748b','Not Started',_tdrCountBox('notStarted',c.notStarted))}
+      </div>`;
+    const completionCard=`
+      <div class="card" style="padding:18px 20px;margin-bottom:16px">
+        <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Completion Summary</div>
+        ${completionMetrics}
+      </div>`;
+
+    const clusterRowsHtml=(c.clusterRows||[]).map((row,i)=>`<tr>
+      <td><input type="text" class="form-control" style="min-width:160px" placeholder="Cluster Head" value="${Utils.esc(row.clusterHead||'')}" ${dis} onblur="_tdrSetClusterField(${i},'clusterHead',this.value)"></td>
+      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.required??''}" ${dis} onblur="_tdrSetClusterField(${i},'required',this.value)"></td>
+      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.participants??''}" ${dis} onblur="_tdrSetClusterField(${i},'participants',this.value)"></td>
+      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.completed??''}" ${dis} onblur="_tdrSetClusterField(${i},'completed',this.value)"></td>
+      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.inProgress??''}" ${dis} onblur="_tdrSetClusterField(${i},'inProgress',this.value)"></td>
+      <td><input type="number" class="form-control" style="width:80px" min="0" step="1" value="${row.notStarted??''}" ${dis} onblur="_tdrSetClusterField(${i},'notStarted',this.value)"></td>
+      <td>${readOnly?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveClusterRow(${i})" title="Remove">✕</button>`}</td>
+    </tr>`).join('');
+    const clusterCard=`
+      <div class="card" style="padding:18px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:700;font-size:14.5px">3. Per-Cluster Breakdown</div>
+          ${readOnly?'':`<button class="btn btn-sm btn-secondary" onclick="_tdrAddClusterRow()">+ Add Cluster</button>`}
+        </div>
+        ${(c.clusterRows||[]).length?`<div class="eval-tbl-wrap"><table class="eval-tbl">
+          <tr><th>Cluster Head</th><th>Required</th><th>Participants</th><th>Completed</th><th>In Progress</th><th>Not Started</th><th></th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No clusters yet. Click "+ Add Cluster" to break down completion by cluster.</div>'}
+      </div>`;
+
+    return `${toolbar}${locked?_tdrReopenBlock():''}${l1CardSlt}${completionCard}${clusterCard}${locked?_tdrReopenActionsBar(s):''}`;
+  }
 
   const l1Metrics=`
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
@@ -7322,8 +7402,27 @@ function _tdrRenderTab(s){
 }
 
 function _tdrSetField(field,value){
-  const numericFields=['responses','contentRating','materialsRating','facilitationRating','overallSatisfaction','csat','nps'];
+  const numericFields=['responses','contentRating','materialsRating','facilitationRating','overallSatisfaction','csat','nps',
+    'contentIntuitiveness','contentRelevance','materialInteractivity','materialDesign','learnerSatisfaction',
+    'completed','inProgress','notStarted'];
   _tdrReport.content[field]=numericFields.includes(field)?(value===''?null:Number(value)):value;
+}
+
+// Self-led cluster breakdown table (2026-08-06, Phase66): freeform rows, not tied to Departments
+// or any other existing list -- Cluster Head is just a name typed in per row, same add/remove-row
+// pattern as Agenda Delivery above.
+function _tdrAddClusterRow(){
+  _tdrReport.content.clusterRows.push({clusterHead:'',required:null,participants:null,completed:null,inProgress:null,notStarted:null});
+  renderTrainingDetail();
+}
+function _tdrSetClusterField(i,field,value){
+  const row=_tdrReport.content.clusterRows[i]; if(!row) return;
+  const numericFields=['required','participants','completed','inProgress','notStarted'];
+  row[field]=numericFields.includes(field)?(value===''?null:Number(value)):value;
+}
+function _tdrRemoveClusterRow(i){
+  _tdrReport.content.clusterRows.splice(i,1);
+  renderTrainingDetail();
 }
 
 // Agenda facilitator auto-fill (2026-08-06, per Sandra): the Facilitator field on each Agenda
@@ -7701,7 +7800,12 @@ function renderTrainingDetail(){
   // Self-led sessions (2026-08-06, Phase59): no trainer delivers/evaluates a self-led session, so
   // Attendance & Performance and Trainer Evaluation don't apply -- hide both tab buttons entirely
   // rather than showing empty/placeholder content.
-  const visibleTabs=_tdGrp==='owner'?TD_DETAIL_TABS.filter(t=>t.id!=='participants'&&t.id!=='trainer-eval'):TD_DETAIL_TABS;
+  // Phase65 (2026-08-06, per Sandra): a non-mandatory Self-led session also isn't monitored via a
+  // Training Report -- hide that tab too, leaving only Overview + Audit History for calendar-
+  // plotting purposes. Mandatory Self-led keeps the Report tab (with SLT-specific content).
+  const visibleTabs=_tdGrp==='owner'
+    ?TD_DETAIL_TABS.filter(t=>t.id!=='participants'&&t.id!=='trainer-eval'&&(t.id!=='report'||s.isMandatory))
+    :TD_DETAIL_TABS;
   if(!visibleTabs.some(t=>t.id===_tdDetailTab)) _tdDetailTab='overview';
   const tabsHtml=visibleTabs.map(t=>`<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(t.label)}</button>`).join('');
 
