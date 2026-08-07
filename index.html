@@ -7325,6 +7325,13 @@ function _tdrRenderTab(s){
     // and only Required/In Progress/Not Started are ever typed in. Rows whose In Progress + Not
     // Started exceeds Required are flagged (can't have more people mid/not-started than the
     // cluster actually requires) with a tinted row background instead of a silent negative number.
+    // Cluster rows are only editable in Edit mode (2026-08-07 fix, per Sandra: fields were
+    // rendered as live <input>s regardless of the Edit/View toggle -- only true submitted-lock
+    // disabled them -- so a session that had never been submitted looked "always editable" even
+    // while viewing. Mirrors the l1Editing/editing pattern used for the L1 rating boxes and the
+    // ILT Agenda Delivery rows above: outside Edit mode, render plain read-only text instead of
+    // inputs, and hide Add Cluster/Import CSV/Download Template/Remove entirely.
+    const clusterEditing=!readOnly && _tdrEditMode;
     const centerTh='style="text-align:center"', centerTd='style="text-align:center"';
     const clusterRowsHtml=(c.clusterRows||[]).map((row,i)=>{
       const rowReq=row.required!=null?Number(row.required):null;
@@ -7333,25 +7340,25 @@ function _tdrRenderTab(s){
       const rowColor=_tdrCompletionColor(rowRate);
       const overCount=_tdrClusterRowOvercount(row);
       return `<tr ${overCount?'style="background:var(--red-lt)" title="In Progress + Not Started exceeds Required for this cluster"':''}>
-      <td><input type="text" class="form-control" style="min-width:160px" placeholder="Cluster Head" value="${Utils.esc(row.clusterHead||'')}" ${dis} onblur="_tdrSetClusterField(${i},'clusterHead',this.value)"></td>
+      <td>${clusterEditing?`<input type="text" class="form-control" style="min-width:160px" placeholder="Cluster Head" value="${Utils.esc(row.clusterHead||'')}" ${dis} onblur="_tdrSetClusterField(${i},'clusterHead',this.value)">`:Utils.esc(row.clusterHead||'—')}</td>
       <td ${centerTd}><span style="font-weight:700;color:${rowRate!=null?rowColor.fg:'var(--text3)'}">${rowRate!=null?rowRate+'%':'—'}</span></td>
-      <td ${centerTd}><input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.required??''}" ${dis} onblur="_tdrSetClusterField(${i},'required',this.value)"></td>
+      <td ${centerTd}>${clusterEditing?`<input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.required??''}" ${dis} onblur="_tdrSetClusterField(${i},'required',this.value)">`:(row.required??'—')}</td>
       <td ${centerTd}>${rowReq!=null?rowDone:'—'}</td>
-      <td ${centerTd}><input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.inProgress??''}" ${dis} onblur="_tdrSetClusterField(${i},'inProgress',this.value)"></td>
-      <td ${centerTd}><input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.notStarted??''}" ${dis} onblur="_tdrSetClusterField(${i},'notStarted',this.value)"></td>
-      <td>${readOnly?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveClusterRow(${i})" title="Remove">✕</button>`}</td>
+      <td ${centerTd}>${clusterEditing?`<input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.inProgress??''}" ${dis} onblur="_tdrSetClusterField(${i},'inProgress',this.value)">`:(row.inProgress??'—')}</td>
+      <td ${centerTd}>${clusterEditing?`<input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.notStarted??''}" ${dis} onblur="_tdrSetClusterField(${i},'notStarted',this.value)">`:(row.notStarted??'—')}</td>
+      <td>${clusterEditing?`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdrRemoveClusterRow(${i})" title="Remove">✕</button>`:''}</td>
     </tr>`;
     }).join('');
     const clusterCard=`
       <div class="card" style="padding:18px 20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div style="font-weight:700;font-size:14.5px">3. Per-Cluster Breakdown</div>
-          ${readOnly?'':`<div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${clusterEditing?`<div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm btn-secondary" onclick="_tdrAddClusterRow()">+ Add Cluster</button>
             <button class="btn btn-sm btn-secondary" onclick="document.getElementById('tdr-cluster-csv-input').click()">⇪ Import CSV</button>
             <input type="file" id="tdr-cluster-csv-input" accept=".csv" style="display:none" onchange="_tdrClusterHandleCSVFile(this.files[0])">
             <button class="btn btn-sm btn-ghost" onclick="_tdrClusterDownloadCSVTemplate()">⇩ Download Template</button>
-          </div>`}
+          </div>`:''}
         </div>
         ${(c.clusterRows||[]).length?`<div class="eval-tbl-wrap"><table class="eval-tbl">
           <tr><th>Cluster Head</th><th ${centerTh}>Completion Rate</th><th ${centerTh}>Required</th><th ${centerTh}>Completed</th><th ${centerTh}>In Progress</th><th ${centerTh}>Not Started</th><th></th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No clusters yet. Click "+ Add Cluster" to break down completion by cluster.</div>'}
@@ -7705,7 +7712,12 @@ function _tdrValidateForSubmit(sess){
 
 function _tdrSubmitReport(){
   const _tdrSess=TrSessionDB.byId(_tdrReport.sessionId);
-  if(!_tdrSess||_tdrSess.status!=='completed'){
+  const _tdrSubGrp=_tdFieldGroup(_tdrSess?.deliveryType);
+  // Attendance & Performance completeness gate doesn't apply to Self-led (2026-08-07 bugfix, per
+  // Sandra): Self-led sessions have no Attendance & Performance tab at all (hidden since Phase59),
+  // so their session.status is never tagged 'completed' via that workflow -- gating submission on
+  // it unconditionally blocked every Self-led report. ILT/External still require it.
+  if(!_tdrSess||(_tdrSubGrp!=='owner'&&_tdrSess.status!=='completed')){
     toast('Attendance & Performance must be tagged Complete before the Training Report can be submitted.','error');
     return;
   }
@@ -7715,7 +7727,6 @@ function _tdrSubmitReport(){
     toast('The Training Report cannot be submitted before the session date. You can submit starting on the day of the session.','error');
     return;
   }
-  const _tdrSubGrp=_tdFieldGroup(_tdrSess.deliveryType);
   // Recording Link / Exemption gate doesn't apply to Self-led (2026-08-07, per Sandra): Self-led
   // has no recording for an evaluator to watch, so there's nothing to require or exempt here --
   // Self-led is instead gated on the required-headcount guardrail below (via _tdrValidateForSubmit).
@@ -8447,9 +8458,12 @@ const _TD_STAGE_STYLE={
   cancelled:{bg:'var(--red)',icon:'x'}
 };
 
-function _tdOverviewStageDot(state){
+function _tdOverviewStageDot(state,bgOverride){
   const cfg=_TD_STAGE_STYLE[state]||_TD_STAGE_STYLE.pending;
-  return `<div style="width:30px;height:30px;border-radius:50%;background:${cfg.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${_tdIconSvg(cfg.icon,'#fff',15)}</div>`;
+  // bgOverride (2026-08-07, per Sandra): lets a step's dot use the red/amber/green completion-rate
+  // legend instead of the generic pending/in_progress/done palette -- see the Completion Tracked
+  // step below, which colors by actual completion rate rather than a 3-state status.
+  return `<div style="width:30px;height:30px;border-radius:50%;background:${bgOverride||cfg.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${_tdIconSvg(cfg.icon,'#fff',15)}</div>`;
 }
 
 /* Journey/progress stepper (2026-07-30) -- resurrects the original "Next Step" placeholder's
@@ -8482,12 +8496,17 @@ function _tdOverviewJourneySteps(s,ownerType){
     const required=s.expectedParticipants;
     const clusterTotals=_tdrClusterTotals(c);
     const reconciled=hasClusterRows && required!=null && clusterTotals.required===required;
-    let compState='pending', compSub=null;
+    // Dot color matches the actual completion rate (red/amber/green legend) rather than the
+    // generic pending/in_progress/done palette (2026-08-07 fix, per Sandra: don't show a raw
+    // "X of Y required tracked" count here -- just tag the step "Completion Tracked" and let the
+    // dot color communicate how far along it is, consistent with Completion Rate everywhere else).
+    let compState='pending', compDotColor=null;
     if(hasClusterRows){
       compState=reconciled?'done':'in_progress';
-      compSub=`${clusterTotals.required} of ${required??'—'} required tracked`;
+      const compRate=(required!=null&&required>0)?Math.round((clusterTotals.completed/required)*100):null;
+      compDotColor=_tdrCompletionColor(compRate).fg;
     }
-    steps.push({label:'Completion Tracked',state:compState,sub:compSub});
+    steps.push({label:'Completion Tracked',state:compState,dotColor:compDotColor});
 
     const reportState=report?(report.status==='submitted'?'done':'in_progress'):'pending';
     steps.push({label:'Report Submitted',state:reportState});
@@ -8545,7 +8564,7 @@ function _tdOverviewJourneyBlockVertical(s,ownerType){
   const steps=_tdOverviewJourneySteps(s,ownerType);
   const rowsHtml=steps.map((st,i)=>`<div style="display:flex;gap:12px;position:relative">
     ${i<steps.length-1?`<div style="position:absolute;left:14px;top:30px;bottom:-18px;width:2px;background:var(--border)"></div>`:''}
-    <div style="position:relative;z-index:1;flex-shrink:0">${_tdOverviewStageDot(st.state)}</div>
+    <div style="position:relative;z-index:1;flex-shrink:0">${_tdOverviewStageDot(st.state,st.dotColor)}</div>
     <div style="padding-top:4px;padding-bottom:18px;min-width:0">
       <div style="font-size:12.5px;font-weight:600;color:var(--text)">${st.label}</div>
       ${st.sub?`<div style="font-size:10.5px;color:var(--text3);margin-top:1px">${st.sub}</div>`:''}
