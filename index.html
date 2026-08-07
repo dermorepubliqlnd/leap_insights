@@ -1759,6 +1759,19 @@
   </div>
 </div>
 
+<!-- ══ PANEL: CHECKLIST TEMPLATE (Add/Edit) ════════════ -->
+<div id="modal-checklisttpl" class="drawer-overlay" onclick="if(event.target===this)closeChecklistTemplateDrawer()">
+  <div class="drawer" onclick="event.stopPropagation()" style="width:min(90vw,820px)">
+    <div class="drawer-hdr">
+      <div class="drawer-hdr-meta">
+        <div class="drawer-title" id="cktpl-title">New Checklist Template</div>
+      </div>
+      <button class="modal-close" onclick="closeChecklistTemplateDrawer()" style="width:32px;height:32px;font-size:16px;flex-shrink:0">✕</button>
+    </div>
+    <div class="drawer-body" id="cktpl-body"></div>
+  </div>
+</div>
+
 <!-- ══ PANEL: LOAD AGENDA FROM TEMPLATE (Training Report) ════════════ -->
 <div id="modal-agendatplpick" class="drawer-overlay" onclick="if(event.target===this)closeModal('agendatplpick')">
   <div class="drawer" onclick="event.stopPropagation()" style="width:min(80vw,480px)">
@@ -2455,6 +2468,11 @@ const _FIELD_MAPS = {
   // a genuinely different shape from the flat name-only lists above (Categories/Audiences/etc.)
   // -- managed via a bespoke Settings drawer, not the generic renderSelList single-name-field UI.
   agenda_templates:{ id:'id', title:'title', items:'items', isActive:'is_active', createdAt:'created_at', updatedAt:'updated_at' },
+  // Checklist Templates (Phase D2, 2026-08-07, per Sandra): title + a jsonb array of
+  // {task,description,dueTimeline,mandatory,phase} items. Same bespoke-drawer pattern as Agenda
+  // Templates above (title+items don't fit the generic single-name Sel list UI). `phase` is
+  // single-select: 'pre'|'during'|'post' (Pre-Training / Training Proper / Post-Training).
+  checklist_templates:{ id:'id', title:'title', items:'items', isActive:'is_active', createdAt:'created_at', updatedAt:'updated_at' },
   training_sessions:{
     id:'id', code:'code', trainerId:'trainer_id', trainingProgram:'training_program', batchNo:'batch_no',
     trainingDate:'training_date', venueId:'venue_id', modalityId:'modality_id', recordingLink:'recording_link',
@@ -2482,7 +2500,18 @@ const _FIELD_MAPS = {
     createdBy:'created_by', coFacilitatorGuestName:'co_facilitator_guest_name',
     // Self-led Session Information redesign (2026-08-06, Phase58): new boolean tag shown as a
     // "Mandatory" checkbox/badge in the SLT-specific Row 1 layout.
-    isMandatory:'is_mandatory'
+    isMandatory:'is_mandatory',
+    // Trainer Checklist template selector (Phase D2, 2026-08-07): which Checklist Template
+    // (see checklist_templates) applies to this ILT session. Additive, nullable.
+    checklistTemplateId:'checklist_template_id'
+  },
+  // Per-session Checklist progress (Phase D2, 2026-08-07): a SNAPSHOT of the template's items at
+  // the time the checklist tab was first opened for this session, plus status/completedOn per
+  // item -- deliberately a separate table/copy from checklist_templates so a later edit to the
+  // template does not retroactively alter or corrupt a session's already-recorded history.
+  session_checklists:{
+    id:'id', sessionId:'session_id', templateId:'template_id', templateTitle:'template_title',
+    items:'items', createdAt:'created_at', updatedAt:'updated_at'
   },
   session_participants:{
     id:'id', sessionId:'session_id', profileId:'profile_id', externalName:'external_name',
@@ -2580,7 +2609,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -2640,6 +2669,7 @@ const Store = {
   SESSION:'leap_session_v1', FIRSTRUN:`leap_frun_${STORE_VER}`,
   POS:'positions', VENUES:'venues', MODALS:'modalities', DELIVERABLES:'deliverables',
   CATEGORIES:'categories', AUDIENCES:'audiences', AGENDA_TEMPLATES:'agenda_templates',
+  CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
   DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
@@ -4577,16 +4607,18 @@ let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
 let _settingsShowInactive={};  // per-key: true=show inactive, false=hide
 
 function renderSettings(){
-  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'attendance',label:'Attendance'},{id:'backup',label:'Data & Backup'}];
+  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'backup',label:'Data & Backup'}];
   document.getElementById('stabs').innerHTML=sections.map(t=>`<div class="stab${t.id===activeSettingsSection?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
   document.querySelectorAll('#stabs .stab').forEach(el=>el.addEventListener('click',()=>{activeSettingsSection=el.dataset.stab;renderSettings();}));
   document.getElementById('stab-panes').innerHTML=
     `<div class="stab-pane${activeSettingsSection==='lists'?' active':''}" id="spane-lists"></div>`+
     `<div class="stab-pane${activeSettingsSection==='templates'?' active':''}" id="spane-templates"></div>`+
+    `<div class="stab-pane${activeSettingsSection==='checklisttpl'?' active':''}" id="spane-checklisttpl"></div>`+
     `<div class="stab-pane${activeSettingsSection==='attendance'?' active':''}" id="spane-attendance"></div>`+
     `<div class="stab-pane${activeSettingsSection==='backup'?' active':''}" id="spane-backup"></div>`;
   if(activeSettingsSection==='lists') renderListsOverview();
   else if(activeSettingsSection==='templates') renderAgendaTemplatesOverview();
+  else if(activeSettingsSection==='checklisttpl') renderChecklistTemplatesOverview();
   else if(activeSettingsSection==='attendance') renderAttendanceSettingsPane();
   else renderBackupPane();
   renderListManageDrawer();
@@ -4784,6 +4816,193 @@ function deleteAgendaTemplate(id){
   const t=AgendaTemplateDB.byId(id); if(!t) return;
   confirm$('Delete Template',`Permanently delete <strong>${Utils.esc(t.title)}</strong>? This cannot be undone.<br><br>Sessions that already used this template keep their own copy of the agenda — deleting the template does not change those records.`,'Delete',async()=>{
     try{ await AgendaTemplateDB.delete(id); toast(`${t.title} deleted.`,'info'); renderSettings(); }catch(e){ /* error already surfaced */ }
+  });
+}
+
+// Checklist Templates (Phase D2, 2026-08-07, per Sandra): reusable Trainer Checklist blueprints
+// for ILT sessions -- same bespoke-drawer CRUD pattern as Agenda Templates above, just with a
+// richer per-item shape (Task/Description/Due-Ideal Timeline/Mandatory/Phase) instead of
+// Topic/Duration. CRUD only in this phase -- no session-facing UI reads this yet (see Phase D2
+// Overview template-selector and Checklist-tab work, tracked separately).
+const CKTPL_PHASES=[{id:'pre',label:'Pre-Training',color:'#0369a1',bg:'#e0f2fe'},{id:'during',label:'Training Proper',color:'#b45309',bg:'#fef3c7'},{id:'post',label:'Post-Training',color:'#15803d',bg:'#dcfce7'}];
+function _cktplPhaseInfo(id){ return CKTPL_PHASES.find(p=>p.id===id)||CKTPL_PHASES[0]; }
+
+function renderChecklistTemplatesOverview(){
+  const pane=document.getElementById('spane-checklisttpl'); if(!pane) return;
+  const all=ChecklistTemplateDB.all().slice().sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+  const rows=all.length?all.map(t=>`<tr>
+      <td><strong style="font-size:13.5px">${Utils.esc(t.title)}</strong>${t.isActive?'':' <span class="badge" style="background:#f1f5f9;color:#64748b;margin-left:6px">Inactive</span>'}</td>
+      <td style="font-size:13px;color:var(--text2)">${(t.items||[]).length} item${(t.items||[]).length!==1?'s':''}</td>
+      <td><div class="td-acts">
+        <button class="btn btn-sm btn-secondary" onclick="openChecklistTemplateDrawer('${t.id}')">Edit</button>
+        <button class="btn btn-sm btn-ghost" onclick="toggleChecklistTemplateActive('${t.id}')">${t.isActive?'Deactivate':'Activate'}</button>
+        <button class="btn btn-sm btn-ghost" style="color:#dc2626" onclick="deleteChecklistTemplate('${t.id}')">Delete</button>
+      </div></td>
+    </tr>`).join(''):'<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text3);font-size:13px">No checklist templates yet. Click "+ New Template" to create one.</td></tr>';
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Checklist Templates</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Reusable Trainer Checklist blueprints for ILT sessions. Assign one to a session from its Overview tab, then track progress against it on that session's Checklist tab.</div></div>
+      <button class="btn btn-sm btn-primary" onclick="openChecklistTemplateDrawer(null)">+ New Template</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="stg-tbl"><thead><tr><th>Template</th><th style="width:120px">Items</th><th style="width:220px">Actions</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+let _cktplDraft=null; // {id:null|string, title:'', items:[{task,description,dueTimeline,mandatory,phase}], isActive}
+function _cktplBlankItem(){ return {task:'',description:'',dueTimeline:'',mandatory:false,phase:'pre'}; }
+
+function openChecklistTemplateDrawer(id){
+  if(id){
+    const t=ChecklistTemplateDB.byId(id);
+    if(!t) return;
+    _cktplDraft={id:t.id, title:t.title||'', items:(t.items&&t.items.length)?t.items.map(i=>({task:i.task||'',description:i.description||'',dueTimeline:i.dueTimeline||'',mandatory:!!i.mandatory,phase:i.phase||'pre'})):[_cktplBlankItem()], isActive:t.isActive!==false};
+  } else {
+    _cktplDraft={id:null, title:'', items:[_cktplBlankItem()], isActive:true};
+  }
+  renderChecklistTemplateDrawer();
+  openModal('checklisttpl');
+}
+function closeChecklistTemplateDrawer(){ closeModal('checklisttpl'); _cktplDraft=null; }
+
+function renderChecklistTemplateDrawer(){
+  const body=document.getElementById('cktpl-body'); if(!body||!_cktplDraft) return;
+  const titleEl=document.getElementById('cktpl-title'); if(titleEl) titleEl.textContent=_cktplDraft.id?'Edit Checklist Template':'New Checklist Template';
+  const rows=_cktplDraft.items.map((it,i)=>{
+    const phaseBtns=CKTPL_PHASES.map(p=>{
+      const active=it.phase===p.id;
+      return `<button type="button" onclick="_cktplSetItemField(${i},'phase','${p.id}')" style="flex:1;padding:6px 8px;font-size:11px;font-weight:600;border-radius:6px;border:1.5px solid ${active?p.color:'#e2e8f0'};background:${active?p.bg:'#fff'};color:${active?p.color:'var(--text3)'};cursor:pointer">${p.label}</button>`;
+    }).join('');
+    return `<div class="card" style="padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px">
+        <input type="text" class="form-control" style="flex:2" placeholder="Task" value="${Utils.esc(it.task)}" oninput="_cktplSetItemField(${i},'task',this.value)">
+        <input type="text" class="form-control" style="flex:1;max-width:170px" placeholder="Due / Ideal Timeline" value="${Utils.esc(it.dueTimeline)}" oninput="_cktplSetItemField(${i},'dueTimeline',this.value)">
+        <button class="btn btn-sm btn-ghost" style="color:var(--red);flex-shrink:0" onclick="_cktplRemoveItemRow(${i})" title="Remove">✕</button>
+      </div>
+      <input type="text" class="form-control" style="margin-bottom:8px" placeholder="Description" value="${Utils.esc(it.description)}" oninput="_cktplSetItemField(${i},'description',this.value)">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);flex-shrink:0;cursor:pointer"><input type="checkbox" ${it.mandatory?'checked':''} onchange="_cktplSetItemField(${i},'mandatory',this.checked)"> Mandatory</label>
+        <div style="display:flex;gap:6px;flex:1;min-width:280px">${phaseBtns}</div>
+      </div>
+    </div>`;
+  }).join('');
+  body.innerHTML=`
+    <div class="form-group">
+      <label class="form-label">Template Title <span class="req">*</span></label>
+      <input type="text" class="form-control" id="cktpl-title-input" placeholder="e.g. Standard ILT Trainer Checklist" value="${Utils.esc(_cktplDraft.title)}" oninput="_cktplSetTitle(this.value)">
+    </div>
+    <div class="drawer-sec-title" style="margin-top:16px">Checklist Items</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Phase controls which of the three Checklist-tab columns (Pre-Training / Training Proper / Post-Training) this item shows under, once a session is running against this template.</div>
+    <div id="cktpl-items">${rows}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-secondary" onclick="_cktplAddItemRow()">+ Add Item</button>
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('cktpl-csv-input').click()">⇪ Import CSV</button>
+      <input type="file" id="cktpl-csv-input" accept=".csv" style="display:none" onchange="_cktplHandleCSVFile(this.files[0])">
+      <button class="btn btn-sm btn-ghost" onclick="_cktplDownloadCSVTemplate()">⇩ Download Template</button>
+    </div>
+    <div class="modal-err hidden" id="cktpl-error" style="margin-top:12px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary btn-sm" onclick="saveChecklistTemplate()">Save Template</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeChecklistTemplateDrawer()">Cancel</button>
+    </div>`;
+}
+function _cktplSetTitle(v){ if(_cktplDraft) _cktplDraft.title=v; }
+function _cktplSetItemField(i,field,val){
+  if(!_cktplDraft||!_cktplDraft.items[i]) return;
+  _cktplDraft.items[i][field]=val;
+  if(field==='phase'||field==='mandatory') renderChecklistTemplateDrawer(); // re-render so the segmented control / checkbox reflect the new state
+}
+function _cktplAddItemRow(){ if(!_cktplDraft) return; _cktplDraft.items.push(_cktplBlankItem()); renderChecklistTemplateDrawer(); }
+function _cktplRemoveItemRow(i){ if(!_cktplDraft) return; _cktplDraft.items.splice(i,1); if(!_cktplDraft.items.length) _cktplDraft.items.push(_cktplBlankItem()); renderChecklistTemplateDrawer(); }
+
+// CSV import/template for Checklist Templates (Phase D2, 2026-08-07) -- same _tdaParseCSV parser
+// reused elsewhere (Participant Roster / Agenda Templates). Columns: Task, Description,
+// Due/Ideal Timeline, Mandatory (Yes/No/TRUE/1), Phase (Pre-Training/Training Proper/Post-Training).
+function _cktplDownloadCSVTemplate(){
+  const csv = 'Task,Description,Due/Ideal Timeline,Mandatory,Phase\nPrepare training materials,Print handouts and load slides,1 day before,Yes,Pre-Training\nConduct attendance check,Confirm all participants signed in,Start of session,Yes,Training Proper\nSubmit training report,Complete and submit the Training Report tab,1 day after,Yes,Post-Training\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'checklist_template_upload_template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function _cktplParsePhase(raw){
+  const v=(raw||'').trim().toLowerCase();
+  if(v.startsWith('pre')) return 'pre';
+  if(v.startsWith('post')) return 'post';
+  if(v.startsWith('during')||v.startsWith('training proper')||v.startsWith('proper')) return 'during';
+  return 'pre';
+}
+function _cktplParseMandatory(raw){
+  const v=(raw||'').trim().toLowerCase();
+  return v==='yes'||v==='y'||v==='true'||v==='1';
+}
+function _cktplHandleCSVFile(file){
+  if(!file||!_cktplDraft) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const {header,rows}=_tdaParseCSV(String(reader.result||''));
+    const taskIdx=header.findIndex(h=>h.includes('task'));
+    const descIdx=header.findIndex(h=>h.includes('description'));
+    const dueIdx=header.findIndex(h=>h.includes('due')||h.includes('timeline'));
+    const mandIdx=header.findIndex(h=>h.includes('mandatory'));
+    const phaseIdx=header.findIndex(h=>h.includes('phase'));
+    if(taskIdx===-1){
+      toast('CSV must have a Task column.','error');
+      return;
+    }
+    _cktplDraft.items=_cktplDraft.items.filter(i=>(i.task||'').trim());
+    let added=0, skippedBlank=0;
+    rows.forEach(cols=>{
+      const task=(cols[taskIdx]||'').trim();
+      if(!task){ skippedBlank++; return; }
+      _cktplDraft.items.push({
+        task,
+        description:descIdx>=0?(cols[descIdx]||'').trim():'',
+        dueTimeline:dueIdx>=0?(cols[dueIdx]||'').trim():'',
+        mandatory:mandIdx>=0?_cktplParseMandatory(cols[mandIdx]):false,
+        phase:phaseIdx>=0?_cktplParsePhase(cols[phaseIdx]):'pre'
+      });
+      added++;
+    });
+    if(!_cktplDraft.items.length) _cktplDraft.items.push(_cktplBlankItem());
+    renderChecklistTemplateDrawer();
+    toast(`${added} checklist item(s) imported${skippedBlank?`, ${skippedBlank} row(s) skipped (blank task)`:''}.`, added?'success':'warning');
+  };
+  reader.readAsText(file);
+  document.getElementById('cktpl-csv-input').value='';
+}
+
+async function saveChecklistTemplate(){
+  if(!_cktplDraft) return;
+  const errEl=document.getElementById('cktpl-error');
+  if(errEl) errEl.classList.add('hidden');
+  const title=(_cktplDraft.title||'').trim();
+  const items=_cktplDraft.items.map(i=>({task:(i.task||'').trim(),description:(i.description||'').trim(),dueTimeline:(i.dueTimeline||'').trim(),mandatory:!!i.mandatory,phase:i.phase||'pre'})).filter(i=>i.task);
+  if(!title){ if(errEl){errEl.textContent='Please enter a template title.';errEl.classList.remove('hidden');} return; }
+  if(!items.length){ if(errEl){errEl.textContent='Please add at least one checklist item with a task.';errEl.classList.remove('hidden');} return; }
+  try{
+    if(_cktplDraft.id) await ChecklistTemplateDB.update(_cktplDraft.id,{title,items});
+    else await ChecklistTemplateDB.create({title,items,isActive:true});
+    toast('Checklist template saved.','success');
+    closeChecklistTemplateDrawer();
+    renderSettings();
+  }catch(e){ /* error already surfaced by _surfaceDbError */ }
+}
+async function toggleChecklistTemplateActive(id){
+  const t=ChecklistTemplateDB.byId(id); if(!t) return;
+  try{
+    await ChecklistTemplateDB.update(id,{isActive:!t.isActive});
+    toast(`${t.title} ${t.isActive?'deactivated':'activated'}.`,'info');
+    renderSettings();
+  }catch(e){ /* error already surfaced */ }
+}
+function deleteChecklistTemplate(id){
+  const t=ChecklistTemplateDB.byId(id); if(!t) return;
+  confirm$('Delete Template',`Permanently delete <strong>${Utils.esc(t.title)}</strong>? This cannot be undone.<br><br>Sessions that already have this checklist assigned keep their own progress snapshot -- deleting the template does not change those records.`,'Delete',async()=>{
+    try{ await ChecklistTemplateDB.delete(id); toast(`${t.title} deleted.`,'info'); renderSettings(); }catch(e){ /* error already surfaced */ }
   });
 }
 
@@ -5028,7 +5247,7 @@ function _selHandleCSVFile(key,file){
 const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
-  'departments','attendance_settings',
+  'departments','attendance_settings','checklist_templates','session_checklists',
   'training_sessions','audit_log','session_participants','training_reports'
 ];
 
@@ -5329,6 +5548,12 @@ const EvalDB=_makeRecordDB('evaluations','Trainer Evaluation',r=>r?.code||r?.id|
 // Settings by admins. Full-record CRUD via _makeRecordDB (title + items[] don't fit the
 // name-only Sel.add/Sel.byName assumptions used by Categories/Audiences/etc).
 const AgendaTemplateDB=_makeRecordDB('agenda_templates','Agenda Template',r=>r?.title||r?.id||'');
+// Checklist Templates (Phase D2, 2026-08-07, per Sandra): reusable Trainer Checklist blueprints,
+// managed in Settings by admins -- same bespoke drawer treatment as Agenda Templates.
+const ChecklistTemplateDB=_makeRecordDB('checklist_templates','Checklist Template',r=>r?.title||r?.id||'');
+// Per-session Checklist progress snapshot (Phase D2) -- see the session_checklists field-map
+// comment above for why this is a separate table from the template itself.
+const SessionChecklistDB=_makeRecordDB('session_checklists','Session Checklist',r=>r?.templateTitle||r?.id||'');
 
 /* ── TRAINING SESSIONS ────────────── */
 const TrSessionDB=_makeRecordDB('training_sessions','Training Session',r=>`"${r?.trainingProgram||r?.id||''}"`);
@@ -6258,6 +6483,7 @@ function _tdrCommitRich(key,el){
 
 const TD_DETAIL_TABS=[
   {id:'overview',label:'Overview'},
+  {id:'checklist',label:'Checklist'},
   {id:'participants',label:'Attendance & Performance'},
   {id:'report',label:'Training Report'},
   {id:'trainer-eval',label:'Trainer Evaluation'},
@@ -6376,7 +6602,10 @@ async function tdDetailSave(){
     // Mandatory tag (2026-08-06, Phase62): Self-led-only field; checkbox stays in the DOM (just
     // hidden) for non-owner types, so always read it but it's only ever surfaced in the UI when
     // grp==='owner'.
-    isMandatory:document.getElementById('tdd-mandatory')?document.getElementById('tdd-mandatory').checked:false
+    isMandatory:document.getElementById('tdd-mandatory')?document.getElementById('tdd-mandatory').checked:false,
+    // Trainer Checklist template selector (Phase D2, 2026-08-07): ILT-only, mirrors the
+    // Modality field's "only meaningful for certain delivery types, cleared otherwise" pattern.
+    checklistTemplateId:deliveryType==='ILT'?(document.getElementById('tdd-checklisttpl')?.value||null):null
   };
   const errs=[];
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
@@ -6468,6 +6697,152 @@ function _tdAuditRenderTab(s){
       <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Module</th><th>Details</th></tr></thead>
       <tbody>${trs}</tbody>
     </table></div>
+  </div>`;
+}
+
+/* ── CHECKLIST TAB (Phase D2, 2026-08-07, per Sandra) ─────────────────────────────────────
+   ILT-only tab next to Overview. Renders the session's assigned Checklist Template (picked on
+   Overview -- see _tdChecklistTemplateDisplay/tdd-checklisttpl) as a 3-column board (Pre-Training
+   / Training Proper / Post-Training), tracking Status + Completed On per item. Deliberately backed
+   by its own `session_checklists` table (one row per session, a SNAPSHOT of the template's items
+   at initialization time), NOT a live read of checklist_templates -- so a later edit to the
+   template never retroactively alters a session's already-recorded checklist history. Status
+   changes commit immediately (no Save button), same "no focus-loss risk on a <select> change"
+   reasoning as the Attendance Status field on the Attendance & Performance tab. ───────────────── */
+
+const CKTPL_STATUSES=[
+  {id:'not_started',label:'Not Started',color:'#64748b',bg:'#f1f5f9'},
+  {id:'pending',label:'Pending',color:'#b45309',bg:'#fef3c7'},
+  {id:'completed',label:'Completed',color:'#15803d',bg:'#dcfce7'},
+  {id:'na',label:'N/A',color:'#94a3b8',bg:'#f8fafc'}
+];
+function _tdcklStatusInfo(id){ return CKTPL_STATUSES.find(s=>s.id===id)||CKTPL_STATUSES[0]; }
+
+function _tdChecklistRenderTab(s){
+  if(s.deliveryType!=='ILT'){
+    return `<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:12px">Checklist</div><div style="font-size:12.5px;color:var(--text3)">The Trainer Checklist applies to ILT sessions only.</div></div>`;
+  }
+  const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
+  if(!row){
+    if(!s.checklistTemplateId){
+      return `<div class="empty-state" style="padding:60px 20px">
+        <div class="empty-ico">📋</div>
+        <div class="empty-title">No checklist template assigned</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">Pick a Trainer Checklist template on the <a href="javascript:void(0)" onclick="tdDetailSwitchTab('overview')" style="color:var(--pri);font-weight:600;text-decoration:none">Overview tab</a> to start tracking this session's checklist.</div>
+      </div>`;
+    }
+    const t=ChecklistTemplateDB.byId(s.checklistTemplateId);
+    if(!t){
+      return `<div class="empty-state" style="padding:60px 20px">
+        <div class="empty-ico">⚠</div>
+        <div class="empty-title">Assigned template no longer exists</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">Pick a different Trainer Checklist template on the <a href="javascript:void(0)" onclick="tdDetailSwitchTab('overview')" style="color:var(--pri);font-weight:600;text-decoration:none">Overview tab</a>.</div>
+      </div>`;
+    }
+    return `<div class="empty-state" style="padding:60px 20px">
+      <div class="empty-ico">📋</div>
+      <div class="empty-title">Ready to start "${Utils.esc(t.title)}"</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px;margin-bottom:16px">This creates this session's own checklist snapshot (${(t.items||[]).length} item${(t.items||[]).length!==1?'s':''}) -- editing the template later won't change it.</div>
+      <button class="btn btn-primary btn-sm" onclick="_tdcklInitChecklist('${s.id}','${t.id}')">Start Checklist</button>
+    </div>`;
+  }
+  const mismatchBanner=(row.templateId!==s.checklistTemplateId)?(()=>{
+    const newT=s.checklistTemplateId?ChecklistTemplateDB.byId(s.checklistTemplateId):null;
+    return `<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div><strong>The assigned template has changed</strong> since this checklist was started (currently tracking "${Utils.esc(row.templateTitle||'a previous template')}"). ${newT?`Reset to "${Utils.esc(newT.title)}"?`:'The newly selected template could not be found.'}</div>
+      ${newT?`<button class="btn btn-sm btn-secondary" style="flex-shrink:0" onclick="_tdcklResetToTemplate('${s.id}','${newT.id}')">Reset Checklist</button>`:''}
+    </div>`;
+  })():'';
+  return mismatchBanner+_tdcklBoardHtml(s,row);
+}
+
+async function _tdcklInitChecklist(sessionId,templateId){
+  const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
+  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',dueTimeline:i.dueTimeline||'',mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
+  try{
+    await SessionChecklistDB.create({sessionId,templateId,templateTitle:t.title,items});
+    renderTrainingDetail();
+    toast('Checklist started.','success');
+  }catch(e){ /* error already surfaced */ }
+}
+
+function _tdcklResetToTemplate(sessionId,templateId){
+  const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
+  const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return;
+  confirm$('Reset Checklist',`Reset this session's checklist to "<strong>${Utils.esc(t.title)}</strong>"? All current progress (statuses and Completed On dates) will be lost.`,'Reset',async()=>{
+    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',dueTimeline:i.dueTimeline||'',mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
+    try{
+      await SessionChecklistDB.update(row.id,{templateId,templateTitle:t.title,items});
+      renderTrainingDetail();
+      toast('Checklist reset to the new template.','info');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+
+async function _tdcklSetItemStatus(rowId,itemIndex,status){
+  const row=SessionChecklistDB.byId(rowId); if(!row) return;
+  const items=(row.items||[]).map((it,i)=>i===itemIndex?{...it,status,completedOn:status==='completed'?new Date().toISOString():null}:it);
+  try{
+    await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
+    renderTrainingDetail();
+  }catch(e){ /* error already surfaced */ }
+}
+
+function _tdcklProgressRing(pct){
+  const deg=Math.round((pct||0)*3.6);
+  return `<div style="width:104px;height:104px;border-radius:50%;background:conic-gradient(var(--green) ${deg}deg,#e2e8f0 ${deg}deg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+    <div style="width:78px;height:78px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div style="font-size:20px;font-weight:700;color:var(--green)">${pct}%</div>
+      <div style="font-size:9px;color:var(--text3);letter-spacing:.4px;text-transform:uppercase">Complete</div>
+    </div>
+  </div>`;
+}
+
+function _tdcklBoardHtml(s,row){
+  const items=row.items||[];
+  const counts={not_started:0,pending:0,completed:0,na:0};
+  items.forEach(it=>{ counts[it.status||'not_started']=(counts[it.status||'not_started']||0)+1; });
+  const applicable=items.length-counts.na;
+  const pct=applicable>0?Math.round((counts.completed/applicable)*100):0;
+  const summaryRow=`<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;margin-bottom:20px">
+    ${_tdcklProgressRing(pct)}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      ${_tdaKpiCard('check','var(--green)','Completed',counts.completed)}
+      ${_tdaKpiCard('clock','var(--amber)','Pending',counts.pending)}
+      ${_tdaKpiCard('x','#64748b','Not Started',counts.not_started)}
+      ${_tdaKpiCard('question','#94a3b8','N/A',counts.na)}
+    </div>
+  </div>`;
+  const cols=CKTPL_PHASES.map(p=>{
+    const colItems=items.map((it,i)=>({...it,_i:i})).filter(it=>(it.phase||'pre')===p.id);
+    const cardsHtml=colItems.length?colItems.map(it=>{
+      const st=_tdcklStatusInfo(it.status||'not_started');
+      const statusOpts=CKTPL_STATUSES.map(so=>`<option value="${so.id}" ${it.status===so.id?'selected':''}>${so.label}</option>`).join('');
+      const completedOnStr=it.completedOn?new Date(it.completedOn).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'}):null;
+      return `<div class="card" style="padding:12px 14px;margin-bottom:10px;border-left:3px solid ${st.color}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+          <div style="font-weight:600;font-size:13px;line-height:1.4">${Utils.esc(it.task)}</div>
+          ${it.mandatory?'<span class="badge" style="background:#fee2e2;color:#dc2626;flex-shrink:0;font-size:9.5px">Mandatory</span>':''}
+        </div>
+        ${it.description?`<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px;line-height:1.4">${Utils.esc(it.description)}</div>`:''}
+        ${it.dueTimeline?`<div style="font-size:10.5px;color:var(--text3);margin-bottom:8px">⏱ ${Utils.esc(it.dueTimeline)}</div>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+          <select class="form-control" style="font-size:11.5px;padding:4px 6px;width:auto;color:${st.color};background:${st.bg};border-color:${st.color}" onchange="_tdcklSetItemStatus('${row.id}',${it._i},this.value)">${statusOpts}</select>
+          ${completedOnStr?`<span style="font-size:10px;color:var(--text3)">Completed ${completedOnStr}</span>`:''}
+        </div>
+      </div>`;
+    }).join(''):'<div style="font-size:11.5px;color:var(--text3);padding:8px 2px">No items in this phase.</div>';
+    return `<div>
+      <div style="font-weight:700;font-size:12.5px;color:${p.color};background:${p.bg};padding:8px 12px;border-radius:8px 8px 0 0;margin-bottom:10px">${p.label} <span style="font-weight:400;color:var(--text3)">(${colItems.length})</span></div>
+      ${cardsHtml}
+    </div>`;
+  }).join('');
+  return `<div class="card" style="padding:18px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14.5px">Checklist <span style="font-weight:400;color:var(--text3);font-size:12px">— ${Utils.esc(row.templateTitle||'')}</span></div>
+    </div>
+    ${summaryRow}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">${cols}</div>
   </div>`;
 }
 
@@ -7263,7 +7638,7 @@ function _tdrRenderTab(s){
   const grp=_tdFieldGroup(s.deliveryType);
   if(grp==='owner'){
     const surveyMetrics=`
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
         ${_tdaKpiCard('target','#c2410c','Content Intuitiveness',_tdrRatingBox('contentIntuitiveness',c.contentIntuitiveness,5),'/ 5')}
         ${_tdaKpiCard('filetext','var(--sky)','Content Relevance',_tdrRatingBox('contentRelevance',c.contentRelevance,5),'/ 5')}
         ${_tdaKpiCard('clipboard','#7c3aed','Material Interactivity',_tdrRatingBox('materialInteractivity',c.materialInteractivity,5),'/ 5')}
@@ -7980,15 +8355,17 @@ function renderTrainingDetail(){
   // Phase65 (2026-08-06, per Sandra): a non-mandatory Self-led session also isn't monitored via a
   // Training Report -- hide that tab too, leaving only Overview + Audit History for calendar-
   // plotting purposes. Mandatory Self-led keeps the Report tab (with SLT-specific content).
-  const visibleTabs=_tdGrp==='owner'
+  const visibleTabs=(_tdGrp==='owner'
     ?TD_DETAIL_TABS.filter(t=>t.id!=='participants'&&t.id!=='trainer-eval'&&(t.id!=='report'||s.isMandatory))
-    :TD_DETAIL_TABS;
+    :TD_DETAIL_TABS).filter(t=>t.id!=='checklist'||s.deliveryType==='ILT');
   if(!visibleTabs.some(t=>t.id===_tdDetailTab)) _tdDetailTab='overview';
   const tabsHtml=visibleTabs.map(t=>`<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(t.label)}</button>`).join('');
 
   let tabBody='';
   if(_tdDetailTab==='overview'){
     tabBody=_tddOverviewView(s,ownerType,personLabel,personName);
+  } else if(_tdDetailTab==='checklist'){
+    tabBody=_tdChecklistRenderTab(s);
   } else if(_tdDetailTab==='participants'){
     tabBody=_tdaRenderTab(s);
   } else if(_tdDetailTab==='report'){
@@ -8116,8 +8493,21 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
       ${ownerType?'':_tddInfoBlock('edit3','#64748b','Recording Link',s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener" style="font-size:13.5px">▶ View</a>`:'<span style="color:var(--text3);font-weight:400">— none —</span>')}
       ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
     </div>
+    ${s.deliveryType==='ILT'?`<div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('clipboard','#0369a1','Trainer Checklist',_tdChecklistTemplateDisplay(s))}
+    </div>`:''}
     ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
   `;
+}
+
+// Trainer Checklist template selector (Phase D2, 2026-08-07, per Sandra): ILT-only field on the
+// Overview tab's Session Information card, picking which Checklist Template (Settings) applies
+// to this session -- consumed by the Checklist tab (see tdDetailSwitchTab('checklist')).
+function _tdChecklistTemplateDisplay(s){
+  if(!s.checklistTemplateId) return '<span style="color:var(--text3);font-weight:400">— not set —</span>';
+  const t=ChecklistTemplateDB.byId(s.checklistTemplateId);
+  if(!t) return '<span style="color:var(--text3);font-weight:400">— template deleted —</span>';
+  return `${Utils.esc(t.title)} <a href="javascript:void(0)" onclick="tdDetailSwitchTab('checklist')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600;margin-left:4px">View →</a>`;
 }
 
 function _tdOverviewAttendanceAssessmentBlock(s){
@@ -8326,7 +8716,7 @@ function _tdOverviewSltBlocks(s){
   const roVal=(v)=>(v!=null&&v!=='')?Utils.esc(String(v)):'—';
   const survey=`<div class="card" style="padding:18px 20px">
     <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">4. Survey L1 Data</div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
       ${_tdaKpiCard('target','#c2410c','Content Intuitiveness',roVal(c.contentIntuitiveness),'/ 5')}
       ${_tdaKpiCard('filetext','var(--sky)','Content Relevance',roVal(c.contentRelevance),'/ 5')}
       ${_tdaKpiCard('clipboard','#7c3aed','Material Interactivity',roVal(c.materialInteractivity),'/ 5')}
@@ -8909,6 +9299,9 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>
       </select>`)}
     </div>
+    <div style="${gridStyle};margin-top:18px${s.deliveryType==='ILT'?'':';display:none'}" id="tdd-checklisttpl-rowwrap">
+      ${_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`)}
+    </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt)">
       <label class="form-label" style="font-size:11px;color:var(--text3)">Description</label>
       <textarea id="tdd-description" class="form-control" rows="3" style="font-size:13px">${Utils.esc(s.description||'')}</textarea>
@@ -8966,6 +9359,14 @@ function _tddPopulateEditDropdowns(s,ownerType){
   const modIdSel=document.getElementById('tdd-modalityid');
   if(modIdSel){
     modIdSel.innerHTML='<option value="">— Select —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}" ${m.id===s.modalityId?'selected':''}>${Utils.esc(m.name)}</option>`).join('');
+  }
+  // Trainer Checklist template selector (Phase D2, 2026-08-07): active templates, plus the
+  // session's already-assigned template even if it was since deactivated (never silently drop
+  // a selection the session already has).
+  const cktplSel=document.getElementById('tdd-checklisttpl');
+  if(cktplSel){
+    const opts=ChecklistTemplateDB.all().filter(t=>t.isActive||t.id===s.checklistTemplateId).slice().sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+    cktplSel.innerHTML='<option value="">— None —</option>'+opts.map(t=>`<option value="${t.id}" ${t.id===s.checklistTemplateId?'selected':''}>${Utils.esc(t.title)}${t.isActive?'':' (inactive)'}</option>`).join('');
   }
 }
 
@@ -9037,6 +9438,7 @@ function _tddToggleTypeFields(){
   document.getElementById('tdd-mandatory-wrap').classList.toggle('hidden',grp!=='owner');
   document.getElementById('tdd-expected-label').textContent=grp==='owner'?'Required Participants':'Maximum Participants';
   document.getElementById('tdd-modalityid-wrap').classList.toggle('hidden',!_tdShowsModality(dt));
+  document.getElementById('tdd-checklisttpl-rowwrap').style.display=dt==='ILT'?'':'none';
   _tdPopulateVenueOptions('tdd',dt);
   _toggleVenueOtherWrap('tdd');
 }
