@@ -6756,9 +6756,23 @@ function _tdcklStatusInfo(id){ return CKTPL_STATUSES.find(s=>s.id===id)||CKTPL_S
 // the first is still pending.
 const _tdcklAutoInitInFlight=new Set();
 
+// Feature start date (2026-08-07, per Sandra): sessions dated before this are explicitly "not
+// covered" -- the Checklist feature only applies to sessions starting Aug 1, 2026 onward. Rather
+// than writing a one-off tag/column onto every pre-existing session, this is enforced as a simple
+// date gate here -- same effect, no migration, and automatically covers any pre-Aug-1 session
+// created later (backfilled historical data, etc.) without needing to remember to tag it.
+const CKTPL_FEATURE_START_DATE='2026-08-01';
+
 function _tdChecklistRenderTab(s){
   if(s.deliveryType!=='ILT'){
     return `<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:12px">Checklist</div><div style="font-size:12.5px;color:var(--text3)">The Trainer Checklist applies to ILT sessions only.</div></div>`;
+  }
+  if(s.trainingDate && s.trainingDate<CKTPL_FEATURE_START_DATE){
+    return `<div class="empty-state" style="padding:60px 20px">
+      <div class="empty-ico">🗓</div>
+      <div class="empty-title">Not covered by the Checklist feature</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px">The Trainer Checklist feature starts with sessions dated August 1, 2026 onward. This session (${Utils.esc(s.trainingDate)}) is before that cutoff, so it isn't tracked here.</div>
+    </div>`;
   }
   const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
   if(!row){
@@ -6801,7 +6815,7 @@ function _tdChecklistRenderTab(s){
 
 async function _tdcklInitChecklist(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
-  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
+  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false}));
   try{
     await SessionChecklistDB.create({sessionId,templateId,templateTitle:t.title,items});
     renderTrainingDetail();
@@ -6813,7 +6827,7 @@ function _tdcklResetToTemplate(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
   const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return;
   confirm$('Reset Checklist',`Reset this session's checklist to "<strong>${Utils.esc(t.title)}</strong>"? All current progress (statuses and Completed On dates) will be lost.`,'Reset',async()=>{
-    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
+    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false}));
     try{
       await SessionChecklistDB.update(row.id,{templateId,templateTitle:t.title,items});
       renderTrainingDetail();
@@ -6822,70 +6836,186 @@ function _tdcklResetToTemplate(sessionId,templateId){
   });
 }
 
-async function _tdcklSetItemStatus(rowId,itemIndex,status){
+// Status is DERIVED, never hand-picked (2026-08-07, round 3, per Sandra's mockup): the only things
+// a trainer actually sets are (a) a Completed On date, or (b) an N/A flag for an item that doesn't
+// apply to this session. Not Started vs Pending is purely a function of today's date vs the
+// item's computed Target Date -- so there's no "status" field to keep in sync, just these two
+// inputs plus whatever _tdcklComputeStatus derives from them at render time.
+function _tdcklAddDays(dateStr,delta){
+  if(!dateStr) return null;
+  // Build the result from local date parts, not toISOString() -- toISOString() converts to UTC,
+  // which silently shifts the date by a day for anyone in a timezone ahead of UTC (e.g. Manila,
+  // GMT+8): a local midnight becomes 16:00 the PREVIOUS day in UTC, so slicing its ISO string
+  // gives the wrong date. Caught this in testing before it shipped.
+  const d=new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+delta);
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+// Target Date anchor: Pre-Training counts back from the session's start date; Post-Training counts
+// forward from the session's END date (so a multi-day ILT's "after" items land after the whole
+// thing wraps, not after day one); Training Proper is always the start date itself (T0).
+function _tdcklTargetDate(s,phase,timelineDays){
+  const n=Number(timelineDays)||0;
+  if(phase==='post') return _tdcklAddDays(s.endDate||s.trainingDate,n);
+  if(phase==='during') return s.trainingDate||null;
+  return _tdcklAddDays(s.trainingDate,-n);
+}
+function _tdcklTargetDateLabel(s,phase,timelineDays){
+  const dateStr=_tdcklTargetDate(s,phase,timelineDays);
+  if(!dateStr) return '—';
+  const md=new Date(dateStr+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const n=Number(timelineDays)||0;
+  if(phase==='during') return md;
+  if(n===0) return `${md} (T0)`;
+  return phase==='post'?`${md} (T+${n})`:`${md} (T-${n})`;
+}
+function _tdcklComputeStatus(it,targetDateStr){
+  if(it.isNA) return 'na';
+  if(it.completedOn) return 'completed';
+  if(targetDateStr && _todayStr()>=targetDateStr) return 'pending';
+  return 'not_started';
+}
+// Small inline status icon for the table (distinct from the 42px KPI-card icons elsewhere) --
+// empty grey ring / amber clock / green check, or a blue "N/A" pill matching the legend.
+function _tdcklStatusIconHtml(statusId){
+  const st=_tdcklStatusInfo(statusId);
+  if(statusId==='na') return `<span class="badge" style="background:${st.bg};color:${st.color};font-size:9.5px">N/A</span>`;
+  if(statusId==='completed') return _tdIconSvg('check',st.color,16);
+  if(statusId==='pending') return _tdIconSvg('clock',st.color,16);
+  return `<svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="8.5" fill="none" stroke="${st.color}" stroke-width="1.6"/></svg>`;
+}
+function _tdcklLinearBar(pct,color){
+  return `<div style="width:70px;height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;flex-shrink:0"><div style="width:${Math.max(0,Math.min(100,pct))}%;height:100%;background:${color}"></div></div>`;
+}
+
+async function _tdcklSetCompletedOn(rowId,itemIndex,dateStr){
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
-  const items=(row.items||[]).map((it,i)=>i===itemIndex?{...it,status,completedOn:status==='completed'?new Date().toISOString():null}:it);
+  const val=dateStr||null;
+  const items=(row.items||[]).map((it,i)=>i===itemIndex?{...it,completedOn:val,completedOnTs:val?new Date().toISOString():null,isNA:val?false:it.isNA}:it);
   try{
     await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
     renderTrainingDetail();
   }catch(e){ /* error already surfaced */ }
 }
-
-function _tdcklProgressRing(pct){
-  const deg=Math.round((pct||0)*3.6);
-  return `<div style="width:104px;height:104px;border-radius:50%;background:conic-gradient(var(--green) ${deg}deg,#e2e8f0 ${deg}deg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-    <div style="width:78px;height:78px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
-      <div style="font-size:20px;font-weight:700;color:var(--green)">${pct}%</div>
-      <div style="font-size:9px;color:var(--text3);letter-spacing:.4px;text-transform:uppercase">Complete</div>
+async function _tdcklToggleNA(rowId,itemIndex){
+  const row=SessionChecklistDB.byId(rowId); if(!row) return;
+  const cur=(row.items||[])[itemIndex]; if(!cur) return;
+  const turningOn=!cur.isNA;
+  const items=(row.items||[]).map((it,i)=>i===itemIndex?{...it,isNA:turningOn,completedOn:turningOn?null:it.completedOn,completedOnTs:turningOn?null:it.completedOnTs}:it);
+  try{
+    await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
+    renderTrainingDetail();
+  }catch(e){ /* error already surfaced */ }
+}
+// Inline "+ Add Item" (2026-08-07, round 3, per Sandra: session-only, "should not reflect in the
+// template") -- appended directly to this session's own snapshot, tagged custom:true purely for
+// bookkeeping/future filtering; it's already impossible for this to write back to
+// checklist_templates since the two are never synced in that direction.
+async function _tdcklAddCustomItem(rowId,phase,taskText){
+  const task=(taskText||'').trim(); if(!task) return;
+  const row=SessionChecklistDB.byId(rowId); if(!row) return;
+  const items=[...(row.items||[]),{task,description:'',timelineDays:0,mandatory:false,phase,completedOn:null,completedOnTs:null,isNA:false,custom:true}];
+  try{
+    await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
+    renderTrainingDetail();
+  }catch(e){ /* error already surfaced */ }
+}
+function _tdcklAddItemRowHtml(rowId,phaseId){
+  const inputId=`tdckl-newitem-${rowId}-${phaseId}`;
+  return `<div style="margin-top:8px">
+    <div style="display:flex;gap:6px">
+      <input type="text" id="${inputId}" class="form-control" style="font-size:12px;padding:5px 8px" placeholder="Add an item for this session…" onkeydown="if(event.key==='Enter'){_tdcklAddCustomItem('${rowId}','${phaseId}',this.value);this.value='';}">
+      <button class="btn btn-sm btn-secondary" onclick="const el=document.getElementById('${inputId}');_tdcklAddCustomItem('${rowId}','${phaseId}',el.value);el.value='';">+ Add</button>
     </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px">Session-only -- won't be added to the Checklist Template.</div>
   </div>`;
+}
+
+function _tdcklLegendHtml(){
+  return `<div style="display:flex;align-items:center;gap:16px;font-size:11.5px;color:var(--text3);flex-wrap:wrap">
+    <span style="font-weight:600;color:var(--text2)">Legend:</span>
+    <span style="display:flex;align-items:center;gap:4px">${_tdIconSvg('check','#15803d',15)} Completed</span>
+    <span style="display:flex;align-items:center;gap:4px">${_tdIconSvg('clock','#b45309',15)} Pending</span>
+    <span style="display:flex;align-items:center;gap:4px"><svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#64748b" stroke-width="1.6"/></svg> Not Started</span>
+    <span style="display:flex;align-items:center;gap:4px"><span class="badge" style="background:#f8fafc;color:#94a3b8;font-size:9.5px">N/A</span> Not Applicable</span>
+    <span style="display:flex;align-items:center;gap:4px;color:#dc2626;font-weight:700">* <span style="color:var(--text3);font-weight:400">Mandatory</span></span>
+  </div>`;
+}
+
+function _tdcklSessionDatesLabel(s){
+  if(!s.trainingDate) return '—';
+  const fmt=(d)=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'});
+  return (s.endDate && s.endDate!==s.trainingDate)?`${fmt(s.trainingDate)} – ${fmt(s.endDate)}`:fmt(s.trainingDate);
 }
 
 function _tdcklBoardHtml(s,row){
   const items=row.items||[];
-  const counts={not_started:0,pending:0,completed:0,na:0};
-  items.forEach(it=>{ counts[it.status||'not_started']=(counts[it.status||'not_started']||0)+1; });
-  const applicable=items.length-counts.na;
-  const pct=applicable>0?Math.round((counts.completed/applicable)*100):0;
-  const summaryRow=`<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;margin-bottom:20px">
-    ${_tdcklProgressRing(pct)}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-      ${_tdaKpiCard('check','var(--green)','Completed',counts.completed)}
-      ${_tdaKpiCard('clock','var(--amber)','Pending',counts.pending)}
-      ${_tdaKpiCard('x','#64748b','Not Started',counts.not_started)}
-      ${_tdaKpiCard('question','#94a3b8','N/A',counts.na)}
-    </div>
-  </div>`;
+  const withStatus=items.map((it,i)=>({...it,_i:i,_target:_tdcklTargetDate(s,it.phase||'pre',it.timelineDays),_status:_tdcklComputeStatus(it,_tdcklTargetDate(s,it.phase||'pre',it.timelineDays))}));
+  const overallApplicable=withStatus.filter(it=>it._status!=='na').length;
+  const overallCompleted=withStatus.filter(it=>it._status==='completed').length;
+  const overallPct=overallApplicable>0?Math.round((overallCompleted/overallApplicable)*100):0;
   const cols=CKTPL_PHASES.map(p=>{
-    const colItems=items.map((it,i)=>({...it,_i:i})).filter(it=>(it.phase||'pre')===p.id);
-    const cardsHtml=colItems.length?colItems.map(it=>{
-      const st=_tdcklStatusInfo(it.status||'not_started');
-      const statusOpts=CKTPL_STATUSES.map(so=>`<option value="${so.id}" ${it.status===so.id?'selected':''}>${so.label}</option>`).join('');
-      const completedOnStr=it.completedOn?new Date(it.completedOn).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'}):null;
-      return `<div class="card" style="padding:12px 14px;margin-bottom:10px;border-left:3px solid ${st.color}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
-          <div style="font-weight:600;font-size:13px;line-height:1.4">${Utils.esc(it.task)}</div>
-          ${it.mandatory?'<span class="badge" style="background:#fee2e2;color:#dc2626;flex-shrink:0;font-size:9.5px">Mandatory</span>':''}
-        </div>
-        ${it.description?`<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px;line-height:1.4">${Utils.esc(it.description)}</div>`:''}
-        <div style="font-size:10.5px;color:var(--text3);margin-bottom:8px">⏱ ${_cktplTimelineLabel(it.phase,it.timelineDays)}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-          <select class="form-control" style="font-size:11.5px;padding:4px 6px;width:auto;color:${st.color};background:${st.bg};border-color:${st.color}" onchange="_tdcklSetItemStatus('${row.id}',${it._i},this.value)">${statusOpts}</select>
-          ${completedOnStr?`<span style="font-size:10px;color:var(--text3)">Completed ${completedOnStr}</span>`:''}
-        </div>
-      </div>`;
-    }).join(''):'<div style="font-size:11.5px;color:var(--text3);padding:8px 2px">No items in this phase.</div>';
+    const colItems=withStatus.filter(it=>(it.phase||'pre')===p.id);
+    const applicable=colItems.filter(it=>it._status!=='na').length;
+    const completed=colItems.filter(it=>it._status==='completed').length;
+    const pct=applicable>0?Math.round((completed/applicable)*100):0;
+    const showTargetCol=p.id!=='during';
+    const rowsHtml=colItems.length?colItems.map(it=>{
+      const iconHtml=_tdcklStatusIconHtml(it._status);
+      const completedOnVal=it.completedOn||'';
+      const mandatoryMark=it.mandatory?'<span title="Mandatory" style="color:#dc2626;font-weight:700;margin-left:3px">*</span>':'';
+      const infoIcon=it.description?`<span title="${Utils.esc(it.description)}" style="display:inline-flex;vertical-align:middle;margin-left:4px;cursor:help"><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#94a3b8" stroke-width="1.6"/><line x1="12" y1="11" x2="12" y2="16.5" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.3" r="1.1" fill="#94a3b8"/></svg></span>`:'';
+      return `<tr>
+        <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${it._i+1}</td>
+        <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}</td>
+        ${showTargetCol?`<td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>`:''}
+        <td style="padding:6px 4px;vertical-align:top">
+          <span style="display:inline-flex;align-items:center;gap:5px;cursor:pointer" title="${it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable'}" onclick="_tdcklToggleNA('${row.id}',${it._i})">${iconHtml}</span>
+        </td>
+        <td style="padding:6px 4px;vertical-align:top;white-space:nowrap">
+          <input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${it.isNA?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">
+        </td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="${showTargetCol?5:4}" style="font-size:11.5px;color:var(--text3);padding:10px 4px">No items in this phase.</td></tr>`;
     return `<div>
-      <div style="font-weight:700;font-size:12.5px;color:${p.color};background:${p.bg};padding:8px 12px;border-radius:8px 8px 0 0;margin-bottom:10px">${p.label} <span style="font-weight:400;color:var(--text3)">(${colItems.length})</span></div>
-      ${cardsHtml}
+      <div style="background:${p.bg};border-radius:8px 8px 0 0;padding:10px 12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:6px">
+            ${_tdIconSvg('clipboard',p.color,17)}
+            <span style="font-weight:700;font-size:12px;color:${p.color};letter-spacing:.3px">${p.label.toUpperCase()}</span>
+          </div>
+          <span style="font-size:10.5px;color:var(--text3)">${colItems.length} item${colItems.length!==1?'s':''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <span style="font-size:11.5px;font-weight:700;color:${p.color}">${completed}/${applicable}</span>
+          ${_tdcklLinearBar(pct,p.color)}
+        </div>
+      </div>
+      <div class="card" style="border-radius:0 0 8px 8px;padding:6px 8px 10px">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="border-bottom:1px solid var(--border-lt)">
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px;width:22px">#</th>
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Checklist Item</th>
+            ${showTargetCol?'<th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Target Date</th>':''}
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Status</th>
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Completed On</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        ${_tdcklAddItemRowHtml(row.id,p.id)}
+      </div>
     </div>`;
   }).join('');
   return `<div class="card" style="padding:18px 20px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px">
-      <div style="font-weight:700;font-size:14.5px">Checklist <span style="font-weight:400;color:var(--text3);font-size:12px">— ${Utils.esc(row.templateTitle||'')}</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:6px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:700;font-size:14.5px">Checklist <span style="font-weight:400;color:var(--text3);font-size:12px">— ${Utils.esc(row.templateTitle||'')}</span></div>
+        <div style="font-size:11.5px;color:var(--text3);margin-top:2px">Session Date${s.endDate&&s.endDate!==s.trainingDate?'s':''}: ${_tdcklSessionDatesLabel(s)} &nbsp;•&nbsp; Overall: <strong style="color:var(--text2)">${overallPct}%</strong> (${overallCompleted}/${overallApplicable})</div>
+      </div>
+      ${_tdcklLegendHtml()}
     </div>
-    ${summaryRow}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">${cols}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px">${cols}</div>
   </div>`;
 }
 
