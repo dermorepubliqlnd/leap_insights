@@ -2469,9 +2469,11 @@ const _FIELD_MAPS = {
   // -- managed via a bespoke Settings drawer, not the generic renderSelList single-name-field UI.
   agenda_templates:{ id:'id', title:'title', items:'items', isActive:'is_active', createdAt:'created_at', updatedAt:'updated_at' },
   // Checklist Templates (Phase D2, 2026-08-07, per Sandra): title + a jsonb array of
-  // {task,description,dueTimeline,mandatory,phase} items. Same bespoke-drawer pattern as Agenda
+  // {task,description,timelineDays,mandatory,phase} items. Same bespoke-drawer pattern as Agenda
   // Templates above (title+items don't fit the generic single-name Sel list UI). `phase` is
   // single-select: 'pre'|'during'|'post' (Pre-Training / Training Proper / Post-Training).
+  // `timelineDays` (round 2, 2026-08-07): a plain non-negative day count -- the +/- sign shown to
+  // the trainer is derived automatically from `phase` (see _cktplTimelineLabel), never hand-typed.
   checklist_templates:{ id:'id', title:'title', items:'items', isActive:'is_active', createdAt:'created_at', updatedAt:'updated_at' },
   training_sessions:{
     id:'id', code:'code', trainerId:'trainer_id', trainingProgram:'training_program', batchNo:'batch_no',
@@ -4847,14 +4849,24 @@ function renderChecklistTemplatesOverview(){
     </div>`;
 }
 
-let _cktplDraft=null; // {id:null|string, title:'', items:[{task,description,dueTimeline,mandatory,phase}], isActive}
-function _cktplBlankItem(){ return {task:'',description:'',dueTimeline:'',mandatory:false,phase:'pre'}; }
+let _cktplDraft=null; // {id:null|string, title:'', items:[{task,description,timelineDays,mandatory,phase}], isActive}
+function _cktplBlankItem(){ return {task:'',description:'',timelineDays:0,mandatory:false,phase:'pre'}; }
+// Auto-signed Timeline label (2026-08-07, per Sandra: sign should follow Phase automatically, not be
+// hand-typed) -- Pre-Training counts DOWN to the training day (shown as "-N day(s) before"),
+// Post-Training counts UP from it ("+N day(s) after"), During Training/Training Proper has no
+// meaningful offset so it's always "Day of" regardless of the stored number.
+function _cktplTimelineLabel(phase,days){
+  const n=Number(days)||0;
+  if(phase==='during'||n===0) return 'Day of';
+  const unit=n===1?'day':'days';
+  return phase==='post'?`+${n} ${unit} after`:`-${n} ${unit} before`;
+}
 
 function openChecklistTemplateDrawer(id){
   if(id){
     const t=ChecklistTemplateDB.byId(id);
     if(!t) return;
-    _cktplDraft={id:t.id, title:t.title||'', items:(t.items&&t.items.length)?t.items.map(i=>({task:i.task||'',description:i.description||'',dueTimeline:i.dueTimeline||'',mandatory:!!i.mandatory,phase:i.phase||'pre'})):[_cktplBlankItem()], isActive:t.isActive!==false};
+    _cktplDraft={id:t.id, title:t.title||'', items:(t.items&&t.items.length)?t.items.map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre'})):[_cktplBlankItem()], isActive:t.isActive!==false};
   } else {
     _cktplDraft={id:null, title:'', items:[_cktplBlankItem()], isActive:true};
   }
@@ -4877,7 +4889,12 @@ function renderChecklistTemplateDrawer(){
       <td style="min-width:200px;padding:6px 4px"><input type="text" class="form-control" placeholder="Task" value="${Utils.esc(it.task)}" oninput="_cktplSetItemField(${i},'task',this.value)"></td>
       <td style="min-width:220px;padding:6px 4px"><input type="text" class="form-control" placeholder="Description" value="${Utils.esc(it.description)}" oninput="_cktplSetItemField(${i},'description',this.value)"></td>
       <td style="text-align:center;padding:6px 4px"><input type="checkbox" ${it.mandatory?'checked':''} onchange="_cktplSetItemField(${i},'mandatory',this.checked)" style="width:16px;height:16px;cursor:pointer"></td>
-      <td style="min-width:140px;padding:6px 4px"><input type="text" class="form-control" placeholder="e.g. -3 days / Day of" value="${Utils.esc(it.dueTimeline)}" oninput="_cktplSetItemField(${i},'dueTimeline',this.value)"></td>
+      <td style="min-width:150px;padding:6px 4px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="0" step="1" class="form-control" style="width:70px" value="${it.timelineDays||0}" oninput="_cktplSetItemField(${i},'timelineDays',this.value===''?0:Math.max(0,parseInt(this.value,10)||0))">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">${_cktplTimelineLabel(it.phase,it.timelineDays)}</span>
+        </div>
+      </td>
       ${phaseCells}
       <td style="padding:6px 4px"><button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_cktplRemoveItemRow(${i})" title="Remove">✕</button></td>
     </tr>`;
@@ -4888,7 +4905,7 @@ function renderChecklistTemplateDrawer(){
       <input type="text" class="form-control" id="cktpl-title-input" placeholder="e.g. Standard ILT Trainer Checklist" value="${Utils.esc(_cktplDraft.title)}" oninput="_cktplSetTitle(this.value)">
     </div>
     <div class="drawer-sec-title" style="margin-top:16px">Checklist Items</div>
-    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Pick one phase per item (Pre-Training / Training Proper / Post-Training) — this controls which Checklist-tab column it shows under once a session runs against this template. Timeline is a free-text hint for the trainer (e.g. "-3 days", "Day of", "+1 day after") — there's no automatic sign logic, so phrase it however is clearest for that task.</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Pick one phase per item (Pre-Training / Training Proper / Post-Training) — this controls which Checklist-tab column it shows under once a session runs against this template. Timeline is just a number of days -- the +/- sign is applied automatically based on Phase (Pre-Training counts down to the training day, Post-Training counts up from it); During Training/Training Proper always shows "Day of".</div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead>
@@ -4896,7 +4913,7 @@ function renderChecklistTemplateDrawer(){
             <th style="text-align:left;padding:6px 4px;font-weight:600;color:var(--text2)">Task</th>
             <th style="text-align:left;padding:6px 4px;font-weight:600;color:var(--text2)">Description</th>
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:var(--text2)">Mandatory</th>
-            <th style="text-align:left;padding:6px 4px;font-weight:600;color:var(--text2)">Timeline</th>
+            <th style="text-align:left;padding:6px 4px;font-weight:600;color:var(--text2)">Timeline (days)</th>
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[0].color}">Pre-Training</th>
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[1].color}">Training Proper</th>
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[2].color}">Post-Training</th>
@@ -4931,7 +4948,7 @@ function _cktplRemoveItemRow(i){ if(!_cktplDraft) return; _cktplDraft.items.spli
 // reused elsewhere (Participant Roster / Agenda Templates). Columns: Task, Description,
 // Due/Ideal Timeline, Mandatory (Yes/No/TRUE/1), Phase (Pre-Training/Training Proper/Post-Training).
 function _cktplDownloadCSVTemplate(){
-  const csv = 'Task,Description,Due/Ideal Timeline,Mandatory,Phase\nPrepare training materials,Print handouts and load slides,1 day before,Yes,Pre-Training\nConduct attendance check,Confirm all participants signed in,Start of session,Yes,Training Proper\nSubmit training report,Complete and submit the Training Report tab,1 day after,Yes,Post-Training\n';
+  const csv = 'Task,Description,Timeline (days),Mandatory,Phase\nPrepare training materials,Print handouts and load slides,1,Yes,Pre-Training\nConduct attendance check,Confirm all participants signed in,0,Yes,Training Proper\nSubmit training report,Complete and submit the Training Report tab,1,Yes,Post-Training\n';
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -4961,6 +4978,7 @@ function _cktplHandleCSVFile(file){
     const taskIdx=header.findIndex(h=>h.includes('task'));
     const descIdx=header.findIndex(h=>h.includes('description'));
     const dueIdx=header.findIndex(h=>h.includes('due')||h.includes('timeline'));
+    const _parseTimelineDays=(raw)=>{ const n=parseInt(String(raw||'').replace(/[^0-9-]/g,''),10); return isNaN(n)?0:Math.max(0,n); };
     const mandIdx=header.findIndex(h=>h.includes('mandatory'));
     const phaseIdx=header.findIndex(h=>h.includes('phase'));
     if(taskIdx===-1){
@@ -4975,7 +4993,7 @@ function _cktplHandleCSVFile(file){
       _cktplDraft.items.push({
         task,
         description:descIdx>=0?(cols[descIdx]||'').trim():'',
-        dueTimeline:dueIdx>=0?(cols[dueIdx]||'').trim():'',
+        timelineDays:dueIdx>=0?_parseTimelineDays(cols[dueIdx]):0,
         mandatory:mandIdx>=0?_cktplParseMandatory(cols[mandIdx]):false,
         phase:phaseIdx>=0?_cktplParsePhase(cols[phaseIdx]):'pre'
       });
@@ -4994,7 +5012,7 @@ async function saveChecklistTemplate(){
   const errEl=document.getElementById('cktpl-error');
   if(errEl) errEl.classList.add('hidden');
   const title=(_cktplDraft.title||'').trim();
-  const items=_cktplDraft.items.map(i=>({task:(i.task||'').trim(),description:(i.description||'').trim(),dueTimeline:(i.dueTimeline||'').trim(),mandatory:!!i.mandatory,phase:i.phase||'pre'})).filter(i=>i.task);
+  const items=_cktplDraft.items.map(i=>({task:(i.task||'').trim(),description:(i.description||'').trim(),timelineDays:Math.max(0,parseInt(i.timelineDays,10)||0),mandatory:!!i.mandatory,phase:i.phase||'pre'})).filter(i=>i.task);
   if(!title){ if(errEl){errEl.textContent='Please enter a template title.';errEl.classList.remove('hidden');} return; }
   if(!items.length){ if(errEl){errEl.textContent='Please add at least one checklist item with a task.';errEl.classList.remove('hidden');} return; }
   try{
@@ -6783,7 +6801,7 @@ function _tdChecklistRenderTab(s){
 
 async function _tdcklInitChecklist(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
-  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',dueTimeline:i.dueTimeline||'',mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
+  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
   try{
     await SessionChecklistDB.create({sessionId,templateId,templateTitle:t.title,items});
     renderTrainingDetail();
@@ -6795,7 +6813,7 @@ function _tdcklResetToTemplate(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
   const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return;
   confirm$('Reset Checklist',`Reset this session's checklist to "<strong>${Utils.esc(t.title)}</strong>"? All current progress (statuses and Completed On dates) will be lost.`,'Reset',async()=>{
-    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',dueTimeline:i.dueTimeline||'',mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
+    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',status:'not_started',completedOn:null}));
     try{
       await SessionChecklistDB.update(row.id,{templateId,templateTitle:t.title,items});
       renderTrainingDetail();
@@ -6850,7 +6868,7 @@ function _tdcklBoardHtml(s,row){
           ${it.mandatory?'<span class="badge" style="background:#fee2e2;color:#dc2626;flex-shrink:0;font-size:9.5px">Mandatory</span>':''}
         </div>
         ${it.description?`<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px;line-height:1.4">${Utils.esc(it.description)}</div>`:''}
-        ${it.dueTimeline?`<div style="font-size:10.5px;color:var(--text3);margin-bottom:8px">⏱ ${Utils.esc(it.dueTimeline)}</div>`:''}
+        <div style="font-size:10.5px;color:var(--text3);margin-bottom:8px">⏱ ${_cktplTimelineLabel(it.phase,it.timelineDays)}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
           <select class="form-control" style="font-size:11.5px;padding:4px 6px;width:auto;color:${st.color};background:${st.bg};border-color:${st.color}" onchange="_tdcklSetItemStatus('${row.id}',${it._i},this.value)">${statusOpts}</select>
           ${completedOnStr?`<span style="font-size:10px;color:var(--text3)">Completed ${completedOnStr}</span>`:''}
