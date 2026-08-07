@@ -7221,7 +7221,11 @@ function _tdrRenderTab(s){
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
   const npsLbl=_tdrNpsLabel(c.nps);
   const savedNote=_tdrReport._isNew?'Not saved yet.':`Last saved ${Utils.esc(new Date(_tdrReport.updatedAt).toLocaleString())}`;
-  const _tdrRecEx=_tdrRecordingExemptionInfo(s,c);
+  // Recording Exemption doesn't apply to Self-led reports (2026-08-07, per Sandra): Self-led has
+  // no "recording" concept for evaluators to review, so there's nothing to request an exemption
+  // from -- the option is hidden entirely for grp==='owner' rather than surfaced-then-exempted.
+  const _tdrGrpEarly=_tdFieldGroup(s.deliveryType);
+  const _tdrRecEx=_tdrGrpEarly==='owner'?{requestBtn:'',banner:'',approveBtns:''}:_tdrRecordingExemptionInfo(s,c);
 
   const toolbar=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
@@ -7269,18 +7273,37 @@ function _tdrRenderTab(s){
     // Required Participants is NOT re-entered here -- pulled straight from the session's own
     // field (Session Information, Overview tab) so there's exactly one place it's set.
     const required=s.expectedParticipants;
-    const completionRate=(required!=null&&required>0&&c.completed!=null)?Math.round((c.completed/required)*100):null;
+    // Completion KPIs (2026-08-07, per Sandra): Completed/In Progress/Not Started are no longer
+    // manually typed here -- they're rolled up straight from the Per-Cluster Breakdown table
+    // below, so there's exactly one place headcount is captured and the top-line metrics can't
+    // silently drift from the cluster-level detail.
+    const clusterTotals=_tdrClusterTotals(c);
+    const hasClusterRows=(c.clusterRows||[]).length>0;
+    const completionRate=(required!=null&&required>0&&hasClusterRows)?Math.round((clusterTotals.completed/required)*100):null;
+    // Required-headcount guardrail (2026-08-07, per Sandra): the cluster breakdown's Required
+    // column should collectively add up to the session's own Required Participants -- e.g. a
+    // session set to 400 required participants but whose clusters only account for 350 between
+    // them means 50 people aren't assigned to any cluster. Flag it, and (per Sandra) block
+    // Submit Report until the totals reconcile -- see _tdrValidateForSubmit.
+    const requiredMismatch=hasClusterRows&&required!=null&&clusterTotals.required!==required;
+    const mismatchBanner=requiredMismatch?`
+      <div style="background:var(--red-lt);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;color:#991b1b">
+        <div style="font-weight:700;margin-bottom:2px">⚠ Cluster breakdown doesn't add up</div>
+        <div>The Per-Cluster Breakdown's Required column totals <strong>${clusterTotals.required}</strong>, but this session's Required Participants is set to <strong>${required}</strong>. Please review the cluster breakdown so the totals match before submitting.</div>
+      </div>`:'';
     const completionMetrics=`
+      ${mismatchBanner}
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
         ${_tdaKpiCard('users','#0369a1','Required Participants',required??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
         ${_tdaKpiCard('target','var(--sky)','Completion Rate',completionRate!=null?completionRate+'%':'—')}
-        ${_tdaKpiCard('check','var(--green)','Completed',_tdrCountBox('completed',c.completed))}
-        ${_tdaKpiCard('clock','var(--amber)','In Progress',_tdrCountBox('inProgress',c.inProgress))}
-        ${_tdaKpiCard('x','#64748b','Not Started',_tdrCountBox('notStarted',c.notStarted))}
+        ${_tdaKpiCard('check','var(--green)','Completed',hasClusterRows?clusterTotals.completed:'—')}
+        ${_tdaKpiCard('clock','var(--amber)','In Progress',hasClusterRows?clusterTotals.inProgress:'—')}
+        ${_tdaKpiCard('x','#64748b','Not Started',hasClusterRows?clusterTotals.notStarted:'—')}
       </div>`;
     const completionCard=`
       <div class="card" style="padding:18px 20px;margin-bottom:16px">
         <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Completion Summary</div>
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Completed / In Progress / Not Started are totaled automatically from the Per-Cluster Breakdown below.</div>
         ${completionMetrics}
       </div>`;
 
@@ -7424,6 +7447,20 @@ function _tdrRemoveClusterRow(i){
   _tdrReport.content.clusterRows.splice(i,1);
   renderTrainingDetail();
 }
+// Rolls up the Per-Cluster Breakdown table into session-level totals (2026-08-07, per Sandra):
+// feeds the Completion Summary KPI cards (Completed/In Progress/Not Started, and the Required
+// column total used by the required-headcount guardrail) so those numbers are always derived
+// from the cluster detail rather than typed twice.
+function _tdrClusterTotals(c){
+  return (c.clusterRows||[]).reduce((a,r)=>{
+    a.required+=Number(r.required)||0;
+    a.participants+=Number(r.participants)||0;
+    a.completed+=Number(r.completed)||0;
+    a.inProgress+=Number(r.inProgress)||0;
+    a.notStarted+=Number(r.notStarted)||0;
+    return a;
+  },{required:0,participants:0,completed:0,inProgress:0,notStarted:0});
+}
 
 // Agenda facilitator auto-fill (2026-08-06, per Sandra): the Facilitator field on each Agenda
 // Delivery row now offers the session's own Trainer and Co-Facilitator (pulled straight from
@@ -7530,9 +7567,26 @@ async function _tdrSaveDraft(){
   }catch(e){ /* error already surfaced */ }
 }
 
-function _tdrValidateForSubmit(){
+function _tdrValidateForSubmit(sess){
   const c=_tdrReport.content||{};
   const missing=[];
+  const grp=_tdFieldGroup(sess?.deliveryType);
+  // Self-led validation (2026-08-07, per Sandra): entirely different required-field set than
+  // ILT/External below -- the L1 survey fields from the SLT report branch, at least one cluster
+  // row, and the required-headcount guardrail (cluster Required total must equal the session's
+  // Required Participants -- flagged visually in the Completion Summary card, and enforced here
+  // so a mismatched report can't be submitted).
+  if(grp==='owner'){
+    const l1Labels={contentIntuitiveness:'Content Intuitiveness',contentRelevance:'Content Relevance',materialInteractivity:'Material Interactivity',materialDesign:'Material Design',learnerSatisfaction:'Learner Satisfaction',nps:'NPS'};
+    Object.keys(l1Labels).forEach(k=>{ if(c[k]===null||c[k]===undefined||c[k]==='') missing.push(l1Labels[k]); });
+    if(!c.clusterRows||!c.clusterRows.length) missing.push('at least one Per-Cluster Breakdown row');
+    else{
+      const required=sess?.expectedParticipants;
+      const totals=_tdrClusterTotals(c);
+      if(required!=null&&totals.required!==required) missing.push('a Per-Cluster Breakdown that reconciles with Required Participants');
+    }
+    return missing;
+  }
   const metricLabels={responses:'Responses',contentRating:'Content Rating',materialsRating:'Materials Rating',facilitationRating:'Facilitation Rating',overallSatisfaction:'Overall Satisfaction',csat:'CSAT',nps:'NPS'};
   Object.keys(metricLabels).forEach(k=>{ if(c[k]===null||c[k]===undefined||c[k]==='') missing.push(metricLabels[k]); });
   if(!c.agendaDelivery||!c.agendaDelivery.length) missing.push('at least one Agenda Delivery row');
@@ -7555,15 +7609,21 @@ function _tdrSubmitReport(){
     toast('The Training Report cannot be submitted before the session date. You can submit starting on the day of the session.','error');
     return;
   }
-  // 2026-08-06 (per Sandra): a recording link is required to submit, unless a supervisor-approved
-  // Recording Exemption is on file (see the Recording Exemption workflow below).
-  const _tdrRecExemption=_tdrReport.content.recordingExemption;
-  const _tdrRecExempt=!!(_tdrRecExemption&&_tdrRecExemption.status==='approved');
-  if(!_tdrSess.recordingLink && !_tdrRecExempt){
-    toast('A Recording Link must be saved before the report can be submitted. If the session genuinely wasn\'t recorded, click "Request Recording Exemption" instead.','error');
-    return;
+  const _tdrSubGrp=_tdFieldGroup(_tdrSess.deliveryType);
+  // Recording Link / Exemption gate doesn't apply to Self-led (2026-08-07, per Sandra): Self-led
+  // has no recording for an evaluator to watch, so there's nothing to require or exempt here --
+  // Self-led is instead gated on the required-headcount guardrail below (via _tdrValidateForSubmit).
+  if(_tdrSubGrp!=='owner'){
+    // 2026-08-06 (per Sandra): a recording link is required to submit, unless a supervisor-approved
+    // Recording Exemption is on file (see the Recording Exemption workflow below).
+    const _tdrRecExemption=_tdrReport.content.recordingExemption;
+    const _tdrRecExempt=!!(_tdrRecExemption&&_tdrRecExemption.status==='approved');
+    if(!_tdrSess.recordingLink && !_tdrRecExempt){
+      toast('A Recording Link must be saved before the report can be submitted. If the session genuinely wasn\'t recorded, click "Request Recording Exemption" instead.','error');
+      return;
+    }
   }
-  const missing=_tdrValidateForSubmit();
+  const missing=_tdrValidateForSubmit(_tdrSess);
   if(missing.length){
     toast(`Please complete the following before submitting: ${missing.join(', ')}.`,'error');
     return;
