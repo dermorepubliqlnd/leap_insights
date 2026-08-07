@@ -15,6 +15,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <!-- html2canvas -- Overview tab "Export Summary Image" feature (2026-07-31) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- SheetJS (xlsx) -- Checklist Template import (2026-08-07): reads an uploaded .xlsx workbook
+       (the Download Template file, filled in and re-uploaded) client-side, no server round-trip. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     /* =========================================================
        LEAP INSIGHTS  v1.2
@@ -152,7 +155,13 @@
     .app-layout{display:flex;min-height:100vh}
 
     /* ── SIDEBAR ── */
-    .sidebar{width:var(--sbw);background:var(--sb);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;overflow-y:auto}
+    /* overflow-y was "auto" here too, on top of .sb-nav below also being "auto" -- with the sidebar
+       pinned to a fixed 100vh, that nested pair of scrollable containers is what shows up as a
+       second, misaligned scrollbar track along the sidebar's right edge at some zoom levels
+       (subpixel height rounding pushes the OUTER container into overflow too). Only .sb-nav should
+       ever scroll -- the brand header and the user-profile footer are fixed-height flex children,
+       so the outer sidebar itself never needs to. */
+    .sidebar{width:var(--sbw);background:var(--sb);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;overflow:hidden}
     .sb-brand{padding:18px 16px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
     .brand-mark{width:34px;height:34px;flex-shrink:0}
     .brand-nt{font-size:14px;font-weight:700;color:#fff;line-height:1.25;font-family:var(--font-heading)}
@@ -2471,7 +2480,7 @@ const _FIELD_MAPS = {
   // Checklist Templates (Phase D2, 2026-08-07, per Sandra): title + a jsonb array of
   // {task,description,timelineDays,mandatory,phase} items. Same bespoke-drawer pattern as Agenda
   // Templates above (title+items don't fit the generic single-name Sel list UI). `phase` is
-  // single-select: 'pre'|'during'|'post' (Pre-Training / Training Proper / Post-Training).
+  // single-select: 'pre'|'during'|'post' (Pre-Training / During Training / Post-Training).
   // `timelineDays` (round 2, 2026-08-07): a plain non-negative day count -- the +/- sign shown to
   // the trainer is derived automatically from `phase` (see _cktplTimelineLabel), never hand-typed.
   checklist_templates:{ id:'id', title:'title', items:'items', isActive:'is_active', createdAt:'created_at', updatedAt:'updated_at' },
@@ -4826,7 +4835,7 @@ function deleteAgendaTemplate(id){
 // richer per-item shape (Task/Description/Due-Ideal Timeline/Mandatory/Phase) instead of
 // Topic/Duration. CRUD only in this phase -- no session-facing UI reads this yet (see Phase D2
 // Overview template-selector and Checklist-tab work, tracked separately).
-const CKTPL_PHASES=[{id:'pre',label:'Pre-Training',color:'#0369a1',bg:'#e0f2fe'},{id:'during',label:'Training Proper',color:'#b45309',bg:'#fef3c7'},{id:'post',label:'Post-Training',color:'#15803d',bg:'#dcfce7'}];
+const CKTPL_PHASES=[{id:'pre',label:'Pre-Training',color:'#0369a1',bg:'#e0f2fe'},{id:'during',label:'During Training',color:'#b45309',bg:'#fef3c7'},{id:'post',label:'Post-Training',color:'#15803d',bg:'#dcfce7'}];
 function _cktplPhaseInfo(id){ return CKTPL_PHASES.find(p=>p.id===id)||CKTPL_PHASES[0]; }
 
 function renderChecklistTemplatesOverview(){
@@ -4853,7 +4862,7 @@ let _cktplDraft=null; // {id:null|string, title:'', items:[{task,description,tim
 function _cktplBlankItem(){ return {task:'',description:'',timelineDays:0,mandatory:false,phase:'pre'}; }
 // Auto-signed Timeline label (2026-08-07, per Sandra: sign should follow Phase automatically, not be
 // hand-typed) -- Pre-Training counts DOWN to the training day (shown as "-N day(s) before"),
-// Post-Training counts UP from it ("+N day(s) after"), During Training/Training Proper has no
+// Post-Training counts UP from it ("+N day(s) after"), During Training/During Training has no
 // meaningful offset so it's always "Day of" regardless of the stored number.
 function _cktplTimelineLabel(phase,days){
   const n=Number(days)||0;
@@ -4905,7 +4914,7 @@ function renderChecklistTemplateDrawer(){
       <input type="text" class="form-control" id="cktpl-title-input" placeholder="e.g. Standard ILT Trainer Checklist" value="${Utils.esc(_cktplDraft.title)}" oninput="_cktplSetTitle(this.value)">
     </div>
     <div class="drawer-sec-title" style="margin-top:16px">Checklist Items</div>
-    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Pick one phase per item (Pre-Training / Training Proper / Post-Training) — this controls which Checklist-tab column it shows under once a session runs against this template. Timeline is just a number of days -- the +/- sign is applied automatically based on Phase (Pre-Training counts down to the training day, Post-Training counts up from it); During Training/Training Proper always shows "Day of".</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Pick one phase per item (Pre-Training / During Training / Post-Training) — this controls which Checklist-tab column it shows under once a session runs against this template. Timeline is just a number of days -- the +/- sign is applied automatically based on Phase (Pre-Training counts down to the training day, Post-Training counts up from it); During Training/During Training always shows "Day of".</div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead>
@@ -4915,7 +4924,7 @@ function renderChecklistTemplateDrawer(){
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:var(--text2)">Mandatory</th>
             <th style="text-align:left;padding:6px 4px;font-weight:600;color:var(--text2)">Timeline (days)</th>
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[0].color}">Pre-Training</th>
-            <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[1].color}">Training Proper</th>
+            <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[1].color}">During Training</th>
             <th style="text-align:center;padding:6px 4px;font-weight:600;color:${CKTPL_PHASES[2].color}">Post-Training</th>
             <th></th>
           </tr>
@@ -4925,9 +4934,9 @@ function renderChecklistTemplateDrawer(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn btn-sm btn-secondary" onclick="_cktplAddItemRow()">+ Add Item</button>
-      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('cktpl-csv-input').click()">⇪ Import CSV</button>
-      <input type="file" id="cktpl-csv-input" accept=".csv" style="display:none" onchange="_cktplHandleCSVFile(this.files[0])">
-      <button class="btn btn-sm btn-ghost" onclick="_cktplDownloadCSVTemplate()">⇩ Download Template</button>
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('cktpl-csv-input').click()">⇪ Import CSV/Excel</button>
+      <input type="file" id="cktpl-csv-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="_cktplHandleUploadFile(this.files[0])">
+      <button class="btn btn-sm btn-ghost" onclick="_cktplDownloadTemplate()">⇩ Download Template (with How To)</button>
     </div>
     <div class="modal-err hidden" id="cktpl-error" style="margin-top:12px"></div>
     <div style="display:flex;gap:8px;margin-top:16px">
@@ -4944,16 +4953,23 @@ function _cktplSetItemField(i,field,val){
 function _cktplAddItemRow(){ if(!_cktplDraft) return; _cktplDraft.items.push(_cktplBlankItem()); renderChecklistTemplateDrawer(); }
 function _cktplRemoveItemRow(i){ if(!_cktplDraft) return; _cktplDraft.items.splice(i,1); if(!_cktplDraft.items.length) _cktplDraft.items.push(_cktplBlankItem()); renderChecklistTemplateDrawer(); }
 
-// CSV import/template for Checklist Templates (Phase D2, 2026-08-07) -- same _tdaParseCSV parser
-// reused elsewhere (Participant Roster / Agenda Templates). Columns: Task, Description,
-// Due/Ideal Timeline, Mandatory (Yes/No/TRUE/1), Phase (Pre-Training/Training Proper/Post-Training).
-function _cktplDownloadCSVTemplate(){
-  const csv = 'Task,Description,Timeline (days),Mandatory,Phase\nPrepare training materials,Print handouts and load slides,1,Yes,Pre-Training\nConduct attendance check,Confirm all participants signed in,0,Yes,Training Proper\nSubmit training report,Complete and submit the Training Report tab,1,Yes,Post-Training\n';
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'checklist_template_upload_template.csv';
+// Template download for Checklist Templates (Phase D2 2026-08-07, upgraded round 4 2026-08-07
+// per Sandra: "make the Mandatory and Phase dropdowns" + "add a How To") -- CSV can't carry
+// in-cell dropdown validation, so this is now a real pre-built .xlsx (Template sheet with
+// data-validation dropdowns on Mandatory/Phase + a "How To" sheet), embedded here as a base64
+// blob and built once via openpyxl (verified round-trip: 2 data validations, both sheets intact)
+// rather than assembled client-side -- far less fragile than hand-rolling OOXML/data-validation
+// XML in the browser. Columns: Task, Description, Timeline (days), Mandatory, Phase.
+const CKTPL_TEMPLATE_XLSX_B64='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';
+function _cktplDownloadTemplate(){
+  const bin=atob(CKTPL_TEMPLATE_XLSX_B64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='checklist_template_upload_template.xlsx';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -4970,40 +4986,64 @@ function _cktplParseMandatory(raw){
   const v=(raw||'').trim().toLowerCase();
   return v==='yes'||v==='y'||v==='true'||v==='1';
 }
-function _cktplHandleCSVFile(file){
+// _cktplApplyImportedRows: shared by both the CSV and Excel import paths below -- takes the same
+// {header,rows} shape (header: lowercased strings, rows: arrays of stringified cell values) so
+// the column-matching/mapping logic only needs to exist once.
+function _cktplApplyImportedRows(header,rows){
+  const taskIdx=header.findIndex(h=>h.includes('task'));
+  const descIdx=header.findIndex(h=>h.includes('description'));
+  const dueIdx=header.findIndex(h=>h.includes('due')||h.includes('timeline'));
+  const _parseTimelineDays=(raw)=>{ const n=parseInt(String(raw||'').replace(/[^0-9-]/g,''),10); return isNaN(n)?0:Math.max(0,n); };
+  const mandIdx=header.findIndex(h=>h.includes('mandatory'));
+  const phaseIdx=header.findIndex(h=>h.includes('phase'));
+  if(taskIdx===-1){
+    toast('The file must have a Task column.','error');
+    return;
+  }
+  _cktplDraft.items=_cktplDraft.items.filter(i=>(i.task||'').trim());
+  let added=0, skippedBlank=0;
+  rows.forEach(cols=>{
+    const task=String(cols[taskIdx]??'').trim();
+    if(!task){ skippedBlank++; return; }
+    _cktplDraft.items.push({
+      task,
+      description:descIdx>=0?String(cols[descIdx]??'').trim():'',
+      timelineDays:dueIdx>=0?_parseTimelineDays(cols[dueIdx]):0,
+      mandatory:mandIdx>=0?_cktplParseMandatory(String(cols[mandIdx]??'')):false,
+      phase:phaseIdx>=0?_cktplParsePhase(String(cols[phaseIdx]??'')):'pre'
+    });
+    added++;
+  });
+  if(!_cktplDraft.items.length) _cktplDraft.items.push(_cktplBlankItem());
+  renderChecklistTemplateDrawer();
+  toast(`${added} checklist item(s) imported${skippedBlank?`, ${skippedBlank} row(s) skipped (blank task)`:''}.`, added?'success':'warning');
+}
+// Handles both the .csv path (unchanged, existing _tdaParseCSV text parser) and the new .xlsx/.xls
+// path (round 4, 2026-08-07) -- reads the workbook via SheetJS, always the FIRST sheet (the
+// Download Template's "Template" sheet is sheet 1; "How To" is sheet 2 and deliberately ignored
+// here even if present).
+function _cktplHandleUploadFile(file){
   if(!file||!_cktplDraft) return;
+  const name=(file.name||'').toLowerCase();
+  const isExcel=name.endsWith('.xlsx')||name.endsWith('.xls');
   const reader=new FileReader();
   reader.onload=()=>{
-    const {header,rows}=_tdaParseCSV(String(reader.result||''));
-    const taskIdx=header.findIndex(h=>h.includes('task'));
-    const descIdx=header.findIndex(h=>h.includes('description'));
-    const dueIdx=header.findIndex(h=>h.includes('due')||h.includes('timeline'));
-    const _parseTimelineDays=(raw)=>{ const n=parseInt(String(raw||'').replace(/[^0-9-]/g,''),10); return isNaN(n)?0:Math.max(0,n); };
-    const mandIdx=header.findIndex(h=>h.includes('mandatory'));
-    const phaseIdx=header.findIndex(h=>h.includes('phase'));
-    if(taskIdx===-1){
-      toast('CSV must have a Task column.','error');
-      return;
+    if(isExcel){
+      if(typeof XLSX==='undefined'){ toast('Excel import library failed to load -- try a .csv file instead, or reload the page.','error'); return; }
+      let wb;
+      try{ wb=XLSX.read(reader.result,{type:'array'}); }catch(e){ toast('Could not read that Excel file. Make sure it\'s a valid .xlsx/.xls.','error'); return; }
+      const sheet=wb.Sheets[wb.SheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',blankrows:false});
+      if(!aoa.length){ toast('That sheet looks empty.','error'); return; }
+      const header=aoa[0].map(h=>String(h||'').trim().toLowerCase());
+      const rows=aoa.slice(1);
+      _cktplApplyImportedRows(header,rows);
+    }else{
+      const {header,rows}=_tdaParseCSV(String(reader.result||''));
+      _cktplApplyImportedRows(header,rows);
     }
-    _cktplDraft.items=_cktplDraft.items.filter(i=>(i.task||'').trim());
-    let added=0, skippedBlank=0;
-    rows.forEach(cols=>{
-      const task=(cols[taskIdx]||'').trim();
-      if(!task){ skippedBlank++; return; }
-      _cktplDraft.items.push({
-        task,
-        description:descIdx>=0?(cols[descIdx]||'').trim():'',
-        timelineDays:dueIdx>=0?_parseTimelineDays(cols[dueIdx]):0,
-        mandatory:mandIdx>=0?_cktplParseMandatory(cols[mandIdx]):false,
-        phase:phaseIdx>=0?_cktplParsePhase(cols[phaseIdx]):'pre'
-      });
-      added++;
-    });
-    if(!_cktplDraft.items.length) _cktplDraft.items.push(_cktplBlankItem());
-    renderChecklistTemplateDrawer();
-    toast(`${added} checklist item(s) imported${skippedBlank?`, ${skippedBlank} row(s) skipped (blank task)`:''}.`, added?'success':'warning');
   };
-  reader.readAsText(file);
+  if(isExcel) reader.readAsArrayBuffer(file); else reader.readAsText(file);
   document.getElementById('cktpl-csv-input').value='';
 }
 
@@ -5012,16 +5052,38 @@ async function saveChecklistTemplate(){
   const errEl=document.getElementById('cktpl-error');
   if(errEl) errEl.classList.add('hidden');
   const title=(_cktplDraft.title||'').trim();
+  const rawCount=_cktplDraft.items.length;
   const items=_cktplDraft.items.map(i=>({task:(i.task||'').trim(),description:(i.description||'').trim(),timelineDays:Math.max(0,parseInt(i.timelineDays,10)||0),mandatory:!!i.mandatory,phase:i.phase||'pre'})).filter(i=>i.task);
   if(!title){ if(errEl){errEl.textContent='Please enter a template title.';errEl.classList.remove('hidden');} return; }
   if(!items.length){ if(errEl){errEl.textContent='Please add at least one checklist item with a task.';errEl.classList.remove('hidden');} return; }
-  try{
-    if(_cktplDraft.id) await ChecklistTemplateDB.update(_cktplDraft.id,{title,items});
-    else await ChecklistTemplateDB.create({title,items,isActive:true});
-    toast('Checklist template saved.','success');
-    closeChecklistTemplateDrawer();
-    renderSettings();
-  }catch(e){ /* error already surfaced by _surfaceDbError */ }
+  // Pre-save validation/confirmation (2026-08-07, round 4, per Sandra: "a validation to be sure
+  // before saving") -- surfaces exactly what's about to be written (item counts per phase,
+  // mandatory count) plus warnings for anything easy to miss in a long list (blank-Task rows that
+  // get silently dropped above, or duplicate task names) rather than committing immediately.
+  const blankSkipped=rawCount-items.length;
+  const counts={pre:0,during:0,post:0};
+  items.forEach(i=>{ counts[i.phase]=(counts[i.phase]||0)+1; });
+  const mandCount=items.filter(i=>i.mandatory).length;
+  const taskLower=items.map(i=>i.task.toLowerCase());
+  const dupes=[...new Set(taskLower.filter((t,i)=>taskLower.indexOf(t)!==i))];
+  let warn='';
+  if(blankSkipped) warn+=`<div style="color:#b45309;margin-top:6px">⚠ ${blankSkipped} row${blankSkipped!==1?'s':''} with a blank Task will be skipped and not saved.</div>`;
+  if(dupes.length) warn+=`<div style="color:#b45309;margin-top:6px">⚠ ${dupes.length} duplicate task name${dupes.length!==1?'s':''} found (e.g. "${Utils.esc(dupes[0])}") -- double-check these aren't accidental repeats.</div>`;
+  const summaryHtml=`<div style="text-align:left">
+    <div>"<strong>${Utils.esc(title)}</strong>" will be saved with <strong>${items.length}</strong> item${items.length!==1?'s':''}:</div>
+    <div style="margin-top:6px">Pre-Training: <strong>${counts.pre||0}</strong> &nbsp;•&nbsp; During Training: <strong>${counts.during||0}</strong> &nbsp;•&nbsp; Post-Training: <strong>${counts.post||0}</strong></div>
+    <div style="margin-top:4px">Mandatory: <strong>${mandCount}</strong> of ${items.length}</div>
+    ${warn}
+  </div>`;
+  confirm$('Save Checklist Template',summaryHtml,'Save Template',async()=>{
+    try{
+      if(_cktplDraft.id) await ChecklistTemplateDB.update(_cktplDraft.id,{title,items});
+      else await ChecklistTemplateDB.create({title,items,isActive:true});
+      toast('Checklist template saved.','success');
+      closeChecklistTemplateDrawer();
+      renderSettings();
+    }catch(e){ /* error already surfaced by _surfaceDbError */ }
+  });
 }
 async function toggleChecklistTemplateActive(id){
   const t=ChecklistTemplateDB.byId(id); if(!t) return;
@@ -6735,7 +6797,7 @@ function _tdAuditRenderTab(s){
 /* ── CHECKLIST TAB (Phase D2, 2026-08-07, per Sandra) ─────────────────────────────────────
    ILT-only tab next to Overview. Renders the session's assigned Checklist Template (picked on
    Overview -- see _tdChecklistTemplateDisplay/tdd-checklisttpl) as a 3-column board (Pre-Training
-   / Training Proper / Post-Training), tracking Status + Completed On per item. Deliberately backed
+   / During Training / Post-Training), tracking Status + Completed On per item. Deliberately backed
    by its own `session_checklists` table (one row per session, a SNAPSHOT of the template's items
    at initialization time), NOT a live read of checklist_templates -- so a later edit to the
    template never retroactively alters a session's already-recorded checklist history. Status
@@ -6854,7 +6916,7 @@ function _tdcklAddDays(dateStr,delta){
 }
 // Target Date anchor: Pre-Training counts back from the session's start date; Post-Training counts
 // forward from the session's END date (so a multi-day ILT's "after" items land after the whole
-// thing wraps, not after day one); Training Proper is always the start date itself (T0).
+// thing wraps, not after day one); During Training is always the start date itself (T0).
 function _tdcklTargetDate(s,phase,timelineDays){
   const n=Number(timelineDays)||0;
   if(phase==='post') return _tdcklAddDays(s.endDate||s.trainingDate,n);
@@ -6885,8 +6947,22 @@ function _tdcklStatusIconHtml(statusId){
   if(statusId==='pending') return _tdIconSvg('clock',st.color,16);
   return `<svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="8.5" fill="none" stroke="${st.color}" stroke-width="1.6"/></svg>`;
 }
-function _tdcklLinearBar(pct,color){
-  return `<div style="width:70px;height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;flex-shrink:0"><div style="width:${Math.max(0,Math.min(100,pct))}%;height:100%;background:${color}"></div></div>`;
+// Restored 2026-08-07 (round 4, per Sandra: "why did we lose the metric card at the top for
+// overall completion?") -- the round-3 redesign replaced this with just a text line ("Overall:
+// X% (n/n)"); putting the ring + 4 KPI cards back alongside that line rather than instead of it,
+// since the per-column bars/fractions from round 3 are still useful for at-a-glance-per-phase and
+// there's no reason to choose one over the other.
+function _tdcklProgressRing(pct){
+  const deg=Math.round((pct||0)*3.6);
+  return `<div style="width:104px;height:104px;border-radius:50%;background:conic-gradient(var(--green) ${deg}deg,#e2e8f0 ${deg}deg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+    <div style="width:78px;height:78px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div style="font-size:20px;font-weight:700;color:var(--green)">${pct}%</div>
+      <div style="font-size:9px;color:var(--text3);letter-spacing:.4px;text-transform:uppercase">Complete</div>
+    </div>
+  </div>`;
+}
+function _tdcklLinearBar(pct,color,width){
+  return `<div style="width:${width||'70px'};height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;flex-shrink:0"><div style="width:${Math.max(0,Math.min(100,pct))}%;height:100%;background:${color}"></div></div>`;
 }
 
 async function _tdcklSetCompletedOn(rowId,itemIndex,dateStr){
@@ -6920,6 +6996,22 @@ async function _tdcklAddCustomItem(rowId,phase,taskText){
     await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
     renderTrainingDetail();
   }catch(e){ /* error already surfaced */ }
+}
+// Delete a checklist item (2026-08-07, round 4, per Sandra) -- session-only, same as Add Item:
+// this only ever touches this session's own snapshot, never checklist_templates, so removing a
+// template-sourced item here doesn't delete it from the template (it comes back if the checklist
+// is ever Reset to that template from the Overview tab).
+function _tdcklDeleteItem(rowId,itemIndex){
+  const row=SessionChecklistDB.byId(rowId); if(!row) return;
+  const it=(row.items||[])[itemIndex]; if(!it) return;
+  confirm$('Remove Checklist Item',`Remove "<strong>${Utils.esc(it.task)}</strong>" from this session's checklist? This only affects this session -- the Checklist Template itself is unchanged.`,'Remove',async()=>{
+    const items=(row.items||[]).filter((_,i)=>i!==itemIndex);
+    try{
+      await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
+      renderTrainingDetail();
+      toast('Item removed from this session\'s checklist.','info');
+    }catch(e){ /* error already surfaced */ }
+  });
 }
 function _tdcklAddItemRowHtml(rowId,phaseId){
   const inputId=`tdckl-newitem-${rowId}-${phaseId}`;
@@ -6976,8 +7068,9 @@ function _tdcklBoardHtml(s,row){
         <td style="padding:6px 4px;vertical-align:top;white-space:nowrap">
           <input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${it.isNA?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">
         </td>
+        <td style="padding:6px 2px;vertical-align:top"><button class="btn btn-sm btn-ghost" style="color:var(--red);padding:2px 5px" title="Remove item" onclick="_tdcklDeleteItem('${row.id}',${it._i})">✕</button></td>
       </tr>`;
-    }).join(''):`<tr><td colspan="${showTargetCol?5:4}" style="font-size:11.5px;color:var(--text3);padding:10px 4px">No items in this phase.</td></tr>`;
+    }).join(''):`<tr><td colspan="${showTargetCol?6:5}" style="font-size:11.5px;color:var(--text3);padding:10px 4px">No items in this phase.</td></tr>`;
     return `<div>
       <div style="background:${p.bg};border-radius:8px 8px 0 0;padding:10px 12px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -7000,6 +7093,7 @@ function _tdcklBoardHtml(s,row){
             ${showTargetCol?'<th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Target Date</th>':''}
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Status</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Completed On</th>
+            <th style="padding:4px;width:20px"></th>
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
@@ -7007,14 +7101,26 @@ function _tdcklBoardHtml(s,row){
       </div>
     </div>`;
   }).join('');
+  const overallCounts={not_started:0,pending:0,completed:0,na:0};
+  withStatus.forEach(it=>{ overallCounts[it._status]=(overallCounts[it._status]||0)+1; });
+  const summaryRow=`<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;margin:14px 0 4px">
+    ${_tdcklProgressRing(overallPct)}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      ${_tdaKpiCard('check','var(--green)','Completed',overallCounts.completed)}
+      ${_tdaKpiCard('clock','var(--amber)','Pending',overallCounts.pending)}
+      ${_tdaKpiCard('x','#64748b','Not Started',overallCounts.not_started)}
+      ${_tdaKpiCard('question','#94a3b8','N/A',overallCounts.na)}
+    </div>
+  </div>`;
   return `<div class="card" style="padding:18px 20px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:6px;flex-wrap:wrap">
       <div>
         <div style="font-weight:700;font-size:14.5px">Checklist <span style="font-weight:400;color:var(--text3);font-size:12px">— ${Utils.esc(row.templateTitle||'')}</span></div>
-        <div style="font-size:11.5px;color:var(--text3);margin-top:2px">Session Date${s.endDate&&s.endDate!==s.trainingDate?'s':''}: ${_tdcklSessionDatesLabel(s)} &nbsp;•&nbsp; Overall: <strong style="color:var(--text2)">${overallPct}%</strong> (${overallCompleted}/${overallApplicable})</div>
+        <div style="font-size:11.5px;color:var(--text3);margin-top:2px">Session Date${s.endDate&&s.endDate!==s.trainingDate?'s':''}: ${_tdcklSessionDatesLabel(s)}</div>
       </div>
       ${_tdcklLegendHtml()}
     </div>
+    ${summaryRow}
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px">${cols}</div>
   </div>`;
 }
@@ -9121,6 +9227,68 @@ function _tdOverviewJourneySteps(s,ownerType){
   return steps;
 }
 
+// Trainer Checklist summary widget (2026-08-07, round 4, per Sandra: "insert a new widget between
+// Session Information, and Attendance and Assessment Performance ... show the checklist progress
+// with pre/during/post summary breakdown") -- a compact, read-only preview on the Overview tab so
+// nobody has to switch to the Checklist tab just to see where things stand. ILT-only, and mirrors
+// that tab's own gates (Aug-1-2026 feature cutoff, no-template-yet, still-initializing) rather
+// than duplicating separate copy for each state.
+function _tdOverviewChecklistWidget(s){
+  if(s.deliveryType!=='ILT') return '';
+  if(s.trainingDate && s.trainingDate<CKTPL_FEATURE_START_DATE) return '';
+  const goLink=`<a href="javascript:void(0)" onclick="tdDetailSwitchTab('checklist')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600;flex-shrink:0">Go to Checklist tab →</a>`;
+  if(!s.checklistTemplateId){
+    return `<div class="card" style="padding:16px 20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="font-weight:700;font-size:14.5px">Trainer Checklist</div>
+        ${goLink}
+      </div>
+      <div style="font-size:12.5px;color:var(--text3);margin-top:6px">No checklist template assigned yet -- pick one above in Session Information.</div>
+    </div>`;
+  }
+  const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
+  if(!row){
+    return `<div class="card" style="padding:16px 20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="font-weight:700;font-size:14.5px">Trainer Checklist</div>
+        ${goLink}
+      </div>
+      <div style="font-size:12.5px;color:var(--text3);margin-top:6px">Setting up the checklist -- open the Checklist tab to view it.</div>
+    </div>`;
+  }
+  const items=row.items||[];
+  const withStatus=items.map(it=>({...it,_status:_tdcklComputeStatus(it,_tdcklTargetDate(s,it.phase||'pre',it.timelineDays))}));
+  const overallApplicable=withStatus.filter(it=>it._status!=='na').length;
+  const overallCompleted=withStatus.filter(it=>it._status==='completed').length;
+  const overallPct=overallApplicable>0?Math.round((overallCompleted/overallApplicable)*100):0;
+  const phaseCells=CKTPL_PHASES.map(p=>{
+    const colItems=withStatus.filter(it=>(it.phase||'pre')===p.id);
+    const applicable=colItems.filter(it=>it._status!=='na').length;
+    const completed=colItems.filter(it=>it._status==='completed').length;
+    const pct=applicable>0?Math.round((completed/applicable)*100):0;
+    return `<div style="flex:1;min-width:130px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span style="font-size:10.5px;font-weight:700;color:${p.color};letter-spacing:.3px">${p.label.toUpperCase()}</span>
+        <span style="font-size:11px;color:var(--text3)">${completed}/${applicable}</span>
+      </div>
+      ${_tdcklLinearBar(pct,p.color,'100%')}
+    </div>`;
+  }).join('');
+  return `<div class="card" style="padding:16px 20px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div>
+        <span style="font-weight:700;font-size:14.5px">Trainer Checklist</span>
+        <span style="font-weight:400;color:var(--text3);font-size:12px"> — ${Utils.esc(row.templateTitle||'')}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:12.5px;font-weight:700;color:var(--text2)">${overallPct}% complete</span>
+        ${goLink}
+      </div>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">${phaseCells}</div>
+  </div>`;
+}
+
 function _tdOverviewJourneyBlockVertical(s,ownerType){
   const steps=_tdOverviewJourneySteps(s,ownerType);
   const rowsHtml=steps.map((st,i)=>`<div style="display:flex;gap:12px;position:relative">
@@ -9177,6 +9345,7 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
       </div>
       ${_tdOverviewJourneyBlockVertical(s,ownerType)}
     </div>
+    ${_tdOverviewChecklistWidget(s)}
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
       <div>
         <div class="card" style="padding:18px 20px;margin-bottom:16px">
