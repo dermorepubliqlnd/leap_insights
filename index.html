@@ -6734,6 +6734,15 @@ async function tdDetailSave(){
   if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
+  // Guard (2026-08-10, per Sandra): for ILT/VILT/External, "Completed" is only reachable via
+  // Attendance & Performance -> Mark Complete (which validates the roster). The tdd-status <select>
+  // no longer offers "Completed" as a choice for these types, but this server-side-of-the-form
+  // check closes the gap in case of a stale/tampered DOM value -- newly setting status to
+  // 'completed' from here is blocked; it's only allowed to pass through unchanged if the session
+  // was already completed (e.g. an admin editing other fields on an already-completed session).
+  if(grp!=='owner' && d.status==='completed' && s.status!=='completed'){
+    errs.push('Sessions can only be marked Completed from the Attendance & Performance tab (Mark Complete), which checks that attendance has been taken.');
+  }
   const errEl=document.getElementById('tdd-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
@@ -6760,16 +6769,24 @@ function _tddPlaceholderPanel(icon,title,note){
 
 // Full session Audit History (2026-07-31): AuditLog entries for training_sessions mutations are
 // already logged with entityId===session.id via _makeRecordDB, but session_participants /
-// training_reports mutations are logged with THEIR OWN row id, not the parent session's id -- so
-// we collect the session's own id + all its participant row ids + its report row id (if any) into
-// one set, then filter AuditLog.all() for entries whose entityId falls in that set. Covers field
-// edits, status changes, roster/attendance changes, and the full report submit/reopen-request/
+// training_reports / session_checklists mutations are logged with THEIR OWN row id, not the
+// parent session's id -- so we collect the session's own id + all its participant row ids + its
+// report row id (if any) + its checklist row id (if any) into one set, then filter AuditLog.all()
+// for entries whose entityId falls in that set. Covers field edits, status changes,
+// roster/attendance changes, checklist item ticks, and the full report submit/reopen-request/
 // approve/deny/resubmit lifecycle, most-recent-first. Styled to match the org-wide renderAuditLog().
+// FIX (2026-08-10, per Sandra): checklist row id was missing from this set entirely, so every
+// checklist item tick/reset was being logged to audit_log (module 'Session Checklist') but never
+// surfaced on this tab -- confirmed live via SQL, e.g. TS-2026-013 had checklist audit rows that
+// never appeared here. This silently hid a whole category of "movements" from admins reviewing a
+// session's history.
 function _tdAuditRenderTab(s){
   const partIds=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).map(r=>r.id);
   const reportRow=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const checklistRow=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
   const idSet=new Set([s.id, ...partIds]);
   if(reportRow) idSet.add(reportRow.id);
+  if(checklistRow) idSet.add(checklistRow.id);
   const entries=AuditLog.all().filter(e=>idSet.has(e.entityId)).sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
   if(!entries.length){
     return `<div class="empty-state" style="padding:60px 20px">
@@ -8439,6 +8456,27 @@ function _tdrValidateForSubmit(sess){
   return missing;
 }
 
+// Real-data attendance check (2026-08-10, per Sandra -- follow-up to TS-2026-013, where a report
+// was submitted against a session with ZERO participants because session.status had been flipped
+// to 'completed' via a since-removed manual Status dropdown rather than through Attendance &
+// Performance -> Mark Complete). Rather than trusting the session.status field alone, this reads
+// the actual session_participants rows and re-checks the same conditions _tdaMarkCompleted()
+// enforces (at least one participant, none left Pending) directly against the DB. Kept alongside
+// the status==='completed' check below rather than replacing it, so a report can't go out either
+// because status drifted OR because attendance itself is incomplete -- two independent guards
+// instead of one that can be bypassed.
+function _tdrAttendanceIssues(sess){
+  if(!sess||_tdFieldGroup(sess.deliveryType)==='owner') return []; // Self-led has no attendance concept
+  const rows=SessionParticipantsDB.all().filter(r=>r.sessionId===sess.id);
+  if(rows.length===0) return ['no participants have been added to the roster'];
+  const days=_tdaDayList(sess), multi=days.length>1;
+  const pending=multi
+    ?rows.filter(r=>days.some(d=>_tdaGetDayStatus(r,d)==='pending')).length
+    :rows.filter(r=>r.attendanceStatus==='pending').length;
+  const issues=[];
+  if(pending>0) issues.push(`${pending} participant(s) still have Pending attendance${multi?' on at least one day':''}`);
+  return issues;
+}
 function _tdrSubmitReport(){
   const _tdrSess=TrSessionDB.byId(_tdrReport.sessionId);
   const _tdrSubGrp=_tdFieldGroup(_tdrSess?.deliveryType);
@@ -8448,6 +8486,11 @@ function _tdrSubmitReport(){
   // it unconditionally blocked every Self-led report. ILT/External still require it.
   if(!_tdrSess||(_tdrSubGrp!=='owner'&&_tdrSess.status!=='completed')){
     toast('Attendance & Performance must be tagged Complete before the Training Report can be submitted.','error');
+    return;
+  }
+  const _tdrAttnIssues=_tdrAttendanceIssues(_tdrSess);
+  if(_tdrAttnIssues.length){
+    toast(`Attendance & Performance isn't actually complete â ${_tdrAttnIssues.join(', ')}. Please fix this on the Attendance & Performance tab before submitting the report.`,'error');
     return;
   }
   // 2026-08-06 (per Sandra): a report cannot be submitted before the session date arrives --
@@ -8816,7 +8859,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
       <div style="${gridStyle};margin-top:18px">
         ${_tddInfoBlock('edit3','#64748b','Report Link',reportLinkVal)}
       </div>
-      ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
+      ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
   }
   return `
@@ -8848,7 +8891,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
       ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
       ${s.deliveryType==='ILT'?_tddInfoBlock('clipboard','#0369a1','Trainer Checklist',_tdChecklistTemplateDisplay(s)):''}
     </div>
-    ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
+    ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
   `;
 }
 
@@ -9710,9 +9753,9 @@ function _tddSessionInfoEditContent(s,ownerType){
       ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">'+(ownerType?'Report Link':'Recording Link')+'</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
       ${_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
-        <option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>
+        ${ownerType?`<option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>`:(s.status==='completed'?`<option value="completed" selected>Completed</option>`:'')}
         <option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>
-      </select>`)}
+      </select>${ownerType?'':`<div style="font-size:10.5px;color:var(--text3);margin-top:3px">Completed is set automatically once Attendance &amp; Performance is tagged Complete.</div>`}`)}
       <div id="tdd-checklisttpl-wrap" class="${s.deliveryType==='ILT'?'':'hidden'}">${_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`)}</div>
     </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt)">
