@@ -2360,6 +2360,34 @@
   </div>
 </div>
 
+<!-- ══ MODAL: MANUAL REPORT OVERRIDE (2026-08-10, per Sandra) — logs a report that was already
+     submitted outside the app (e.g. via email) for a past session, without requiring attendance
+     or report fields to be filled in through the normal flow. ═════════════ -->
+<div id="modal-manual-report-override" class="modal-overlay" onclick="if(event.target===this)closeModal('manual-report-override')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Log Report as Already Submitted</span>
+      <button class="modal-close" onclick="closeModal('manual-report-override')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">For sessions whose report was already submitted outside the app (e.g. via email) before this workflow existed. This skips the usual Attendance &amp; Performance and report-field requirements — just record when it was submitted and where to find it.</p>
+      <div class="form-group" style="margin-top:10px">
+        <label class="form-label">Date Submitted <span style="color:var(--red)">*</span></label>
+        <input type="date" id="mro-date" class="form-control" oninput="document.getElementById('mro-err').style.display='none'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Report Link <span style="color:var(--red)">*</span></label>
+        <input type="text" id="mro-link" class="form-control" placeholder="e.g. link to the emailed file or folder" oninput="document.getElementById('mro-err').style.display='none'">
+        <div id="mro-err" style="display:none;color:var(--red);font-size:12.5px;margin-top:4px">Please enter both the submitted date and a report link.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('manual-report-override')">Cancel</button>
+      <button class="btn btn-danger" onclick="_tdrSubmitManualOverride()">Log as Submitted</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: TEMP PASSWORD REVEAL ═════════════ -->
 <div id="modal-pw-reveal" class="modal-overlay" onclick="if(event.target===this)closeModal('pw-reveal')">
   <div class="modal modal-sm">
@@ -8156,12 +8184,13 @@ function _tdrRenderTab(s){
   const toolbar=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
       <div style="font-size:11.5px;color:var(--text3)">
-        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
+        ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only${c.manualOverride?` <span style="color:var(--text3)">(logged manually — submitted via email on ${Utils.esc(c.manualSubmittedDate||'—')}, <a href="${Utils.esc(c.manualReportLink||'#')}" target="_blank" rel="noopener">report link</a>)</span>`:''}`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${locked?'':`
           ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
           ${_tdrRecEx.requestBtn}
+          ${(Auth.user&&Auth.user.isAdmin&&_tdrManualOverrideEligible(s))?`<button class="btn btn-sm btn-secondary" onclick="_tdrOpenManualOverride()">✉️ Log as Already Submitted</button>`:''}
           <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
         `}
       </div>
@@ -8704,6 +8733,48 @@ function _tdrSubmitReport(){
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
       renderTrainingDetail();
       toast('Training report submitted.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+
+// MANUAL REPORT OVERRIDE (2026-08-10, per Sandra): for past sessions whose report was already
+// submitted outside the app (e.g. via email) before this workflow existed -- rather than making
+// people re-enter attendance and re-do the whole report, an admin can log the report as
+// submitted with just a date and a link. This writes training_reports directly (it does NOT
+// call _tdrSubmitReport), so it bypasses _tdrAttendanceIssues/_tdrValidateForSubmit/recording-
+// link checks entirely -- both the "report" and "attendance" gates, per Sandra's request. Also
+// flips the session to status:'completed' so the rest of the app (dashboards, session lists)
+// treats it consistently with a normally-completed session. Only offered for sessions that have
+// already ended (end date before today) -- eligibility is derived from the session's own dates,
+// no separate manual tagging step needed.
+function _tdrManualOverrideEligible(s){
+  if(!s) return false;
+  const end=s.endDate||s.trainingDate;
+  return !!(end && end<_todayStr());
+}
+function _tdrOpenManualOverride(){
+  const d=document.getElementById('mro-date'); if(d) d.value=_todayStr();
+  const l=document.getElementById('mro-link'); if(l) l.value='';
+  const err=document.getElementById('mro-err'); if(err) err.style.display='none';
+  openModal('manual-report-override');
+}
+function _tdrSubmitManualOverride(){
+  const date=(document.getElementById('mro-date').value||'').trim();
+  const link=(document.getElementById('mro-link').value||'').trim();
+  if(!date||!link){ document.getElementById('mro-err').style.display='block'; return; }
+  closeModal('manual-report-override');
+  confirm$('Log Report as Submitted','This marks the Training Report as submitted using the date and link you entered, and skips the usual Attendance &amp; Performance and report-field checks. Use this only for a report that was genuinely already submitted outside the app. Continue?','Log as Submitted',async()=>{
+    try{
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted',
+        content:{..._tdrReport.content, manualOverride:true, manualSubmittedDate:date, manualReportLink:link},
+        createdBy:Auth.user.id, submittedAt:new Date(date+'T00:00:00').toISOString(),
+        reopenStatus:null, reopenRequestedBy:null, reopenRequestedAt:null, reopenReason:null, reopenDecidedBy:null, reopenDecidedAt:null};
+      const saved=_tdrReport._isNew?await TrainingReportsDB.create({...patch, id:_tdrReport.id}):await TrainingReportsDB.update(_tdrReport.id,patch);
+      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+      await TrSessionDB.update(_tdrReport.sessionId,{status:'completed'});
+      await AuditLog.record('report_manual_override','Training Report',_tdrReport.id,`Report logged as already submitted (outside the app) by ${Auth.user.firstName} ${Auth.user.lastName} — submitted ${date}, link: ${link}`);
+      renderTrainingDetail();
+      toast('Report logged as submitted.','success');
     }catch(e){ /* error already surfaced */ }
   });
 }
