@@ -3711,6 +3711,15 @@ function _dashRenderOverview(range,prevRange,key){
         </div>
         <div id="dash-overview-pending"></div>
       </div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="dash-card">
+        <div class="dash-card-hdr">
+          <div class="dash-card-title">Pending Requests<span id="dash-pendreq-badge"></span></div>
+          <div style="font-size:11px;color:var(--text3)">Recording exemptions &amp; report reopens awaiting your approval, plus recent attendance reopens</div>
+        </div>
+        <div id="dash-pending-requests"></div>
+      </div>
     </div>`;
 
   // Recent activity — combine all 3 forms
@@ -3731,7 +3740,80 @@ function _dashRenderOverview(range,prevRange,key){
     </tr>`).join('')}</tbody></table>`;
   }
   _dashPendingTable2('dash-overview-pending');
+  _dashRenderPendingRequests('dash-pending-requests');
   _dashRenderOverviewChart({months:6});
+}
+
+// Pending Requests widget (2026-08-10, per Sandra): before this, Recording Exemption requests and
+// Training Report Reopen requests only ever surfaced inside the ONE specific session's Training
+// Report tab they belonged to -- an admin or supervisor had no way to see "everything currently
+// waiting on me" without happening to open every session. This aggregates across all sessions.
+// Eligibility mirrors what the per-session approve/deny buttons already check (_tdrRecordingExemptionInfo,
+// _tdrReopenBlock): admins see everything; a non-admin only sees requests from people whose
+// profiles.supervisorId points at them (their direct reports).
+// Attendance & Performance reopen deliberately stays a direct, no-approval action (per Sandra,
+// 2026-08-10 -- trainers shouldn't be blocked mid-correction) -- it's included here as a read-only
+// "recently reopened" notice (last 14 days), not as an actionable item, so admins/supervisors at
+// least know it happened without gating the trainer's ability to fix a mistake.
+function _dashPendingRequestsItems(){
+  const me=Auth.user; if(!me) return [];
+  const canSee=(actorId)=>{
+    if(me.isAdmin) return true;
+    if(!actorId) return false;
+    const p=DB.byId(actorId);
+    return !!(p&&p.supervisorId===me.id);
+  };
+  const items=[];
+  TrainingReportsDB.all().forEach(r=>{
+    const ex=r.content&&r.content.recordingExemption;
+    if(ex&&ex.status==='pending'&&canSee(ex.requestedBy)){
+      const s=TrSessionDB.byId(r.sessionId);
+      const requester=DB.byId(ex.requestedBy);
+      items.push({type:'Recording Exemption',icon:'🎥',color:'#d97706',bg:'#fffbeb',actionable:true,
+        sessionId:r.sessionId, sessionLabel:s?(s.trainingProgram||s.code||'—'):'(session not found)',
+        person:requester?`${requester.firstName} ${requester.lastName}`:'—', when:ex.requestedAt||'',
+        detail:ex.reason||'', tab:'report'});
+    }
+    if(r.reopenStatus==='pending'&&canSee(r.reopenRequestedBy)){
+      const s=TrSessionDB.byId(r.sessionId);
+      const requester=DB.byId(r.reopenRequestedBy);
+      items.push({type:'Report Reopen',icon:'🔓',color:'#dc2626',bg:'#fef2f2',actionable:true,
+        sessionId:r.sessionId, sessionLabel:s?(s.trainingProgram||s.code||'—'):'(session not found)',
+        person:requester?`${requester.firstName} ${requester.lastName}`:'—', when:r.reopenRequestedAt||'',
+        detail:r.reopenReason||'', tab:'report'});
+    }
+  });
+  const fourteenDaysAgo=new Date(Date.now()-14*864e5).toISOString();
+  AuditLog.all().filter(e=>e.action==='attendance_reopened'&&e.ts>fourteenDaysAgo&&canSee(e.actorId)).forEach(e=>{
+    const s=TrSessionDB.byId(e.entityId);
+    const actor=DB.byId(e.actorId);
+    items.push({type:'Attendance Reopened',icon:'↩',color:'#64748b',bg:'#f1f5f9',actionable:false,
+      sessionId:e.entityId, sessionLabel:s?(s.trainingProgram||s.code||'—'):'(session not found)',
+      person:actor?`${actor.firstName} ${actor.lastName}`:'—', when:e.ts||'', detail:'', tab:'participants'});
+  });
+  items.sort((a,b)=>(b.when||'').localeCompare(a.when||''));
+  return items;
+}
+function _dashPendingRequestsGo(sessionId,tab){
+  showView('training-delivery');
+  openTrainingDetail(sessionId);
+  tdDetailSwitchTab(tab);
+}
+function _dashRenderPendingRequests(containerId){
+  const el=document.getElementById(containerId); if(!el) return;
+  const items=_dashPendingRequestsItems();
+  const badge=document.getElementById('dash-pendreq-badge');
+  const actionableCount=items.filter(i=>i.actionable).length;
+  if(badge) badge.innerHTML=actionableCount>0?` <span style="background:#fef2f2;color:#dc2626;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;margin-left:6px">${actionableCount} awaiting you</span>`:'';
+  if(!items.length){ el.innerHTML='<div class="dash-empty">Nothing pending — you\'re all caught up.</div>'; return; }
+  el.innerHTML=`<table class="dash-tbl"><thead><tr><th>Type</th><th>Session</th><th>From</th><th>Requested</th><th></th></tr></thead><tbody>${items.map(i=>`
+    <tr onclick="_dashPendingRequestsGo('${i.sessionId}','${i.tab}')" style="cursor:pointer">
+      <td><span style="font-size:10.5px;font-weight:700;color:${i.color}">${i.icon} ${Utils.esc(i.type)}</span></td>
+      <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(i.sessionLabel)}</td>
+      <td>${Utils.esc(i.person)}</td>
+      <td style="font-size:11.5px;color:var(--text3)">${i.when?new Date(i.when).toLocaleDateString('en-PH',{dateStyle:'medium'}):'—'}</td>
+      <td>${i.actionable?'<span class="badge b-pending">Awaiting Approval</span>':'<span style="font-size:11px;color:var(--text3)">Info only</span>'}</td>
+    </tr>`).join('')}</tbody></table>`;
 }
 
 function _dashRenderOverviewChart(cfg){
