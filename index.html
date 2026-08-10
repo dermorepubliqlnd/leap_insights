@@ -4940,7 +4940,87 @@ function renderChecklistTemplatesOverview(){
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       <table class="stg-tbl"><thead><tr><th>Template</th><th style="width:120px">Items</th><th style="width:220px">Actions</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <div id="cktpl-backfill-pane" style="margin-top:24px"></div>`;
+  _tdcklRenderBackfillPane();
+}
+
+// Checklist Backfill (2026-08-10, per Sandra): admin-only tool to bulk-unlock a whole month's ILT
+// checklists at once (e.g. August, since real sessions from earlier in the month were already past
+// their normal 2-working-day lock threshold by the time the Checklist feature existed to assign a
+// template). See _tdcklBackfillUnlocked for the underlying mechanism -- this panel is just the
+// admin-facing bulk trigger + a visibility list of what's currently unlocked, so nothing stays
+// unlocked by accident.
+function _tdcklBackfillEligibleSessions(monthStr){
+  // monthStr like '2026-08'
+  return TrSessionDB.all().filter(s=>s.deliveryType==='ILT'&&s.trainingDate&&s.trainingDate.slice(0,7)===monthStr);
+}
+function _tdcklRenderBackfillPane(){
+  const el=document.getElementById('cktpl-backfill-pane'); if(!el) return;
+  if(!Auth.user||!Auth.user.isAdmin){
+    el.innerHTML='';
+    return;
+  }
+  const unlockedRows=SessionChecklistDB.all().filter(r=>_tdcklBackfillUnlocked(r.sessionId));
+  const unlockedListHtml=unlockedRows.length?`<table class="stg-tbl"><thead><tr><th>Session</th><th>Training Date</th><th style="width:110px">Action</th></tr></thead><tbody>${unlockedRows.map(r=>{
+    const s=TrSessionDB.byId(r.sessionId);
+    return `<tr>
+      <td style="font-size:13px">${s?Utils.esc(s.trainingProgram||s.code||'—'):'(session not found)'}</td>
+      <td style="font-size:12.5px;color:var(--text3)">${s&&s.trainingDate?Utils.esc(s.trainingDate):'—'}</td>
+      <td><button class="btn btn-sm btn-ghost" onclick="_tdcklBackfillRelockOne('${r.sessionId}')">🔒 Re-lock</button></td>
+    </tr>`;
+  }).join('')}</tbody></table>`:'<div style="font-size:12.5px;color:var(--text3);padding:8px 0">Nothing is currently unlocked for backfill.</div>';
+  el.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Checklist Backfill</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Bulk-unlock a month's ILT checklists so real historical Completed-On dates can be entered, bypassing the normal lock dates. Admin-only. Always re-lock when backfilling is done.</div></div></div>
+    <div class="card" style="padding:16px 18px;margin-bottom:14px">
+      <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Month</label>
+          <input type="month" id="cktpl-backfill-month" class="form-control" style="width:160px" value="${new Date().toISOString().slice(0,7)}">
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="_tdcklBackfillUnlockMonth()">🔓 Unlock Month for Backfill</button>
+      </div>
+    </div>
+    <div class="card" style="padding:16px 18px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:10px">Currently Unlocked</div>
+      ${unlockedListHtml}
     </div>`;
+}
+function _tdcklBackfillUnlockMonth(){
+  if(!Auth.user||!Auth.user.isAdmin){ toast('Only admins can unlock checklists for backfill.','error'); return; }
+  const monthStr=document.getElementById('cktpl-backfill-month').value;
+  if(!monthStr){ toast('Please pick a month.','error'); return; }
+  const sessions=_tdcklBackfillEligibleSessions(monthStr);
+  const withChecklist=sessions.map(s=>({s,row:SessionChecklistDB.all().find(r=>r.sessionId===s.id)})).filter(x=>x.row);
+  const withoutChecklist=sessions.length-withChecklist.length;
+  if(!withChecklist.length){
+    toast(`No ILT sessions with a started checklist found for ${monthStr}.${withoutChecklist?` (${withoutChecklist} session(s) that month have no checklist started yet -- assign a template on their Overview tab first.)`:''}`,'warning');
+    return;
+  }
+  const monthLabel=new Date(monthStr+'-01T00:00:00').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  confirm$('Unlock for Backfill',`Unlock checklist editing for <strong>${withChecklist.length} ILT session(s)</strong> in ${monthLabel}? This bypasses the normal lock dates for those sessions until you re-lock them.${withoutChecklist?` (${withoutChecklist} other session(s) that month have no checklist started yet and won't be affected.)`:''}`,'Unlock',async()=>{
+    let ok=0;
+    for(const {s,row} of withChecklist){
+      try{
+        await AuditLog.record('checklist_backfill_unlocked','Session Checklist',row.id,`Backfill unlock for ${monthLabel} by ${Auth.user.firstName} ${Auth.user.lastName} (session: ${s.trainingProgram||s.code||s.id})`);
+        ok++;
+      }catch(e){ /* error already surfaced */ }
+    }
+    toast(`Unlocked ${ok} session(s) for backfill.`,'success');
+    _tdcklRenderBackfillPane();
+    if(_tdDetailId) renderTrainingDetail();
+  });
+}
+function _tdcklBackfillRelockOne(sessionId){
+  const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return;
+  const s=TrSessionDB.byId(sessionId);
+  confirm$('Re-lock Checklist',`Re-lock the checklist for <strong>${s?Utils.esc(s.trainingProgram||s.code||'this session'):'this session'}</strong>? Normal lock-date rules will apply again.`,'Re-lock',async()=>{
+    try{
+      await AuditLog.record('checklist_backfill_relocked','Session Checklist',row.id,`Backfill re-locked by ${Auth.user.firstName} ${Auth.user.lastName}`);
+      toast('Checklist re-locked.','info');
+      _tdcklRenderBackfillPane();
+      if(_tdDetailId) renderTrainingDetail();
+    }catch(e){ /* error already surfaced */ }
+  });
 }
 
 let _cktplDraft=null; // {id:null|string, title:'', items:[{task,description,timelineDays,mandatory,phase}], isActive}
@@ -6976,7 +7056,10 @@ function _tdChecklistRenderTab(s){
       ${newT?`<button class="btn btn-sm btn-secondary" style="flex-shrink:0" onclick="_tdcklResetToTemplate('${s.id}','${newT.id}')">Reset Checklist</button>`:''}
     </div>`;
   })():'';
-  return mismatchBanner+_tdcklBoardHtml(s,row);
+  const backfillBanner=_tdcklBackfillUnlocked(s.id)?`<div style="background:#fef3c7;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:8px">
+    🔓 <strong>Backfill mode is ON</strong> for this session — the normal lock dates are bypassed so historical data can be entered. An admin can turn this off from Settings &gt; Checklist Backfill.
+  </div>`:'';
+  return mismatchBanner+backfillBanner+_tdcklBoardHtml(s,row);
 }
 
 async function _tdcklInitChecklist(sessionId,templateId){
@@ -7066,8 +7149,16 @@ function _tdcklComputeStatus(it,targetDateStr){
 // render-time/action-time check against dates + the report's status -- nothing is written to the
 // checklist item itself, so un-submitting a report or nothing changing about the dates
 // transparently unlocks it again (e.g. if a report submission is ever reopened).
+function _tdcklBackfillUnlocked(sessionId){
+  const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return false;
+  const events=AuditLog.all().filter(e=>e.module==='Session Checklist'&&e.entityId===row.id&&(e.action==='checklist_backfill_unlocked'||e.action==='checklist_backfill_relocked'));
+  if(!events.length) return false;
+  events.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+  return events[0].action==='checklist_backfill_unlocked';
+}
 function _tdcklPhaseLocked(s,phase){
   if(!s) return false;
+  if(_tdcklBackfillUnlocked(s.id)) return false;
   if(phase==='pre'){
     const lockDate=_tdcklAddWorkingDays(s.trainingDate,2);
     return !!(lockDate && _todayStr()>=lockDate);
