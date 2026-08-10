@@ -8490,7 +8490,7 @@ function _tdrSubmitReport(){
   }
   const _tdrAttnIssues=_tdrAttendanceIssues(_tdrSess);
   if(_tdrAttnIssues.length){
-    toast(`Attendance & Performance isn't actually complete â ${_tdrAttnIssues.join(', ')}. Please fix this on the Attendance & Performance tab before submitting the report.`,'error');
+    toast(`Attendance & Performance isn't actually complete — ${_tdrAttnIssues.join(', ')}. Please fix this on the Attendance & Performance tab before submitting the report.`,'error');
     return;
   }
   // 2026-08-06 (per Sandra): a report cannot be submitted before the session date arrives --
@@ -9531,6 +9531,23 @@ async function _tdExportSummaryImage(sessionId){
   const s=TrSessionDB.byId(sessionId);
   if(!s){ toast('Session not found.','error'); return; }
   if(typeof html2canvas==='undefined'){ toast('Export library failed to load. Check your connection and try again.','error'); return; }
+  // Flush-before-export guard (2026-08-10, per Sandra -- root-caused after TS-2026-013): the
+  // Attendance List / KPI cards below are built from the in-memory _tdPartRows roster
+  // (_tdaAttendanceListExportHtml / _tdaKpiColumnsHtml), which can contain participants that were
+  // typed in or CSV-imported but never actually saved to Supabase (Save Draft / Mark Complete are
+  // the only things that persist them). Previously, exporting rendered whatever was in memory
+  // regardless of save state -- so a trainer could generate a perfectly complete-looking summary
+  // image for a roster that silently never made it to the database. If a roster for THIS session
+  // is currently loaded in memory, persist it first; if that save fails, abort the export rather
+  // than hand out a summary that misrepresents what's actually on record.
+  if(_tdFieldGroup(s.deliveryType)!=='owner' && _tdPartLoadedFor===sessionId && _tdPartRows.length){
+    try{
+      await _tdaPersistRows();
+    }catch(e){
+      toast('Could not save the attendance roster before exporting -- export cancelled so the summary image matches what\'s actually saved. Please try again.','error');
+      return;
+    }
+  }
   const _tdGrp=_tdFieldGroup(s.deliveryType);
   const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'Facilitator':'Trainer');
   const personName=Utils.esc(_tdPersonName(s))||'—';
