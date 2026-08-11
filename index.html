@@ -7486,11 +7486,17 @@ function _tdaIsAssessed(r,assessmentType){
 
 // Whether the Pre-Test input is applicable for this session's assessment type (false = show
 // disabled dash). Symmetric with _tdaPostApplicable below.
+// Fixed 2026-08-11 (per Sandra): both used to return true for anything that wasn't their exact
+// opposite value, so a session with no assessment configured at all (assessmentType 'None', or
+// unset/null before a value is ever picked) fell through as "applicable" and showed live,
+// editable Pre-Test/Post-Test inputs despite Session Information saying "Assessment: None".
+// Only the two explicit pre/post-only exclusions plus 'Pre & Post' should ever enable a field;
+// everything else (None, null, '', or any future unrecognized value) is inapplicable by default.
 function _tdaPreApplicable(assessmentType){
-  return assessmentType!=='Post-test only';
+  return assessmentType==='Pre-test only'||assessmentType==='Pre & Post';
 }
 function _tdaPostApplicable(assessmentType){
-  return assessmentType!=='Pre-test only';
+  return assessmentType==='Post-test only'||assessmentType==='Pre & Post';
 }
 
 const _TDA_STATUS_STYLE={
@@ -7699,7 +7705,11 @@ function _tdaRenderTab(s){
   // "Attendance Status" column single-day sessions keep.
   const dayHeaders=isMultiDay?dayList.map((d,i)=>`Day ${i+1}<div style="font-size:9.5px;color:var(--text3);font-weight:400">${d.slice(5)}</div>`):['Attendance Status'];
   const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Department',...dayHeaders,...(isMultiDay?['Attendance Score']:[]),'Pre-Test','Post-Test','Gain','Remarks',''];
-  const thead=`<tr>${theadCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+  // Checkbox column centered (2026-08-11, per Sandra): the select-all header checkbox and every
+  // row's checkbox were left-aligned inside a column wide enough for the "#" header text next to
+  // it, so they visually sat off-center relative to each other -- centering both the <th> and each
+  // row's <td> (see _tdaRowHtml/_tdaAddPickerRowHtml) lines them up in a single tight column.
+  const thead=`<tr>${theadCols.map((c,i)=>i===0?`<th style="text-align:center;width:36px">${c}</th>`:`<th>${c}</th>`).join('')}</tr>`;
 
   const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType,dayList):'';
   const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType,dayList)).join('');
@@ -7766,7 +7776,7 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList){
     :`<td>${_tdaStatusSelectHtml(r.attendanceStatus||'pending',`_tdaSetField('${r.id}','attendanceStatus',this.value)`,dis)}</td>`;
   const scoreCell=isMultiDay?`<td style="font-weight:600">${_tdaAttendanceScore(r,dayList).label}</td>`:'';
   return `<tr data-row-id="${r.id}">
-    <td><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
+    <td style="text-align:center"><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
     <td>${r.profileId?`<span style="font-size:12.5px">${Utils.esc(p.employeeId)}</span>`:`<input type="text" class="form-control" ${dis} style="width:90px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.employeeId||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','employeeId',this.value)">`}</td>
     <td><div class="tbl-user"><div class="tbl-ava" style="${p.avaStyle}">${p.initials}</div><div><div class="td-name">${Utils.esc(p.name)}${p.inactive?' <span class="txt-muted" style="font-size:11px">(inactive)</span>':''}</div>${p.email&&p.email!=='External'?`<div style="font-size:11px;color:var(--text3)">${Utils.esc(p.email)}</div>`:''}</div></div></td>
