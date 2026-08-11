@@ -98,6 +98,14 @@
     .td-col-panel{position:absolute;top:calc(100% + 4px);right:0;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:8px;min-width:220px;max-height:340px;overflow-y:auto;z-index:20}
     .td-col-panel-item{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:5px 8px;border-radius:5px;cursor:pointer}
     .td-col-panel-item:hover{background:var(--hover-bg,#f1f5f9)}
+    /* Training Hours View day-cell hover popover (2026-08-11, per Sandra) -- shows the ILT/VILT
+       and SLT breakdown for that day without needing a click. Centered under the cell so it
+       clips less at the calendar's left/right edges than a plain left-aligned popover would;
+       still not edge-aware for the leftmost/rightmost columns -- acceptable first pass, per
+       Sandra's "focus on the view + switching behavior first" scope. */
+    .td-hrs-cell{overflow:visible}
+    .td-hrs-tooltip{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:30;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh-lg,0 6px 18px rgba(0,0,0,.12));padding:10px 12px;min-width:200px;max-width:260px;font-size:11.5px;color:var(--text2);margin-top:4px}
+    .td-hrs-cell:hover .td-hrs-tooltip{display:block}
 
     /* ── PASSWORD STRENGTH ── */
     .pw-strength{height:4px;border-radius:2px;margin-top:6px;background:var(--border);overflow:hidden}
@@ -5867,6 +5875,24 @@ let tdViewMode='list';
 let tdPage=1;
 let tdPageSize=10;   // Phase39 item 4: mutable page size, selectable 10/25/50 via #td-pagesize control
 let tdCalCursor=new Date(); tdCalCursor.setDate(1);
+// Training Hours View (2026-08-11, per Sandra): a second calendar sub-view, toggled alongside
+// the existing "Schedule View" (renderTDCalendar's original chip/bar layout, untouched below) --
+// NOT a replacement for it. Persisted per-browser like the other small list/calendar prefs above.
+// Per Sandra's explicit scope for this first pass: build the view + switching UI now; the SLT
+// hour-calculation rules are intentionally left as a simple placeholder (see _tdHoursForDay) to
+// be defined and refined in a follow-up, not finalized here.
+let tdCalSubView=Store.get('leap_td_cal_subview_v1')||'schedule';
+function _tdSetCalSubView(v){
+  tdCalSubView=v;
+  Store.set('leap_td_cal_subview_v1',v);
+  renderTDCalendar(_tdFilteredRows());
+}
+function _tdCalSubViewToggleHtml(){
+  return `<div class="seg-btn-group" style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+    <button class="btn btn-sm ${tdCalSubView==='schedule'?'btn-primary':'btn-secondary'}" style="border-radius:0;border:none" onclick="_tdSetCalSubView('schedule')">📅 Schedule View</button>
+    <button class="btn btn-sm ${tdCalSubView==='hours'?'btn-primary':'btn-secondary'}" style="border-radius:0;border:none;border-left:1px solid var(--border)" onclick="_tdSetCalSubView('hours')">⏱ Training Hours View</button>
+  </div>`;
+}
 
 // List view column engine (Phase46, 2026-08-06, per Sandra): sortable-by-any-column-header,
 // resizable, hideable, reorderable columns. Session ID is pinned first / never movable or
@@ -5923,7 +5949,7 @@ const _TD_COL_DEFS=[
   // stacked date-on-top-of-name in two lines, which forced every row in the list to that same
   // two-line height even in Compact Rows mode. Splitting them into separate single-line columns
   // lets the whole list sit at one line per row; each is independently sortable now too.
-  {id:'created', label:'Created', width:100,
+  {id:'created', label:'Created Date', width:100,
     sortVal:s=>s.createdAt||'',
     cell:s=>`<span style="font-size:12.5px">${s.createdAt?Utils.esc(new Date(s.createdAt).toLocaleDateString()):'—'}</span>`},
   {id:'createdBy', label:'Created By', width:140,
@@ -6484,6 +6510,10 @@ function _tdCalChipHtml(s){
 // in the shared grid is guaranteed the same width, spanning N cells from one cell's left edge
 // via calc(N*100%) is pixel-exact without needing any separate row-relative wrapper.
 function renderTDCalendar(rows){
+  // Branch to the Training Hours sub-view (2026-08-11, per Sandra) -- kept as a fully separate
+  // render function (_tdRenderHoursCalendar below) rather than interleaving its logic into the
+  // Schedule View code that follows, so the existing Schedule View stays untouched either way.
+  if(tdCalSubView==='hours'){ _tdRenderHoursCalendar(rows); return; }
   const wrap=document.getElementById('td-cal-wrap');
   const year=tdCalCursor.getFullYear(), month=tdCalCursor.getMonth();
   const monthLabel=tdCalCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
@@ -6589,10 +6619,141 @@ function renderTDCalendar(rows){
         <button class="btn btn-sm btn-secondary" onclick="tdCalToday()">Today</button>
         <button class="btn btn-sm btn-secondary" onclick="tdCalNext()">›</button>
         <span style="font-weight:600;font-size:14.5px;margin-left:6px">${monthLabel}</span>
+        <span style="margin-left:10px">${_tdCalSubViewToggleHtml()}</span>
       </div>
       <div>${legend}</div>
     </div>
     <div id="td-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(100px,auto);gap:0;margin:-1px 0 0 -1px">
+      ${headerCellsHtml}
+      ${bodyCellsHtml}
+    </div>
+  </div>`;
+}
+
+/* ── TRAINING HOURS VIEW (2026-08-11, per Sandra) ───────────────────────────────────────────
+   Second calendar sub-view for leaders to scan planned/scheduled hours by day and by month,
+   without the full session-card detail Schedule View shows. Kept fully separate from
+   renderTDCalendar above -- nothing here touches that function's own logic.
+
+   IMPORTANT / explicitly deferred per Sandra: the SLT (Self-led) side of this is a first-pass
+   placeholder, not a finalized calculation. Self-led sessions typically run over long date
+   ranges (weeks/months) rather than having a clean "hours today" number the way an ILT/VILT
+   session's durationHours does, so for now each day just counts how many Self-led programs are
+   "active" (their date range includes that day) rather than attempting an hours figure -- this
+   matches one of the two options Sandra offered ("SLT Hours or SLT availability indicator") and
+   avoids inventing an hours-per-day rule ahead of her defining one. SLT hours are NOT added into
+   Total Scheduled Hours for the same reason (Total = ILT/VILT + any other non-SLT type's
+   durationHours, e.g. External).
+
+   ILT/VILT hours-per-day assumption (also first-pass, not yet confirmed with Sandra): a
+   multi-day ILT/VILT session's full durationHours is counted on EVERY day of its date range
+   (not split/divided across days), since there's no per-day duration field to draw on. Fine for
+   typical single-day ILT sessions (the overwhelming majority today); worth revisiting once
+   multi-day ILT hour semantics are defined. ─────────────────────────────────────────────── */
+function _tdHoursForDay(rows,dateStr){
+  let ilt=0, total=0;
+  const iltSessions=[], sltSessions=[];
+  rows.forEach(s=>{
+    if(!s.trainingDate) return;
+    const start=s.trainingDate, end=s.endDate||s.trainingDate;
+    if(dateStr<start||dateStr>end) return;
+    const hrs=Number(s.durationHours)||0;
+    const label=s.trainingProgram||s.code||'Untitled';
+    if(s.deliveryType==='ILT'||s.deliveryType==='VILT'){
+      ilt+=hrs; total+=hrs;
+      iltSessions.push({id:s.id,label,hours:hrs});
+    } else if(s.deliveryType==='Self-led'){
+      sltSessions.push({id:s.id,label});
+    } else {
+      total+=hrs; // External (and any other/legacy type) folds into Total only -- not broken
+      // out as its own metric, matching Sandra's 3-line spec (Total / ILT-VILT / SLT).
+    }
+  });
+  return {ilt,total,iltSessions,sltSessions};
+}
+function _tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,isToday,stat){
+  const iltListHtml=stat.iltSessions.length?stat.iltSessions.map(x=>`<div>${Utils.esc(x.label)} — ${x.hours} hrs</div>`).join(''):'<div style="color:var(--text3)">None</div>';
+  const sltListHtml=stat.sltSessions.length?stat.sltSessions.map(x=>`<div>${Utils.esc(x.label)}</div>`).join(''):'<div style="color:var(--text3)">None</div>';
+  return `<div class="td-hrs-cell" style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:var(--white);border:1px solid var(--border);padding:6px 8px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
+    <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
+    <div style="font-size:12.5px;font-weight:700;color:#2563eb;margin-top:2px">${stat.total.toFixed(1)} hrs</div>
+    <div style="font-size:10px;color:#c2410c;margin-top:1px">● ILT/VILT: ${stat.ilt.toFixed(1)} hrs</div>
+    <div style="font-size:10px;color:#16a34a">● SLT: ${stat.sltSessions.length} active</div>
+    <div class="td-hrs-tooltip">
+      <div style="font-weight:700;margin-bottom:6px">${Utils.esc(new Date(dateStr+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}))}</div>
+      <div style="font-weight:700;color:#c2410c;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">ILT/VILT</div>
+      <div style="margin:2px 0 8px">${iltListHtml}</div>
+      <div style="font-weight:700;color:#16a34a;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">SLT</div>
+      <div style="margin-top:2px">${sltListHtml}</div>
+    </div>
+  </div>`;
+}
+function _tdHoursMonthSummaryHtml(totalHrs,iltHrs,sltActiveCount,implementations){
+  const card=(label,val,color)=>`<div style="flex:1;min-width:140px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${label}</div><div style="font-size:19px;font-weight:700;color:${color};margin-top:2px">${val}</div></div>`;
+  return `<div style="display:flex;gap:16px;flex-wrap:wrap;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:12px">
+    ${card('Scheduled Learning Hours',totalHrs.toFixed(1)+' hrs','#2563eb')}
+    ${card('ILT/VILT Hours',iltHrs.toFixed(1)+' hrs','#c2410c')}
+    ${card('SLT Active This Month',sltActiveCount,'#16a34a')}
+    ${card('Training Implementations',implementations,'var(--text2)')}
+  </div>`;
+}
+function _tdRenderHoursCalendar(rows){
+  const wrap=document.getElementById('td-cal-wrap');
+  const year=tdCalCursor.getFullYear(), month=tdCalCursor.getMonth();
+  const monthLabel=tdCalCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const firstDow=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const numWeeks=Math.ceil((firstDow+daysInMonth)/7);
+  const todayStr=new Date().toISOString().slice(0,10);
+  const pad=n=>String(n).padStart(2,'0');
+  const monthStartStr=`${year}-${pad(month+1)}-01`, monthEndStr=`${year}-${pad(month+1)}-${pad(daysInMonth)}`;
+
+  const dayStats={};
+  let monthTotal=0, monthIlt=0;
+  const monthSltIds=new Set();
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr=`${year}-${pad(month+1)}-${pad(day)}`;
+    const stat=_tdHoursForDay(rows,dateStr);
+    dayStats[day]=stat;
+    monthTotal+=stat.total; monthIlt+=stat.ilt;
+    stat.sltSessions.forEach(x=>monthSltIds.add(x.id));
+  }
+  const implementations=rows.filter(s=>{
+    if(!s.trainingDate) return false;
+    const start=s.trainingDate, end=s.endDate||s.trainingDate;
+    return start<=monthEndStr && end>=monthStartStr;
+  }).length;
+
+  let bodyCellsHtml='';
+  for(let w=0; w<numWeeks; w++){
+    for(let c=0;c<7;c++){
+      const idx=w*7+c, day=idx-firstDow+1, gridRow=w+2, gridCol=c+1;
+      if(day<1||day>daysInMonth){
+        bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};background:#f8fafc;border:1px solid var(--border);box-sizing:border-box"></div>`;
+        continue;
+      }
+      const dateStr=`${year}-${pad(month+1)}-${pad(day)}`;
+      bodyCellsHtml+=_tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,dateStr===todayStr,dayStats[day]);
+    }
+  }
+  const headerCellsHtml=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<div style="grid-row:1;grid-column:${i+1};background:#f8fafc;border:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3);box-sizing:border-box">${d}</div>`).join('');
+  const legend=`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:#c2410c;display:inline-block"></span>ILT</span>
+    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:#16a34a;display:inline-block"></span>SLT</span>
+    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:#2563eb;display:inline-block"></span>Total Hours</span>`;
+
+  wrap.innerHTML=`<div class="card" style="padding:14px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-sm btn-secondary" onclick="tdCalPrev()">‹</button>
+        <button class="btn btn-sm btn-secondary" onclick="tdCalToday()">Today</button>
+        <button class="btn btn-sm btn-secondary" onclick="tdCalNext()">›</button>
+        <span style="font-weight:600;font-size:14.5px;margin-left:6px">${monthLabel}</span>
+        <span style="margin-left:10px">${_tdCalSubViewToggleHtml()}</span>
+      </div>
+      <div>${legend}</div>
+    </div>
+    ${_tdHoursMonthSummaryHtml(monthTotal,monthIlt,monthSltIds.size,implementations)}
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(72px,auto);gap:0;margin:-1px 0 0 -1px">
       ${headerCellsHtml}
       ${bodyCellsHtml}
     </div>
