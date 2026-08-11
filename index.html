@@ -5913,9 +5913,16 @@ const _TD_COL_DEFS=[
   {id:'eval', label:'Trainer Evaluation', width:140,
     sortVal:s=>_tdEvalStatusText(s),
     cell:s=>_tdEvalStatus(s)},
-  {id:'created', label:'Created', width:140,
+  // Created / Created By split into two columns (2026-08-11, per Sandra): the combined cell
+  // stacked date-on-top-of-name in two lines, which forced every row in the list to that same
+  // two-line height even in Compact Rows mode. Splitting them into separate single-line columns
+  // lets the whole list sit at one line per row; each is independently sortable now too.
+  {id:'created', label:'Created', width:100,
     sortVal:s=>s.createdAt||'',
-    cell:s=>`<div style="font-size:12.5px">${s.createdAt?Utils.esc(new Date(s.createdAt).toLocaleDateString()):'—'}</div><div style="font-size:10.5px;color:var(--text3)">${s.createdBy?Utils.esc(_tdCreatorName(s.createdBy)):''}</div>`},
+    cell:s=>`<span style="font-size:12.5px">${s.createdAt?Utils.esc(new Date(s.createdAt).toLocaleDateString()):'—'}</span>`},
+  {id:'createdBy', label:'Created By', width:140,
+    sortVal:s=>s.createdBy?_tdCreatorName(s.createdBy).toLowerCase():'',
+    cell:s=>`<span style="font-size:12.5px;color:var(--text3)">${s.createdBy?Utils.esc(_tdCreatorName(s.createdBy)):'—'}</span>`},
   {id:'actions', label:'Actions', width:150, locked:'end', noSort:true,
     cell:s=>`<div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openTrainingDetail('${s.id}')">View</button><button class="btn btn-sm btn-ghost" style="color:#dc2626" onclick="deleteTrainingRecord('${s.id}')">Delete</button></div>`}
 ];
