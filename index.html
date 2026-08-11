@@ -1638,10 +1638,10 @@
               </div>
               <button class="btn btn-secondary btn-sm" onclick="tdResetFilters()">Reset</button>
               <div style="flex:1"></div>
-              <div class="seg-btn-group" style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden">
-                <button class="btn btn-sm" id="td-view-list-btn" onclick="tdSwitchView('list')" style="border-radius:0;border:none">☰ List</button>
-                <button class="btn btn-sm" id="td-view-cal-btn" onclick="tdSwitchView('calendar')" style="border-radius:0;border:none;border-left:1px solid var(--border)">📅 Calendar</button>
-              </div>
+              <select id="td-view-mode-select" class="form-control" style="width:auto;padding:5px 10px;font-size:12.5px;font-weight:600" onchange="tdSwitchView(this.value)">
+                <option value="list">☰ List</option>
+                <option value="calendar">📅 Calendar</option>
+              </select>
             </div>
           </div>
 
@@ -6268,8 +6268,7 @@ function tdSwitchView(mode){
   tdViewMode=mode;
   document.getElementById('td-list-wrap').classList.toggle('hidden',mode!=='list');
   document.getElementById('td-cal-wrap').classList.toggle('hidden',mode!=='calendar');
-  document.getElementById('td-view-list-btn').className='btn btn-sm '+(mode==='list'?'btn-primary':'btn-secondary');
-  document.getElementById('td-view-cal-btn').className='btn btn-sm '+(mode==='calendar'?'btn-primary':'btn-secondary');
+  const sel=document.getElementById('td-view-mode-select'); if(sel) sel.value=mode;
   if(mode==='calendar') renderTDCalendar(_tdFilteredRows()); else renderTDList(_tdFilteredRows());
 }
 
@@ -6321,8 +6320,7 @@ function _tdPopulateFilterOptions(){
 function renderTrainingDelivery(){
   renderTDMetrics();
   _tdPopulateFilterOptions();
-  document.getElementById('td-view-list-btn').className='btn btn-sm '+(tdViewMode==='list'?'btn-primary':'btn-secondary');
-  document.getElementById('td-view-cal-btn').className='btn btn-sm '+(tdViewMode==='calendar'?'btn-primary':'btn-secondary');
+  const tdViewSel=document.getElementById('td-view-mode-select'); if(tdViewSel) tdViewSel.value=tdViewMode;
   document.getElementById('td-list-wrap').classList.toggle('hidden',tdViewMode!=='list');
   document.getElementById('td-cal-wrap').classList.toggle('hidden',tdViewMode!=='calendar');
   const rows=_tdFilteredRows();
