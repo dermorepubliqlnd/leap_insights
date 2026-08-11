@@ -7177,6 +7177,18 @@ function _tdcklComputeStatus(it,targetDateStr){
 // render-time/action-time check against dates + the report's status -- nothing is written to the
 // checklist item itself, so un-submitting a report or nothing changing about the dates
 // transparently unlocks it again (e.g. if a report submission is ever reopened).
+// Backfill unlock override (2026-08-10, per Sandra): the Checklist feature only started tracking
+// sessions from Aug 1, 2026 onward, but by the time a session's checklist template actually gets
+// assigned/started, real ILT sessions from earlier in the month are often already past their
+// normal lock threshold (Pre-Training locks just 2 working days after the session starts) --
+// leaving no way to enter real historical data at all. Rather than weakening the lock rule itself
+// (which exists to stop backdating going forward), this is a separate, explicit, admin-only,
+// per-session override: an admin unlocks a session for backfill (bulk, by month, via the Settings
+// > Checklist Backfill panel), someone fills in the real Completed-On dates, then the admin
+// re-locks it. No new DB columns needed -- the unlock/re-lock events are themselves just audit_log
+// rows (module 'Session Checklist', same entityId the Checklist tab's own Audit History already
+// buckets by), and the MOST RECENT of the two types wins. Defaults to locked (normal rules apply)
+// for any session that's never had a backfill event.
 function _tdcklBackfillUnlocked(sessionId){
   const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return false;
   const events=AuditLog.all().filter(e=>e.module==='Session Checklist'&&e.entityId===row.id&&(e.action==='checklist_backfill_unlocked'||e.action==='checklist_backfill_relocked'));
@@ -7672,6 +7684,10 @@ function _tdaRenderTab(s){
         <button class="btn btn-sm btn-secondary" onclick="document.getElementById('tda-csv-input').click()">⇪ Add Multiple (CSV)</button>
         <input type="file" id="tda-csv-input" accept=".csv" style="display:none" onchange="_tdaHandleCSVFile(this.files[0])">
         <button class="btn btn-sm btn-ghost" onclick="_tdaDownloadCSVTemplate()">⇩ Download Template</button>
+        ${selCount?`<select id="tda-bulk-status" class="form-control" style="width:auto;padding:5px 8px;font-size:12.5px">
+          ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}">${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm btn-secondary" onclick="_tdaBulkMarkAttendance()">Mark Selected (${selCount})</button>`:''}
         <button class="btn btn-sm btn-ghost" ${selCount?'':'disabled'} style="${selCount?'color:var(--red)':''}" onclick="_tdaBulkRemove()">Remove${selCount?` (${selCount})`:''}</button>
       </div>
     </div>`;
@@ -7855,6 +7871,31 @@ function _tdaRemoveRow(rowId){
     renderTrainingDetail();
     toast('Participant removed.','success');
   });
+}
+
+// Bulk-mark attendance (2026-08-11, per Sandra): applies one status to every currently-selected
+// participant, using the same checkbox selection (_tdPartSelected) already wired up for Remove.
+// Multi-day sessions get the chosen status written to EVERY day column via _tdaSetDayStatus
+// (matches the "one status for every day" behavior already used at add-time in
+// _tdaAddPickerRowHtml/_tdaConfirmAdd) rather than requiring a separate bulk action per day.
+// Selection is intentionally left checked afterward so a trainer can immediately re-mark a
+// different subset without re-selecting -- only Remove clears the selection, since that's
+// destructive and one-shot.
+function _tdaBulkMarkAttendance(){
+  const ids=[..._tdPartSelected];
+  if(!ids.length) return;
+  const statusEl=document.getElementById('tda-bulk-status');
+  const status=statusEl?statusEl.value:'present';
+  const s=TrSessionDB.byId(_tdDetailId);
+  const dayList=s?_tdaDayList(s):[];
+  const isMultiDay=dayList.length>1;
+  ids.forEach(id=>{
+    const r=_tdPartRows.find(x=>x.id===id); if(!r) return;
+    if(isMultiDay) dayList.forEach(d=>_tdaSetDayStatus(r,d,status));
+    else r.attendanceStatus=status;
+  });
+  renderTrainingDetail();
+  toast(`Marked ${ids.length} participant(s) as ${(_TDA_STATUS_STYLE[status]||{}).label||status}.`,'success');
 }
 
 function _tdaBulkRemove(){
@@ -8190,7 +8231,7 @@ function _tdrRenderTab(s){
         ${locked?'':`
           ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
           ${_tdrRecEx.requestBtn}
-          ${(Auth.user&&Auth.user.isAdmin&&_tdrManualOverrideEligible(s))?`<button class="btn btn-sm btn-secondary" onclick="_tdrOpenManualOverride()">✉️ Log as Already Submitted</button>`:''}
+          ${(Auth.user&&(Auth.user.isAdmin||Auth.formAccess(Auth.user).trainerEval)&&_tdrManualOverrideEligible(s))?`<button class="btn btn-sm btn-secondary" onclick="_tdrOpenManualOverride()">✉️ Log as Already Submitted</button>`:''}
           <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
         `}
       </div>
@@ -8386,7 +8427,7 @@ function _tdrRenderTab(s){
     <div class="card" style="padding:18px 20px;margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-weight:700;font-size:14.5px">2. Agenda Delivery</div>
-        ${readOnly?'':`<div style="display:flex;gap:8px">${s.deliveryType==='ILT'?'<button class="btn btn-sm btn-secondary" onclick="openAgendaTemplatePicker()">📋 Load from Template</button>':''}<button class="btn btn-sm btn-secondary" onclick="_tdrAddAgendaRow()">+ Add Agenda Item</button></div>`}
+        ${readOnly?'':`<div style="display:flex;gap:8px;flex-wrap:wrap">${s.deliveryType==='ILT'?'<button class="btn btn-sm btn-secondary" onclick="openAgendaTemplatePicker()">📋 Load from Template</button>':''}<button class="btn btn-sm btn-secondary" onclick="document.getElementById('tdr-agenda-csv-input').click()">⇪ Import CSV</button><input type="file" id="tdr-agenda-csv-input" accept=".csv" style="display:none" onchange="_tdrAgendaHandleCSVFile(this.files[0])"><button class="btn btn-sm btn-ghost" onclick="_tdrAgendaDownloadCSVTemplate()">⇩ Download Template</button><button class="btn btn-sm btn-secondary" onclick="_tdrAddAgendaRow()">+ Add Agenda Item</button></div>`}
       </div>
       ${c.agendaDelivery.length?`<div class="eval-tbl-wrap"><table class="eval-tbl" style="table-layout:fixed">
         <colgroup><col style="width:44%"><col style="width:16%"><col style="width:14%"><col style="width:22%"><col style="width:4%"></colgroup>
@@ -8571,6 +8612,69 @@ function _tdrRemoveAgendaRow(i){
   renderTrainingDetail();
 }
 
+// Bulk Agenda Delivery import via CSV (2026-08-11, per Sandra): same _tdaParseCSV/Import CSV +
+// Download Template pattern as the Per-Cluster Breakdown and Attendance roster imports above --
+// only Topic and Status columns are collected (Facilitator/Remarks stay manual, since Facilitator
+// is meant to be picked from the session's own Trainer/Co-Facilitator list, not typed via CSV).
+// Imported rows are APPENDED below whatever's already there (same "never replaces" behavior as
+// Load from Template), each defaulting Facilitator to the session's Trainer like a manually-added
+// row. Status values are matched case/spacing-insensitively against the AGENDA_STATUS labels
+// ("Covered"/"Partially Covered"/"Not Covered") and their keys (covered/partial/not_covered);
+// anything unrecognized (or blank) falls back to "Covered" so an import never silently drops rows.
+function _tdrAgendaStatusFromCSV(raw){
+  const v=(raw||'').trim().toLowerCase().replace(/[\s_-]+/g,' ');
+  for(const key of Object.keys(AGENDA_STATUS)){
+    const label=AGENDA_STATUS[key].label.toLowerCase();
+    if(v===key.replace(/_/g,' ')||v===label) return key;
+  }
+  if(v.startsWith('partial')) return 'partial';
+  if(v.startsWith('not')) return 'not_covered';
+  return 'covered';
+}
+function _tdrAgendaDownloadCSVTemplate(){
+  const csv = 'Topic,Status\nWelcome & Introductions,Covered\nModule 1 Overview,Partially Covered\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'training_report_agenda_template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function _tdrAgendaHandleCSVFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const {header,rows}=_tdaParseCSV(String(reader.result||''));
+    const topicIdx=header.findIndex(h=>h.includes('topic')||h.includes('item')||h.includes('agenda'));
+    const statusIdx=header.findIndex(h=>h.includes('status'));
+    if(topicIdx===-1){
+      toast('CSV must have a Topic column.','error');
+      return;
+    }
+    const s=TrSessionDB.byId(_tdrReport.sessionId);
+    const defaultFacilitator=s?(_tdrAgendaFacilitatorOptions(s)[0]||''):'';
+    let added=0, skippedBlank=0;
+    rows.forEach(cols=>{
+      const item=(cols[topicIdx]||'').trim();
+      if(!item){ skippedBlank++; return; }
+      _tdrReport.content.agendaDelivery.push({
+        item,
+        facilitator:defaultFacilitator,
+        status:statusIdx>=0?_tdrAgendaStatusFromCSV(cols[statusIdx]):'covered',
+        remarks:''
+      });
+      added++;
+    });
+    renderTrainingDetail();
+    toast(`${added} agenda item(s) imported${skippedBlank?`, ${skippedBlank} row(s) skipped (blank Topic)`:''}.`, added?'success':'warning');
+  };
+  reader.readAsText(file);
+  document.getElementById('tdr-agenda-csv-input').value='';
+}
+
 // Load Agenda from Template (Phase49, 2026-08-06, per Sandra): ILT-only "Load from Template"
 // button next to "+ Add Agenda Item". Picking a template APPENDS its topics below whatever
 // rows already exist (never replaces) -- each new row gets the same default Facilitator as a
@@ -8737,10 +8841,12 @@ function _tdrSubmitReport(){
   });
 }
 
-// MANUAL REPORT OVERRIDE (2026-08-10, per Sandra): for past sessions whose report was already
-// submitted outside the app (e.g. via email) before this workflow existed -- rather than making
-// people re-enter attendance and re-do the whole report, an admin can log the report as
-// submitted with just a date and a link. This writes training_reports directly (it does NOT
+// MANUAL REPORT OVERRIDE (2026-08-10, per Sandra; opened up to Trainers 2026-08-11): for past
+// sessions whose report was already submitted outside the app (e.g. via email) before this
+// workflow existed -- rather than making people re-enter attendance and re-do the whole report,
+// an admin OR anyone with Trainer Evaluation form access (Auth.formAccess(...).trainerEval --
+// same gate used for the Trainer Evaluation form elsewhere) can log the report as submitted with
+// just a date and a link. This writes training_reports directly (it does NOT
 // call _tdrSubmitReport), so it bypasses _tdrAttendanceIssues/_tdrValidateForSubmit/recording-
 // link checks entirely -- both the "report" and "attendance" gates, per Sandra's request. Also
 // flips the session to status:'completed' so the rest of the app (dashboards, session lists)
