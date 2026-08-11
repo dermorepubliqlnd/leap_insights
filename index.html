@@ -5875,7 +5875,7 @@ const _TD_COL_DEFS=[
     cell:s=>`<a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:var(--pri);text-decoration:none;font-weight:600">${Utils.esc(s.code||s.id||'')}</a>`},
   {id:'program', label:'Program / Implementation', width:220,
     sortVal:s=>(s.trainingProgram||'').toLowerCase(),
-    cell:s=>`<div style="font-weight:600;font-size:13px"><a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:inherit;text-decoration:none">${Utils.esc(s.trainingProgram||'—')}</a></div><div style="font-size:11.5px;color:var(--text3)">Batch ${Utils.esc(s.batchNo||'—')}</div>`},
+    cell:s=>`<div style="font-weight:600;font-size:13px"><a href="javascript:void(0)" onclick="openTrainingDetail('${s.id}')" style="color:inherit;text-decoration:none">${Utils.esc(s.trainingProgram||'—')}</a></div>`},
   {id:'type', label:'Type', width:110,
     sortVal:s=>s.deliveryType||'',
     cell:s=>_tdTypeBadge(s.deliveryType)},
@@ -6387,9 +6387,9 @@ function renderTDList(rows){
     </div>`;
   wrap.innerHTML=`<div class="card" style="padding-bottom:0">
     <div style="display:flex;justify-content:flex-end;padding:8px 4px 0">${_tdColManagerButtonHtml()}</div>
-    <div class="eval-tbl-wrap" style="max-height:calc(100vh - 300px);min-height:220px;overflow-y:auto"><table class="eval-tbl" id="td-list-table" style="table-layout:fixed">
+    <div class="eval-tbl-wrap" style="min-height:220px"><table class="eval-tbl" id="td-list-table" style="table-layout:fixed">
     ${_tdColgroupHtml(cols)}
-    <thead style="position:sticky;top:0;z-index:2"><tr>${cols.map(_tdThHtml).join('')}</tr></thead>
+    <thead><tr>${cols.map(_tdThHtml).join('')}</tr></thead>
     <tbody>${pageRows.map(s=>_tdRowHtmlDynamic(s,cols)).join('')}</tbody>
   </table></div>${pager}</div>`;
 }
