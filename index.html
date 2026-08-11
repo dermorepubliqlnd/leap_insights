@@ -5887,7 +5887,17 @@ const _TD_COL_DEFS=[
     cell:s=>`<span style="font-size:13px">${_tdDateCell(s)}</span>`},
   {id:'audience', label:'Audience', width:160,
     sortVal:s=>((s.audience&&s.audience.length)?_sortedNames(s.audience).join(', '):'').toLowerCase(),
-    cell:s=>`<span style="font-size:13px">${(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'—'}</span>`},
+    // Compact Rows (2026-08-11, per Sandra): a session tagged with many audiences wrapped this
+    // cell across several lines, inflating that row's height in the list. When Compact Rows is
+    // on, clamp it to one line with an ellipsis and put the full, untruncated list in the native
+    // title attribute so hovering still shows everything -- off (default) keeps the old
+    // unrestricted wrapping. Scoped to just this column since it's the one whose length varies
+    // wildly (0 to 20+ tags); other columns are already short, fixed-shape values.
+    cell:s=>{
+      const full=(s.audience&&s.audience.length)?_sortedNames(s.audience).join(', '):'—';
+      if(!_tdCompactRows) return `<span style="font-size:13px">${Utils.esc(full)}</span>`;
+      return `<span style="font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" title="${Utils.esc(full)}">${Utils.esc(full)}</span>`;
+    }},
   {id:'status', label:'Status', width:110,
     sortVal:s=>_tdStatus(s),
     cell:s=>_tdStatusBadge(_tdStatus(s))},
@@ -5927,6 +5937,14 @@ let _tdColWidths={};
   }
 })();
 function _tdSaveColPrefs(){ Store.set(_TD_COL_PREFS_KEY,{order:_tdColOrder,hidden:_tdColHidden,widths:_tdColWidths}); }
+// Compact Rows toggle (2026-08-11, per Sandra): per-browser preference, same persistence pattern
+// as the column show/hide/order/width prefs above -- not per-user-in-DB.
+let _tdCompactRows=!!Store.get('leap_td_compact_v1');
+function _tdToggleCompactRows(){
+  _tdCompactRows=!_tdCompactRows;
+  Store.set('leap_td_compact_v1',_tdCompactRows);
+  renderTDList(_tdFilteredRows());
+}
 function _tdVisibleCols(){ return _tdColOrder.map(id=>_TD_COL_DEFS.find(c=>c.id===id)).filter(c=>c&&!_tdColHidden[c.id]); }
 function _tdRowComparator(a,b){
   const col=_TD_COL_DEFS.find(c=>c.id===_tdSort.col);
@@ -6386,7 +6404,10 @@ function renderTDList(rows){
       </div>
     </div>`;
   wrap.innerHTML=`<div class="card" style="padding-bottom:0">
-    <div style="display:flex;justify-content:flex-end;padding:8px 4px 0">${_tdColManagerButtonHtml()}</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:8px 4px 0">
+      <button class="btn btn-sm ${_tdCompactRows?'btn-primary':'btn-secondary'}" onclick="_tdToggleCompactRows()" title="One line per row -- hover a truncated Audience cell to see the full list">${_tdCompactRows?'✓ ':''}▤ Compact Rows</button>
+      ${_tdColManagerButtonHtml()}
+    </div>
     <div class="eval-tbl-wrap" style="min-height:220px"><table class="eval-tbl" id="td-list-table" style="table-layout:fixed">
     ${_tdColgroupHtml(cols)}
     <thead><tr>${cols.map(_tdThHtml).join('')}</tr></thead>
