@@ -451,6 +451,7 @@
     .dash-refresh-btn:hover{border-color:var(--pri);color:var(--pri);background:var(--pri-lt)}
     /* KPI STRIP */
     .kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:12px}
+    #td-kpis{grid-template-columns:repeat(4,1fr)}
     .kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px 14px;box-shadow:var(--sh-sm);position:relative;min-width:0}
     .kpi-icon{width:34px;height:34px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:10px;flex-shrink:0}
     .kpi-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -6308,14 +6309,13 @@ function renderTDMetrics(){
   const mh=_tdComputeMonthlyHours(_tdFilteredRows(),tdCalCursor.getFullYear(),tdCalCursor.getMonth());
   document.getElementById('td-kpis').innerHTML=`
     ${_tdaKpiCard('clipboard','#0369a1','Total Implementations',total,'All delivery types')}
+    ${_tdaKpiCard('calendar','#a16207','Upcoming Implementations',upcoming,'Next 30 days')}
+    ${_tdaKpiCard('check','var(--green)','Completed',completed,'All time')}
+    ${_tdaKpiCard('alert-triangle','#c2410c','Report Pending',reportPending,'Awaiting submission')}
     ${_tdaKpiCard('clock','#8b5cf6','Forecasted Learning Hours',mh.forecastedHrs.toFixed(1),monthLabel)}
     ${_tdaKpiCard('target','#3b82f6','ILT/VILT Hours',mh.iltHrs.toFixed(1),monthLabel)}
-    ${_tdaKpiCard('flag','#f97316','External Hours',mh.externalHrs.toFixed(1),monthLabel)}
     ${_tdaKpiCard('bulb','#22c55e','SLT Hours',mh.sltHrs.toFixed(1),monthLabel)}
-    ${_tdaKpiCard('calendar','#a16207','Upcoming',upcoming,'Next 30 days')}
-    ${_tdaKpiCard('check','var(--green)','Completed',completed,'All time')}
-    ${_tdaKpiCard('clock','#1d4ed8','In Progress',inProgress,'Currently running')}
-    ${_tdaKpiCard('alert-triangle','#c2410c','Report Pending',reportPending,'Awaiting submission')}
+    ${_tdaKpiCard('flag','#f97316','External Hours',mh.externalHrs.toFixed(1),monthLabel)}
   `;
 }
 
