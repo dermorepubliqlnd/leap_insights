@@ -6316,7 +6316,7 @@ function renderTDMetrics(){
     ${_tdaKpiCard('check','var(--green)','Completed',completed,'All time')}
     ${_tdaKpiCard('alert-triangle','#c2410c','Report Pending',reportPending,'Awaiting submission')}
     ${_tdaKpiCard('clock','#8b5cf6','Forecasted Learning Hours',mh.forecastedHrs.toFixed(1),monthLabel)}
-    ${_tdaKpiCard('target','#3b82f6','ILT/VILT Hours',mh.iltHrs.toFixed(1),monthLabel)}
+    ${_tdaKpiCard('target','#3b82f6','ILT Hours',mh.iltHrs.toFixed(1),monthLabel)}
     ${_tdaKpiCard('bulb','#22c55e','SLT Hours',mh.sltHrs.toFixed(1),monthLabel)}
     ${_tdaKpiCard('flag','#f97316','External Hours',mh.externalHrs.toFixed(1),monthLabel)}
   `;
@@ -6750,7 +6750,7 @@ function _tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,isToday,isSelected,stat
   return `<div class="td-hrs-cell" onclick="_tdHoursSelectDay('${dateStr}')" style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isSelected?'#eff6ff':(isToday?'#fffbeb':'var(--white)')};border:1px solid var(--border);padding:6px 8px;box-sizing:border-box;${ring}">
     <div style="font-size:11.5px;font-weight:600;color:${isToday?'#a16207':'var(--text3)'}">${day}</div>
     <div style="font-size:12.5px;font-weight:700;color:${TD_TYPE_COLORS.VILT.dot};margin-top:2px">${stat.forecasted.toFixed(1)} Forecasted Hrs</div>
-    <div style="font-size:10px;color:${TD_TYPE_COLORS.ILT.dot};margin-top:1px">● ILT/VILT: ${stat.ilt.toFixed(1)} hrs</div>
+    <div style="font-size:10px;color:${TD_TYPE_COLORS.ILT.dot};margin-top:1px">● ILT: ${stat.ilt.toFixed(1)} hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS.External.dot}">● External: ${stat.external.toFixed(1)} hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS['Self-led'].dot}">● SLT Available: ${stat.slt.toFixed(1)} hrs</div>
   </div>`;
@@ -6779,14 +6779,14 @@ function _tdHoursDayPanelHtml(dateStr,stat){
       <span onclick="_tdHoursSelectDay(null)" style="cursor:pointer;color:var(--text3);font-size:16px;line-height:1;flex-shrink:0">×</span>
     </div>
     <div style="font-size:16px;font-weight:700;color:${TD_TYPE_COLORS.VILT.dot};margin-bottom:8px">${stat.forecasted.toFixed(1)} hrs <span style="font-size:11.5px;font-weight:500;color:var(--text2)">Forecasted Learning Hours</span></div>
-    <div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS.ILT.dot}">●</span> ILT/VILT Hours: ${stat.ilt.toFixed(1)} hrs</div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS.ILT.dot}">●</span> ILT Hours: ${stat.ilt.toFixed(1)} hrs</div>
     ${stat.external?`<div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS.External.dot}">●</span> External Hours: ${stat.external.toFixed(1)} hrs</div>`:''}
     <div style="font-size:11.5px;color:var(--text2);margin-bottom:14px"><span style="color:${TD_TYPE_COLORS['Self-led'].dot}">●</span> SLT Available Hours: ${stat.slt.toFixed(1)} hrs</div>
 
-    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-bottom:6px">ILT / VILT Sessions (${stat.iltSessions.length})</div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${TD_TYPE_COLORS.ILT.dot};margin-bottom:6px">ILT Sessions (${stat.iltSessions.length})</div>
     ${iltHtml}
-    ${stat.externalSessions.length?`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin:12px 0 6px">External (${stat.externalSessions.length})</div>${extHtml}`:''}
-    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin:12px 0 6px">SLT Available (${stat.sltSessions.length})</div>
+    ${stat.externalSessions.length?`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${TD_TYPE_COLORS.External.dot};margin:12px 0 6px">External (${stat.externalSessions.length})</div>${extHtml}`:''}
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${TD_TYPE_COLORS['Self-led'].dot};margin:12px 0 6px">SLT Available (${stat.sltSessions.length})</div>
     ${sltHtml}
   </div>`;
 }
@@ -6831,7 +6831,7 @@ function _tdRenderHoursCalendar(rows){
   // Legend colors pulled from TD_TYPE_COLORS (the same map Schedule View's legend uses) so ILT/
   // SLT/External always match across both calendar sub-views -- Forecasted Hours reuses VILT's
   // purple since VILT itself isn't broken out as a separate swatch here (2026-08-11, per Sandra).
-  const legend=`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS.ILT.dot};display:inline-block"></span>ILT/VILT</span>
+  const legend=`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS.ILT.dot};display:inline-block"></span>ILT</span>
     <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS['Self-led'].dot};display:inline-block"></span>SLT</span>
     <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS.External.dot};display:inline-block"></span>External</span>
     <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS.VILT.dot};display:inline-block"></span>Forecasted Hours</span>`;
