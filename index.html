@@ -6743,9 +6743,12 @@ function _tdComputeMonthlyHours(rows,year,month){
 }
 
 function _tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,isToday,isSelected,stat){
-  const ring=isSelected?'box-shadow:inset 0 0 0 2px #2563eb;':(isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':'');
-  return `<div class="td-hrs-cell" onclick="_tdHoursSelectDay('${dateStr}')" style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isSelected?'#eff6ff':'var(--white)'};border:1px solid var(--border);padding:6px 8px;box-sizing:border-box;${ring}">
-    <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
+  // Today = amber/yellow ring (distinct from the blue "selected day" ring below) so the two
+  // states never look the same at a glance -- Sandra flagged the earlier indigo-vs-blue pairing
+  // as too similar (2026-08-12).
+  const ring=isSelected?'box-shadow:inset 0 0 0 2px #2563eb;':(isToday?'box-shadow:inset 0 0 0 2px #eab308;':'');
+  return `<div class="td-hrs-cell" onclick="_tdHoursSelectDay('${dateStr}')" style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isSelected?'#eff6ff':(isToday?'#fffbeb':'var(--white)')};border:1px solid var(--border);padding:6px 8px;box-sizing:border-box;${ring}">
+    <div style="font-size:11.5px;font-weight:600;color:${isToday?'#a16207':'var(--text3)'}">${day}</div>
     <div style="font-size:12.5px;font-weight:700;color:${TD_TYPE_COLORS.VILT.dot};margin-top:2px">${stat.forecasted.toFixed(1)} Forecasted Hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS.ILT.dot};margin-top:1px">● ILT/VILT: ${stat.ilt.toFixed(1)} hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS.External.dot}">● External: ${stat.external.toFixed(1)} hrs</div>
