@@ -6646,13 +6646,19 @@ function renderTDCalendar(rows){
           <div style="font-size:9px;font-weight:400;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(barPerson)}${barVenueName?' · '+Utils.esc(barVenueName):''}</div>
         </div>`;
       }).join('');
-      // Out-of-month cells keep the grey background as the "not this month" cue, but their
-      // bars/chips now render at reduced opacity instead of being blank (2026-08-12, per Sandra).
+      // Out-of-month cells keep the grey background as the "not this month" cue. Chips are
+      // dimmed (they belong to exactly one day, so dimming them there is correct) -- but bars
+      // are NOT wrapped in an opacity div anymore (2026-08-12 fix, per Sandra): a multi-day bar
+      // is anchored to whichever cell is its clamped START for that week's row, which can itself
+      // be an out-of-month cell while the bar's span is mostly/entirely CURRENT-month days (e.g.
+      // a bar starting on the leading grey days of the row and continuing into the new month) --
+      // wrapping the whole bar in opacity:.55 made that in-month portion nearly invisible against
+      // a white cell background, which looked like the bar had stopped instead of continued.
       const dimStyle=isOutOfMonth?'opacity:.55;':'';
       bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isOutOfMonth?'#f8fafc':'var(--white)'};border:1px solid var(--border);padding:5px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
         <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${cellDate.getDate()}</div>
         <div style="height:${barBand}px"></div>
-        <div style="${dimStyle}">${barsHereHtml}</div>
+        ${barsHereHtml}
         <div style="${dimStyle}">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
       </div>`;
     }
