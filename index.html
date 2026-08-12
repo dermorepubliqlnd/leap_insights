@@ -98,6 +98,16 @@
     .td-col-panel{position:absolute;top:calc(100% + 4px);right:0;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:8px;min-width:220px;max-height:340px;overflow-y:auto;z-index:20}
     .td-col-panel-item{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:5px 8px;border-radius:5px;cursor:pointer}
     .td-col-panel-item:hover{background:var(--hover-bg,#f1f5f9)}
+    /* List/Calendar view-picker dropdowns (2026-08-12, per Sandra: replaces the separate
+       Expanded/Compact + Schedule/Training Hours <select> that sat beside these buttons -- one
+       control group only, the menu is attached to the button itself, same open/close pattern as
+       .msdd elsewhere in this file). */
+    .td-viewmenu-wrap{position:relative}
+    .td-viewmenu{display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:4px;min-width:190px;z-index:20}
+    .td-viewmenu-wrap.open .td-viewmenu{display:block}
+    .td-viewmenu-item{padding:8px 12px;font-size:12.5px;border-radius:6px;cursor:pointer;white-space:nowrap}
+    .td-viewmenu-item:hover{background:var(--hover-bg,#f1f5f9)}
+    .td-viewmenu-item.active{background:var(--pri);color:#fff;font-weight:600}
     /* Training Hours View day-cell click panel (2026-08-12, per Sandra, replaces the earlier
        2026-08-11 hover popover) -- clicking a day cell opens a side panel next to the calendar
        grid (see _tdHoursDayPanelHtml/_tdHoursSelectDay) showing that day's ILT/VILT, External,
@@ -1639,10 +1649,15 @@
               <button class="btn btn-secondary btn-sm" onclick="tdResetFilters()">Reset</button>
               <div style="flex:1"></div>
               <div class="seg-btn-group" style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden">
-                <button class="btn btn-sm" id="td-view-list-btn" onclick="tdSwitchView('list')" style="border-radius:0;border:none">☰ List</button>
-                <button class="btn btn-sm" id="td-view-cal-btn" onclick="tdSwitchView('calendar')" style="border-radius:0;border:none;border-left:1px solid var(--border)">📅 Calendar</button>
+                <div class="td-viewmenu-wrap" id="td-view-list-wrap">
+                  <button class="btn btn-sm" id="td-view-list-btn" onclick="tdViewBtnClick('list')" style="border-radius:0;border:none">☰ List ▾</button>
+                  <div class="td-viewmenu" id="td-view-list-menu"></div>
+                </div>
+                <div class="td-viewmenu-wrap" id="td-view-cal-btn-wrap">
+                  <button class="btn btn-sm" id="td-view-cal-btn" onclick="tdViewBtnClick('calendar')" style="border-radius:0;border:none;border-left:1px solid var(--border)">📅 Calendar ▾</button>
+                  <div class="td-viewmenu" id="td-view-cal-menu"></div>
+                </div>
               </div>
-              <span id="td-subview-select-wrap"></span>
             </div>
           </div>
 
@@ -5891,13 +5906,11 @@ function _tdSetCalSubView(v){
   Store.set('leap_td_cal_subview_v1',v);
   renderTDCalendar(_tdFilteredRows());
 }
-// Switched from segmented buttons to a <select> (2026-08-11, per Sandra: "reduce too many
-// buttons in different places") -- same consolidation as _tdCompactViewSelectHtml above.
-function _tdCalSubViewToggleHtml(){
-  return `<select class="form-control" style="width:auto;padding:5px 10px;font-size:12.5px;font-weight:600" onchange="_tdSetCalSubView(this.value)">
-    <option value="schedule" ${tdCalSubView==='schedule'?'selected':''}>📅 Schedule View</option>
-    <option value="hours" ${tdCalSubView==='hours'?'selected':''}>⏱ Training Hours View</option>
-  </select>`;
+// Menu attached to the "Calendar" button itself (2026-08-12, per Sandra: replaces the separate
+// <select> that sat beside the List/Calendar buttons -- see tdViewBtnClick/tdPickSubview below).
+function _tdViewCalMenuHtml(){
+  return `<div class="td-viewmenu-item ${tdCalSubView==='schedule'?'active':''}" onclick="tdPickSubview('calendar','schedule')">📅 Schedule View</div>
+    <div class="td-viewmenu-item ${tdCalSubView==='hours'?'active':''}" onclick="tdPickSubview('calendar','hours')">⏱ Training Hours View</div>`;
 }
 
 // List view column engine (Phase46, 2026-08-06, per Sandra): sortable-by-any-column-header,
@@ -5993,11 +6006,47 @@ function _tdSetCompactRows(v){
   Store.set('leap_td_compact_v1',_tdCompactRows);
   renderTDList(_tdFilteredRows());
 }
-function _tdCompactViewSelectHtml(){
-  return `<select class="form-control" style="width:auto;padding:5px 10px;font-size:12.5px;font-weight:600" onchange="_tdSetCompactRows(this.value==='compact')" title="One line per row in Compact View -- hover a truncated Audience cell to see the full list">
-    <option value="detailed" ${_tdCompactRows?'':'selected'}>Expanded View</option>
-    <option value="compact" ${_tdCompactRows?'selected':''}>Compact View</option>
-  </select>`;
+// Menu attached to the "List" button itself (2026-08-12, per Sandra) -- see tdViewBtnClick/
+// tdPickSubview below, same pattern as _tdViewCalMenuHtml.
+function _tdViewListMenuHtml(){
+  return `<div class="td-viewmenu-item ${_tdCompactRows?'':'active'}" onclick="tdPickSubview('list','detailed')" title="One line per row in Compact View is the other option -- hover a truncated Audience cell there to see the full list">Expanded View</div>
+    <div class="td-viewmenu-item ${_tdCompactRows?'active':''}" onclick="tdPickSubview('list','compact')">Compact View</div>`;
+}
+// Renders both button-attached menus' contents (2026-08-12) -- called whenever tdViewMode,
+// _tdCompactRows, or tdCalSubView changes, so the highlighted "active" item stays in sync
+// without needing to rebuild the whole toolbar.
+function _tdRenderViewMenus(){
+  const lm=document.getElementById('td-view-list-menu'); if(lm) lm.innerHTML=_tdViewListMenuHtml();
+  const cm=document.getElementById('td-view-cal-menu'); if(cm) cm.innerHTML=_tdViewCalMenuHtml();
+}
+// Clicking "List"/"Calendar": if it's not already the active mode, switch to it immediately
+// (using whichever sub-view was last picked) and close the menu. If it's ALREADY the active
+// mode, clicking again just opens/closes its attached menu so you can change the sub-view --
+// this is the single control group replacing the old separate <select> (2026-08-12, per Sandra:
+// "I don't want a 2nd field").
+function tdViewBtnClick(mode){
+  const wrapId = mode==='list' ? 'td-view-list-wrap' : 'td-view-cal-btn-wrap';
+  const otherWrapId = mode==='list' ? 'td-view-cal-btn-wrap' : 'td-view-list-wrap';
+  const otherWrap=document.getElementById(otherWrapId); if(otherWrap) otherWrap.classList.remove('open');
+  if(tdViewMode!==mode){
+    tdSwitchView(mode);
+    document.getElementById(wrapId).classList.remove('open');
+  } else {
+    document.getElementById(wrapId).classList.toggle('open');
+  }
+}
+function tdPickSubview(mode,value){
+  if(mode==='list') _tdSetCompactRows(value==='compact');
+  else _tdSetCalSubView(value);
+  _tdRenderViewMenus();
+  const wrapId = mode==='list' ? 'td-view-list-wrap' : 'td-view-cal-btn-wrap';
+  document.getElementById(wrapId).classList.remove('open');
+}
+if(!window.__tdViewMenuOutsideClickBound){
+  window.__tdViewMenuOutsideClickBound=true;
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.td-viewmenu-wrap')) document.querySelectorAll('.td-viewmenu-wrap.open').forEach(w=>w.classList.remove('open'));
+  });
 }
 // Shared "+ Add Training" button (2026-08-11, per Sandra): used above the List table, and above
 // the Sunday column in both Calendar sub-views -- previously lived only in the filter row.
@@ -6269,23 +6318,13 @@ function tdResetFilters(){
   renderTrainingDelivery();
 }
 
-// Sub-view dropdown (2026-08-11, per Sandra): sits directly beside the List/Calendar buttons
-// rather than in a separate toolbar row -- shows Compact/Expanded when List is active, or
-// Schedule/Training Hours when Calendar is active, so there is only ONE control group for
-// "which view + which variant of that view" instead of two separated ones.
-function _tdRenderSubviewSelect(){
-  const wrap=document.getElementById('td-subview-select-wrap');
-  if(!wrap) return;
-  wrap.innerHTML = tdViewMode==='calendar' ? _tdCalSubViewToggleHtml() : _tdCompactViewSelectHtml();
-}
-
 function tdSwitchView(mode){
   tdViewMode=mode;
   document.getElementById('td-list-wrap').classList.toggle('hidden',mode!=='list');
   document.getElementById('td-cal-wrap').classList.toggle('hidden',mode!=='calendar');
   document.getElementById('td-view-list-btn').className='btn btn-sm '+(mode==='list'?'btn-primary':'btn-secondary');
   document.getElementById('td-view-cal-btn').className='btn btn-sm '+(mode==='calendar'?'btn-primary':'btn-secondary');
-  _tdRenderSubviewSelect();
+  _tdRenderViewMenus();
   if(mode==='calendar') renderTDCalendar(_tdFilteredRows()); else renderTDList(_tdFilteredRows());
 }
 
@@ -6345,7 +6384,7 @@ function renderTrainingDelivery(){
   _tdPopulateFilterOptions();
   document.getElementById('td-view-list-btn').className='btn btn-sm '+(tdViewMode==='list'?'btn-primary':'btn-secondary');
   document.getElementById('td-view-cal-btn').className='btn btn-sm '+(tdViewMode==='calendar'?'btn-primary':'btn-secondary');
-  _tdRenderSubviewSelect();
+  _tdRenderViewMenus();
   document.getElementById('td-list-wrap').classList.toggle('hidden',tdViewMode!=='list');
   document.getElementById('td-cal-wrap').classList.toggle('hidden',tdViewMode!=='calendar');
   const rows=_tdFilteredRows();
