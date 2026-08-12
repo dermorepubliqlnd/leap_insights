@@ -98,14 +98,13 @@
     .td-col-panel{position:absolute;top:calc(100% + 4px);right:0;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:8px;min-width:220px;max-height:340px;overflow-y:auto;z-index:20}
     .td-col-panel-item{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:5px 8px;border-radius:5px;cursor:pointer}
     .td-col-panel-item:hover{background:var(--hover-bg,#f1f5f9)}
-    /* Training Hours View day-cell hover popover (2026-08-11, per Sandra) -- shows the ILT/VILT
-       and SLT breakdown for that day without needing a click. Centered under the cell so it
-       clips less at the calendar's left/right edges than a plain left-aligned popover would;
-       still not edge-aware for the leftmost/rightmost columns -- acceptable first pass, per
-       Sandra's "focus on the view + switching behavior first" scope. */
-    .td-hrs-cell{overflow:visible}
-    .td-hrs-tooltip{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:30;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh-lg,0 6px 18px rgba(0,0,0,.12));padding:10px 12px;min-width:200px;max-width:260px;font-size:11.5px;color:var(--text2);margin-top:4px}
-    .td-hrs-cell:hover .td-hrs-tooltip{display:block}
+    /* Training Hours View day-cell click panel (2026-08-12, per Sandra, replaces the earlier
+       2026-08-11 hover popover) -- clicking a day cell opens a side panel next to the calendar
+       grid (see _tdHoursDayPanelHtml/_tdHoursSelectDay) showing that day's ILT/VILT, External,
+       and SLT breakdown. Training Hours View only -- Schedule View calendar is untouched. */
+    .td-hrs-cell{cursor:pointer}
+    .td-hrs-cell:hover{background:#f8fafc}
+    .td-hrs-daypanel-item:hover{background:var(--hover-bg,#f1f5f9);border-color:var(--pri)}
 
     /* ── PASSWORD STRENGTH ── */
     .pw-strength{height:4px;border-radius:2px;margin-top:6px;background:var(--border);overflow:hidden}
@@ -5876,6 +5875,10 @@ let tdViewMode='list';
 let tdPage=1;
 let tdPageSize=10;   // Phase39 item 4: mutable page size, selectable 10/25/50 via #td-pagesize control
 let tdCalCursor=new Date(); tdCalCursor.setDate(1);
+// Training Hours View day-click side panel selection (2026-08-12) -- dateStr (YYYY-MM-DD) of
+// the currently open day panel, or null if none. Reset on month navigation (tdCalPrev/Next/
+// Today) since a selected day from a different month has nothing to show.
+let tdHoursSelectedDay=null;
 // Training Hours View (2026-08-11, per Sandra): a second calendar sub-view, toggled alongside
 // the existing "Schedule View" (renderTDCalendar's original chip/bar layout, untouched below) --
 // NOT a replacement for it. Persisted per-browser like the other small list/calendar prefs above.
@@ -6495,9 +6498,9 @@ function tdGoPage(p){ tdPage=p; renderTDList(_tdFilteredRows()); }
 function tdSetPageSize(v){ tdPageSize=parseInt(v,10)||10; tdPage=1; renderTDList(_tdFilteredRows()); }
 
 // Hour KPI cards are scoped to tdCalCursor's month, so nav must also refresh them.
-function tdCalPrev(){ tdCalCursor.setMonth(tdCalCursor.getMonth()-1); renderTDCalendar(_tdFilteredRows()); renderTDMetrics(); }
-function tdCalNext(){ tdCalCursor.setMonth(tdCalCursor.getMonth()+1); renderTDCalendar(_tdFilteredRows()); renderTDMetrics(); }
-function tdCalToday(){ tdCalCursor=new Date(); tdCalCursor.setDate(1); renderTDCalendar(_tdFilteredRows()); renderTDMetrics(); }
+function tdCalPrev(){ tdHoursSelectedDay=null; tdCalCursor.setMonth(tdCalCursor.getMonth()-1); renderTDCalendar(_tdFilteredRows()); renderTDMetrics(); }
+function tdCalNext(){ tdHoursSelectedDay=null; tdCalCursor.setMonth(tdCalCursor.getMonth()+1); renderTDCalendar(_tdFilteredRows()); renderTDMetrics(); }
+function tdCalToday(){ tdHoursSelectedDay=null; tdCalCursor=new Date(); tdCalCursor.setDate(1); renderTDCalendar(_tdFilteredRows()); renderTDMetrics(); }
 
 // Duration text for the calendar chip/tooltip -- "N days (start – end)" for date-range entries,
 // otherwise just the single date (2026-07-31, richer pill content + SLT continuous bar work).
@@ -6689,16 +6692,17 @@ function _tdHoursForDay(rows,dateStr){
     const start=s.trainingDate, end=s.endDate||s.trainingDate;
     if(dateStr<start||dateStr>end) return;
     const hrs=Number(s.durationHours)||0;
-    const label=s.trainingProgram||s.code||'Untitled';
+    // Full session `s` is kept (not just id/label) so the day-click side panel (2026-08-12) can
+    // show person/venue/date-range details without a second lookup pass.
     if(s.deliveryType==='ILT'||s.deliveryType==='VILT'){
       ilt+=hrs;
-      iltSessions.push({id:s.id,label,hours:hrs});
+      iltSessions.push({s,hrs});
     } else if(s.deliveryType==='Self-led'){
       slt+=hrs;
-      sltSessions.push({id:s.id,label,hours:hrs});
+      sltSessions.push({s,hrs});
     } else if(s.deliveryType==='External'){
       external+=hrs;
-      externalSessions.push({id:s.id,label,hours:hrs});
+      externalSessions.push({s,hrs});
     }
   });
   const forecasted=ilt+external+slt;
@@ -6738,26 +6742,55 @@ function _tdComputeMonthlyHours(rows,year,month){
   return {forecastedHrs:iltHrs+externalHrs+sltHrs,iltHrs,externalHrs,sltHrs,implementations};
 }
 
-function _tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,isToday,stat){
-  const iltListHtml=stat.iltSessions.length?stat.iltSessions.map(x=>`<div>${Utils.esc(x.label)} — ${x.hours} hrs</div>`).join(''):'<div style="color:var(--text3)">None</div>';
-  const extListHtml=stat.externalSessions.length?stat.externalSessions.map(x=>`<div>${Utils.esc(x.label)} — ${x.hours} hrs</div>`).join(''):'<div style="color:var(--text3)">None</div>';
-  const sltListHtml=stat.sltSessions.length?stat.sltSessions.map(x=>`<div>${Utils.esc(x.label)} — ${x.hours} hrs</div>`).join(''):'<div style="color:var(--text3)">None</div>';
-  return `<div class="td-hrs-cell" style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:var(--white);border:1px solid var(--border);padding:6px 8px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
+function _tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,isToday,isSelected,stat){
+  const ring=isSelected?'box-shadow:inset 0 0 0 2px #2563eb;':(isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':'');
+  return `<div class="td-hrs-cell" onclick="_tdHoursSelectDay('${dateStr}')" style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isSelected?'#eff6ff':'var(--white)'};border:1px solid var(--border);padding:6px 8px;box-sizing:border-box;${ring}">
     <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
     <div style="font-size:12.5px;font-weight:700;color:${TD_TYPE_COLORS.VILT.dot};margin-top:2px">${stat.forecasted.toFixed(1)} Forecasted Hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS.ILT.dot};margin-top:1px">● ILT/VILT: ${stat.ilt.toFixed(1)} hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS.External.dot}">● External: ${stat.external.toFixed(1)} hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS['Self-led'].dot}">● SLT Available: ${stat.slt.toFixed(1)} hrs</div>
-    <div class="td-hrs-tooltip">
-      <div style="font-weight:700;margin-bottom:6px">${Utils.esc(new Date(dateStr+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}))}</div>
-      <div style="font-weight:700;color:${TD_TYPE_COLORS.ILT.dot};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">ILT/VILT</div>
-      <div style="margin:2px 0 8px">${iltListHtml}</div>
-      <div style="font-weight:700;color:${TD_TYPE_COLORS.External.dot};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">External</div>
-      <div style="margin:2px 0 8px">${extListHtml}</div>
-      <div style="font-weight:700;color:${TD_TYPE_COLORS['Self-led'].dot};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">SLT Available</div>
-      <div style="margin-top:2px">${sltListHtml}</div>
-    </div>
   </div>`;
+}
+
+// Day-click side panel (2026-08-12, per Sandra, Training Hours View only): shows the clicked
+// day's full breakdown -- session-level detail rows (clickable through to openTrainingDetail)
+// rather than just the cell's totals. Replaces the earlier hover popover.
+function _tdHoursDayPanelHtml(dateStr,stat){
+  const dateLabel=new Date(dateStr+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const row=(s,hrs,extra)=>`<div class="td-hrs-daypanel-item" onclick="openTrainingDetail('${s.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--white)">
+      <div style="font-weight:600;font-size:12px;color:var(--text)">${Utils.esc(s.trainingProgram||s.code||'Untitled')}</div>
+      <div style="font-size:10.5px;color:var(--text2);margin-top:2px">${hrs} hrs${extra?' &nbsp;·&nbsp; '+extra:''}</div>
+    </div>`;
+  const venueOf=s=>s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+  const iltHtml=stat.iltSessions.length?stat.iltSessions.map(x=>row(x.s,x.hrs,[_tdPersonName(x.s),venueOf(x.s)].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; '))).join(''):'<div style="font-size:11px;color:var(--text3)">None</div>';
+  const extHtml=stat.externalSessions.map(x=>row(x.s,x.hrs,[_tdPersonName(x.s),venueOf(x.s)].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; '))).join('');
+  const sltHtml=stat.sltSessions.length?stat.sltSessions.map(x=>{
+    const range=x.s.endDate&&x.s.endDate!==x.s.trainingDate?`${x.s.trainingDate} – ${x.s.endDate}`:x.s.trainingDate;
+    return row(x.s,x.hrs,'Available: '+Utils.esc(range));
+  }).join(''):'<div style="font-size:11px;color:var(--text3)">None</div>';
+
+  return `<div style="width:280px;flex-shrink:0;border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--white);max-height:620px;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+      <div style="font-weight:700;font-size:13.5px;padding-right:8px">${Utils.esc(dateLabel)}</div>
+      <span onclick="_tdHoursSelectDay(null)" style="cursor:pointer;color:var(--text3);font-size:16px;line-height:1;flex-shrink:0">×</span>
+    </div>
+    <div style="font-size:16px;font-weight:700;color:${TD_TYPE_COLORS.VILT.dot};margin-bottom:8px">${stat.forecasted.toFixed(1)} hrs <span style="font-size:11.5px;font-weight:500;color:var(--text2)">Forecasted Learning Hours</span></div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS.ILT.dot}">●</span> ILT/VILT Hours: ${stat.ilt.toFixed(1)} hrs</div>
+    ${stat.external?`<div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS.External.dot}">●</span> External Hours: ${stat.external.toFixed(1)} hrs</div>`:''}
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:14px"><span style="color:${TD_TYPE_COLORS['Self-led'].dot}">●</span> SLT Available Hours: ${stat.slt.toFixed(1)} hrs</div>
+
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-bottom:6px">ILT / VILT Sessions (${stat.iltSessions.length})</div>
+    ${iltHtml}
+    ${stat.externalSessions.length?`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin:12px 0 6px">External (${stat.externalSessions.length})</div>${extHtml}`:''}
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin:12px 0 6px">SLT Available (${stat.sltSessions.length})</div>
+    ${sltHtml}
+  </div>`;
+}
+
+function _tdHoursSelectDay(dateStr){
+  tdHoursSelectedDay=(dateStr && dateStr===tdHoursSelectedDay)?null:dateStr;
+  renderTDCalendar(_tdFilteredRows());
 }
 function _tdRenderHoursCalendar(rows){
   const wrap=document.getElementById('td-cal-wrap');
@@ -6772,7 +6805,7 @@ function _tdRenderHoursCalendar(rows){
   const dayStats={};
   for(let day=1; day<=daysInMonth; day++){
     const dateStr=`${year}-${pad(month+1)}-${pad(day)}`;
-    dayStats[day]=_tdHoursForDay(rows,dateStr);
+    dayStats[dateStr]=_tdHoursForDay(rows,dateStr);
   }
 
   let bodyCellsHtml='';
@@ -6784,9 +6817,13 @@ function _tdRenderHoursCalendar(rows){
         continue;
       }
       const dateStr=`${year}-${pad(month+1)}-${pad(day)}`;
-      bodyCellsHtml+=_tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,dateStr===todayStr,dayStats[day]);
+      bodyCellsHtml+=_tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,dateStr===todayStr,dateStr===tdHoursSelectedDay,dayStats[dateStr]);
     }
   }
+  // Side panel only renders when the selected day falls within the month currently in view --
+  // navigating months already clears tdHoursSelectedDay (see tdCalPrev/Next/Today), this is just
+  // a defensive fallback.
+  const panelHtml=(tdHoursSelectedDay && dayStats[tdHoursSelectedDay])?_tdHoursDayPanelHtml(tdHoursSelectedDay,dayStats[tdHoursSelectedDay]):'';
   const headerCellsHtml=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<div style="grid-row:1;grid-column:${i+1};background:#f8fafc;border:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3);box-sizing:border-box">${d}</div>`).join('');
   // Legend colors pulled from TD_TYPE_COLORS (the same map Schedule View's legend uses) so ILT/
   // SLT/External always match across both calendar sub-views -- Forecasted Hours reuses VILT's
@@ -6809,9 +6846,12 @@ function _tdRenderHoursCalendar(rows){
         <span style="font-weight:600;font-size:14.5px;margin-left:6px">${monthLabel}</span>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(72px,auto);gap:0;margin:-1px 0 0 -1px">
-      ${headerCellsHtml}
-      ${bodyCellsHtml}
+    <div style="display:flex;gap:14px;align-items:flex-start">
+      <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(72px,auto);gap:0;margin:-1px 0 0 -1px">
+        ${headerCellsHtml}
+        ${bodyCellsHtml}
+      </div>
+      ${panelHtml}
     </div>
   </div>`;
 }
