@@ -9490,17 +9490,20 @@ function renderTrainingDetail(){
   // Phase65 (2026-08-06, per Sandra): a non-mandatory Self-led session also isn't monitored via a
   // Training Report -- hide that tab too, leaving only Overview + Audit History for calendar-
   // plotting purposes. Mandatory Self-led keeps the Report tab (with SLT-specific content).
-  const visibleTabs=(_tdGrp==='owner'
-    ?TD_DETAIL_TABS.filter(t=>t.id!=='participants'&&t.id!=='trainer-eval'&&(t.id!=='report'||s.isMandatory))
-    :TD_DETAIL_TABS).filter(t=>t.id!=='checklist'||s.deliveryType==='ILT');
-  if(!visibleTabs.some(t=>t.id===_tdDetailTab)) _tdDetailTab='overview';
-  // Manual-override tab badge (2026-08-12, per Sandra): flags the tabs whose live content is
-  // normally sparse/empty when a report was logged as already-submitted outside the app (see
-  // _tdManualOverrideBanner) -- so it's visible while browsing tabs, not just after opening one.
+  // Manual-override tab visibility (2026-08-12, per Sandra): once a report's been logged as
+  // already-submitted outside the app, Checklist/Attendance & Performance/Training Report have
+  // nothing live to show (see _tdManualOverrideBanner/_tdOverviewReportBlocks) -- rather than
+  // leaving those tabs open onto near-empty content, hide them entirely and leave only
+  // Overview (where the override notice + whatever WAS captured lives), Trainer Evaluation, and
+  // Audit History.
   const _tdMoActive=!!_tdManualOverrideReport(s);
+  const visibleTabs=((_tdGrp==='owner'
+    ?TD_DETAIL_TABS.filter(t=>t.id!=='participants'&&t.id!=='trainer-eval'&&(t.id!=='report'||s.isMandatory))
+    :TD_DETAIL_TABS).filter(t=>t.id!=='checklist'||s.deliveryType==='ILT'))
+    .filter(t=>!_tdMoActive||!(t.id==='checklist'||t.id==='participants'||t.id==='report'));
+  if(!visibleTabs.some(t=>t.id===_tdDetailTab)) _tdDetailTab='overview';
   const tabsHtml=visibleTabs.map(t=>{
-    const badge=(_tdMoActive&&(t.id==='participants'||t.id==='checklist'||t.id==='report'))?' <span title="Report logged as already submitted manually — see banner in this tab" style="margin-left:3px">✉️</span>':'';
-    return `<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(t.label)}${badge}</button>`;
+    return `<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(t.label)}</button>`;
   }).join('');
 
   let tabBody='';
@@ -9774,15 +9777,23 @@ function _tdOverviewReportBlocks(s){
     };
   }
   const moBanner=_tdManualOverrideBanner(s);
-  const l1=`<div class="card" style="padding:18px 20px;margin-bottom:16px">
+  // Manual-override sessions (2026-08-12, per Sandra): the Training Report tab itself is hidden
+  // for these sessions (see renderTrainingDetail's visibleTabs filter), and its live content was
+  // never filled in here anyway -- so these cards show ONLY the override notice, not the
+  // inner report content or a "go to tab" link pointing at a tab that no longer exists.
+  const l1=moBanner?`<div class="card" style="padding:18px 20px;margin-bottom:16px">
     <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Session L1 Report (Learner Reaction)</div>
     ${moBanner}
+  </div>`:`<div class="card" style="padding:18px 20px;margin-bottom:16px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Session L1 Report (Learner Reaction)</div>
     ${_tdrL1InnerHtml(s,report)}
     ${goToReport}
   </div>`;
-  const summary=`<div class="card" style="padding:18px 20px">
+  const summary=moBanner?`<div class="card" style="padding:18px 20px">
     <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">5. Summary</div>
     ${moBanner}
+  </div>`:`<div class="card" style="padding:18px 20px">
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">5. Summary</div>
     ${_tdrSummaryInnerHtml(report)}
     ${goToReport}
   </div>`;
@@ -10204,6 +10215,19 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
   // the header-level "Actions" dropdown that used to combine it with Request Reopen was removed
   // 2026-08-06 per Sandra; Request/Approve/Deny Reopen now live at the bottom of that same tab
   // (see _tdrReopenActionsBar).
+  // Manual-override sessions (2026-08-12, per Sandra): Checklist and Attendance & Performance
+  // tabs are hidden entirely for these sessions (see renderTrainingDetail's visibleTabs filter),
+  // so the Checklist widget and section 2 below drop their "go to tab" links and live content,
+  // showing ONLY the override notice.
+  const moBanner=_tdManualOverrideBanner(s);
+  const attendanceSection=moBanner?`<div class="card" style="padding:18px 20px;margin-bottom:16px">
+          <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Attendance &amp; Assessment Performance</div>
+          ${moBanner}
+        </div>`:`<div class="card" style="padding:18px 20px;margin-bottom:16px">
+          <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Attendance &amp; Assessment Performance</div>
+          ${_tdOverviewAttendanceAssessmentBlock(s)}
+          <div style="margin-top:12px"><a href="javascript:void(0)" onclick="tdDetailSwitchTab('participants')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600">Go to Attendance &amp; Performance tab for details →</a></div>
+        </div>`;
   return `
     <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:stretch;margin-bottom:16px">
       <div class="card" id="tdd-session-info-card" style="padding:18px 20px;height:100%;box-sizing:border-box">
@@ -10213,13 +10237,8 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
     </div>
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
       <div>
-        ${_tdOverviewChecklistWidget(s)}
-        <div class="card" style="padding:18px 20px;margin-bottom:16px">
-          <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Attendance &amp; Assessment Performance</div>
-          ${_tdManualOverrideBanner(s)}
-          ${_tdOverviewAttendanceAssessmentBlock(s)}
-          <div style="margin-top:12px"><a href="javascript:void(0)" onclick="tdDetailSwitchTab('participants')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600">Go to Attendance &amp; Performance tab for details →</a></div>
-        </div>
+        ${moBanner?'':_tdOverviewChecklistWidget(s)}
+        ${attendanceSection}
         ${l1}
         ${_tdOverviewEvaluationsBlock(s,ownerType)}
       </div>
