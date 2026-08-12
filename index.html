@@ -6569,11 +6569,16 @@ function renderTDCalendar(rows){
   const singleDay=[], multiDay=[];
   rows.forEach(s=>{ if(s.endDate && s.endDate!==s.trainingDate) multiDay.push(s); else singleDay.push(s); });
 
-  const byDay={};
+  // Keyed by dateStr (YYYY-MM-DD), not just day-of-month number, and NOT restricted to the
+  // current month -- this lets the leading/trailing grey "overlap" cells (days that belong to
+  // the previous/next month but share a week row with this month) show their real sessions
+  // instead of rendering blank, per Sandra's "not giving us a whole picture" feedback
+  // (2026-08-12). Those cells stay visually greyed out; only the previous blank-content bug is
+  // fixed.
+  const byDate={};
   singleDay.forEach(s=>{
     if(!s.trainingDate) return;
-    const d=new Date(s.trainingDate+'T00:00:00');
-    if(d.getFullYear()===year && d.getMonth()===month) (byDay[d.getDate()]=byDay[d.getDate()]||[]).push(s);
+    (byDate[s.trainingDate]=byDate[s.trainingDate]||[]).push(s);
   });
 
   const CHIP_CAP=2;
@@ -6617,13 +6622,14 @@ function renderTDCalendar(rows){
       const day=idx-firstDow+1;
       const gridRow=w+2; // row 1 is the weekday header
       const gridCol=c+1;
-      if(day<1||day>daysInMonth){
-        bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};background:#f8fafc;border:1px solid var(--border);box-sizing:border-box"></div>`;
-        continue;
-      }
-      const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isOutOfMonth=day<1||day>daysInMonth;
+      // new Date(year,month,day) rolls over correctly for day<1 (previous month) and
+      // day>daysInMonth (next month) -- this is what lets the grey overlap cells resolve their
+      // real calendar date instead of being skipped entirely.
+      const cellDate=new Date(year,month,day);
+      const dateStr=`${cellDate.getFullYear()}-${String(cellDate.getMonth()+1).padStart(2,'0')}-${String(cellDate.getDate()).padStart(2,'0')}`;
       const isToday=dateStr===todayStr;
-      const dayEvs=byDay[day]||[];
+      const dayEvs=byDate[dateStr]||[];
       const shown=dayEvs.slice(0,CHIP_CAP);
       const more=dayEvs.length-shown.length;
       const barsHereHtml=(barsByStartCol[c]||[]).map(b=>{
@@ -6640,11 +6646,14 @@ function renderTDCalendar(rows){
           <div style="font-size:9px;font-weight:400;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(barPerson)}${barVenueName?' · '+Utils.esc(barVenueName):''}</div>
         </div>`;
       }).join('');
-      bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:var(--white);border:1px solid var(--border);padding:5px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
-        <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${day}</div>
+      // Out-of-month cells keep the grey background as the "not this month" cue, but their
+      // bars/chips now render at reduced opacity instead of being blank (2026-08-12, per Sandra).
+      const dimStyle=isOutOfMonth?'opacity:.55;':'';
+      bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isOutOfMonth?'#f8fafc':'var(--white)'};border:1px solid var(--border);padding:5px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
+        <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${cellDate.getDate()}</div>
         <div style="height:${barBand}px"></div>
-        ${barsHereHtml}
-        <div>${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
+        <div style="${dimStyle}">${barsHereHtml}</div>
+        <div style="${dimStyle}">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
       </div>`;
     }
   }
