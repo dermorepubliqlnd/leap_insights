@@ -6641,7 +6641,12 @@ function renderTDCalendar(rows){
         const top=20+b.lane*BAR_H;
         const barVenueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
         const barPerson=_tdPersonName(s);
-        return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box;line-height:1.3">
+        // Solid bottom accent stripe (2026-08-12, per Sandra: the pale pastel fill alone was
+        // nearly invisible across a wide multi-column span, making a bar look like it "stopped"
+        // partway through a week even though its width/data were already correct) -- gives a
+        // clearly visible continuous colored line across the FULL span, independent of how faint
+        // the fill itself reads at a glance.
+        return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};border-bottom:3px solid ${bc.dot};box-sizing:border-box;line-height:1.3">
           <div>● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
           <div style="font-size:9px;font-weight:400;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(barPerson)}${barVenueName?' · '+Utils.esc(barVenueName):''}</div>
         </div>`;
