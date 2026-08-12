@@ -5909,8 +5909,8 @@ function _tdSetCalSubView(v){
 // Menu attached to the "Calendar" button itself (2026-08-12, per Sandra: replaces the separate
 // <select> that sat beside the List/Calendar buttons -- see tdViewBtnClick/tdPickSubview below).
 function _tdViewCalMenuHtml(){
-  return `<div class="td-viewmenu-item ${tdCalSubView==='schedule'?'active':''}" onclick="tdPickSubview('calendar','schedule')">📅 Schedule View</div>
-    <div class="td-viewmenu-item ${tdCalSubView==='hours'?'active':''}" onclick="tdPickSubview('calendar','hours')">⏱ Training Hours View</div>`;
+  return `<div class="td-viewmenu-item ${tdCalSubView==='schedule'?'active':''}" onclick="tdPickSubview('calendar','schedule')">Schedule View</div>
+    <div class="td-viewmenu-item ${tdCalSubView==='hours'?'active':''}" onclick="tdPickSubview('calendar','hours')">Training Hours View</div>`;
 }
 
 // List view column engine (Phase46, 2026-08-06, per Sandra): sortable-by-any-column-header,
