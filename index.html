@@ -186,6 +186,12 @@
     .sb-nav{flex:1;padding:10px 0;overflow-y:auto}
     .nav-sec{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--sb-sec);padding:14px 16px 5px}
     .nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;color:var(--sb-t);cursor:pointer;font-size:13.5px;font-weight:400;transition:all .15s;border-left:2.5px solid transparent;user-select:none}
+    /* SVG nav icons (2026-08-13, per Sandra): fixed 16x16 box so every icon lines up regardless
+       of its own path's natural proportions -- stroke="currentColor" in each icon's markup makes
+       it inherit the nav row's text color automatically (including on hover/active), so no
+       separate color rule is needed here. */
+    .nav-ic{display:inline-flex;width:16px;height:16px;flex-shrink:0;align-items:center;justify-content:center}
+    .nav-ic svg{width:16px;height:16px}
     .nav-item:hover{color:var(--sb-ta);background:var(--sb-h)}
     .nav-item.active{color:var(--sb-ta);background:var(--sb-a);border-left-color:var(--sb-acc);font-weight:500}
     .nav-parent{display:flex;align-items:center;gap:10px;padding:8px 16px;color:var(--sb-t);cursor:pointer;font-size:13.5px;font-weight:400;transition:all .15s;user-select:none;justify-content:space-between}
@@ -867,25 +873,26 @@
       </div>
       <nav class="sb-nav">
         <div class="nav-sec">Overview</div>
-        <div class="nav-item" data-view="dashboard"><span>◫</span> Dashboard</div>
+        <div class="nav-item" data-view="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Dashboard</div>
         <div class="nav-parent" id="nav-evals-parent" onclick="toggleNavEvals()">
-          <div class="nav-parent-left"><span>✎</span> Evaluations</div>
+          <div class="nav-parent-left"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12.3l2 2 4-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Evaluations</div>
           <span class="nav-chevron" id="nav-evals-chevron">▾</span>
         </div>
         <div class="nav-sub-group" id="nav-evals-group">
-          <div class="nav-sub-item js-id-qa hidden" data-view="id-qa"><span>◈</span> Instructional Designer</div>
-          <div class="nav-sub-item js-content-qa hidden" data-view="content-qa"><span>✦</span> Content Developer</div>
-          <div class="nav-sub-item js-trainer-eval hidden" data-view="evaluations"><span>◉</span> Trainer</div>
+          <div class="nav-sub-item js-id-qa hidden" data-view="id-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Instructional Designer</div>
+          <div class="nav-sub-item js-content-qa hidden" data-view="content-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M10 8.3l6 3.7-6 3.7V8.3Z" fill="currentColor" stroke="none"/></svg></span> Content Developer</div>
+          <div class="nav-sub-item js-trainer-eval hidden" data-view="evaluations"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.5 12l3-3 2.5 2.5L17.5 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Trainer</div>
         </div>
         <div class="nav-sec">Training Operations</div>
-        <div class="nav-item" data-view="training-dashboard"><span>◫</span> Training Dashboard</div>
-        <div class="nav-item" data-view="training-delivery"><span>🗂</span> Training Calendar</div>
+        <div class="nav-item" data-view="training-dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Training Dashboard</div>
+        <div class="nav-item" data-view="training-delivery"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Training Calendar</div>
+        <div class="nav-item" data-view="trainer-checklist"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7l1.4 1.4L8 5.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="7" x2="20.5" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M4 13l1.4 1.4L8 11.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="13" x2="20.5" y2="13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M4 19l1.4 1.4L8 17.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="19" x2="20.5" y2="19" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Trainer Checklist</div>
         <div class="nav-sec js-admin hidden">Manage</div>
-        <div class="nav-item js-reports hidden" data-view="reports"><span>◎</span> Reports</div>
-        <div class="nav-item js-admin hidden" data-view="users"><span>⊕</span> User Management</div>
-        <div class="nav-item js-admin hidden" data-view="settings"><span>◈</span> Settings</div>
+        <div class="nav-item js-reports hidden" data-view="reports"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><line x1="6" y1="20" x2="6" y2="12" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="6" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="18" y1="20" x2="18" y2="9.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg></span> Reports</div>
+        <div class="nav-item js-admin hidden" data-view="users"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.2" r="3.7" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 20.5v-1.1a4.6 4.6 0 0 1 4.6-4.6h4.2a4.6 4.6 0 0 1 4.6 4.6v1.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> User Management</div>
+        <div class="nav-item js-admin hidden" data-view="settings"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 5.3l1.6 1.6M18.2 17.1l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 18.7l1.6-1.6M18.2 6.9l1.6-1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Settings</div>
         <div class="nav-sec" style="margin-top:6px">Resources</div>
-        <div class="nav-item" onclick="window.open('LEAP_KB.html','_blank','noopener')" title="Opens in a new tab" style="cursor:pointer"><span>📚</span> Knowledge Base <span style="font-size:9px;opacity:.55;margin-left:auto">↗</span></div>
+        <div class="nav-item" onclick="window.open('LEAP_KB.html','_blank','noopener')" title="Opens in a new tab" style="cursor:pointer"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.3c-1.7-1.2-3.9-1.8-6.2-1.8-.7 0-1.3.1-1.8.2v13.1c.5-.1 1.1-.2 1.8-.2 2.3 0 4.5.6 6.2 1.8 1.7-1.2 3.9-1.8 6.2-1.8.7 0 1.3.1 1.8.2V4.7c-.5-.1-1.1-.2-1.8-.2-2.3 0-4.5.6-6.2 1.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 6.3v13.1" stroke="currentColor" stroke-width="1.4"/></svg></span> Knowledge Base <span style="font-size:9px;opacity:.55;margin-left:auto">↗</span></div>
       </nav>
       <div class="sb-footer">
         <div class="sb-user">
@@ -1829,6 +1836,94 @@
           </div>
 
           <div id="td-detail-wrap" class="hidden"></div>
+        </div>
+
+        <!-- ══ TRAINER CHECKLIST (2026-08-13, per Sandra) — checklist progress/reminders rollup
+             across ILT sessions, nested under the Training Calendar sub-nav ══ -->
+        <div id="view-trainer-checklist" class="hidden">
+          <div class="kpi-strip" id="tc-kpis" style="margin-bottom:16px;grid-template-columns:repeat(4,1fr)"></div>
+          <div class="card" style="margin-bottom:14px">
+            <div style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+              <div class="form-group" style="margin:0;min-width:150px">
+                <label class="form-label" style="margin-bottom:4px">Period</label>
+                <select id="tc-f-period" class="form-control" onchange="tcSetFilter('period',this.value)">
+                  <option value="thismonth">This Month</option>
+                  <option value="lastmonth">Last Month</option>
+                  <option value="thisquarter">This Quarter</option>
+                  <option value="ytd">Year to Date</option>
+                  <option value="alltime">All Time</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+              <div class="form-group hidden" id="tc-custom-range-wrap" style="margin:0;min-width:140px">
+                <label class="form-label" style="margin-bottom:4px">From</label>
+                <input type="date" id="tc-f-customstart" class="form-control" onchange="tcSetFilter('customStart',this.value)">
+              </div>
+              <div class="form-group hidden" id="tc-custom-range-wrap-end" style="margin:0;min-width:140px">
+                <label class="form-label" style="margin-bottom:4px">To</label>
+                <input type="date" id="tc-f-customend" class="form-control" onchange="tcSetFilter('customEnd',this.value)">
+              </div>
+              <div class="form-group" style="margin:0;min-width:170px">
+                <label class="form-label" style="margin-bottom:4px">Program</label>
+                <input type="text" id="tc-f-program" class="form-control" placeholder="Search program…" oninput="tcSetFilter('program',this.value)">
+              </div>
+              <div class="form-group" style="margin:0;min-width:150px">
+                <label class="form-label" style="margin-bottom:4px">Category</label>
+                <select id="tc-f-category" class="form-control" onchange="tcSetFilter('category',this.value)">
+                  <option value="all">All</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;min-width:150px">
+                <label class="form-label" style="margin-bottom:4px">Status</label>
+                <select id="tc-f-status" class="form-control" onchange="tcSetFilter('status',this.value)">
+                  <option value="all">All</option>
+                  <option value="not_started">Not Started</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="na">No Checklist</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;min-width:170px">
+                <label class="form-label" style="margin-bottom:4px">Facilitator</label>
+                <select id="tc-f-facilitator" class="form-control" onchange="tcSetFilter('facilitator',this.value)">
+                  <option value="all">All</option>
+                </select>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="tcResetFilters()">↺ Clear Filters</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:14px;flex-wrap:wrap" id="tc-tabs"></div>
+          <div style="display:grid;grid-template-columns:2.6fr 1fr;gap:16px;align-items:start">
+            <div id="tc-table-wrap"></div>
+            <div>
+              <div class="card" style="padding:14px 16px;margin-bottom:14px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                  <div style="font-weight:700;font-size:13px">My Calendar / Planner</div>
+                </div>
+                <div id="tc-cal-wrap"></div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:10.5px;color:var(--text3)">
+                  <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#bbf7d0;margin-right:3px"></span>My Facilitation</span>
+                  <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#fef08a;margin-right:3px"></span>Co-Facilitation</span>
+                  <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;margin-right:3px"></span>Pending</span>
+                  <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#dc2626;margin-right:3px"></span>Overdue</span>
+                </div>
+              </div>
+              <div class="card" style="padding:14px 16px;margin-bottom:14px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                  <div style="font-weight:700;font-size:13px">My Upcoming Sessions</div>
+                  <a href="javascript:void(0)" onclick="tcSetTab('mine')" style="font-size:11.5px;color:var(--pri);text-decoration:none;font-weight:600">View All</a>
+                </div>
+                <div id="tc-upcoming-wrap"></div>
+              </div>
+              <div class="card" style="padding:14px 16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                  <div style="font-weight:700;font-size:13px">My Pending Tasks</div>
+                  <a href="javascript:void(0)" onclick="tcSetTab('pending')" style="font-size:11.5px;color:var(--pri);text-decoration:none;font-weight:600">View All</a>
+                </div>
+                <div id="tc-pending-wrap"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="view-users" class="hidden">
@@ -3377,7 +3472,7 @@ function showScreen(id){
 }
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar'};
+const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   dashboard:'Live performance overview across Trainer Evaluation, Instructional Design QA, and Content Development QA',
@@ -3385,7 +3480,8 @@ const PAGE_SUBTITLES={
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
   'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment',
   'training-dashboard':'Rolled-up view of training delivery health across the organization',
-  'training-delivery':'Centralized list and calendar view of all training delivery — ILT, VILT, self-led, and external — reading the same sessions as Training Sessions with no duplicate data entry'
+  'training-delivery':'Centralized list and calendar view of all training delivery — ILT, VILT, self-led, and external — reading the same sessions as Training Sessions with no duplicate data entry',
+  'trainer-checklist':'Trainer Checklist progress and reminders across ILT sessions — pre- and post-training task status at a glance'
 };
 function showView(id){
   if(!Perms.canView(id)){ toast('You do not have access to that section.','error'); return; }
@@ -3416,6 +3512,7 @@ function showView(id){
   if(id==='settings')    renderSettings();
   if(id==='training-dashboard') renderTrainingDashboard();
   if(id==='training-delivery') renderTrainingDelivery();
+  if(id==='trainer-checklist') renderTrainerChecklist();
   _syncHashForCurrentView();
 }
 
@@ -3484,7 +3581,7 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery'];
+    const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery','trainer-checklist'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     showView(view);
     if(view==='evaluations'){
@@ -8030,6 +8127,347 @@ function _tdCalDuration(s){
   }
   return s.trainingDate||'—';
 }
+/* ══ TRAINER CHECKLIST (2026-08-13, per Sandra) ══════════════════════════════════════════════
+   Rollup dashboard across ILT sessions' checklist progress -- reuses the exact same per-item
+   phase/timeline/status math the single-session Checklist tab already computes
+   (_tdcklTargetDate/_tdcklComputeStatus against SessionChecklistDB rows), just aggregated across
+   many sessions instead of rendered one board at a time. ILT-only, matching the fact that
+   checklistTemplateId is only ever set for ILT sessions anywhere else in this app. */
+let tcF={period:'thismonth',customStart:'',customEnd:'',program:'',category:'all',status:'all',facilitator:'all'};
+let tcTab='all';
+let tcPage=1;
+let tcPageSize=25;
+let tcCalCursor=new Date(); tcCalCursor.setDate(1);
+
+function tcPeriodRange(){ return _computePeriodRange(tcF.period,tcF.customStart,tcF.customEnd); }
+
+// Per-session checklist rollup. "applicable:false" covers every reason a session simply has no
+// trackable checklist right now: not ILT, before the feature's Aug 1 2026 cutoff, no template
+// assigned yet, or explicitly opted out via "No Checklist Required" -- all treated the same way
+// here (this page can't show progress that doesn't exist), surfaced as the "No Checklist" status.
+function _tcSessionChecklistStats(s){
+  if(s.deliveryType!=='ILT'||!s.trainingDate||s.trainingDate<CKTPL_FEATURE_START_DATE||!s.checklistTemplateId||s.checklistTemplateId===CKTPL_NONE_SENTINEL){
+    return {applicable:false};
+  }
+  const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
+  if(!row) return {applicable:false};
+  const items=(row.items||[]).map(it=>{
+    const phase=it.phase||'pre';
+    const target=_tdcklTargetDate(s,phase,it.timelineDays);
+    return {...it,phase,_target:target,_status:_tdcklComputeStatus(it,target)};
+  });
+  const isDone=it=>it._status==='completed'||it._status==='na';
+  const isOverdue=it=>it._status==='pending'; // _tdcklComputeStatus's 'pending' = target date passed, not done/NA
+  const isNotStarted=it=>it._status==='not_started';
+  const total=items.length;
+  const done=items.filter(isDone).length;
+  const overdue=items.filter(isOverdue).length;
+  const notStarted=items.filter(isNotStarted).length;
+  const byPhase=(p)=>{
+    const ph=items.filter(it=>it.phase===p);
+    return {total:ph.length,done:ph.filter(isDone).length,overdue:ph.filter(isOverdue).length,notStarted:ph.filter(isNotStarted).length};
+  };
+  let sessionStatus='not_started';
+  if(total>0 && done===total) sessionStatus='completed';
+  else if(done>0) sessionStatus='in_progress';
+  return {applicable:true,row,items,total,done,pct:total>0?Math.round(done/total*100):0,overdue,notStarted,openCount:overdue+notStarted,pre:byPhase('pre'),post:byPhase('post'),sessionStatus};
+}
+
+const TC_STATUS_BADGE={
+  completed:'<span class="badge" style="background:#dcfce7;color:#15803d">Completed</span>',
+  in_progress:'<span class="badge" style="background:#dbeafe;color:#1d4ed8">In Progress</span>',
+  not_started:'<span class="badge" style="background:#f1f5f9;color:#64748b">Not Started</span>',
+  na:'<span class="badge" style="background:#f1f5f9;color:#94a3b8">No Checklist</span>'
+};
+function _tcStatusOf(stats){ return stats.applicable?stats.sessionStatus:'na'; }
+
+// Base rows: every ILT session (not cancelled) whose date range overlaps the Period filter, plus
+// Program/Category/Facilitator filters -- Status filter applies here too since it's meant to
+// narrow the same pool every KPI/tab/table reads from, not just the table.
+function _tcBaseRows(){
+  const range=tcPeriodRange();
+  return TrSessionDB.all().filter(s=>{
+    if(s.deliveryType!=='ILT') return false;
+    if(s.status==='cancelled') return false;
+    if(!s.trainingDate) return false;
+    const start=s.trainingDate, end=s.endDate||s.trainingDate;
+    if(!(start<=range.end && end>=range.start)) return false;
+    if(tcF.program && !(s.trainingProgram||'').toLowerCase().includes(tcF.program.toLowerCase())) return false;
+    if(tcF.category!=='all' && (s.category||'')!==tcF.category) return false;
+    if(tcF.facilitator!=='all' && s.trainerId!==tcF.facilitator && s.coFacilitatorId!==tcF.facilitator) return false;
+    return true;
+  }).map(s=>({s,stats:_tcSessionChecklistStats(s)}))
+    .filter(r=>tcF.status==='all'||_tcStatusOf(r.stats)===tcF.status)
+    .sort((a,b)=>(a.s.trainingDate||'').localeCompare(b.s.trainingDate||''));
+}
+function _tcIsMine(s){ const me=Auth.user?Auth.user.id:null; return !!me&&(s.trainerId===me||s.coFacilitatorId===me); }
+function _tcTabRows(rows){
+  if(tcTab==='mine') return rows.filter(r=>_tcIsMine(r.s));
+  if(tcTab==='pending') return rows.filter(r=>r.stats.applicable&&r.stats.openCount>0);
+  if(tcTab==='overdue') return rows.filter(r=>r.stats.applicable&&r.stats.overdue>0);
+  if(tcTab==='completed') return rows.filter(r=>r.stats.applicable&&r.stats.sessionStatus==='completed');
+  return rows;
+}
+function _tcComputeKpis(baseRows){
+  const applicable=baseRows.filter(r=>r.stats.applicable);
+  const totalItems=applicable.reduce((n,r)=>n+r.stats.total,0);
+  const doneItems=applicable.reduce((n,r)=>n+r.stats.done,0);
+  return {
+    total:baseRows.length,
+    mine:baseRows.filter(r=>_tcIsMine(r.s)).length,
+    applicableCount:applicable.length,
+    completionPct:totalItems>0?Math.round(doneItems/totalItems*100):0,
+    pendingTasks:applicable.reduce((n,r)=>n+r.stats.openCount,0),
+    pendingSessions:applicable.filter(r=>r.stats.openCount>0).length,
+    overdueTasks:applicable.reduce((n,r)=>n+r.stats.overdue,0),
+    overdueSessions:applicable.filter(r=>r.stats.overdue>0).length,
+    completedSessions:applicable.filter(r=>r.stats.sessionStatus==='completed').length
+  };
+}
+
+function renderTrainerChecklist(){
+  tcPage=1;
+  _tcRenderAll();
+}
+function _tcRenderAll(){
+  const range=tcPeriodRange();
+  const baseRows=_tcBaseRows();
+  const kpis=_tcComputeKpis(baseRows);
+  document.getElementById('tc-kpis').innerHTML=
+    _tdaKpiCard('clipboard','#0369a1','All ILT Sessions',kpis.total,range.label)+
+    _tdaKpiCard('user','var(--sky)','Sessions I Facilitate',kpis.mine,range.label)+
+    _tdaKpiCard('check','var(--green)','Checklist Completion',kpis.completionPct+'%',`${kpis.applicableCount} of ${kpis.total} sessions`)+
+    _tdaKpiCard('clock','var(--amber)','Tasks Pending',kpis.pendingTasks,`Across ${kpis.pendingSessions} session${kpis.pendingSessions!==1?'s':''}`);
+  const tabs=[
+    {id:'all',label:'All ILT Sessions',count:null},
+    {id:'mine',label:'My Sessions',count:null},
+    {id:'pending',label:'Pending Tasks',count:kpis.pendingTasks},
+    {id:'overdue',label:'Overdue',count:kpis.overdueTasks},
+    {id:'completed',label:'Completed',count:null}
+  ];
+  document.getElementById('tc-tabs').innerHTML=tabs.map(t=>`<button class="btn btn-sm ${tcTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tcSetTab('${t.id}')">${Utils.esc(t.label)}${t.count!=null?` (${t.count})`:''}</button>`).join('');
+  const tabRows=_tcTabRows(baseRows);
+  _tcRenderTable(tabRows);
+  _tcRenderCalendar();
+  _tcRenderUpcoming();
+  _tcRenderPending();
+  _tcPopulateFilterOptions();
+}
+function tcSetTab(id){ tcTab=id; tcPage=1; _tcRenderAll(); }
+function tcSetFilter(key,val){
+  tcF[key]=val;
+  tcPage=1;
+  if(key==='period'){
+    const isCustom=val==='custom';
+    document.getElementById('tc-custom-range-wrap')?.classList.toggle('hidden',!isCustom);
+    document.getElementById('tc-custom-range-wrap-end')?.classList.toggle('hidden',!isCustom);
+  }
+  _tcRenderAll();
+}
+function tcResetFilters(){
+  tcF={period:'thismonth',customStart:'',customEnd:'',program:'',category:'all',status:'all',facilitator:'all'};
+  const setv=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  setv('tc-f-period','thismonth'); setv('tc-f-customstart',''); setv('tc-f-customend','');
+  setv('tc-f-program',''); setv('tc-f-category','all'); setv('tc-f-status','all'); setv('tc-f-facilitator','all');
+  document.getElementById('tc-custom-range-wrap')?.classList.add('hidden');
+  document.getElementById('tc-custom-range-wrap-end')?.classList.add('hidden');
+  tcPage=1; tcTab='all';
+  _tcRenderAll();
+}
+function _tcPopulateFilterOptions(){
+  const catSel=document.getElementById('tc-f-category');
+  if(catSel && catSel.options.length<=1){
+    catSel.innerHTML='<option value="all">All</option>'+_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}">${Utils.esc(c)}</option>`).join('');
+  }
+  const facSel=document.getElementById('tc-f-facilitator');
+  if(facSel && facSel.options.length<=1){
+    const ids=new Set();
+    TrSessionDB.all().forEach(s=>{ if(s.deliveryType==='ILT'){ if(s.trainerId) ids.add(s.trainerId); if(s.coFacilitatorId) ids.add(s.coFacilitatorId); } });
+    const people=[...ids].map(id=>DB.byId(id)).filter(Boolean).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
+    facSel.innerHTML='<option value="all">All</option>'+people.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
+  }
+}
+
+function _tcProgressBarHtml(stats){
+  if(!stats.applicable) return '<span style="font-size:11.5px;color:var(--text3)">— no checklist —</span>';
+  const pct=stats.pct;
+  const color=pct>=100?'#16a34a':pct>=50?'#22c55e':pct>=25?'#f59e0b':'#cbd5e1';
+  // Pre/Post breakdown (2026-08-13, per Sandra): numeric % only, not full separate bars -- lets a
+  // trainer tell at a glance whether it's the Pre-Training (session-blocking) or Post-Training
+  // side that's behind, without the table getting visually heavier.
+  const prePct=stats.pre.total>0?Math.round(stats.pre.done/stats.pre.total*100):null;
+  const postPct=stats.post.total>0?Math.round(stats.post.done/stats.post.total*100):null;
+  return `<div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="flex:1;height:6px;background:var(--border);border-radius:4px;overflow:hidden;min-width:60px"><div style="height:100%;width:${pct}%;background:${color}"></div></div>
+      <span style="font-size:11px;color:var(--text3);white-space:nowrap">${stats.done}/${stats.total}</span>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px;white-space:nowrap">Pre: <span style="font-weight:600;color:#0369a1">${prePct!=null?prePct+'%':'—'}</span> &nbsp;·&nbsp; Post: <span style="font-weight:600;color:#15803d">${postPct!=null?postPct+'%':'—'}</span></div>
+  </div>`;
+}
+function _tcFacilitatorHtml(s){
+  const t=s.trainerId?DB.byId(s.trainerId):null;
+  const c=s.coFacilitatorId?DB.byId(s.coFacilitatorId):null;
+  const tName=t?`${t.firstName} ${t.lastName}`:(s.guestTrainerName?`${s.guestTrainerName} (Guest)`:'—');
+  const cName=c?`${c.firstName} ${c.lastName}`:(s.coFacilitatorGuestName?`${s.coFacilitatorGuestName} (Guest)`:null);
+  return `<div style="font-size:12.5px">${Utils.esc(tName)} <span style="font-size:10px;color:var(--text3);font-weight:600">F</span></div>`+
+    (cName?`<div style="font-size:11.5px;color:var(--text2)">${Utils.esc(cName)} <span style="font-size:10px;color:var(--text3);font-weight:600">Co</span></div>`:'');
+}
+function _tcRenderTable(rows){
+  const wrap=document.getElementById('tc-table-wrap');
+  if(!rows.length){
+    wrap.innerHTML=`<div class="card"><div class="empty-state"><div style="display:flex;justify-content:center">${_tdIconSvg('clipboard','#94a3b8',34)}</div><div class="empty-title">No sessions match these filters</div></div></div>`;
+    return;
+  }
+  const totalPages=Math.max(1,Math.ceil(rows.length/tcPageSize));
+  if(tcPage>totalPages) tcPage=totalPages;
+  const start=(tcPage-1)*tcPageSize;
+  const pageRows=rows.slice(start,start+tcPageSize);
+  const th=(t)=>`<th style="text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em">${t}</th>`;
+  const trs=pageRows.map(r=>{
+    const s=r.s, stats=r.stats;
+    return `<tr style="cursor:pointer" onclick="_tcOpenSession('${s.id}')">
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt)"><div style="font-weight:600;font-size:12.5px">${Utils.esc(s.trainingProgram||s.code||'Untitled')}</div>${s.batchNo?`<div style="font-size:11px;color:var(--text3)">Batch ${Utils.esc(s.batchNo)}</div>`:''}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt);font-size:12px;white-space:nowrap">${Utils.esc(_tdDateCell(s))}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt);font-size:12px;white-space:nowrap">${s.durationHours!=null?s.durationHours+'h':'—'}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt)">${_tcFacilitatorHtml(s)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt);font-size:12.5px;text-align:center">${s.expectedParticipants??'—'}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt);min-width:120px">${_tcProgressBarHtml(stats)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt)">${TC_STATUS_BADGE[_tcStatusOf(stats)]}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border-lt);text-align:right" onclick="event.stopPropagation()"><a href="javascript:void(0)" onclick="_tcOpenSession('${s.id}')" style="font-size:11.5px;color:var(--pri);text-decoration:none;font-weight:600">View →</a></td>
+    </tr>`;
+  }).join('');
+  const pageBtns=[];
+  for(let p=1;p<=totalPages;p++) pageBtns.push(`<button class="btn btn-sm ${p===tcPage?'btn-primary':'btn-secondary'}" style="min-width:30px" onclick="tcGoPage(${p})">${p}</button>`);
+  wrap.innerHTML=`<div class="card" style="padding-bottom:0">
+    <div class="eval-tbl-wrap"><table class="eval-tbl" style="width:100%">
+      <thead><tr>${th('Session / Program')}${th('Date')}${th('Duration')}${th('Facilitator(s)')}${th('Participants')}${th('Checklist Progress')}${th('Status')}${th('Actions')}</tr></thead>
+      <tbody>${trs}</tbody>
+    </table></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12.5px;color:var(--text3)">Showing ${start+1} to ${Math.min(start+tcPageSize,rows.length)} of ${rows.length} sessions</div>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:11.5px;color:var(--text3)">Rows per page</span>
+          <select class="form-control" style="font-size:12.5px;padding:3px 6px;width:auto" onchange="tcSetPageSize(this.value)">
+            <option value="25" ${tcPageSize===25?'selected':''}>25</option>
+            <option value="50" ${tcPageSize===50?'selected':''}>50</option>
+            <option value="100" ${tcPageSize===100?'selected':''}>100</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-sm btn-secondary" ${tcPage<=1?'disabled':''} onclick="tcGoPage(${tcPage-1})">‹</button>
+        ${pageBtns.join('')}
+        <button class="btn btn-sm btn-secondary" ${tcPage>=totalPages?'disabled':''} onclick="tcGoPage(${tcPage+1})">›</button>
+      </div>
+    </div>
+  </div>`;
+}
+function tcGoPage(p){ tcPage=p; _tcRenderTable(_tcTabRows(_tcBaseRows())); }
+function tcSetPageSize(v){ tcPageSize=parseInt(v,10)||25; tcPage=1; _tcRenderTable(_tcTabRows(_tcBaseRows())); }
+function _tcOpenSession(id){
+  showView('training-delivery');
+  openTrainingDetail(id);
+  _tdDetailTab='checklist';
+  renderTrainingDetail();
+}
+
+// Sidebar: My Calendar/Planner -- soft highlight per day (green = I'm the main Trainer that day,
+// yellow = I'm Co-Facilitator that day, per Sandra), plus small pending/overdue dots at the
+// bottom of the cell if any of MY sessions that day has open/overdue checklist items.
+function _tcMySessionsAll(){ return TrSessionDB.all().filter(s=>s.deliveryType==='ILT'&&s.status!=='cancelled'&&_tcIsMine(s)); }
+function tcCalPrev(){ tcCalCursor.setMonth(tcCalCursor.getMonth()-1); _tcRenderCalendar(); }
+function tcCalNext(){ tcCalCursor.setMonth(tcCalCursor.getMonth()+1); _tcRenderCalendar(); }
+function tcCalToday(){ tcCalCursor=new Date(); tcCalCursor.setDate(1); _tcRenderCalendar(); }
+function _tcRenderCalendar(){
+  const wrap=document.getElementById('tc-cal-wrap'); if(!wrap) return;
+  const year=tcCalCursor.getFullYear(), month=tcCalCursor.getMonth();
+  const monthLabel=tcCalCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const firstDow=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const numWeeks=Math.ceil((firstDow+daysInMonth)/7);
+  const todayStr=_todayStr();
+  const mine=_tcMySessionsAll();
+  const byDate={};
+  // Bucket keyed by date -- first session touching a given day "wins" the click-through target
+  // (sessionId); a day with two of my sessions is rare enough that opening either one is fine for
+  // a planner widget like this.
+  mine.forEach(s=>{
+    const stats=_tcSessionChecklistStats(s);
+    _tdSessionDayList(s).forEach(d=>{
+      const bucket=(byDate[d]=byDate[d]||{trainer:false,cofac:false,pending:false,overdue:false,sessionId:s.id});
+      if(s.trainerId===Auth.user.id) bucket.trainer=true;
+      if(s.coFacilitatorId===Auth.user.id) bucket.cofac=true;
+      if(stats.applicable&&stats.overdue>0) bucket.overdue=true;
+      else if(stats.applicable&&stats.openCount>0) bucket.pending=true;
+    });
+  });
+  const dow=['S','M','T','W','T','F','S'];
+  let cellsHtml=dow.map(d=>`<div style="font-size:9.5px;font-weight:600;color:var(--text3);text-align:center;padding:2px 0">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) cellsHtml+='<div></div>';
+  for(let day=1;day<=daysInMonth;day++){
+    const pad=n=>String(n).padStart(2,'0');
+    const dateStr=`${year}-${pad(month+1)}-${pad(day)}`;
+    const b=byDate[dateStr];
+    const bg=b?(b.trainer?'#bbf7d0':(b.cofac?'#fef08a':'transparent')):'transparent';
+    const isToday=dateStr===todayStr;
+    const dots=b?`<div style="display:flex;gap:2px;justify-content:center;margin-top:1px">${b.overdue?'<span style="width:4px;height:4px;border-radius:50%;background:#dc2626;display:inline-block"></span>':''}${b.pending&&!b.overdue?'<span style="width:4px;height:4px;border-radius:50%;background:#f59e0b;display:inline-block"></span>':''}</div>`:'';
+    cellsHtml+=`<div style="text-align:center;padding:3px 0;border-radius:5px;background:${bg};${isToday?'box-shadow:inset 0 0 0 1.5px #4f46e5;':''}cursor:${b?'pointer':'default'}" ${b?`onclick="_tcOpenSession('${b.sessionId}')"`:''}>
+      <div style="font-size:11px;font-weight:${isToday?'700':'400'};color:${isToday?'#4f46e5':'var(--text)'}">${day}</div>
+      ${dots}
+    </div>`;
+  }
+  wrap.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <button class="btn btn-sm btn-secondary" style="padding:2px 8px" onclick="tcCalPrev()">‹</button>
+    <span style="font-size:12px;font-weight:600">${monthLabel}</span>
+    <button class="btn btn-sm btn-secondary" style="padding:2px 8px" onclick="tcCalNext()">›</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">${cellsHtml}</div>`;
+}
+function _tcRenderUpcoming(){
+  const wrap=document.getElementById('tc-upcoming-wrap'); if(!wrap) return;
+  const today=_todayStr();
+  const rows=_tcMySessionsAll().filter(s=>s.trainingDate>=today).sort((a,b)=>(a.trainingDate||'').localeCompare(b.trainingDate||'')).slice(0,3);
+  if(!rows.length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--text3)">No upcoming sessions.</div>'; return; }
+  wrap.innerHTML=rows.map(s=>{
+    const isTrainer=s.trainerId===Auth.user.id;
+    return `<div onclick="_tcOpenSession('${s.id}')" style="cursor:pointer;padding:8px 0;border-bottom:1px solid var(--border-lt)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+        <div style="font-weight:600;font-size:12.5px">${Utils.esc(s.trainingProgram||s.code||'Untitled')}</div>
+        <span class="badge" style="background:${isTrainer?'#dcfce7':'#fef9c3'};color:${isTrainer?'#15803d':'#a16207'};flex-shrink:0">${isTrainer?'F':'Co'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.batchNo?`Batch ${Utils.esc(s.batchNo)} · `:''}${Utils.esc(_tdDateCell(s))}</div>
+    </div>`;
+  }).join('');
+}
+function _tcRenderPending(){
+  const wrap=document.getElementById('tc-pending-wrap'); if(!wrap) return;
+  const today=_todayStr();
+  const openTasks=[];
+  _tcMySessionsAll().forEach(s=>{
+    const stats=_tcSessionChecklistStats(s);
+    if(!stats.applicable) return;
+    stats.items.forEach(it=>{
+      if(it._status==='pending'||it._status==='not_started'){
+        openTasks.push({s,it,overdue:it._status==='pending'});
+      }
+    });
+  });
+  openTasks.sort((a,b)=>(a.it._target||'').localeCompare(b.it._target||''));
+  if(!openTasks.length){ wrap.innerHTML=`<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text3)">${_tdIconSvg('check','var(--green)',14)} No pending tasks.</div>`; return; }
+  const shown=openTasks.slice(0,4);
+  const rest=openTasks.length-shown.length;
+  const row=(x)=>`<div onclick="_tcOpenSession('${x.s.id}')" style="cursor:pointer;padding:7px 0;border-bottom:1px solid var(--border-lt);display:flex;gap:8px;align-items:flex-start">
+      <span style="margin-top:1px">${x.overdue?_tdIconSvg('alert-triangle','#dc2626',13):_tdIconSvg('clock','var(--text3)',13)}</span>
+      <div style="min-width:0">
+        <div style="font-size:12px;font-weight:600;color:${x.overdue?'#dc2626':'var(--text)'}">${Utils.esc(x.it.task||'Checklist item')}</div>
+        <div style="font-size:10.5px;color:var(--text3)">${Utils.esc(x.s.trainingProgram||x.s.code||'')}${x.it._target?` · Due ${Utils.esc(Utils.formatDate(x.it._target))}`:''}</div>
+      </div>
+    </div>`;
+  wrap.innerHTML=shown.map(row).join('')+(rest>0?`<a href="javascript:void(0)" onclick="tcSetTab('pending')" style="display:block;text-align:center;font-size:11.5px;color:var(--pri);text-decoration:none;font-weight:600;margin-top:8px">Show ${rest} more task${rest!==1?'s':''}</a>`:'');
+}
+
 function _tdCalTitle(s){
   const venueName=_venueDisplayName(s);
   const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
@@ -11574,6 +12012,9 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
       ${_tddInfoBlock('calendar','var(--amber)','Date',_tdDateCell(s))}
       ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+    </div>
     ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600">Notes</div>${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
   }
@@ -12180,6 +12621,19 @@ function _tdOverviewJourneyBlockVertical(s,ownerType){
 }
 
 function _tddOverviewView(s,ownerType,personLabel,personName){
+  // Ad-hoc Task Overview (2026-08-13, per Sandra: "remove these sections" -- flagged the Progress
+  // stepper and the Attendance/L1 Report/Evaluations/Summary/Actions blocks below it as not
+  // applying to Ad-hoc, which matches: those all point at tabs (Attendance & Performance, Training
+  // Report, Trainer Evaluation) that are already hidden entirely for this type -- see the
+  // TD_DETAIL_TABS filter in renderTrainingDetail. Ad-hoc's Overview is just the Session
+  // Information card, full width, nothing else.
+  if(_tdFieldGroup(s.deliveryType)==='adhoc'){
+    return `
+      <div class="card" id="tdd-session-info-card" style="padding:18px 20px">
+        ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
+      </div>
+    `;
+  }
   // Self-led Overview (2026-08-07, per Sandra): sections 2/3/4 are entirely different from the
   // ILT layout below -- Completion Metrics + Per-Cluster Data in the wider left column (the
   // cluster table needs the width for its 6 columns), Survey L1 Data in the right column where
@@ -12701,6 +13155,9 @@ function _tddSessionInfoEditContent(s,ownerType){
         </div>`,'tdd-cofacilitator-wrap')}
       ${dateField}
       ${durationField}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${categoryField}
     </div>`+footer;
   }
 
@@ -17132,7 +17589,6 @@ function toggleNavEvals(){
   if(chv) chv.style.transform=open?'rotate(0deg)':'rotate(-90deg)';
   if(par) par.classList.toggle('active',open);
 }
-
 async function loginWithAzure(){
   const btn=document.getElementById('azure-sso-btn');
   const al=document.getElementById('login-alert');
@@ -17260,7 +17716,7 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery'];
+  const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery','trainer-checklist'];
   if(location.hash && location.hash.length>1){
     _restoreFromHash(location.hash);
   } else {
