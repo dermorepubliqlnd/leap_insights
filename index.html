@@ -3354,7 +3354,12 @@ function openModal(id)  { document.getElementById('modal-'+id).classList.add('op
 function closeModal(id) { document.getElementById('modal-'+id).classList.remove('open'); document.body.style.overflow=''; }
 let _cb=null;
 function confirm$(t,m,ok,cb,infoOnly){ document.getElementById('mc-title').textContent=t; document.getElementById('mc-msg').innerHTML=m; document.getElementById('mc-ok').textContent=ok||'Confirm'; document.getElementById('mc-ok').className=infoOnly?'btn btn-secondary':'btn btn-danger'; document.getElementById('mc-cancel-btn').style.display=infoOnly?'none':''; _cb=cb; openModal('confirm'); }
-function toast(msg,type='success'){ const el=document.createElement('div'); el.className=`toast ${type}`; const ico={success:'✓',error:'✕',info:'ℹ',warning:'⚠'}; el.innerHTML=`<span>${ico[type]||'•'}</span> ${Utils.esc(msg)}`; document.getElementById('toasts').appendChild(el); setTimeout(()=>{el.style.cssText='opacity:0;transform:translateY(6px);transition:all .3s';setTimeout(()=>el.remove(),320);},3400); }
+// Shortened (2026-08-13, per Sandra: toasts felt sluggish) from 3400ms+320ms fade to 1800ms+200ms.
+// Note: the toast itself has always appeared the instant toast() is called (appendChild is
+// synchronous) -- there's no artificial entrance delay in this function. Any lag Sandra sees
+// before an error toast appears is real network/round-trip time (e.g. the delete_user Edge
+// Function running several blocker checks against Supabase), not something this timer controls.
+function toast(msg,type='success'){ const el=document.createElement('div'); el.className=`toast ${type}`; const ico={success:'✓',error:'✕',info:'ℹ',warning:'⚠'}; el.innerHTML=`<span>${ico[type]||'•'}</span> ${Utils.esc(msg)}`; document.getElementById('toasts').appendChild(el); setTimeout(()=>{el.style.cssText='opacity:0;transform:translateY(6px);transition:all .2s';setTimeout(()=>el.remove(),200);},1800); }
 function togglePw(id,btn){ const el=document.getElementById(id); el.type=el.type==='password'?'text':'password'; btn.textContent=el.type==='password'?'👁':'🙈'; }
 function showPwStrength(inputId,barId){ const pw=document.getElementById(inputId).value; const s=Utils.pwStrength(pw); const bar=document.getElementById(barId); bar.style.width=s.width||'0'; bar.style.background=s.color; }
 
@@ -4741,13 +4746,29 @@ function renderUsers(){
     const catBadges=Perms.catBadges(u);
     const scopeBadge=u.isAdmin?'':(u.dashScope==='full'?'<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe" title="Full org dashboard view">⊞ Full View</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0" title="Team data only">⊟ Team View</span>');
     const toggleBtn=!isMe?(u.isActive?`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',false)">Deactivate</button>`:`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',true)">Activate</button>`):'';
-    return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}${scopeBadge}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}</div></td></tr>`;
+    const deleteBtn=!isMe?`<button class="btn btn-sm btn-ghost" style="color:#b91c1c" onclick="deleteUserConfirm('${u.id}')">Delete</button>`:'';
+    return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}${scopeBadge}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}${deleteBtn}</div></td></tr>`;
   }).join('');
 }
 
-function populateUserDropdowns(excludeId){
+// Phase (2026-08-13, per Sandra): positions eligible to be picked as someone's Supervisor.
+// Content Developer/Trainer/Instructional Designer are individual-contributor roles and
+// should never show up as a Supervisor option. Hardcoded by position id, same pattern as
+// the existing Trainer(pos_6)/ID(pos_4)/CD(pos_5) checks elsewhere in this file — if new
+// positions are added later they won't automatically qualify unless added here.
+const SUPERVISOR_ELIGIBLE_POS=new Set(['pos_1','pos_2','pos_3','pos_7']); // Chief, L&D Director, L&D Manager, L&D Supervisor
+function isSupervisorEligible(u){ return !!u&&SUPERVISOR_ELIGIBLE_POS.has(u.positionId); }
+
+function populateUserDropdowns(excludeId,currentSupervisorId){
   document.getElementById('mu-position').innerHTML='<option value="">— Select —</option>'+Sel.active(Store.POS).map(p=>`<option value="${p.id}">${Utils.esc(p.name)}</option>`).join('');
-  document.getElementById('mu-supervisor').innerHTML='<option value="">— None —</option>'+DB.all().filter(u=>u.isActive&&u.id!==excludeId).sort((a,b)=>(a.firstName+' '+a.lastName).localeCompare(b.firstName+' '+b.lastName)).map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
+  let supCandidates=DB.all().filter(u=>u.isActive&&u.id!==excludeId&&isSupervisorEligible(u));
+  // Keep the currently-assigned supervisor selectable even if their position is no longer
+  // eligible (e.g. data drift) — otherwise the field would silently blank out on open.
+  if(currentSupervisorId&&!supCandidates.some(u=>u.id===currentSupervisorId)){
+    const cur=DB.byId(currentSupervisorId);
+    if(cur) supCandidates=[...supCandidates,cur];
+  }
+  document.getElementById('mu-supervisor').innerHTML='<option value="">— None (Top of Chain) —</option>'+supCandidates.sort((a,b)=>(a.firstName+' '+a.lastName).localeCompare(b.firstName+' '+b.lastName)).map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
   // Form access toggles are now direct — no category grid needed
 }
 
@@ -4792,7 +4813,7 @@ function openEditUser(id){
   const prRow=document.getElementById('mu-pending-reset-row');
   if(u.mustChangePassword&&u.isActive){ prRow.classList.remove('hidden'); } else { prRow.classList.add('hidden'); }
   document.getElementById('mu-active').disabled=isMe; document.getElementById('mu-admin').disabled=isMe;
-  populateUserDropdowns(id);
+  populateUserDropdowns(id,u.supervisorId);
   document.getElementById('mu-position').value=u.positionId||'';
   document.getElementById('mu-supervisor').value=u.supervisorId||'';
   document.getElementById('mu-form-trainer').checked=!!u.formTrainer;
@@ -4852,7 +4873,10 @@ async function saveUser(){
   const lname=document.getElementById('mu-lname').value.trim();
   const email=document.getElementById('mu-email').value.trim().toLowerCase();
   const posId=document.getElementById('mu-position').value;
-  const supId=document.getElementById('mu-supervisor').value;
+  // Fix (2026-08-13, per Sandra): "— None (Top of Chain) —" is value="" in the dropdown, but
+  // supervisor_id is a uuid column -- sending "" instead of null threw "invalid input syntax for
+  // type uuid: """. Coerce empty selection to null, same pattern used for positionId etc. below.
+  const supId=document.getElementById('mu-supervisor').value||null;
   const hireDate=document.getElementById('mu-hiredate').value;
   const workloadPctRaw=document.getElementById('mu-workload-pct').value;
   const workloadAllocationPct=workloadPctRaw===''?60:parseFloat(workloadPctRaw);
@@ -4921,6 +4945,40 @@ async function confirmToggleActive(id,makeActive){
   });
 }
 
+// Phase (2026-08-13, per Sandra): admin-only permanent user delete. Deletion is blocked
+// server-side (admin-user-actions edge function, action:'delete_user') if the account has
+// any linked training/evaluation/QA/supervisor/audit/workload data — this is intentionally
+// for cleaning up dummy/test accounts, not for offboarding real users (use Deactivate for that).
+async function deleteUserConfirm(id){
+  const u=DB.byId(id); if(!u) return;
+  const name=`${u.firstName} ${u.lastName}`;
+  confirm$('Delete User',`Permanently delete <strong>${Utils.esc(name)}</strong> (<em>${Utils.esc(u.email)}</em>)? This cannot be undone.<br><br>Deletion is blocked if this person owns/facilitated any training session, has any Evaluation/ID QA/Content QA record, is listed as another user's Supervisor, or has Audit Log/Workload history. Use <strong>Deactivate</strong> instead for real (non-dummy) accounts.`,'Delete User',async()=>{
+    try{
+      const {data,error}=await sb.functions.invoke('admin-user-actions',{body:{action:'delete_user',userId:id}});
+      if(error){
+        // Fix (2026-08-13, per Sandra): supabase-js's FunctionsHttpError.message is always the
+        // generic "Edge Function returned a non-2xx status code" -- the edge function's actual
+        // blocker reason (e.g. "has linked training sessions") lives in the raw Response body at
+        // error.context, which must be read/parsed separately. Without this, every blocked delete
+        // (which is the expected, working case -- see the 8-table check server-side) looked like a
+        // mystery failure instead of a clear "here's why" message.
+        let msg=error.message;
+        try{
+          const body=error.context && typeof error.context.json==='function' ? await error.context.json() : null;
+          if(body?.error) msg=body.error;
+        }catch(_){ /* context wasn't JSON / already consumed -- fall back to generic message */ }
+        throw new Error(msg);
+      }
+      if(data?.error) throw new Error(data.error);
+      const i=Cache.data.profiles.findIndex(p=>p.id===id);
+      if(i>=0) Cache.data.profiles.splice(i,1);
+      if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','User',id,`Deleted user ${name} (${u.email})`);
+      toast(`${name} deleted.`,'success');
+      renderUsers();
+    }catch(e){ _surfaceDbError(e,'Delete user'); }
+  });
+}
+
 /* ── CSV IMPORT ───────────────────── */
 function downloadCSVTemplate(){
   const headers=['employee_id','first_name','last_name','email','position','supervisor_email','hire_date','is_admin','form_trainer','form_idqa','form_cqa'];
@@ -4983,7 +5041,7 @@ function validateAndPreviewCSV(rows){
     let positionId='';
     if(row.positionName){ const p=Sel.byName(Store.POS,row.positionName); if(p) positionId=p.id; else warnings.push(`Position "${row.positionName}" not found — will be left blank`); }
     let supervisorId='';
-    if(row.supervisorEmail){ const s=DB.byEmail(row.supervisorEmail); if(s) supervisorId=s.id; else warnings.push('Supervisor email not found — will be left blank'); }
+    if(row.supervisorEmail){ const s=DB.byEmail(row.supervisorEmail); if(s){ supervisorId=s.id; if(!isSupervisorEligible(s)) warnings.push('Supervisor is not in an eligible Supervisor position (Chief/L&D Director/L&D Manager/L&D Supervisor) — assignment kept, please review'); } else warnings.push('Supervisor email not found — will be left blank'); }
     const formTrainer=row.formTrainerStr.toLowerCase()==='true';
     const formIDQA=row.formIDQAStr.toLowerCase()==='true';
     const formCQA=row.formCQAStr.toLowerCase()==='true';
