@@ -183,7 +183,8 @@
     .brand-mark{width:34px;height:34px;flex-shrink:0}
     .brand-nt{font-size:14px;font-weight:700;color:#fff;line-height:1.25;font-family:var(--font-heading)}
     .brand-st{font-size:9.5px;color:rgba(255,255,255,.32);letter-spacing:.8px;text-transform:uppercase;margin-top:1px}
-    .sb-nav{flex:1;padding:10px 0;overflow-y:auto}
+    .sb-nav{flex:1;min-height:0;padding:10px 0;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
+    .sb-nav::-webkit-scrollbar{display:none}
     .nav-sec{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--sb-sec);padding:14px 16px 5px}
     .nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;color:var(--sb-t);cursor:pointer;font-size:13.5px;font-weight:400;transition:all .15s;border-left:2.5px solid transparent;user-select:none}
     /* SVG nav icons (2026-08-13, per Sandra): fixed 16x16 box so every icon lines up regardless
@@ -891,6 +892,9 @@
         <div class="nav-item js-reports hidden" data-view="reports"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><line x1="6" y1="20" x2="6" y2="12" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="6" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="18" y1="20" x2="18" y2="9.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg></span> Reports</div>
         <div class="nav-item js-admin hidden" data-view="users"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.2" r="3.7" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 20.5v-1.1a4.6 4.6 0 0 1 4.6-4.6h4.2a4.6 4.6 0 0 1 4.6 4.6v1.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> User Management</div>
         <div class="nav-item js-admin hidden" data-view="settings"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 5.3l1.6 1.6M18.2 17.1l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 18.7l1.6-1.6M18.2 6.9l1.6-1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Settings</div>
+        <div class="nav-sec js-cost-view hidden">Restricted <svg viewBox="0 0 24 24" fill="none" style="width:11px;height:11px;vertical-align:-1px;margin-left:2px;opacity:.6"><rect x="5" y="10.5" width="14" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" stroke="currentColor" stroke-width="1.6"/></svg></div>
+        <div class="nav-item js-cost-view hidden" data-view="cost-analysis"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="6" y="13" width="2.6" height="6.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/><rect x="10.7" y="9" width="2.6" height="10.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/><rect x="15.4" y="5.5" width="2.6" height="14" rx="0.6" stroke="currentColor" stroke-width="1.4"/></svg></span> Cost Analysis</div>
+        <div class="nav-item js-cost-manage hidden" data-view="cost-settings"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="6" width="17" height="12" rx="1.8" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 9v0M17.5 15v0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span> Cost Settings</div>
         <div class="nav-sec" style="margin-top:6px">Resources</div>
         <div class="nav-item" onclick="window.open('LEAP_KB.html','_blank','noopener')" title="Opens in a new tab" style="cursor:pointer"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.3c-1.7-1.2-3.9-1.8-6.2-1.8-.7 0-1.3.1-1.8.2v13.1c.5-.1 1.1-.2 1.8-.2 2.3 0 4.5.6 6.2 1.8 1.7-1.2 3.9-1.8 6.2-1.8.7 0 1.3.1 1.8.2V4.7c-.5-.1-1.1-.2-1.8-.2-2.3 0-4.5.6-6.2 1.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 6.3v13.1" stroke="currentColor" stroke-width="1.4"/></svg></span> Knowledge Base <span style="font-size:9px;opacity:.55;margin-left:auto">↗</span></div>
       </nav>
@@ -2020,6 +2024,142 @@
           <div id="rpt-body"></div>
         </div>
 
+        <div id="view-cost-settings" class="hidden">
+          <div style="margin:-4px 0 16px">
+            <span class="badge" style="background:#ede9fe;color:#5b21b6">🔒 Restricted Access</span>
+          </div>
+
+          <div class="card" style="padding:16px 18px;margin-bottom:16px">
+            <div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#5b21b6;margin-bottom:14px">Costing Basis</div>
+            <div style="display:flex;gap:36px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Annual Work Days</div>
+                <div style="font-size:22px;font-weight:700">261</div>
+                <div style="font-size:11px;color:var(--text3)">246 work days + 12 regular holidays + 3 special days</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Paid Hours per Day</div>
+                <div style="font-size:22px;font-weight:700">8</div>
+                <div style="font-size:11px;color:var(--text3)">(break is paid)</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Rate Formula</div>
+                <div style="font-size:14px;font-weight:700">Monthly Cost Basis × 12 ÷ 261 ÷ 8</div>
+                <div style="font-size:11px;color:var(--text3)">Hourly Rate is automatically calculated</div>
+              </div>
+            </div>
+            <div style="margin-top:14px;padding:9px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text2)">
+              These values are system defaults for Version 1. Contact your system administrator for changes.
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
+            <div class="card" style="padding:16px 18px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap">
+                <div style="font-weight:700;font-size:13.5px">Facilitator Rate List</div>
+                <input type="text" id="cs-search" class="form-control" placeholder="Search facilitator…" style="width:220px" oninput="renderCostSettingsList()">
+              </div>
+              <div style="overflow-x:auto"><table class="dash-tbl" id="cs-rate-table"></table></div>
+              <div id="cs-empty" class="dash-empty hidden" style="margin-top:10px">No facilitators match your search.</div>
+            </div>
+            <div class="card" style="padding:16px 18px">
+              <div style="font-weight:700;font-size:12px;margin-bottom:8px;color:#4338ca">About Facilitation Cost Rates</div>
+              <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text2);line-height:1.7">
+                <li>Rates are based on the facilitator's Monthly Cost Basis.</li>
+                <li>Hourly Rate is calculated using the Costing Basis above.</li>
+                <li>The rate effective on the training date is the one used for that session's cost.</li>
+                <li>Completed trainings keep the rate used at the time of completion, for audit purposes.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-cost-analysis" class="hidden">
+          <div style="margin:-4px 0 16px">
+            <span class="badge" style="background:#ede9fe;color:#5b21b6">🔒 Restricted Access</span>
+          </div>
+
+          <div class="card" style="padding:14px 18px;margin-bottom:16px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div class="form-group" style="margin:0;min-width:150px">
+                <label class="form-label" style="margin-bottom:4px">Period</label>
+                <select id="ca-f-period" class="form-control" onchange="caSetFilter('period',this.value)">
+                  <option value="thismonth">This Month</option>
+                  <option value="lastmonth">Last Month</option>
+                  <option value="thisquarter">This Quarter</option>
+                  <option value="ytd">Year to Date</option>
+                  <option value="all">All Time</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+              <div class="form-group hidden" id="ca-custom-range-wrap" style="margin:0;min-width:130px">
+                <label class="form-label" style="margin-bottom:4px">From</label>
+                <input type="date" id="ca-f-customstart" class="form-control" onchange="caSetFilter('customStart',this.value)">
+              </div>
+              <div class="form-group hidden" id="ca-custom-range-wrap-end" style="margin:0;min-width:130px">
+                <label class="form-label" style="margin-bottom:4px">To</label>
+                <input type="date" id="ca-f-customend" class="form-control" onchange="caSetFilter('customEnd',this.value)">
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px">Facilitator</label>
+                <select id="ca-facilitator" class="form-control" style="width:170px" onchange="caSetFilter('facilitatorId',this.value)"></select>
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px">Category</label>
+                <select id="ca-category" class="form-control" style="width:150px" onchange="caSetFilter('category',this.value)"></select>
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px">Program</label>
+                <select id="ca-program" class="form-control" style="width:170px" onchange="caSetFilter('program',this.value)"></select>
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px">Delivery Type</label>
+                <select id="ca-delivery" class="form-control" style="width:110px" onchange="caSetFilter('deliveryType',this.value)">
+                  <option value="all">All</option><option value="ILT">ILT</option><option value="VILT">VILT</option>
+                </select>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="caClearFilters()">Clear Filters</button>
+              <div style="flex:1"></div>
+              <div id="ca-range-label" style="font-size:12px;color:var(--text3)"></div>
+            </div>
+          </div>
+
+          <div class="kpi-strip" id="ca-kpis" style="margin-bottom:16px;grid-template-columns:repeat(6,1fr)"></div>
+
+          <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
+            <div class="card" style="padding:16px 18px">
+              <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Cost by Facilitator</div>
+              <div style="overflow-x:auto"><table class="dash-tbl" id="ca-facilitator-table"></table></div>
+              <div id="ca-facilitator-empty" class="dash-empty hidden">No facilitation activity in this period.</div>
+            </div>
+            <div class="card" style="padding:16px 18px;display:flex;flex-direction:column">
+              <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Cost by Training Category</div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:16px">
+                <div style="position:relative;height:180px;width:180px;flex-shrink:0"><canvas id="ca-category-donut"></canvas></div>
+                <div id="ca-category-legend" style="display:flex;flex-direction:column;gap:6px;font-size:11.5px"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:10px;align-items:stretch">
+            <div class="card" style="padding:16px 18px">
+              <div style="font-weight:700;font-size:13.5px;margin-bottom:4px">Cost Trend (Last 6 Months)</div>
+              <div style="display:flex;gap:14px;font-size:11.5px;color:var(--text3);margin-bottom:10px">
+                <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#2563eb;margin-right:4px"></span>Scheduled Facilitation Cost</span>
+                <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:4px"></span>Completed Facilitation Cost</span>
+              </div>
+              <div style="position:relative;height:200px"><canvas id="ca-trend-chart"></canvas></div>
+            </div>
+            <div class="card" style="padding:16px 18px">
+              <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Program Cost Summary <span style="font-weight:400;color:var(--text3);font-size:11.5px">(Top 5 by Scheduled Cost)</span></div>
+              <div style="overflow-x:auto"><table class="dash-tbl" id="ca-program-table"></table></div>
+              <div id="ca-program-empty" class="dash-empty hidden">No programs in this period.</div>
+            </div>
+          </div>
+
+          <div style="font-size:11px;color:var(--text3);text-align:right" id="ca-asof-label"></div>
+        </div>
+
         <div id="view-settings" class="hidden">
           <div class="settings-tabs" id="stabs"></div>
           <div id="stab-panes"></div>
@@ -2220,6 +2360,17 @@
                   <label class="switch"><input type="checkbox" id="mu-form-cqa"><span class="sw-track"></span></label>
                 </div>
               </div>
+              <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-lt)">
+                <div class="form-label" style="margin-bottom:10px">Facilitation Cost Access <span class="txt-muted txt-sm">(restricted — internal facilitation labor cost)</span></div>
+                <div class="toggle-row" style="padding:6px 0">
+                  <div class="toggle-info"><div class="toggle-title">View Training Costs</div><div class="toggle-desc">Can view Training Cost Analysis</div></div>
+                  <label class="switch"><input type="checkbox" id="mu-cost-view"><span class="sw-track"></span></label>
+                </div>
+                <div class="toggle-row" style="padding:6px 0;margin-top:4px">
+                  <div class="toggle-info"><div class="toggle-title">Manage Facilitation Rates</div><div class="toggle-desc">Can view Training Cost Analysis and set/edit Facilitation Cost Rates</div></div>
+                  <label class="switch"><input type="checkbox" id="mu-cost-manage"><span class="sw-track"></span></label>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2341,6 +2492,58 @@
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('sel')">Cancel</button>
       <button class="btn btn-primary" id="ms-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: FACILITATION COST RATE (Facilitation Cost Settings) ═════════════ -->
+<div id="modal-costrate" class="modal-overlay" onclick="if(event.target===this)closeModal('costrate')">
+  <div class="modal modal-lg">
+    <div class="modal-hdr">
+      <span class="modal-title">Facilitation Rate</span>
+      <button class="modal-close" onclick="closeModal('costrate')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:700;font-size:14.5px" id="cr-name"></div>
+          <div style="font-size:12px;color:var(--text3)" id="cr-meta"></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Current Hourly Rate</div>
+          <div style="font-size:18px;font-weight:700" id="cr-current-hourly">—</div>
+        </div>
+      </div>
+
+      <div style="font-weight:700;font-size:12.5px;margin-bottom:8px">Rate History</div>
+      <div style="overflow-x:auto;margin-bottom:18px"><table class="dash-tbl" id="cr-history-table"></table></div>
+
+      <div style="border-top:1px solid var(--border);padding-top:14px">
+        <div style="font-weight:700;font-size:12.5px;margin-bottom:10px">Add New Rate</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+          <div>
+            <label class="form-label">Monthly Cost Basis (₱) <span class="req">*</span></label>
+            <input type="number" id="cr-monthly" class="form-control" placeholder="e.g. 40000" min="0" step="0.01" oninput="_crUpdatePreview()">
+          </div>
+          <div>
+            <label class="form-label">Effective From <span class="req">*</span></label>
+            <input type="date" id="cr-effdate" class="form-control" oninput="_crUpdatePreview()">
+          </div>
+        </div>
+        <div style="padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;margin-bottom:6px">
+          <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Rate Preview (for new rate)</div>
+          <div style="display:flex;gap:28px;margin-top:4px">
+            <div><div style="font-size:11px;color:var(--text3)">Monthly Cost Basis</div><div style="font-size:15px;font-weight:700" id="cr-preview-monthly">₱0.00</div></div>
+            <div><div style="font-size:11px;color:var(--text3)">Calculated Hourly Rate</div><div style="font-size:15px;font-weight:700" id="cr-preview-hourly">₱0.00 / hour</div></div>
+          </div>
+        </div>
+        <div id="cr-hint" style="font-size:11.5px;color:var(--text3);margin-bottom:10px">A new rate automatically ends the previous rate on the day before its effective date.</div>
+        <div class="modal-err hidden" id="cr-error"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('costrate')">Close</button>
+      <button class="btn btn-primary" onclick="saveCostRate()">+ Add New Rate</button>
     </div>
   </div>
 </div>
@@ -2839,7 +3042,13 @@ const _FIELD_MAPS = {
     // Workload Allocation % (Phase O, 2026-08-13, per Sandra): % of this person's monthly standard
     // working hours that's allocated to training delivery. Applies to all users, not just Trainers
     // -- feeds the per-trainer capacity denominator on the Trainer Workload dashboard.
-    workloadAllocationPct:'workload_allocation_pct'
+    workloadAllocationPct:'workload_allocation_pct',
+    // Facilitation Cost Insights permissions (Phase Q, 2026-08-13, per Sandra): deliberately NOT
+    // tied to isAdmin -- cost data is sensitive and should stay opt-in per person even for admins.
+    // canManageFacilitationRates implies view access to both restricted pages; canViewTrainingCosts
+    // alone grants Cost Analysis only, not Cost Settings. Structured as two flags now so a future
+    // real permissions system can slot in without a schema change.
+    canViewTrainingCosts:'can_view_training_costs', canManageFacilitationRates:'can_manage_facilitation_rates'
   },
   positions:{ id:'id', name:'name', isActive:'is_active' },
   venues:{ id:'id', name:'name', isActive:'is_active', type:'type' },
@@ -2873,6 +3082,18 @@ const _FIELD_MAPS = {
   // then, even after someone's current % changes later. One row per change (never updated in
   // place); resolved by "most recent row with effective_date <= the date being asked about."
   workload_pct_history:{ id:'id', profileId:'profile_id', pct:'pct', effectiveDate:'effective_date', createdAt:'created_at' },
+  // Facilitation Cost Rates (Phase Q, 2026-08-13, per Sandra): effective-dated Monthly Cost Basis
+  // per person, never overwritten in place -- adding a new rate auto-ends the previously-open row
+  // (effectiveTo = day before the new row's effectiveFrom) rather than allowing overlapping periods.
+  // effectiveTo is null for the currently-open/current rate. Hourly rate is NOT stored -- always
+  // derived live via facilitationHourlyRate(monthlyCostBasis) so the 261-days/8-hrs formula can
+  // change later without a backfill. See training_sessions.facilitationCostApplied below for how
+  // completed sessions snapshot the rate actually used, independent of this table's current state.
+  facilitation_cost_rates:{
+    id:'id', profileId:'profile_id', monthlyCostBasis:'monthly_cost_basis',
+    effectiveFrom:'effective_from', effectiveTo:'effective_to',
+    createdBy:'created_by', createdAt:'created_at', updatedAt:'updated_at'
+  },
   // Agenda Templates (Phase49, 2026-08-06): title + a jsonb array of {topic,duration} items,
   // a genuinely different shape from the flat name-only lists above (Categories/Audiences/etc.)
   // -- managed via a bespoke Settings drawer, not the generic renderSelList single-name-field UI.
@@ -2928,7 +3149,17 @@ const _FIELD_MAPS = {
     // L&D Owner (2026-08-13, per Sandra): External sessions are facilitated by outside people, so
     // this tracks the internal L&D team member accountable for the training -- a real roster FK
     // (like trainerId/ownerId above), not a free-text field.
-    ldOwnerId:'ld_owner_id'
+    ldOwnerId:'ld_owner_id',
+    // Facilitation Cost snapshot (Phase Q, 2026-08-13, per Sandra): written ONCE, the moment a
+    // session's status flips to completed -- preserves the exact rate(s) and cost applied at
+    // delivery time so later Facilitation Cost Rate changes never retroactively alter a completed
+    // session's cost (per the "historical costs are preserved" requirement). Null/untouched for
+    // Upcoming/In Progress sessions, which instead compute cost LIVE off the currently-applicable
+    // rate (see facilitationHourlyRate / FacilitationRateDB.current). ILT/VILT only -- never set on
+    // Self-led or External sessions (no internal facilitation labor to cost).
+    facilitationHoursApplied:'facilitation_hours_applied',
+    facilitatorRateApplied:'facilitator_rate_applied', coFacilitatorRateApplied:'co_facilitator_rate_applied',
+    facilitationCostApplied:'facilitation_cost_applied', facilitationCostLockedAt:'facilitation_cost_locked_at'
   },
   // Per-session Checklist progress (Phase D2, 2026-08-07): a SNAPSHOT of the template's items at
   // the time the checklist tab was first opened for this session, plus status/completedOn per
@@ -3038,7 +3269,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -3089,7 +3320,8 @@ const Utils = {
   avatarBg: isAdmin=>isAdmin?'background:linear-gradient(135deg,#7c3aed,#4f46e5)':'background:linear-gradient(135deg,#2563eb,#0891b2)',
   empStatus(h){ if(!h) return null; const days=Math.floor((Date.now()-new Date(h).getTime())/86400000); if(days<0) return{status:'Probationary',days,note:'(starts in future)'}; return{status:days>=180?'Regular':'Probationary',days,note:days>=180?`Regular · day ${days}`:`Probationary · day ${days} of 179`}; },
   pwStrength(p){ if(!p||p.length<6) return{score:0,label:'Too short',color:'#ef4444'}; let s=0; if(p.length>=8)s++; if(/[A-Z]/.test(p))s++; if(/[0-9]/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++; const labels=['Weak','Fair','Good','Strong']; const colors=['#f97316','#eab308','#22c55e','#16a34a']; return{score:s,label:labels[s-1]||'Weak',color:colors[s-1]||'#ef4444',width:`${(s/4)*100}%`}; },
-  formatDate(s){ if(!s) return '—'; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}); }
+  formatDate(s){ if(!s) return '—'; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}); },
+  fmtPHP(n){ return '₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 };
 
 /* ── STORAGE (small localStorage-only flags; all real app data now lives in Supabase — see
@@ -3308,7 +3540,15 @@ const DB = {
     const body={action:'create_user', email:p.email, firstName:p.firstName, lastName:p.lastName,
       employeeId:p.employeeId, positionId:p.positionId||null, supervisorId:p.supervisorId||null,
       hireDate:p.hireDate||null, isAdmin:!!p.isAdmin, isReportsViewer:!!p.isReportsViewer,
-      formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA, dashScope:p.dashScope};
+      formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA,
+      // NOTE (Phase Q, 2026-08-13): the admin-user-actions Edge Function (server-side, not in this
+      // file) does not yet whitelist/insert these two on create -- they're included here for
+      // forward-compat but will currently be ignored by that function on brand-new users. Existing
+      // users get them fine via DB.update below (a direct client-side Supabase write). Until the
+      // Edge Function is updated, set a new user's Facilitation Cost Access via Edit User right
+      // after creating them.
+      canViewTrainingCosts:!!p.canViewTrainingCosts, canManageFacilitationRates:!!p.canManageFacilitationRates,
+      dashScope:p.dashScope};
     const {data,error}=await sb.functions.invoke('admin-user-actions',{body});
     if(error){ _surfaceDbError(error,'Create user'); throw error; }
     if(data?.error){ const e=new Error(data.error); _surfaceDbError(e,'Create user'); throw e; }
@@ -3316,7 +3556,9 @@ const DB = {
     const profile={ id:data.id, email:p.email, firstName:p.firstName, lastName:p.lastName,
       employeeId:p.employeeId||'', positionId:p.positionId||'', supervisorId:p.supervisorId||'',
       hireDate:p.hireDate||'', isAdmin:!!p.isAdmin, isReportsViewer:!!p.isReportsViewer,
-      formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA, dashScope:p.dashScope,
+      formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA,
+      canViewTrainingCosts:!!p.canViewTrainingCosts, canManageFacilitationRates:!!p.canManageFacilitationRates,
+      dashScope:p.dashScope,
       isActive:true, mustChangePassword:true, createdAt:now, updatedAt:now };
     Cache.data.profiles.push(profile);
     if(typeof AuditLog!=='undefined') await AuditLog.record('create','User',profile.id,`Added user "${profile.firstName} ${profile.lastName}"`);
@@ -3374,7 +3616,7 @@ const Auth = {
 const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
-  canView(v){ if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; return ['users','settings'].includes(v)?Auth.isAdmin:true; },
+  canView(v){ if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
   isSupervisor(u){
     if(!u) return false;
     return DB.all().some(x=>x.isActive&&x.supervisorId===u.id);
@@ -3472,7 +3714,7 @@ function showScreen(id){
 }
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist'};
+const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   dashboard:'Live performance overview across Trainer Evaluation, Instructional Design QA, and Content Development QA',
@@ -3481,7 +3723,9 @@ const PAGE_SUBTITLES={
   'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment',
   'training-dashboard':'Rolled-up view of training delivery health across the organization',
   'training-delivery':'Centralized list and calendar view of all training delivery — ILT, VILT, self-led, and external — reading the same sessions as Training Sessions with no duplicate data entry',
-  'trainer-checklist':'Trainer Checklist progress and reminders across ILT sessions — pre- and post-training task status at a glance'
+  'trainer-checklist':'Trainer Checklist progress and reminders across ILT sessions — pre- and post-training task status at a glance',
+  'cost-settings':'Manage facilitation labor cost rates for facilitators. Rates are effective-dated and applied based on the training date.',
+  'cost-analysis':'Overview of facilitation labor cost for live ILT/VILT trainings. Costs are calculated based on facilitator rates and actual/scheduled facilitation hours.'
 };
 function showView(id){
   if(!Perms.canView(id)){ toast('You do not have access to that section.','error'); return; }
@@ -3513,6 +3757,8 @@ function showView(id){
   if(id==='training-dashboard') renderTrainingDashboard();
   if(id==='training-delivery') renderTrainingDelivery();
   if(id==='trainer-checklist') renderTrainerChecklist();
+  if(id==='cost-settings') renderCostSettings();
+  if(id==='cost-analysis') renderCostAnalysis();
   _syncHashForCurrentView();
 }
 
@@ -3581,7 +3827,7 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery','trainer-checklist'];
+    const validViews=['dashboard','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     showView(view);
     if(view==='evaluations'){
@@ -3618,6 +3864,8 @@ function setupNav(){
   document.querySelectorAll('.js-content-qa').forEach(el=>el.classList.toggle('hidden',!_cqaAccess));
   document.querySelectorAll('.js-id-qa').forEach(el=>el.classList.toggle('hidden',!_idqaAccess));
   document.querySelectorAll('.js-trainer-eval').forEach(el=>el.classList.toggle('hidden',!_trainerAccess));
+  document.querySelectorAll('.js-cost-manage').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-settings')));
+  document.querySelectorAll('.js-cost-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-analysis')));
   const name=`${u.firstName} ${u.lastName}`;
   const ava=document.getElementById('sb-ava'); ava.textContent=Utils.initials(name); ava.setAttribute('style',Utils.avatarBg(u.isAdmin));
   document.getElementById('sb-name').textContent=name;
@@ -4885,7 +5133,7 @@ function openAddUser(){
   document.getElementById('mu-id').value='';
   ['mu-empid','mu-fname','mu-lname','mu-email','mu-hiredate'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mu-workload-pct').value='60';
-  document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false; setDashScopeUI('team');
+  document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false; document.getElementById('mu-cost-view').checked=false; document.getElementById('mu-cost-manage').checked=false; setDashScopeUI('team');
   document.getElementById('mu-title').textContent='Add New User';
   document.getElementById('mu-subtitle').textContent='Fill in the details below to create a new user account.';
   document.getElementById('mu-save').textContent='Save User';
@@ -4921,6 +5169,8 @@ function openEditUser(id){
   document.getElementById('mu-form-trainer').checked=!!u.formTrainer;
   document.getElementById('mu-form-idqa').checked=!!u.formIDQA;
   document.getElementById('mu-form-cqa').checked=!!u.formCQA;
+  document.getElementById('mu-cost-view').checked=!!u.canViewTrainingCosts;
+  document.getElementById('mu-cost-manage').checked=!!u.canManageFacilitationRates;
   setDashScopeUI(u.isAdmin?'full':(u.dashScope||'team'));
   const dsWrap=document.getElementById('mu-dashscope-wrap');
   if(dsWrap){dsWrap.querySelectorAll('.seg-btn').forEach(b=>b.disabled=!!u.isAdmin);}
@@ -4986,6 +5236,7 @@ async function saveUser(){
   const isAdmin=document.getElementById('mu-admin').checked;
   const isReportsViewer=document.getElementById('mu-reports-viewer').checked;
   const formTrainer=document.getElementById('mu-form-trainer').checked; const formIDQA=document.getElementById('mu-form-idqa').checked; const formCQA=document.getElementById('mu-form-cqa').checked;
+  const canViewTrainingCosts=document.getElementById('mu-cost-view').checked; const canManageFacilitationRates=document.getElementById('mu-cost-manage').checked;
   const dashScope=isAdmin?'full':_getDashScopeUI();
   const errEl=document.getElementById('mu-error');
   const showErr=m=>{errEl.textContent=m;errEl.style.display='block';};
@@ -5003,7 +5254,7 @@ async function saveUser(){
     if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
     let result;
     try{
-      result=await DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+      result=await DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,canViewTrainingCosts,canManageFacilitationRates,dashScope});
     }catch(e){ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} return; }
     if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;}
     closeModal('user'); renderUsers();
@@ -5020,7 +5271,7 @@ async function saveUser(){
     if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
     try{
       const oldPct=ex.workloadAllocationPct!=null?Number(ex.workloadAllocationPct):60;
-      await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+      await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,canViewTrainingCosts,canManageFacilitationRates,dashScope});
       // Phase P (2026-08-13, per Sandra): log a dated history row on actual change, rather than
       // just silently overwriting the old % -- otherwise past Trainer Workload periods would
       // retroactively show whatever % this person happens to have TODAY, which is wrong for trend
@@ -6504,6 +6755,394 @@ const ChecklistTemplateDB=_makeRecordDB('checklist_templates','Checklist Templat
 // Per-session Checklist progress snapshot (Phase D2) -- see the session_checklists field-map
 // comment above for why this is a separate table from the template itself.
 const SessionChecklistDB=_makeRecordDB('session_checklists','Session Checklist',r=>r?.templateTitle||r?.id||'');
+
+/* ── FACILITATION COST (Phase Q, 2026-08-13, per Sandra) ─────────────────────────────────────
+   V1, internal facilitation labor cost only. Costing Basis (annual work days, paid hours/day) is
+   a hardcoded constant, not an editable settings row -- Sandra's brief calls these "system
+   defaults" for V1; a later phase can move them into a real settings table if they ever need to
+   change. Hourly rate is ALWAYS derived from Monthly Cost Basis, never stored, so changing the
+   formula later needs no backfill. ─────────────────────────────────────────────────────────── */
+const COST_ANNUAL_WORK_DAYS = 261;
+const COST_PAID_HOURS_PER_DAY = 8;
+function facilitationHourlyRate(monthlyCostBasis){
+  const m=Number(monthlyCostBasis)||0;
+  return (m*12)/COST_ANNUAL_WORK_DAYS/COST_PAID_HOURS_PER_DAY;
+}
+function _dayBeforeStr(dateStr){
+  // Pure string/UTC date math -- deliberately avoids the local-timezone Date() traps that bit
+  // _todayStr() elsewhere in this app (see memory note on that quirk). dateStr is 'YYYY-MM-DD'.
+  const [y,mo,d]=dateStr.split('-').map(Number);
+  const dt=new Date(Date.UTC(y,mo-1,d));
+  dt.setUTCDate(dt.getUTCDate()-1);
+  return dt.toISOString().slice(0,10);
+}
+function _dayAfterStr(dateStr){
+  const [y,mo,d]=dateStr.split('-').map(Number);
+  const dt=new Date(Date.UTC(y,mo-1,d));
+  dt.setUTCDate(dt.getUTCDate()+1);
+  return dt.toISOString().slice(0,10);
+}
+
+const FacilitationRateDB = {
+  all(){ return Cache.data.facilitation_cost_rates.slice(); },
+  forProfile(profileId){ return this.all().filter(r=>r.profileId===profileId).sort((a,b)=>a.effectiveFrom.localeCompare(b.effectiveFrom)); },
+  // The rate in effect on a given date (defaults to today) for a profile -- used both for live
+  // "Scheduled Cost" calcs and, once, at the moment a session is marked Completed (after which
+  // that session's applied rate is frozen on the session record itself, not looked up again here).
+  rateAsOf(profileId, dateStr){
+    const d=dateStr||_todayStr();
+    const matches=this.forProfile(profileId).filter(r=>r.effectiveFrom<=d && (!r.effectiveTo || r.effectiveTo>=d));
+    return matches.length ? matches[matches.length-1] : null;
+  },
+  current(profileId){ return this.rateAsOf(profileId,_todayStr()); },
+  async create(d){
+    const row={ id:Utils.uid(), ...d };
+    const dbRow=patchToSnake('facilitation_cost_rates',row);
+    const {data,error}=await sb.from('facilitation_cost_rates').insert(dbRow).select().single();
+    if(error){ _surfaceDbError(error,'Add facilitation rate'); throw error; }
+    const saved=rowToCamel('facilitation_cost_rates',data);
+    Cache.data.facilitation_cost_rates.push(saved);
+    if(typeof AuditLog!=='undefined') await AuditLog.record('create','Facilitation Rate',saved.id,`Added facilitation rate ₱${saved.monthlyCostBasis}/mo effective ${saved.effectiveFrom}`);
+    return saved;
+  },
+  async update(id,p){
+    const dbRow=patchToSnake('facilitation_cost_rates',p);
+    const {data,error}=await sb.from('facilitation_cost_rates').update(dbRow).eq('id',id).select().single();
+    if(error){ _surfaceDbError(error,'Update facilitation rate'); throw error; }
+    const saved=rowToCamel('facilitation_cost_rates',data);
+    const a=Cache.data.facilitation_cost_rates, i=a.findIndex(r=>r.id===id); if(i>=0) a[i]=saved; else a.push(saved);
+    return saved;
+  },
+  // Add New Rate workflow: always appends going forward. If the person already has an open-ended
+  // (effectiveTo=null) rate, it is auto-ended the day before the new rate's effectiveFrom -- this
+  // is what "prevents overlapping rate periods" for V1 rather than general interval-overlap math,
+  // matching the simple forward-only workflow in Sandra's spec.
+  async addRate(profileId, monthlyCostBasis, effectiveFrom){
+    const open=this.forProfile(profileId).find(r=>!r.effectiveTo);
+    if(open && effectiveFrom<=open.effectiveFrom){
+      throw new Error(`New rate must be effective after ${open.effectiveFrom} (the current rate's start date).`);
+    }
+    if(open){ await this.update(open.id, {effectiveTo:_dayBeforeStr(effectiveFrom)}); }
+    return this.create({profileId, monthlyCostBasis, effectiveFrom, effectiveTo:null, createdBy:Auth.user.id});
+  }
+};
+
+/* ── FACILITATION COST SETTINGS (page) ────────────────────────────────────────────────────── */
+function renderCostSettingsList(){
+  const q=(document.getElementById('cs-search')?.value||'').toLowerCase();
+  const all=DB.all().filter(u=>u.isActive);
+  const filtered=all.filter(u=>{
+    const name=`${u.firstName} ${u.lastName}`.toLowerCase();
+    return !q || name.includes(q) || (u.employeeId||'').toLowerCase().includes(q) || Sel.nameOf(Store.POS,u.positionId).toLowerCase().includes(q);
+  }).sort((a,b)=>`${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+  const body=filtered.map(u=>{
+    const name=`${u.firstName} ${u.lastName}`;
+    const rate=FacilitationRateDB.current(u.id);
+    const hourly=rate?facilitationHourlyRate(rate.monthlyCostBasis):null;
+    const statusBadge=rate?'<span class="badge" style="background:#dcfce7;color:#15803d">Current</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b">No Rate Set</span>';
+    return `<tr>
+      <td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}</div></div></div></td>
+      <td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td>
+      <td>${Sel.nameOf(Store.POS,u.positionId)||'<span class="txt-muted">—</span>'}</td>
+      <td>${rate?Utils.fmtPHP(rate.monthlyCostBasis):'<span class="txt-muted">—</span>'}</td>
+      <td>${hourly!=null?Utils.fmtPHP(hourly):'<span class="txt-muted">—</span>'}</td>
+      <td>${rate?Utils.formatDate(rate.effectiveFrom):'<span class="txt-muted">—</span>'}</td>
+      <td>${statusBadge}</td>
+      <td><button class="btn btn-sm btn-secondary" onclick="openCostRateModal('${u.id}')">${rate?'Manage':'Set Rate'}</button></td>
+    </tr>`;
+  }).join('');
+  const table=document.getElementById('cs-rate-table');
+  if(table) table.innerHTML=`<thead><tr><th>Facilitator</th><th>Employee ID</th><th>Position</th><th>Monthly Cost Basis</th><th>Hourly Rate</th><th>Effective From</th><th>Status</th><th></th></tr></thead><tbody>${body}</tbody>`;
+  document.getElementById('cs-empty')?.classList.toggle('hidden', filtered.length>0);
+}
+function renderCostSettings(){
+  const inp=document.getElementById('cs-search'); if(inp) inp.value='';
+  renderCostSettingsList();
+}
+
+let _crProfileId=null;
+function openCostRateModal(profileId){
+  const u=DB.byId(profileId); if(!u) return;
+  _crProfileId=profileId;
+  document.getElementById('cr-name').textContent=`${u.firstName} ${u.lastName}`;
+  document.getElementById('cr-meta').textContent=`${u.employeeId?u.employeeId+' · ':''}${Sel.nameOf(Store.POS,u.positionId)||'—'}`;
+  const current=FacilitationRateDB.current(profileId);
+  document.getElementById('cr-current-hourly').textContent=current?Utils.fmtPHP(facilitationHourlyRate(current.monthlyCostBasis))+' / hr':'—';
+  renderCostRateHistory(profileId);
+  document.getElementById('cr-monthly').value='';
+  document.getElementById('cr-effdate').value=_todayStr();
+  document.getElementById('cr-error').classList.add('hidden');
+  _crUpdatePreview();
+  openModal('costrate');
+}
+function renderCostRateHistory(profileId){
+  const rows=FacilitationRateDB.forProfile(profileId).slice().sort((a,b)=>b.effectiveFrom.localeCompare(a.effectiveFrom));
+  const table=document.getElementById('cr-history-table');
+  if(!rows.length){ table.innerHTML=`<tbody><tr><td style="padding:14px;color:var(--text3);font-size:12.5px">No rate history yet — add the first rate below.</td></tr></tbody>`; return; }
+  const body=rows.map(r=>{
+    const isCurrent=!r.effectiveTo;
+    const period=isCurrent?`${Utils.formatDate(r.effectiveFrom)} — Present`:`${Utils.formatDate(r.effectiveFrom)} – ${Utils.formatDate(r.effectiveTo)}`;
+    const badge=isCurrent?'<span class="badge" style="background:#dcfce7;color:#15803d">Current</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b">Ended</span>';
+    return `<tr><td>${period}</td><td>${Utils.fmtPHP(r.monthlyCostBasis)}</td><td>${Utils.fmtPHP(facilitationHourlyRate(r.monthlyCostBasis))}</td><td>${badge}</td></tr>`;
+  }).join('');
+  table.innerHTML=`<thead><tr><th>Effective Period</th><th>Monthly Cost Basis</th><th>Hourly Rate</th><th>Status</th></tr></thead><tbody>${body}</tbody>`;
+}
+function _crUpdatePreview(){
+  const monthly=parseFloat(document.getElementById('cr-monthly').value)||0;
+  document.getElementById('cr-preview-monthly').textContent=Utils.fmtPHP(monthly);
+  document.getElementById('cr-preview-hourly').textContent=Utils.fmtPHP(facilitationHourlyRate(monthly))+' / hour';
+}
+async function saveCostRate(){
+  const errEl=document.getElementById('cr-error');
+  errEl.classList.add('hidden');
+  const monthly=parseFloat(document.getElementById('cr-monthly').value);
+  const effDate=document.getElementById('cr-effdate').value;
+  if(!monthly||monthly<=0){ errEl.textContent='Enter a Monthly Cost Basis greater than 0.'; errEl.classList.remove('hidden'); return; }
+  if(!effDate){ errEl.textContent='Effective From date is required.'; errEl.classList.remove('hidden'); return; }
+  try{
+    await FacilitationRateDB.addRate(_crProfileId, monthly, effDate);
+    toast('Facilitation rate added.','success');
+    renderCostRateHistory(_crProfileId);
+    const current=FacilitationRateDB.current(_crProfileId);
+    document.getElementById('cr-current-hourly').textContent=current?Utils.fmtPHP(facilitationHourlyRate(current.monthlyCostBasis))+' / hr':'—';
+    document.getElementById('cr-monthly').value='';
+    document.getElementById('cr-effdate').value=_todayStr();
+    _crUpdatePreview();
+    renderCostSettingsList();
+  }catch(e){
+    errEl.textContent=e.message||'Could not add rate.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+/* ── TRAINING COST ANALYSIS (page) ────────────────────────────────────────────────────────────
+   V1 scope: live ILT/VILT facilitation only (per Sandra's brief -- no SLT, prep time, admin time,
+   etc). "Scheduled" figures total EVERY matching session in range regardless of whether it has
+   since completed (the plan); "Completed" figures are the realized subset. Facilitator and
+   Co-Facilitator are each charged the FULL session hours (never split), per the "16 person-hours
+   for an 8-hour session" rule. Cost for a session prefers the frozen facilitationCostApplied
+   snapshot (once the completion-lock logic populates it -- see [[project_leap_insights_phase_q_facilitation_cost]]);
+   until then/for scheduled sessions it falls back to a LIVE lookup of the rate effective on the
+   session's trainingDate (FacilitationRateDB.rateAsOf), which already yields the historically-
+   correct rate for past dates since rates are effective-dated -- the explicit snapshot is a
+   safeguard against later edits to rate history, not the only way this can be correct. ───────── */
+let _caFilters=null;
+let _caCategoryChart=null, _caTrendChart=null;
+
+// Period filter deliberately reuses the exact same options/semantics/math as Training Dashboard
+// and Training Calendar (_computePeriodRange, defined earlier in this file) rather than a
+// bespoke From/To pair -- per Sandra, all three views' date filters should feel identical.
+function caPeriodRange(){ return _computePeriodRange(_caFilters.period,_caFilters.customStart,_caFilters.customEnd); }
+function _caToggleCustomRangeInputs(){
+  const isCustom=_caFilters.period==='custom';
+  document.getElementById('ca-custom-range-wrap')?.classList.toggle('hidden',!isCustom);
+  document.getElementById('ca-custom-range-wrap-end')?.classList.toggle('hidden',!isCustom);
+}
+function _caAllILTVILT(){
+  return TrSessionDB.all().filter(s=>['ILT','VILT'].includes(s.deliveryType) && s.trainingDate && _tdStatus(s)!=='Cancelled');
+}
+function _caFilteredSessions(){
+  const f=_caFilters;
+  const range=caPeriodRange();
+  return _caAllILTVILT().filter(s=>{
+    if(f.deliveryType!=='all' && s.deliveryType!==f.deliveryType) return false;
+    if(s.trainingDate<range.start || s.trainingDate>range.end) return false;
+    if(f.facilitatorId!=='all' && s.trainerId!==f.facilitatorId && s.coFacilitatorId!==f.facilitatorId) return false;
+    if(f.category!=='all' && (s.category||'')!==f.category) return false;
+    if(f.program!=='all' && (s.trainingProgram||'')!==f.program) return false;
+    return true;
+  });
+}
+function _caSessionCalc(s){
+  const hrs=Number(s.durationHours)||0;
+  const isCompleted=_tdStatus(s)==='Completed';
+  let facHourly=0, coHourly=0;
+  if(isCompleted && s.facilitationCostLockedAt){
+    facHourly=Number(s.facilitatorRateApplied)||0;
+    coHourly=Number(s.coFacilitatorRateApplied)||0;
+  } else {
+    if(s.trainerId){ const r=FacilitationRateDB.rateAsOf(s.trainerId,s.trainingDate); if(r) facHourly=facilitationHourlyRate(r.monthlyCostBasis); }
+    if(s.coFacilitatorId){ const r=FacilitationRateDB.rateAsOf(s.coFacilitatorId,s.trainingDate); if(r) coHourly=facilitationHourlyRate(r.monthlyCostBasis); }
+  }
+  const cost=hrs*facHourly + (s.coFacilitatorId ? hrs*coHourly : 0);
+  return {hrs, facHourly, coHourly, cost, isCompleted};
+}
+function _caLearnersHandled(sessionId){
+  return SessionParticipantsDB.all().filter(p=>p.sessionId===sessionId && p.attended===true).length;
+}
+function _caPopulateFilters(){
+  const fSel=document.getElementById('ca-facilitator');
+  const facIds=new Set();
+  _caAllILTVILT().forEach(s=>{ if(s.trainerId) facIds.add(s.trainerId); if(s.coFacilitatorId) facIds.add(s.coFacilitatorId); });
+  const facilitators=Array.from(facIds).map(id=>DB.byId(id)).filter(Boolean).sort((a,b)=>`${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+  fSel.innerHTML='<option value="all">All Facilitators</option>'+facilitators.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`).join('');
+  fSel.value=_caFilters.facilitatorId;
+
+  const catSel=document.getElementById('ca-category');
+  const cats=_categoryOptionNames();
+  catSel.innerHTML='<option value="all">All Categories</option>'+cats.map(c=>`<option value="${Utils.esc(c)}">${Utils.esc(c)}</option>`).join('');
+  catSel.value=_caFilters.category;
+
+  const progSel=document.getElementById('ca-program');
+  const progs=Array.from(new Set(_caAllILTVILT().map(s=>s.trainingProgram).filter(Boolean))).sort();
+  progSel.innerHTML='<option value="all">All Programs</option>'+progs.map(p=>`<option value="${Utils.esc(p)}">${Utils.esc(p)}</option>`).join('');
+  progSel.value=_caFilters.program;
+
+  document.getElementById('ca-delivery').value=_caFilters.deliveryType;
+  document.getElementById('ca-f-period').value=_caFilters.period;
+  document.getElementById('ca-f-customstart').value=_caFilters.customStart||'';
+  document.getElementById('ca-f-customend').value=_caFilters.customEnd||'';
+  _caToggleCustomRangeInputs();
+}
+function caSetFilter(key,val){ _caFilters[key]=val; renderCostAnalysis(); }
+function caClearFilters(){ _caFilters={period:'thismonth',customStart:'',customEnd:'',facilitatorId:'all',category:'all',program:'all',deliveryType:'all'}; renderCostAnalysis(); }
+
+function renderCostAnalysis(){
+  if(!_caFilters) _caFilters={period:'thismonth',customStart:'',customEnd:'',facilitatorId:'all',category:'all',program:'all',deliveryType:'all'};
+  _caPopulateFilters();
+  const filtered=_caFilteredSessions();
+
+  let schedHours=0, compHours=0, schedCost=0, compCost=0, learnersHandled=0;
+  filtered.forEach(s=>{
+    const c=_caSessionCalc(s);
+    schedHours+=c.hrs; schedCost+=c.cost;
+    if(c.isCompleted){ compHours+=c.hrs; compCost+=c.cost; learnersHandled+=_caLearnersHandled(s.id); }
+  });
+  const costPerLearner=learnersHandled>0 ? compCost/learnersHandled : 0;
+
+  const kpis=[
+    {label:'Scheduled Facilitation Hours',val:schedHours.toFixed(1)},
+    {label:'Completed Facilitation Hours',val:compHours.toFixed(1)},
+    {label:'Scheduled Facilitation Cost',val:Utils.fmtPHP(schedCost)},
+    {label:'Completed Facilitation Cost',val:Utils.fmtPHP(compCost)},
+    {label:'Learners Handled',val:learnersHandled},
+    {label:'Cost per Learner Handled',val:Utils.fmtPHP(costPerLearner)}
+  ];
+  document.getElementById('ca-kpis').innerHTML=kpis.map(k=>`<div class="kpi-card"><div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">${k.label}</div><div style="font-size:18px;font-weight:700">${k.val}</div></div>`).join('');
+
+  _caRenderFacilitatorTable(filtered);
+  _caRenderCategorySection(filtered);
+  _caRenderProgramTable(filtered);
+  _caRenderTrend();
+
+  document.getElementById('ca-range-label').textContent=`Showing: ${caPeriodRange().label}`;
+  document.getElementById('ca-asof-label').textContent=`Data as of ${new Date().toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}`;
+}
+
+function _caRenderFacilitatorTable(filtered){
+  const map=new Map();
+  const bump=(id,role,c,learners)=>{
+    if(!id) return;
+    if(!map.has(id)) map.set(id,{schedHours:0,compHours:0,schedCost:0,compCost:0,learners:0});
+    const m=map.get(id);
+    const roleCost=role==='trainer' ? c.hrs*c.facHourly : c.hrs*c.coHourly;
+    m.schedHours+=c.hrs; m.schedCost+=roleCost;
+    if(c.isCompleted){ m.compHours+=c.hrs; m.compCost+=roleCost; m.learners+=learners; }
+  };
+  filtered.forEach(s=>{
+    const c=_caSessionCalc(s);
+    const learners=c.isCompleted?_caLearnersHandled(s.id):0;
+    if(s.trainerId) bump(s.trainerId,'trainer',c,learners);
+    if(s.coFacilitatorId) bump(s.coFacilitatorId,'co',c,learners);
+  });
+  const rows=Array.from(map.entries()).map(([id,m])=>{
+    const u=DB.byId(id);
+    const rate=FacilitationRateDB.current(id);
+    const utilization=m.schedHours>0 ? Math.round(m.compHours/m.schedHours*100) : 0;
+    return {name:u?`${u.firstName} ${u.lastName}`:'—', hourly:rate?facilitationHourlyRate(rate.monthlyCostBasis):null, ...m, utilization};
+  }).sort((a,b)=>b.compCost-a.compCost);
+
+  const table=document.getElementById('ca-facilitator-table');
+  const body=rows.map(r=>`<tr>
+    <td>${Utils.esc(r.name)}</td>
+    <td>${r.schedHours.toFixed(1)}</td>
+    <td>${r.compHours.toFixed(1)}</td>
+    <td>${r.hourly!=null?Utils.fmtPHP(r.hourly):'<span class="txt-muted">—</span>'}</td>
+    <td>${Utils.fmtPHP(r.schedCost)}</td>
+    <td>${Utils.fmtPHP(r.compCost)}</td>
+    <td>${r.learners}</td>
+    <td>${r.utilization}%</td>
+  </tr>`).join('');
+  table.innerHTML=`<thead><tr><th>Facilitator</th><th>Sched. Hrs</th><th>Comp. Hrs</th><th>Hourly Rate</th><th>Scheduled Cost</th><th>Completed Cost</th><th>Learners Handled</th><th>Utilization</th></tr></thead><tbody>${body}</tbody>`;
+  document.getElementById('ca-facilitator-empty').classList.toggle('hidden', rows.length>0);
+}
+
+function _caRenderCategorySection(filtered){
+  const map=new Map();
+  filtered.forEach(s=>{
+    const cat=s.category||'Uncategorized';
+    const c=_caSessionCalc(s);
+    map.set(cat,(map.get(cat)||0)+c.cost);
+  });
+  const entries=Array.from(map.entries()).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const colors=['#7c3aed','#2563eb','#f59e0b','#16a34a','#94a3b8','#ec4899','#0891b2'];
+  const canvas=document.getElementById('ca-category-donut');
+  if(_caCategoryChart){ try{_caCategoryChart.destroy();}catch(e){} _caCategoryChart=null; }
+  if(canvas && entries.length){
+    _caCategoryChart=new Chart(canvas,{type:'doughnut',data:{labels:entries.map(e=>e[0]),datasets:[{data:entries.map(e=>e[1]),backgroundColor:entries.map((_,i)=>colors[i%colors.length]),borderWidth:0}]},options:{plugins:{legend:{display:false}},cutout:'62%'}});
+  }
+  const total=entries.reduce((n,e)=>n+e[1],0);
+  const legend=document.getElementById('ca-category-legend');
+  legend.innerHTML=entries.length ? entries.map((e,i)=>`<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colors[i%colors.length]};margin-right:6px"></span>${Utils.esc(e[0])} <span style="color:var(--text3)">${total>0?Math.round(e[1]/total*100):0}%</span></div>`).join('') : '<div style="color:var(--text3)">No cost in this period.</div>';
+}
+
+function _caRenderProgramTable(filtered){
+  const map=new Map();
+  filtered.forEach(s=>{
+    const prog=s.trainingProgram||'(No Program)';
+    const c=_caSessionCalc(s);
+    if(!map.has(prog)) map.set(prog,{sessions:0,hours:0,cost:0,compCost:0,learners:0});
+    const m=map.get(prog);
+    m.sessions++; m.hours+=c.hrs; m.cost+=c.cost;
+    if(c.isCompleted){ m.compCost+=c.cost; m.learners+=_caLearnersHandled(s.id); }
+  });
+  const rows=Array.from(map.entries()).map(([name,m])=>({name,...m,costPerLearner:m.learners>0?m.compCost/m.learners:null}))
+    .sort((a,b)=>b.cost-a.cost).slice(0,5);
+  const table=document.getElementById('ca-program-table');
+  const body=rows.map(r=>`<tr>
+    <td>${Utils.esc(r.name)}</td><td>${r.sessions}</td><td>${r.hours.toFixed(1)}</td>
+    <td>${Utils.fmtPHP(r.cost)}</td><td>${Utils.fmtPHP(r.compCost)}</td>
+    <td>${r.costPerLearner!=null?Utils.fmtPHP(r.costPerLearner):'<span class="txt-muted">—</span>'}</td>
+  </tr>`).join('');
+  table.innerHTML=`<thead><tr><th>Program</th><th>Sessions</th><th>Hours</th><th>Scheduled Cost</th><th>Completed Cost</th><th>Cost / Learner</th></tr></thead><tbody>${body}</tbody>`;
+  document.getElementById('ca-program-empty').classList.toggle('hidden', rows.length>0);
+}
+
+// Trend intentionally ignores the From/To range filter (always trailing 6 full months) but
+// respects the other filters, same convention as the Training Dashboard's own trend chart.
+function _caRenderTrend(){
+  const now=new Date();
+  const months=[]; for(let i=5;i>=0;i--) months.push(new Date(now.getFullYear(),now.getMonth()-i,1));
+  const labels=months.map(d=>d.toLocaleDateString('en-US',{month:'short'}));
+  const f=_caFilters;
+  const base=_caAllILTVILT().filter(s=>{
+    if(f.deliveryType!=='all' && s.deliveryType!==f.deliveryType) return false;
+    if(f.facilitatorId!=='all' && s.trainerId!==f.facilitatorId && s.coFacilitatorId!==f.facilitatorId) return false;
+    if(f.category!=='all' && (s.category||'')!==f.category) return false;
+    if(f.program!=='all' && (s.trainingProgram||'')!==f.program) return false;
+    return true;
+  });
+  const schedSeries=[], compSeries=[];
+  months.forEach(d=>{
+    const mStart=new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10);
+    const mEnd=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10);
+    let sched=0, comp=0;
+    base.forEach(s=>{
+      if(s.trainingDate<mStart || s.trainingDate>mEnd) return;
+      const c=_caSessionCalc(s);
+      sched+=c.cost; if(c.isCompleted) comp+=c.cost;
+    });
+    schedSeries.push(Math.round(sched)); compSeries.push(Math.round(comp));
+  });
+  const canvas=document.getElementById('ca-trend-chart');
+  if(_caTrendChart){ try{_caTrendChart.destroy();}catch(e){} _caTrendChart=null; }
+  if(canvas){
+    _caTrendChart=new Chart(canvas,{type:'line',data:{labels,datasets:[
+      {label:'Scheduled',data:schedSeries,borderColor:'#2563eb',backgroundColor:'#2563eb',borderDash:[4,3],tension:0.3,pointRadius:3},
+      {label:'Completed',data:compSeries,borderColor:'#16a34a',backgroundColor:'#16a34a',tension:0.3,pointRadius:3}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(128,128,128,0.15)'}},x:{grid:{display:false}}}}});
+  }
+}
 
 /* ── TRAINING SESSIONS ────────────── */
 const TrSessionDB=_makeRecordDB('training_sessions','Training Session',r=>`"${r?.trainingProgram||r?.id||''}"`);
