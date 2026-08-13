@@ -2552,6 +2552,7 @@
     </div>
     <div class="modal-body">
       <p style="font-size:14px;color:var(--text2);line-height:1.65">For sessions whose report was already submitted outside the app (e.g. via email) before this workflow existed. This skips the usual Attendance &amp; Performance and report-field requirements — just record when it was submitted and where to find it.</p>
+      <div style="font-size:13px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px 10px;margin-top:10px;line-height:1.5">⚠️ Reminder: this skips attendance validation. If attendance for this session hasn't been marked yet, please go to Attendance &amp; Performance &gt; Tag Complete first — otherwise the roster will stay incomplete even after this report is logged.</div>
       <div class="form-group" style="margin-top:10px">
         <label class="form-label">Date Submitted <span style="color:var(--red)">*</span></label>
         <input type="date" id="mro-date" class="form-control" oninput="document.getElementById('mro-err').style.display='none'">
@@ -6893,6 +6894,8 @@ function _tdaAttentionItems(){
   }).map(s=>s.id);
 
   const attendanceIncompleteIds=liveRows.filter(s=>{
+    const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+    if(rep&&rep.status==='submitted') return false; // Phase N (2026-08-13): a submitted report (incl. manual override) is treated as sufficient proof attendance is settled, so it no longer double-flags here
     const parts=SessionParticipantsDB.all().filter(p=>p.sessionId===s.id);
     return parts.some(p=>!p.attendanceStatus || p.attendanceStatus==='pending');
   }).map(s=>s.id);
@@ -9796,8 +9799,7 @@ function _tdrRenderTab(s){
       ${_tdaKpiCard('filetext','#c2410c','Content Rating',_tdrRatingBox('contentRating',c.contentRating,5),'/ 5')}
       ${_tdaKpiCard('clipboard','var(--sky)','Materials Rating',_tdrRatingBox('materialsRating',c.materialsRating,5),'/ 5')}
       ${_tdaKpiCard('user','#7c3aed','Facilitation Rating',_tdrRatingBox('facilitationRating',c.facilitationRating,5),'/ 5')}
-      ${_tdaKpiCard('heart','var(--red)','Overall Satisfaction',_tdrRatingBox('overallSatisfaction',c.overallSatisfaction,5),'/ 5')}
-      ${_tdaKpiCard('check','var(--green)','CSAT',_tdrRatingBox('csat',c.csat,5),'/ 5')}
+      ${_tdaKpiCard('heart','var(--green)','CSAT',_tdrRatingBox('csat',c.csat,5),'/ 5')}
       ${_tdaKpiCard('trend','#7c3aed','NPS',l1Editing?`<input type="number" class="form-control" style="width:56px;padding:4px 6px;font-size:15px;text-align:center;display:inline-block" min="-100" max="100" placeholder="—" value="${c.nps??''}" ${dis} onblur="_tdrSetField('nps',this.value)">`:(c.nps??'—'),npsLbl)}
     </div>`;
 
@@ -10185,7 +10187,7 @@ function _tdrValidateForSubmit(sess){
     }
     return missing;
   }
-  const metricLabels={responses:'Responses',contentRating:'Content Rating',materialsRating:'Materials Rating',facilitationRating:'Facilitation Rating',overallSatisfaction:'Overall Satisfaction',csat:'CSAT',nps:'NPS'};
+  const metricLabels={responses:'Responses',contentRating:'Content Rating',materialsRating:'Materials Rating',facilitationRating:'Facilitation Rating',csat:'CSAT',nps:'NPS'};
   Object.keys(metricLabels).forEach(k=>{ if(c[k]===null||c[k]===undefined||c[k]==='') missing.push(metricLabels[k]); });
   if(!c.agendaDelivery||!c.agendaDelivery.length) missing.push('at least one Agenda Delivery row');
   // 2026-08-06 (per Sandra): Additional Remarks is optional on the Training Report -- a report
@@ -10791,8 +10793,7 @@ function _tdrL1InnerHtml(s,report,hideFeedback){
     ${_tdaKpiCard('filetext','#c2410c','Content Rating',roVal(c.contentRating),'/ 5')}
     ${_tdaKpiCard('clipboard','var(--sky)','Materials Rating',roVal(c.materialsRating),'/ 5')}
     ${_tdaKpiCard('user','#7c3aed','Facilitation Rating',roVal(c.facilitationRating),'/ 5')}
-    ${_tdaKpiCard('heart','var(--red)','Overall Satisfaction',roVal(c.overallSatisfaction),'/ 5')}
-    ${_tdaKpiCard('check','var(--green)','CSAT',roVal(c.csat),'/ 5')}
+    ${_tdaKpiCard('heart','var(--green)','CSAT',roVal(c.csat),'/ 5')}
     ${_tdaKpiCard('trend','#7c3aed','NPS',c.nps??'—',npsLbl)}
   </div>`;
   const feedbackBox=(iconName,color,label,val)=>`<div style="background:${color==='var(--green)'?'var(--green-lt)':'var(--amber-lt)'};color:${color};border-radius:8px;padding:12px 14px">
