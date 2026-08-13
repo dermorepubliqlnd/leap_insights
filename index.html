@@ -1733,6 +1733,15 @@
               <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Recording exemptions &amp; report reopens awaiting your approval, plus recent attendance reopens. (Moved here from the Dashboard's Overview tab.)</div>
               <div id="tdash-pending-requests"></div>
             </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;margin-top:14px">
+              <div class="card" style="padding:16px 18px">
+                <div style="font-weight:700;font-size:13.5px;margin-bottom:2px">Active External Training Bonds</div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:10px">External sessions with a Training Bond still in effect (end date today or later) — not filtered by the Period above.</div>
+                <div id="tdash-activebonds-list"></div>
+              </div>
+              <div></div>
+            </div>
           </div>
         </div>
 
@@ -2270,11 +2279,11 @@
         </div>
         <div class="form-group">
           <label class="form-label" id="td-date-label">Start Date <span class="req">*</span></label>
-          <input type="date" id="td-date" class="form-control">
+          <input type="date" id="td-date" class="form-control" onchange="_tdUpdateBondEndPreview('td')">
         </div>
         <div class="form-group hidden" id="td-enddate-wrap">
           <label class="form-label">End Date</label>
-          <input type="date" id="td-enddate" class="form-control">
+          <input type="date" id="td-enddate" class="form-control" onchange="_tdUpdateBondEndPreview('td')">
         </div>
       </div>
       <div class="form-row-3">
@@ -2294,6 +2303,38 @@
           <label class="form-label">Training Provider <span class="req">*</span></label>
           <input type="text" id="td-provider" class="form-control" placeholder="e.g. ACME Learning Solutions">
         </div>
+        <div class="form-group hidden" id="td-ldowner-wrap">
+          <label class="form-label">L&amp;D Owner</label>
+          <select id="td-ldowner" class="form-control"><option value="">— Select L&amp;D Owner —</option></select>
+        </div>
+        <div class="form-group hidden" id="td-classification-wrap">
+          <label class="form-label">Training Classification</label>
+          <select id="td-classification" class="form-control">
+            <option value="">— Select —</option>
+            <option value="Developmental Training">Developmental Training</option>
+            <option value="Certification-Based Training">Certification-Based Training</option>
+            <option value="Licensure or High-Impact Qualification">Licensure or High-Impact Qualification</option>
+          </select>
+        </div>
+        <div class="form-group hidden" id="td-ricaticket-wrap">
+          <label class="form-label">RICA Ticket</label>
+          <input type="text" id="td-ricaticket" class="form-control" placeholder="e.g. RICA-00123">
+        </div>
+        <div class="form-group hidden" id="td-bondmonths-wrap">
+          <label class="form-label">Training Bond Period</label>
+          <select id="td-bondmonths" class="form-control" onchange="_tdUpdateBondEndPreview('td')">
+            <option value="">— None —</option>
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12">12 months</option>
+            <option value="18">18 months</option>
+            <option value="24">24 months</option>
+          </select>
+        </div>
+        <div class="form-group hidden" id="td-bondend-wrap">
+          <label class="form-label">Training Bond End Date</label>
+          <input type="text" id="td-bondend-display" class="form-control" readonly style="background:var(--bg2)" placeholder="Auto-computed from bond period">
+        </div>
         <div class="form-group">
           <label class="form-label" id="td-venue-label">Venue</label>
           <select id="td-venue" class="form-control" onchange="_toggleVenueOtherWrap('td')"><option value="">— Select Venue —</option></select>
@@ -2307,12 +2348,12 @@
         </div>
       </div>
       <div class="form-row-3">
-        <div class="form-group">
+        <div class="form-group" id="td-expected-wrap">
           <label class="form-label">Expected Participants</label>
           <input type="number" id="td-expected" class="form-control" min="1" step="1" placeholder="e.g. 25">
         </div>
         <div class="form-group" id="td-recording-wrap">
-          <label class="form-label">Recording Link</label>
+          <label class="form-label" id="td-recording-label">Recording Link</label>
           <input type="url" id="td-recording" class="form-control" placeholder="https://…">
         </div>
         <div class="form-group">
@@ -2324,7 +2365,7 @@
           </select>
         </div>
       </div>
-      <div class="form-row-3">
+      <div class="form-row-3" id="td-assessment-row">
         <div class="form-group">
           <label class="form-label">Assessment Type</label>
           <select id="td-assessment" class="form-control">
@@ -2510,6 +2551,27 @@
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('reopen-reason')">Cancel</button>
       <button class="btn btn-danger" onclick="_tdrSubmitReopenReason()">Request Reopen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CHECKLIST ITEM NOTES (Phase R, 2026-08-13) ══════════════ -->
+<div id="modal-checklist-note" class="modal-overlay" onclick="if(event.target===this)closeModal('checklist-note')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Notes — <span id="tdckl-note-title" style="font-weight:400"></span></span>
+      <button class="modal-close" onclick="closeModal('checklist-note')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="tdckl-note-thread" style="max-height:320px;overflow-y:auto;margin-bottom:12px"></div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Add a note</label>
+        <textarea id="tdckl-note-input" class="form-control" rows="2" placeholder="Leave a note for whoever looks at this checklist next…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('checklist-note')">Close</button>
+      <button class="btn btn-primary" onclick="_tdcklPostNote(null)">Post Note</button>
     </div>
   </div>
 </div>
@@ -2754,7 +2816,20 @@ const _FIELD_MAPS = {
     isMandatory:'is_mandatory',
     // Trainer Checklist template selector (Phase D2, 2026-08-07): which Checklist Template
     // (see checklist_templates) applies to this ILT session. Additive, nullable.
-    checklistTemplateId:'checklist_template_id'
+    checklistTemplateId:'checklist_template_id',
+    // External Sessions build (2026-08-13): Venue "Other" free-text, session-only (mirrors
+    // guestTrainerName pattern -- never creates/touches a row in Store.VENUES). Mutually
+    // exclusive with venueId.
+    venueOtherName:'venue_other_name',
+    // External-only fields: Training Classification dropdown, Training Bond period (months) +
+    // auto-computed end date (anchored to the session's end date, recomputed whenever dates or
+    // bond period change), and a free-text RICA ticket number from the ticketing system.
+    trainingClassification:'training_classification', trainingBondMonths:'training_bond_months',
+    trainingBondEndDate:'training_bond_end_date', ricaTicket:'rica_ticket',
+    // L&D Owner (2026-08-13, per Sandra): External sessions are facilitated by outside people, so
+    // this tracks the internal L&D team member accountable for the training -- a real roster FK
+    // (like trainerId/ownerId above), not a free-text field.
+    ldOwnerId:'ld_owner_id'
   },
   // Per-session Checklist progress (Phase D2, 2026-08-07): a SNAPSHOT of the template's items at
   // the time the checklist tab was first opened for this session, plus status/completedOn per
@@ -2782,7 +2857,11 @@ const _FIELD_MAPS = {
     // lookup (Store.DEPARTMENTS) instead of free text, applies to both profile-linked and external
     // rows alike. attendanceByDay backs the per-day status grid on multi-day sessions only --
     // single-day sessions keep using attendanceStatus exactly as before.
-    departmentId:'department_id', attendanceByDay:'attendance_by_day'
+    departmentId:'department_id', attendanceByDay:'attendance_by_day',
+    // External Sessions Attendance tab (2026-08-13): replaces Pre-Test/Post-Test/Gain columns
+    // for External delivery-type sessions only (ILT/VILT keep the test-score columns as-is).
+    bondSigned:'bond_signed', proofOfCompletion:'proof_of_completion',
+    postTrainingSurvey:'post_training_survey', proofOfKnowledgeTransfer:'proof_of_knowledge_transfer'
   },
   training_reports:{
     id:'id', sessionId:'session_id', status:'status', content:'content', createdBy:'created_by',
@@ -3065,6 +3144,52 @@ async function _ensureVenueId(prefix,venueId,venueType){
   if(existing) return existing.id;
   const created=await Sel.add(Store.VENUES,{name:typed,type:venueType||'physical'});
   return created.id;
+}
+
+/* Training Sessions "Other" venue (2026-08-13): unlike _ensureVenueId above (still used by the
+   Evaluation form, `ef`), the Training Sessions module now keeps a typed "Other" venue name
+   session-only (venueOtherName column), mirroring the Guest Trainer pattern -- it NEVER creates
+   or reuses a row in the shared Store.VENUES list. venueId stays as the "Other (please specify)"
+   sentinel id itself so re-opening the form for edit still detects it as Other. */
+function _tdResolveVenue(prefix){
+  const sel=document.getElementById(`${prefix}-venue`);
+  if(!sel) return {venueId:null,venueOtherName:null};
+  if(!_isOtherVenue(sel.value)) return {venueId:sel.value||null,venueOtherName:null};
+  const typed=(document.getElementById(`${prefix}-venue-other`)?.value||'').trim();
+  return {venueId:sel.value,venueOtherName:typed||null};
+}
+/* Display helper for wherever a session's venue name is shown -- mirrors the guestTrainerName
+   display pattern (see _tdPersonName) so typed "Other" venues render without ever having a
+   Store.VENUES row backing them. */
+function _venueDisplayName(s){
+  if(s.venueOtherName) return s.venueOtherName;
+  return s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+}
+
+/* Training Bond End Date (External Sessions, 2026-08-13, per Sandra): "Training bond count
+   starts from the end date of training" -- anchored to the session's OWN end date (falling back
+   to the start/training date for single-day sessions with no end date), plus N months from the
+   Training Bond Period dropdown (3/6/12/18/24). Purely additive months -- calendar-day precision
+   isn't meaningful here, so no day-of-month edge-case handling beyond what Date.setMonth already
+   does (e.g. Jan 31 + 1 month rolls to Mar 2/3, same behavior as the rest of this app's date math). */
+function _tdBondEndDate(anchorDateStr,months){
+  if(!anchorDateStr||!months) return null;
+  const d=new Date(anchorDateStr+'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  d.setMonth(d.getMonth()+Number(months));
+  return d.toISOString().slice(0,10);
+}
+// Live-updates the read-only "Training Bond End Date" preview field whenever the Start/End Date
+// or Bond Period dropdown changes, for both the quick Add modal ('td') and full edit form ('tdd').
+function _tdUpdateBondEndPreview(prefix){
+  const monthsEl=document.getElementById(`${prefix}-bondmonths`);
+  const displayEl=document.getElementById(`${prefix}-bondend-display`);
+  if(!monthsEl||!displayEl) return;
+  const startVal=document.getElementById(`${prefix}-date`)?.value||'';
+  const endVal=document.getElementById(`${prefix}-enddate`)?.value||'';
+  const anchor=endVal||startVal;
+  const computed=_tdBondEndDate(anchor,monthsEl.value);
+  displayEl.value=computed||'';
 }
 
 /* ── USER DB (Supabase `profiles` table, keyed by Supabase Auth user id) ──────────────────── */
@@ -6249,7 +6374,7 @@ let _tdashTrendChart=null;
 let _tdashCategoryChart=null;
 const TDASH_CATEGORY_COLORS=['#2563eb','#7c3aed','#16a34a','#f59e0b','#dc2626','#0891b2','#db2777','#65a30d'];
 let tdPage=1;
-let tdPageSize=10;   // Phase39 item 4: mutable page size, selectable 10/25/50 via #td-pagesize control
+let tdPageSize=25;   // Phase39 item 4: mutable page size, selectable 10/25/50 via #td-pagesize control (default raised from 10 to 25, 2026-08-13 per Sandra)
 let tdCalCursor=new Date(); tdCalCursor.setDate(1);
 // Training Hours View day-click side panel selection (2026-08-12) -- dateStr (YYYY-MM-DD) of
 // the currently open day panel, or null if none. Reset on month navigation (tdCalPrev/Next/
@@ -6613,12 +6738,27 @@ function renderTrainingDashboardKpis(){
   // showing what share of Scheduled Hours has actually been delivered.
   const completionPct=hrs.forecastedHrs>0?Math.round(completedHrs.forecastedHrs/hrs.forecastedHrs*100):null;
 
+  // All Implementations (2026-08-13, per Sandra): total count of every session matching the
+  // current filters, regardless of status -- placed before Completed Trainings so the row reads
+  // as "whole pool, then how much of it's upcoming vs. done", mirroring the Training Calendar's
+  // own "Total Implementations" card.
+  const allImplementations=rows.length;
+
+  // Active External Training Bonds (2026-08-13, per Sandra): a current-state count, not scoped
+  // to the Period filter above -- a bond signed months ago can still be active today, so tying it
+  // to "This Month"/"Last Month" etc. would misleadingly show 0. Pulled from ALL non-cancelled
+  // External sessions org-wide (ignores the Period filter, but still respects nothing else since
+  // there's no Type/Trainer concept that meaningfully narrows "bonds" further than "External").
+  const activeBondSessions=_tdashActiveBondSessions();
+
   document.getElementById('tdash-kpis').innerHTML=`
     ${_tdaKpiCard('calendar','#2563eb','Upcoming Trainings',upcoming,'Next 30 days')}
+    ${_tdaKpiCard('clipboard','#0369a1','All Implementations',allImplementations,range.label)}
     ${_tdaKpiCard('check','var(--green)','Completed Trainings',completed,range.label)}
     ${_tdaKpiCard('clock','#7c3aed','Scheduled Training Hours',hrs.forecastedHrs.toFixed(1)+' hrs',range.label)}
     ${_tdaKpiCard('filecheck','#0f766e','Completed Hours',completedHrs.forecastedHrs.toFixed(1)+' hrs',(completionPct!=null?completionPct+'% of scheduled':range.label))}
     ${_tdaKpiCard('user','#c2410c','Learners Reached',learners.size,'ILT/VILT · '+range.label)}
+    ${_tdaKpiCard('clock','#0369a1','Active External Training Bonds',activeBondSessions.length,'End date today or later')}
   `;
 
   // Passes the SAME rows/hrs/completedHrs already computed above so the By Delivery Type table's
@@ -6630,6 +6770,37 @@ function renderTrainingDashboardKpis(){
   renderTrainingDashboardAttention();
   renderTrainingDashboardWorkload(range);
   _dashRenderPendingRequests('tdash-pending-requests');
+  renderTrainingDashboardActiveBonds(activeBondSessions);
+}
+
+// Active External Training Bonds widget (2026-08-13, per Sandra): simple list -- Program Title,
+// Bond End Date, days remaining -- sorted soonest-expiring first. Kept deliberately simple per
+// her request ("something simple... half the page... 1 of 2 columns for now").
+function _tdashActiveBondSessions(){
+  const today=_todayStr();
+  return TrSessionDB.all()
+    .filter(s=>s.deliveryType==='External' && s.status!=='cancelled' && s.trainingBondEndDate && s.trainingBondEndDate>=today)
+    .sort((a,b)=>a.trainingBondEndDate<b.trainingBondEndDate?-1:a.trainingBondEndDate>b.trainingBondEndDate?1:0);
+}
+function renderTrainingDashboardActiveBonds(activeBondSessions){
+  const wrap=document.getElementById('tdash-activebonds-list'); if(!wrap) return;
+  if(!activeBondSessions.length){
+    wrap.innerHTML='<div class="dash-empty">No active Training Bonds right now.</div>';
+    return;
+  }
+  const today=_todayStr();
+  const rowsHtml=activeBondSessions.map(s=>{
+    const daysLeft=Math.round((new Date(s.trainingBondEndDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+    return `<tr style="cursor:pointer" onclick="openTrainingDetail('${s.id}')">
+      <td>${Utils.esc(s.trainingProgram||s.code||'Untitled')}</td>
+      <td>${Utils.esc(s.trainingBondEndDate)}</td>
+      <td style="color:${daysLeft<=30?'var(--amber)':'var(--text3)'}">${daysLeft} day${daysLeft!==1?'s':''} left</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`<div style="overflow-x:auto"><table class="dash-tbl">
+    <thead><tr><th>Training Program</th><th>Bond End Date</th><th>Remaining</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table></div>`;
 }
 
 // By Delivery Type table (2026-08-12, per Sandra): breaks the same Scheduled/Completed Hours
@@ -7022,7 +7193,10 @@ function _tdaAttentionItems(){
   const rows=tdashFilteredRows().filter(s=>s.status!=='cancelled');
   const liveRows=rows.filter(s=>{ const st=_tdStatus(s); return st==='Completed'||st==='In Progress'; });
 
+  // External Sessions build (2026-08-13, per Sandra): External has no Training Report tab at
+  // all now -- a report can never be submitted, so it must not be counted as "pending" forever.
   const reportsPendingIds=liveRows.filter(s=>{
+    if(s.deliveryType==='External') return false;
     const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
     return !(rep&&rep.status==='submitted');
   }).map(s=>s.id);
@@ -7305,7 +7479,11 @@ function _tdPersonName(s){
     return o?`${o.firstName} ${o.lastName}`:'—';
   }
   if(grp==='external'){
-    return s.facilitatorName||'—';
+    // Facilitator Name removed entirely for External (2026-08-13, per Sandra) -- List/Calendar
+    // chips now show the accountable L&D Owner instead (Training Provider still shown separately
+    // wherever that's already displayed).
+    const o=s.ldOwnerId?DB.byId(s.ldOwnerId):null;
+    return o?`${o.firstName} ${o.lastName}`:'—';
   }
   if(s.trainerId){
     const t=DB.byId(s.trainerId);
@@ -7483,7 +7661,13 @@ function _tdToggleCustomRangeInputs(){
 }
 
 function tdSetIdFilter(ids,label){
-  tdF.idFilter=ids; tdF.idFilterLabel=label||''; tdPage=1; renderTrainingDelivery();
+  tdF.idFilter=ids; tdF.idFilterLabel=label||''; tdPage=1;
+  // 2026-08-13 (per Sandra): jumping in from a Training Dashboard "Items Requiring Attention"
+  // count (e.g. "15 need a report") should show ALL of those flagged sessions on one page, not
+  // silently truncate to whatever Rows-per-page happens to be set to. Bumps the page size up to
+  // fit them all -- never shrinks it if the existing preference is already bigger.
+  if(ids && ids.length>tdPageSize) tdPageSize=ids.length;
+  renderTrainingDelivery();
 }
 function tdClearIdFilter(){
   tdF.idFilter=null; tdF.idFilterLabel=''; tdPage=1; renderTrainingDelivery();
@@ -7723,6 +7907,7 @@ function renderTDList(rows){
             <option value="10" ${tdPageSize===10?'selected':''}>10</option>
             <option value="25" ${tdPageSize===25?'selected':''}>25</option>
             <option value="50" ${tdPageSize===50?'selected':''}>50</option>
+            ${[10,25,50].includes(tdPageSize)?'':`<option value="${tdPageSize}" selected>${tdPageSize} (all filtered)</option>`}
           </select>
         </div>
       </div>
@@ -7747,7 +7932,7 @@ function renderTDList(rows){
 }
 
 function tdGoPage(p){ tdPage=p; renderTDList(_tdFilteredRows()); }
-function tdSetPageSize(v){ tdPageSize=parseInt(v,10)||10; tdPage=1; renderTDList(_tdFilteredRows()); }
+function tdSetPageSize(v){ tdPageSize=parseInt(v,10)||25; tdPage=1; renderTDList(_tdFilteredRows()); }
 
 // Hour KPI cards are scoped to tdCalCursor's month, so nav must also refresh them.
 function tdCalPrev(){ tdHoursSelectedDay=null; tdCalCursor.setMonth(tdCalCursor.getMonth()-1); renderTDCalendar(_tdFilteredRows()); renderTDMetrics(); }
@@ -7765,10 +7950,10 @@ function _tdCalDuration(s){
   return s.trainingDate||'—';
 }
 function _tdCalTitle(s){
-  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+  const venueName=_venueDisplayName(s);
   const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
   const grp=_tdFieldGroup(s.deliveryType);
-  const personLabel=grp==='owner'?'Owner':(grp==='external'?'Facilitator':'Trainer');
+  const personLabel=grp==='owner'?'Owner':(grp==='external'?'L&D Owner':'Trainer');
   return [
     s.trainingProgram||s.code||'Untitled',
     `${personLabel}: ${_tdPersonName(s)||'—'}`,
@@ -7781,7 +7966,7 @@ function _tdCalTitle(s){
 // native title tooltip (program + person + venue + duration + status).
 function _tdCalChipHtml(s){
   const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
-  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+  const venueName=_venueDisplayName(s);
   const person=_tdPersonName(s);
   return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3">
     <div style="font-weight:600;white-space:normal;word-break:break-word">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
@@ -7891,7 +8076,7 @@ function renderTDCalendar(rows){
         const bc=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
         const radius=`${isStartCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isStartCapped?'10px':'0'}`;
         const top=20+b.lane*BAR_H;
-        const barVenueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+        const barVenueName=_venueDisplayName(s);
         const barPerson=_tdPersonName(s);
         return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box;line-height:1.3">
           <div>● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
@@ -8032,7 +8217,7 @@ function _tdHoursDayPanelHtml(dateStr,stat){
       <div style="font-weight:600;font-size:12px;color:var(--text)">${Utils.esc(s.trainingProgram||s.code||'Untitled')}</div>
       <div style="font-size:10.5px;color:var(--text2);margin-top:2px">${hrs} hrs${extra?' &nbsp;·&nbsp; '+extra:''}</div>
     </div>`;
-  const venueOf=s=>s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'';
+  const venueOf=s=>_venueDisplayName(s);
   const iltHtml=stat.iltSessions.length?stat.iltSessions.map(x=>row(x.s,x.hrs,[_tdPersonName(x.s),venueOf(x.s)].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; '))).join(''):'<div style="font-size:11px;color:var(--text3)">None</div>';
   const extHtml=stat.externalSessions.map(x=>row(x.s,x.hrs,[_tdPersonName(x.s),venueOf(x.s)].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; '))).join('');
   const sltHtml=stat.sltSessions.length?stat.sltSessions.map(x=>{
@@ -8133,13 +8318,30 @@ function _tdToggleTypeFields(){
   const grp=_tdFieldGroup(dt);
   document.getElementById('td-trainer-wrap').classList.toggle('hidden',grp!=='trainer');
   document.getElementById('td-owner-wrap').classList.toggle('hidden',grp!=='owner');
-  document.getElementById('td-facilitator-wrap').classList.toggle('hidden',grp!=='external');
+  // Facilitator Name removed entirely for External (2026-08-13, per Sandra) -- always hidden now.
+  document.getElementById('td-facilitator-wrap').classList.add('hidden');
   document.getElementById('td-provider-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('td-enddate-wrap').classList.toggle('hidden',!_tdShowsDateRange(dt));
-  document.getElementById('td-recording-wrap').classList.toggle('hidden',ownerType);
-  document.getElementById('td-batch-wrap').classList.toggle('hidden',grp==='owner');
+  // Recording Link (2026-08-13 fix): only truly hidden for Self-led (grp==='owner') -- External
+  // was previously swept into the same hidden bucket via ownerType (true for both Self-led AND
+  // External); it now shows, relabeled "Training Bond Document Link".
+  document.getElementById('td-recording-wrap').classList.toggle('hidden',grp==='owner');
+  document.getElementById('td-recording-label').textContent=grp==='external'?'Training Bond Document Link':(ownerType?'Report Link':'Recording Link');
+  // Batch No. (2026-08-13, per Sandra): hidden for External too, not just Self-led.
+  document.getElementById('td-batch-wrap').classList.toggle('hidden',grp==='owner'||grp==='external');
+  // Expected/Maximum Participants (2026-08-13, per Sandra): hidden for External.
+  document.getElementById('td-expected-wrap').classList.toggle('hidden',grp==='external');
+  // External Sessions build (2026-08-13): Classification / RICA Ticket / Bond Period+End Date /
+  // L&D Owner are External-only; Assessment is removed entirely for External (per Sandra).
+  document.getElementById('td-classification-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('td-ricaticket-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('td-bondmonths-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('td-bondend-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('td-ldowner-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('td-assessment-row').classList.toggle('hidden',grp==='external');
   _tdPopulateVenueOptions('td',dt);
   _toggleVenueOtherWrap('td');
+  _tdUpdateBondEndPreview('td');
 }
 
 function openTrainingModal(id){
@@ -8153,6 +8355,10 @@ function openTrainingModal(id){
   document.getElementById('td-trainer').innerHTML='<option value="">— Select Trainer —</option>'+eligibleTrainers.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
   const activeUsers=DB.all().filter(u=>u.isActive||u.id===(s&&s.ownerId)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
   document.getElementById('td-owner').innerHTML='<option value="">— Select Owner —</option>'+activeUsers.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
+  // L&D Owner (2026-08-13, per Sandra): accountable internal L&D team member for External
+  // sessions -- same active-roster pattern as Trainer/Owner above.
+  const eligibleLdOwners=DB.all().filter(u=>u.isActive||u.id===(s&&s.ldOwnerId)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
+  document.getElementById('td-ldowner').innerHTML='<option value="">— Select L&amp;D Owner —</option>'+eligibleLdOwners.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
   _tdPopulateVenueOptions('td',s?.deliveryType||'',s?.venueId||'');
   document.getElementById('td-audience-wrap').innerHTML='<label class="form-label">Audience</label>'+_audienceMultiSelectHtml('td-audience',s?.audience||[]);
 
@@ -8168,12 +8374,17 @@ function openTrainingModal(id){
   document.getElementById('td-facilitator').value=s?.facilitatorName||'';
   document.getElementById('td-provider').value=s?.trainingProvider||'';
   document.getElementById('td-venue').value=s?.venueId||'';
-  document.getElementById('td-venue-other').value='';
+  document.getElementById('td-venue-other').value=s?.venueOtherName||'';
   document.getElementById('td-expected').value=s?.expectedParticipants??'';
   document.getElementById('td-recording').value=s?.recordingLink||'';
   document.getElementById('td-assessment').value=s?.assessmentType||'None';
   document.getElementById('td-passing').value=s?.passingScore??'';
   document.getElementById('td-status').value=s?.status||'scheduled';
+  document.getElementById('td-classification').value=s?.trainingClassification||'';
+  document.getElementById('td-ricaticket').value=s?.ricaTicket||'';
+  document.getElementById('td-bondmonths').value=s?.trainingBondMonths||'';
+  document.getElementById('td-bondend-display').value=s?.trainingBondEndDate||'';
+  document.getElementById('td-ldowner').value=s?.ldOwnerId||'';
   _tdToggleTypeFields();
   openModal('training');
 }
@@ -8188,29 +8399,50 @@ async function saveTrainingModal(){
   const d={
     deliveryType,
     trainingProgram:document.getElementById('td-program').value.trim(),
-    batchNo:document.getElementById('td-batch').value.trim(),
+    // Batch No. (2026-08-13, per Sandra): not collected for External either, not just Self-led.
+    batchNo:grp==='external'?'':document.getElementById('td-batch').value.trim(),
     trainingDate:document.getElementById('td-date').value,
     endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('td-enddate').value||null):null,
     trainerId:grp==='trainer'?(document.getElementById('td-trainer').value||null):null,
     ownerId:grp==='owner'?(document.getElementById('td-owner').value||null):null,
-    facilitatorName:grp==='external'?document.getElementById('td-facilitator').value.trim():null,
+    // Facilitator Name removed entirely for External (2026-08-13, per Sandra) -- field stays
+    // hidden in the DOM; L&D Owner (below) covers accountability instead.
+    facilitatorName:null,
     trainingProvider:grp==='external'?document.getElementById('td-provider').value.trim():null,
-    venueId:_resolveVenueId('td')||null,
+    // L&D Owner (2026-08-13, per Sandra): accountable internal team member for External sessions.
+    ldOwnerId:grp==='external'?(document.getElementById('td-ldowner').value||null):null,
+    ..._tdResolveVenue('td'),
     audience:_readMultiSelect('td-audience'),
-    expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
-    recordingLink:ownerType?'':document.getElementById('td-recording').value.trim(),
-    assessmentType:document.getElementById('td-assessment').value,
-    passingScore:passingRaw?parseInt(passingRaw,10):null,
-    status:document.getElementById('td-status').value
+    // Expected/Maximum Participants (2026-08-13, per Sandra): not collected for External.
+    expectedParticipants:grp==='external'?null:(expectedRaw?parseInt(expectedRaw,10):null),
+    // Recording Link / Report Link / Training Bond Document Link (2026-08-13 fix): previously
+    // cleared for ALL ownerType deliveries (Self-led AND External) -- now only cleared for
+    // Self-led (grp==='owner'); External keeps it (relabeled, holds the Bond Document Link).
+    recordingLink:grp==='owner'?'':document.getElementById('td-recording').value.trim(),
+    // Assessment removed entirely for External (per Sandra) -- cleared on save regardless of
+    // what the (now-hidden) dropdown/field still hold in the DOM.
+    assessmentType:grp==='external'?'None':document.getElementById('td-assessment').value,
+    passingScore:grp==='external'?null:(passingRaw?parseInt(passingRaw,10):null),
+    status:document.getElementById('td-status').value,
+    // External-only fields (2026-08-13): Training Classification, RICA Ticket, and Training Bond
+    // Period + auto-computed End Date (anchored to endDate||trainingDate, see _tdBondEndDate).
+    trainingClassification:grp==='external'?(document.getElementById('td-classification').value||null):null,
+    ricaTicket:grp==='external'?document.getElementById('td-ricaticket').value.trim():null,
+    trainingBondMonths:grp==='external'?(document.getElementById('td-bondmonths').value?parseInt(document.getElementById('td-bondmonths').value,10):null):null
   };
+  if(grp==='external'){
+    const anchor=d.endDate||d.trainingDate;
+    d.trainingBondEndDate=_tdBondEndDate(anchor,d.trainingBondMonths);
+  } else {
+    d.trainingBondEndDate=null;
+  }
   const errs=[];
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
-  if(grp!=='owner' && !d.batchNo) errs.push('Batch No. is required.');
+  if(grp!=='owner' && grp!=='external' && !d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
   if(grp==='trainer' && !d.trainerId) errs.push('Please select a Trainer.');
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
-  if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
   if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('td-venue').value)&&!(document.getElementById('td-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
@@ -8221,7 +8453,6 @@ async function saveTrainingModal(){
   const saveBtn=document.querySelector('#modal-training .btn-primary'); const origTxt=saveBtn?saveBtn.textContent:'';
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
-    d.venueId=await _ensureVenueId('td',d.venueId,_tdVenueTypeFor(deliveryType));
     if(id){
       await TrSessionDB.update(id,d); toast('Training updated.','success');
       closeModal('training');
@@ -8397,7 +8628,47 @@ function tdDetailSwitchTab(tab){
   renderTrainingDetail();
 }
 
+// Session edit restriction (2026-08-13, per Sandra): only the person(s) actually responsible for
+// delivering a session can edit it -- Trainer/Co-Facilitator for ILT/VILT, Owner for Self-led, and
+// whoever created the record for External (there's no system-user field for an outside
+// facilitator/training provider -- facilitatorName/trainingProvider are free text, not accounts).
+// Everyone else gets view-only, UNLESS they're somewhere above that responsible person in the
+// reporting chain -- walked all the way up via supervisorId (however many levels that actually
+// is, not a fixed depth), matching how Sandra described it ("supervisor, or supervisor's manager,
+// or director"). Admins always retain full access, same as every other permission gate in this file.
+function _tdResponsiblePersonIds(s){
+  const grp=_tdFieldGroup(s.deliveryType);
+  if(grp==='trainer') return [s.trainerId,s.coFacilitatorId].filter(Boolean);
+  if(grp==='owner') return [s.ownerId].filter(Boolean);
+  return [s.createdBy].filter(Boolean); // external
+}
+function _tdIsAboveInChain(personId,meId){
+  let cur=personId?DB.byId(personId):null;
+  const seen=new Set();
+  while(cur && cur.supervisorId && !seen.has(cur.id)){
+    seen.add(cur.id);
+    if(cur.supervisorId===meId) return true;
+    cur=DB.byId(cur.supervisorId);
+  }
+  return false;
+}
+function _tdCanEditSession(s){
+  if(!s) return false;
+  const me=Auth.user; if(!me) return false;
+  if(me.isAdmin) return true;
+  // Safety net: whoever CREATED the record always keeps edit access, regardless of delivery
+  // type or who's since been assigned as Trainer/Co-Facilitator/Owner. Without this, an L&D
+  // coordinator who schedules a session but isn't its trainer (or in that trainer's reporting
+  // chain) would lock themselves out the moment they assign a trainer -- including on a brand-new
+  // session they just created, where no Trainer/Owner has been picked yet at all.
+  if(s.createdBy && s.createdBy===me.id) return true;
+  const responsible=_tdResponsiblePersonIds(s);
+  if(responsible.includes(me.id)) return true;
+  return responsible.some(id=>_tdIsAboveInChain(id,me.id));
+}
 function tdDetailToggleEdit(){
+  const s=TrSessionDB.byId(_tdDetailId);
+  if(!_tdCanEditSession(s)){ toast('Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session.','error'); return; }
   _tdDetailEditing=true;
   renderTrainingDetail();
   armLeaveGuard('tdd-session-info-card');
@@ -8409,6 +8680,10 @@ function tdDetailCancelEdit(){
 
 async function tdDetailSave(){
   const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
+  // Edit-permission guard (2026-08-13, per Sandra) -- defense in depth alongside the Edit
+  // link itself being hidden for view-only users; re-checked here in case of a stale/tampered
+  // DOM state (same pattern as the existing "Completed" status guard just below).
+  if(!_tdCanEditSession(s)){ toast('Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session.','error'); return; }
   const deliveryType=document.getElementById('tdd-type').value;
   const ownerType=_tdIsOwnerType(deliveryType);
   const grp=_tdFieldGroup(deliveryType);
@@ -8428,27 +8703,35 @@ async function tdDetailSave(){
   const d={
     deliveryType,
     trainingProgram:document.getElementById('tdd-program').value.trim(),
-    batchNo:document.getElementById('tdd-batch').value.trim(),
+    // Batch No. (2026-08-13, per Sandra): not collected for External either, not just Self-led.
+    batchNo:grp==='external'?'':document.getElementById('tdd-batch').value.trim(),
     trainingDate:document.getElementById('tdd-date').value,
     endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('tdd-enddate').value||null):null,
     trainerId:(grp==='trainer'&&!isGuestTrainer)?(trainerSelVal||null):null,
     guestTrainerName:(grp==='trainer'&&isGuestTrainer)?(document.getElementById('tdd-guest-name').value.trim()||null):null,
     ownerId:grp==='owner'?(document.getElementById('tdd-owner').value||null):null,
-    facilitatorName:grp==='external'?document.getElementById('tdd-facilitator').value.trim():null,
+    // Facilitator Name removed entirely for External (2026-08-13, per Sandra) -- the field no
+    // longer exists in this form; L&D Owner (below) covers accountability instead.
+    facilitatorName:null,
     trainingProvider:grp==='external'?document.getElementById('tdd-provider').value.trim():null,
+    // L&D Owner (2026-08-13, per Sandra): accountable internal team member for External sessions.
+    ldOwnerId:grp==='external'?(document.getElementById('tdd-ldowner').value||null):null,
     coFacilitatorId:(grp==='trainer'&&!isGuestCofac)?(cofacSelVal||null):null,
     coFacilitatorGuestName:(grp==='trainer'&&isGuestCofac)?(document.getElementById('tdd-cofacilitator-guest-name').value.trim()||null):null,
-    venueId:_resolveVenueId('tdd')||null,
+    ..._tdResolveVenue('tdd'),
     audience:_readMultiSelect('tdd-audience'),
-    expectedParticipants:expectedRaw?parseInt(expectedRaw,10):null,
+    // Expected/Maximum Participants (2026-08-13, per Sandra): not collected for External.
+    expectedParticipants:grp==='external'?null:(expectedRaw?parseInt(expectedRaw,10):null),
     durationHours:durationRaw?parseFloat(durationRaw):null,
     category:document.getElementById('tdd-category').value||null,
     description:document.getElementById('tdd-description').value.trim(),
-    // Report Link / Recording Link (2026-08-06, Phase62): Self-led sessions now capture this
-    // value too (relabeled "Report Link" in the UI) -- previously forced to '' for ownerType.
+    // Report Link / Recording Link / Training Bond Document Link (2026-08-06 Phase62, extended
+    // 2026-08-13): captured for every delivery type now, relabeled per type in the UI.
     recordingLink:document.getElementById('tdd-recording').value.trim(),
-    assessmentType:document.getElementById('tdd-assessment').value,
-    passingScore:passingRaw?parseInt(passingRaw,10):null,
+    // Assessment removed entirely for External (per Sandra, 2026-08-13) -- cleared on save
+    // regardless of what the (now-hidden) dropdown/field still hold in the DOM.
+    assessmentType:grp==='external'?'None':document.getElementById('tdd-assessment').value,
+    passingScore:grp==='external'?null:(passingRaw?parseInt(passingRaw,10):null),
     modalityId:_tdShowsModality(deliveryType)?(document.getElementById('tdd-modalityid').value||null):null,
     status:document.getElementById('tdd-status').value,
     // Mandatory tag (2026-08-06, Phase62): Self-led-only field; checkbox stays in the DOM (just
@@ -8457,12 +8740,23 @@ async function tdDetailSave(){
     isMandatory:document.getElementById('tdd-mandatory')?document.getElementById('tdd-mandatory').checked:false,
     // Trainer Checklist template selector (Phase D2, 2026-08-07): ILT-only, mirrors the
     // Modality field's "only meaningful for certain delivery types, cleared otherwise" pattern.
-    checklistTemplateId:deliveryType==='ILT'?(document.getElementById('tdd-checklisttpl')?.value||null):null
+    checklistTemplateId:deliveryType==='ILT'?(document.getElementById('tdd-checklisttpl')?.value||null):null,
+    // External-only fields (2026-08-13): Training Classification, RICA Ticket, and Training Bond
+    // Period + auto-computed End Date (anchored to endDate||trainingDate, see _tdBondEndDate).
+    trainingClassification:grp==='external'?(document.getElementById('tdd-classification').value||null):null,
+    ricaTicket:grp==='external'?document.getElementById('tdd-ricaticket').value.trim():null,
+    trainingBondMonths:grp==='external'?(document.getElementById('tdd-bondmonths').value?parseInt(document.getElementById('tdd-bondmonths').value,10):null):null
   };
+  if(grp==='external'){
+    const anchor=d.endDate||d.trainingDate;
+    d.trainingBondEndDate=_tdBondEndDate(anchor,d.trainingBondMonths);
+  } else {
+    d.trainingBondEndDate=null;
+  }
   const errs=[];
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
   if(!d.trainingProgram) errs.push('Training Program / Title is required.');
-  if(grp!=='owner' && !d.batchNo) errs.push('Batch No. is required.');
+  if(grp!=='owner' && grp!=='external' && !d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
   if(!d.description) errs.push('Description is required.');
   // Guest Trainer fallback (Phase38 item 1): either a real system-user Trainer OR a Guest
@@ -8470,7 +8764,6 @@ async function tdDetailSave(){
   // "!d.trainerId" check).
   if(grp==='trainer' && !d.trainerId && !d.guestTrainerName) errs.push('Please select a Trainer, or enter a Guest Trainer Name.');
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
-  if(grp==='external' && !d.facilitatorName) errs.push('Please enter the Facilitator Name.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
   if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Delivery Method is required for ILT, Self-led, and External sessions.');
   // Phase38 item 2 (Sandra's explicit request): make ALL Session Information fields required for
@@ -8485,6 +8778,7 @@ async function tdDetailSave(){
     if(d.expectedParticipants==null) errs.push('Maximum Participants is required for ILT sessions.');
     if(d.durationHours==null) errs.push('Duration (in Hours) is required for ILT sessions.');
     if(!d.category) errs.push('Category is required for ILT sessions.');
+    if(!d.checklistTemplateId) errs.push('Please select a Trainer Checklist template, or choose "No Checklist Required".');
   }
   if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
   if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
@@ -8501,11 +8795,31 @@ async function tdDetailSave(){
   const errEl=document.getElementById('tdd-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
+
+  // No Checklist Required + an already-started checklist (2026-08-13, per Sandra): switching to
+  // the opt-out sentinel while this session already has checklist data is destructive by design
+  // -- confirm before PERMANENTLY deleting it (replaces the earlier "kept as-is" approach, which
+  // Sandra asked to drop in favor of an explicit delete-with-warning).
+  const existingChecklistRow=deliveryType==='ILT'?SessionChecklistDB.all().find(r=>r.sessionId===_tdDetailId):null;
+  if(d.checklistTemplateId===CKTPL_NONE_SENTINEL && existingChecklistRow && (existingChecklistRow.items||[]).length){
+    const items=existingChecklistRow.items||[];
+    const doneCount=items.filter(i=>i.completedOn||i.isNA).length;
+    const noteCount=items.reduce((n,i)=>n+((i.notes||[]).length),0);
+    confirm$('Delete Existing Checklist Data?',`This session already has a checklist in progress ("<strong>${Utils.esc(existingChecklistRow.templateTitle||'a template')}</strong>" — ${items.length} item${items.length!==1?'s':''}, ${doneCount} marked done/N-A${noteCount?`, ${noteCount} note${noteCount!==1?'s':''}`:''}). Switching to <strong>"No Checklist Required"</strong> will permanently delete this checklist and everything on it. This cannot be undone. Continue?`,'Delete & Switch',async()=>{
+      await _tdDetailPerformSave(d,deliveryType,existingChecklistRow);
+    });
+    return;
+  }
+  await _tdDetailPerformSave(d,deliveryType,null);
+}
+async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete){
   const saveBtn=document.getElementById('tdd-save-btn'); const origTxt=saveBtn?saveBtn.textContent:'';
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
-    d.venueId=await _ensureVenueId('tdd',d.venueId,_tdVenueTypeFor(deliveryType));
     await TrSessionDB.update(_tdDetailId,d);
+    if(checklistRowToDelete){
+      await SessionChecklistDB.delete(checklistRowToDelete.id);
+    }
     toast('Training updated.','success');
     disarmLeaveGuard();
     _tdDetailEditing=false;
@@ -8601,6 +8915,11 @@ const _tdcklAutoInitInFlight=new Set();
 // date gate here -- same effect, no migration, and automatically covers any pre-Aug-1 session
 // created later (backfilled historical data, etc.) without needing to remember to tag it.
 const CKTPL_FEATURE_START_DATE='2026-08-01';
+// Sentinel stored in training_sessions.checklist_template_id (plain text column, no FK
+// constraint -- same pattern as the '__SME__' guest-trainer sentinel elsewhere in this file) to
+// mean "admin explicitly opted this session out of a checklist," distinct from null/'' which now
+// means "hasn't been decided yet" and fails required-field validation (2026-08-13, per Sandra).
+const CKTPL_NONE_SENTINEL='__NONE__';
 
 // Manual-override banner (2026-08-12, per Sandra) is prepended here rather than threaded through
 // every early-return branch below -- _tdManualOverrideBanner(s) resolves to '' for the vast
@@ -8622,6 +8941,13 @@ function _tdChecklistRenderTabBody(s){
   }
   const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
   if(!row){
+    if(s.checklistTemplateId===CKTPL_NONE_SENTINEL){
+      return `<div class="empty-state" style="padding:60px 20px">
+        <div class="empty-ico">✓</div>
+        <div class="empty-title">No checklist required</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">This session was marked "No Checklist Required" on the <a href="javascript:void(0)" onclick="tdDetailSwitchTab('overview')" style="color:var(--pri);font-weight:600;text-decoration:none">Overview tab</a>.</div>
+      </div>`;
+    }
     if(!s.checklistTemplateId){
       return `<div class="empty-state" style="padding:60px 20px">
         <div class="empty-ico">📋</div>
@@ -8649,13 +8975,34 @@ function _tdChecklistRenderTabBody(s){
       <div style="font-size:13px;color:var(--text3);margin-top:4px">This session's checklist is being created from the template (${(t.items||[]).length} item${(t.items||[]).length!==1?'s':''}) -- editing the template later won't change it.</div>
     </div>`;
   }
-  const mismatchBanner=(row.templateId!==s.checklistTemplateId)?(()=>{
-    const newT=s.checklistTemplateId?ChecklistTemplateDB.byId(s.checklistTemplateId):null;
-    return `<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-      <div><strong>The assigned template has changed</strong> since this checklist was started (currently tracking "${Utils.esc(row.templateTitle||'a previous template')}"). ${newT?`Reset to "${Utils.esc(newT.title)}"?`:'The newly selected template could not be found.'}</div>
-      ${newT?`<button class="btn btn-sm btn-secondary" style="flex-shrink:0" onclick="_tdcklResetToTemplate('${s.id}','${newT.id}')">Reset Checklist</button>`:''}
-    </div>`;
-  })():'';
+  const mismatchBanner=(()=>{
+    // Note: switching to "No Checklist Required" while a checklist already exists is now handled
+    // at SAVE time (tdDetailSave) -- it prompts to permanently delete the existing checklist data
+    // rather than landing here, so this render-time branch should be unreachable in normal use.
+    // No dedicated banner needed for that case per Sandra (2026-08-13); left to fall through to
+    // the generic "template changed" branch below as a harmless fallback if it's ever hit anyway
+    // (e.g. a delete that failed silently).
+    if(row.templateId!==s.checklistTemplateId){
+      const newT=s.checklistTemplateId?ChecklistTemplateDB.byId(s.checklistTemplateId):null;
+      return `<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><strong>The assigned template has changed</strong> since this checklist was started (currently tracking "${Utils.esc(row.templateTitle||'a previous template')}"). ${newT?`Reset to "${Utils.esc(newT.title)}"?`:'The newly selected template could not be found.'}</div>
+        ${newT?`<button class="btn btn-sm btn-secondary" style="flex-shrink:0" onclick="_tdcklResetToTemplate('${s.id}','${newT.id}')">Reset Checklist</button>`:''}
+      </div>`;
+    }
+    // Same template, but its item definitions (task text / mandatory flag / timeline / phase)
+    // have been edited since this session's checklist was snapshotted (2026-08-13, per Sandra's
+    // report that items she'd since marked Optional on the template were still showing as
+    // Mandatory on already-started sessions) -- the old mismatchBanner only ever compared
+    // templateId, so an in-place template edit like this was never detected or offered a fix.
+    const liveT=ChecklistTemplateDB.byId(s.checklistTemplateId);
+    if(liveT && _tdcklTemplateDrifted(row,liveT)){
+      return `<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><strong>The "${Utils.esc(liveT.title)}" template has been edited</strong> since this checklist was started -- item text, Mandatory flags, timelines, or phases may be out of date below.</div>
+        <button class="btn btn-sm btn-secondary" style="flex-shrink:0" onclick="_tdcklSyncTemplateFields('${s.id}','${liveT.id}')">Sync Checklist (keeps progress)</button>
+      </div>`;
+    }
+    return '';
+  })();
   const backfillBanner=_tdcklBackfillUnlocked(s.id)?`<div style="background:#fef3c7;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:8px">
     🔓 <strong>Backfill mode is ON</strong> for this session — the normal lock dates are bypassed so historical data can be entered. An admin can turn this off from Settings &gt; Checklist Backfill.
   </div>`:'';
@@ -8664,7 +9011,7 @@ function _tdChecklistRenderTabBody(s){
 
 async function _tdcklInitChecklist(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
-  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false}));
+  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]}));
   try{
     await SessionChecklistDB.create({sessionId,templateId,templateTitle:t.title,items});
     renderTrainingDetail();
@@ -8672,11 +9019,54 @@ async function _tdcklInitChecklist(sessionId,templateId){
   }catch(e){ /* error already surfaced */ }
 }
 
+// Compares only the DEFINITIONAL fields of a session checklist's non-custom items against the
+// live template's current items (ignores completion state: completedOn/completedOnTs/isNA, and
+// ignores custom:true items which were never from the template to begin with). Order-sensitive
+// on purpose -- Sandra's templates are edited as an ordered list, so a reorder is itself a
+// meaningful drift worth surfacing, not just field-value changes within the same slot.
+function _tdcklTemplateDrifted(row,template){
+  if(!template) return false;
+  const norm=i=>({task:(i.task||'').trim(),description:(i.description||'').trim(),timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre'});
+  const rowDefItems=(row.items||[]).filter(i=>!i.custom).map(norm);
+  const tplItems=(template.items||[]).map(norm);
+  return JSON.stringify(rowDefItems)!==JSON.stringify(tplItems);
+}
+// Non-destructive counterpart to _tdcklResetToTemplate below: refreshes each item's definitional
+// fields from the template (matched by exact task text) while PRESERVING completedOn/
+// completedOnTs/isNA/notes -- for the common case where a template edit (e.g. un-checking
+// Mandatory) shouldn't cost anyone their already-recorded progress. Template items not yet present
+// in this session are appended as new, Not Started items; session-only custom items and any
+// template item since removed/renamed are left untouched (matched-by-task-text, so a renamed task
+// is treated as "removed old + added new" -- acceptable given task names are meant to be stable
+// checklist wording, not something edited casually).
+function _tdcklSyncTemplateFields(sessionId,templateId){
+  const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
+  const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return;
+  confirm$('Sync Checklist with Template',`Update this checklist's item text, description, Mandatory flag, timeline, and phase from "<strong>${Utils.esc(t.title)}</strong>"? Progress (Completed On dates, N/A marks, notes) is kept -- items are matched by task name. Continue?`,'Sync',async()=>{
+    const tplByTask=new Map((t.items||[]).map(i=>[(i.task||'').trim(),{description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre'}]));
+    const items=(row.items||[]).map(it=>{
+      const def=tplByTask.get((it.task||'').trim());
+      return def?{...it,...def}:it;
+    });
+    const existingTasks=new Set(items.map(it=>(it.task||'').trim()));
+    (t.items||[]).forEach(i=>{
+      const task=(i.task||'').trim();
+      if(!existingTasks.has(task)){
+        items.push({task,description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]});
+      }
+    });
+    try{
+      await SessionChecklistDB.update(row.id,{templateId,templateTitle:t.title,items});
+      renderTrainingDetail();
+      toast('Checklist synced with the template — progress kept.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
 function _tdcklResetToTemplate(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
   const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return;
   confirm$('Reset Checklist',`Reset this session's checklist to "<strong>${Utils.esc(t.title)}</strong>"? All current progress (statuses and Completed On dates) will be lost.`,'Reset',async()=>{
-    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false}));
+    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]}));
     try{
       await SessionChecklistDB.update(row.id,{templateId,templateTitle:t.title,items});
       renderTrainingDetail();
@@ -8785,6 +9175,26 @@ function _tdcklPhaseLocked(s,phase){
   }
   return false;
 }
+// Human-readable reason a locked phase locked, for the Add-Item box's message (2026-08-13, per
+// Sandra) -- doesn't change any lock logic, just explains _tdcklPhaseLocked's result. Returns ''
+// if not locked or the reason can't be pinned to a specific date (e.g. locked via report
+// submission rather than a date threshold).
+function _tdcklPhaseLockReason(s,phase){
+  if(!_tdcklPhaseLocked(s,phase)) return '';
+  if(phase==='pre'){
+    const lockDate=_tdcklAddWorkingDays(s.trainingDate,2);
+    return lockDate?Utils.formatDate(lockDate):'';
+  }
+  if(phase==='post'){
+    const end=s.endDate||s.trainingDate;
+    const lockDate=_tdcklAddDays(end,5);
+    if(lockDate && _todayStr()>=lockDate) return Utils.formatDate(lockDate);
+    const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+    if(report && report.status==='submitted') return 'report submission';
+    return '';
+  }
+  return '';
+}
 // Small inline status icon for the table (distinct from the 42px KPI-card icons elsewhere) --
 // empty grey ring / amber clock / green check, or a blue "N/A" pill matching the legend.
 function _tdcklStatusIconHtml(statusId){
@@ -8853,11 +9263,92 @@ async function _tdcklToggleNA(rowId,itemIndex){
 // template") -- appended directly to this session's own snapshot, tagged custom:true purely for
 // bookkeeping/future filtering; it's already impossible for this to write back to
 // checklist_templates since the two are never synced in that direction.
-async function _tdcklAddCustomItem(rowId,phase,taskText){
+// Notes/comments per checklist item (Phase R, 2026-08-13, per Sandra: "similar to Excel's
+// comment feature" -- click-to-open thread rather than a hover-floating box, since a real
+// hover-anchored popover needs positioning/z-index plumbing this file doesn't have a pattern for
+// yet, and Sandra's own wording allowed "a pop-up OR floating box"). Notes live inside each item's
+// own `notes` array (jsonb, no new table/column needed -- same reasoning as everything else on
+// this checklist), each entry {id, text, authorId, authorName, ts, parentId}. parentId===null is
+// a top-level note; parentId=<note id> is a one-level-deep reply (matches "allow replies too"
+// without building arbitrary nested threading no one asked for).
+// Bubble is ALWAYS present and clickable (there has to be some way to add the FIRST note), but
+// styled muted/outline when empty vs. filled-and-colored with a count once notes exist -- reads
+// as "no note" at a glance while still being the add-a-note entry point. Flagging this as a
+// deliberate compromise against the literal "if none, then no bubble" spec.
+function _tdcklNoteBubbleHtml(rowId,itemIndex,count){
+  const has=count>0;
+  return `<button type="button" onclick="_tdcklOpenNotes('${rowId}',${itemIndex})" title="${has?count+' note'+(count!==1?'s':''):'Add a note'}" style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;margin-left:4px;border:none;background:${has?'#dbeafe':'transparent'};color:${has?'#1d4ed8':'#cbd5e1'};border-radius:10px;padding:1px 6px 1px 4px;cursor:pointer;font-size:10.5px;font-weight:700;line-height:1.5">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="${has?'#1d4ed8':'none'}" stroke="${has?'#1d4ed8':'#cbd5e1'}" stroke-width="1.8"><path d="M4 4h16v12H8l-4 4V4z" stroke-linejoin="round"/></svg>${has?count:''}
+  </button>`;
+}
+let _tdcklNoteCtx=null; // {rowId,itemIndex}
+function _tdcklOpenNotes(rowId,itemIndex){
+  _tdcklNoteCtx={rowId,itemIndex};
+  _tdcklReplyingTo=null;
+  _tdcklRenderNoteThread();
+  openModal('checklist-note');
+  setTimeout(()=>document.getElementById('tdckl-note-input')?.focus(),50);
+}
+let _tdcklReplyingTo=null; // note id currently showing an inline reply box, or null
+function _tdcklNoteTs(ts){
+  if(!ts) return '';
+  const d=new Date(ts);
+  return isNaN(d)?'':d.toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'});
+}
+function _tdcklRenderNoteThread(){
+  const wrap=document.getElementById('tdckl-note-thread'); if(!wrap||!_tdcklNoteCtx) return;
+  const row=SessionChecklistDB.byId(_tdcklNoteCtx.rowId);
+  const item=row&&row.items&&row.items[_tdcklNoteCtx.itemIndex];
+  const titleEl=document.getElementById('tdckl-note-title'); if(titleEl) titleEl.textContent=item?item.task:'Notes';
+  if(!item){ wrap.innerHTML='<div style="font-size:12.5px;color:var(--text3)">This item no longer exists.</div>'; return; }
+  const notes=item.notes||[];
+  const top=notes.filter(n=>!n.parentId);
+  const repliesOf=id=>notes.filter(n=>n.parentId===id);
+  const noteHtml=n=>`<div style="padding:8px 0;border-bottom:1px solid var(--border-lt)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <strong style="font-size:12.5px">${Utils.esc(n.authorName||'—')}</strong>
+        <span style="font-size:10.5px;color:var(--text3);white-space:nowrap">${Utils.esc(_tdcklNoteTs(n.ts))}</span>
+      </div>
+      <div style="font-size:12.5px;color:var(--text2);margin-top:3px;white-space:pre-wrap;word-break:break-word">${Utils.esc(n.text)}</div>
+      <a href="javascript:void(0)" onclick="_tdcklToggleReply('${n.id}')" style="font-size:11px;color:var(--pri);text-decoration:none;font-weight:600">Reply</a>
+      ${_tdcklReplyingTo===n.id?`<div style="display:flex;gap:6px;margin-top:6px">
+        <input type="text" id="tdckl-reply-${n.id}" class="form-control" style="font-size:12px;padding:5px 8px" placeholder="Write a reply…" onkeydown="if(event.key==='Enter'){_tdcklPostNote('${n.id}');}">
+        <button class="btn btn-sm btn-secondary" onclick="_tdcklPostNote('${n.id}')">Reply</button>
+      </div>`:''}
+      ${repliesOf(n.id).map(r=>`<div style="margin-left:20px;margin-top:6px;padding-left:10px;border-left:2px solid var(--border-lt)">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+          <strong style="font-size:12px">${Utils.esc(r.authorName||'—')}</strong>
+          <span style="font-size:10px;color:var(--text3);white-space:nowrap">${Utils.esc(_tdcklNoteTs(r.ts))}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;white-space:pre-wrap;word-break:break-word">${Utils.esc(r.text)}</div>
+      </div>`).join('')}
+    </div>`;
+  wrap.innerHTML=top.length?top.map(noteHtml).join(''):'<div style="font-size:12.5px;color:var(--text3);padding:6px 0">No notes yet -- be the first to leave one below.</div>';
+}
+function _tdcklToggleReply(noteId){ _tdcklReplyingTo=(_tdcklReplyingTo===noteId)?null:noteId; _tdcklRenderNoteThread(); setTimeout(()=>document.getElementById(`tdckl-reply-${noteId}`)?.focus(),50); }
+async function _tdcklPostNote(parentId){
+  if(!_tdcklNoteCtx) return;
+  const inputEl=parentId?document.getElementById(`tdckl-reply-${parentId}`):document.getElementById('tdckl-note-input');
+  const text=(inputEl?.value||'').trim(); if(!text) return;
+  const row=SessionChecklistDB.byId(_tdcklNoteCtx.rowId); if(!row) return;
+  const note={id:Utils.uid(), text, authorId:Auth.user.id, authorName:`${Auth.user.firstName} ${Auth.user.lastName}`, ts:new Date().toISOString(), parentId:parentId||null};
+  const items=(row.items||[]).map((it,i)=>i===_tdcklNoteCtx.itemIndex?{...it,notes:[...(it.notes||[]),note]}:it);
+  try{
+    await SessionChecklistDB.update(row.id,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
+    _tdcklReplyingTo=null;
+    if(inputEl) inputEl.value='';
+    _tdcklRenderNoteThread();
+    renderTrainingDetail();
+  }catch(e){ /* error already surfaced */ }
+}
+async function _tdcklAddCustomItem(rowId,phase,taskText,timelineDays){
   const task=(taskText||'').trim(); if(!task) return;
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
   if(_tdcklGuardLocked(row,phase)) return;
-  const items=[...(row.items||[]),{task,description:'',timelineDays:0,mandatory:false,phase,completedOn:null,completedOnTs:null,isNA:false,custom:true}];
+  const days=Math.max(0,parseInt(timelineDays,10)||0);
+  // Mandatory defaults to true for session-added items (2026-08-13, per Sandra: "since it's been
+  // added, it is needed") -- unlike template items, which default to Optional/false.
+  const items=[...(row.items||[]),{task,description:'',timelineDays:days,mandatory:true,phase,completedOn:null,completedOnTs:null,isNA:false,custom:true,notes:[]}];
   try{
     await SessionChecklistDB.update(rowId,{sessionId:row.sessionId,templateId:row.templateId,templateTitle:row.templateTitle,items});
     renderTrainingDetail();
@@ -8880,18 +9371,45 @@ function _tdcklDeleteItem(rowId,itemIndex){
     }catch(e){ /* error already surfaced */ }
   });
 }
-function _tdcklAddItemRowHtml(rowId,phaseId,locked){
+function _tdcklAddItemRowHtml(rowId,phaseId,locked,lockDetail){
   if(locked){
-    return `<div style="margin-top:8px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px">${_tdIconSvg('lock','#94a3b8',13)} This phase is locked -- items can no longer be added.</div>`;
+    // 2026-08-13 (per Sandra, reported as "unable to add items"): the add-item box was silently
+    // disappearing once a phase locked, with a generic "locked" message that didn't say WHY or
+    // what to do about it -- easy to mistake for a bug. Now names the actual lock date and points
+    // admins at the existing Checklist Backfill unlock (Settings > Checklist Templates) instead.
+    const isAdmin=!!(Auth.user&&Auth.user.isAdmin);
+    return `<div style="margin-top:8px;font-size:11px;color:var(--text3);display:flex;align-items:flex-start;gap:5px">
+      ${_tdIconSvg('lock','#94a3b8',13)}
+      <span>This phase locked${lockDetail?` on <strong>${Utils.esc(lockDetail)}</strong>`:''} -- items can no longer be added or removed.${isAdmin?' Need to backfill this session? Use <strong>Settings &gt; Checklist Templates &gt; Checklist Backfill</strong> to temporarily unlock it.':' Ask an admin to unlock it via Checklist Backfill if this needs backfilling.'}</span>
+    </div>`;
   }
   const inputId=`tdckl-newitem-${rowId}-${phaseId}`;
+  const dayInputId=`tdckl-newitem-days-${rowId}-${phaseId}`;
+  const dayWord=phaseId==='post'?'days after':'days before';
+  // Timeline/target date + Mandatory for session-added items (2026-08-13, per Sandra): same
+  // Timeline field the Checklist Template editor offers, so an ad-hoc item gets a real target
+  // date instead of always defaulting to "Day of" (timelineDays:0). Also defaults to Mandatory --
+  // Sandra's reasoning: if someone bothered adding it to this specific session, it's needed, not
+  // optional (can still be unmarked afterward there's no UI for that yet on session-added items,
+  // same limitation as template items today -- toggling mandatory post-add isn't exposed).
   return `<div style="margin-top:8px">
-    <div style="display:flex;gap:6px">
-      <input type="text" id="${inputId}" class="form-control" style="font-size:12px;padding:5px 8px" placeholder="Add an item for this session…" onkeydown="if(event.key==='Enter'){_tdcklAddCustomItem('${rowId}','${phaseId}',this.value);this.value='';}">
-      <button class="btn btn-sm btn-secondary" onclick="const el=document.getElementById('${inputId}');_tdcklAddCustomItem('${rowId}','${phaseId}',el.value);el.value='';">+ Add</button>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="${inputId}" class="form-control" style="font-size:12px;padding:5px 8px;flex:1;min-width:160px" placeholder="Add an item for this session…" onkeydown="if(event.key==='Enter'){_tdcklAddCustomItemFromRow('${rowId}','${phaseId}');}">
+      <span style="font-size:11px;color:var(--text3);white-space:nowrap">Timeline:</span>
+      <input type="number" min="0" step="1" id="${dayInputId}" class="form-control" style="font-size:12px;padding:5px 6px;width:56px" value="0" onkeydown="if(event.key==='Enter'){_tdcklAddCustomItemFromRow('${rowId}','${phaseId}');}">
+      <span style="font-size:11px;color:var(--text3);white-space:nowrap">${dayWord}</span>
+      <button class="btn btn-sm btn-secondary" onclick="_tdcklAddCustomItemFromRow('${rowId}','${phaseId}')">+ Add</button>
     </div>
-    <div style="font-size:10px;color:var(--text3);margin-top:3px">Session-only -- won't be added to the Checklist Template.</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px">Session-only -- won't be added to the Checklist Template. Added as Mandatory.</div>
   </div>`;
+}
+function _tdcklAddCustomItemFromRow(rowId,phaseId){
+  const taskEl=document.getElementById(`tdckl-newitem-${rowId}-${phaseId}`);
+  const dayEl=document.getElementById(`tdckl-newitem-days-${rowId}-${phaseId}`);
+  const timelineDays=Math.max(0,parseInt(dayEl?.value,10)||0);
+  _tdcklAddCustomItem(rowId,phaseId,taskEl?.value||'',timelineDays);
+  if(taskEl) taskEl.value='';
+  if(dayEl) dayEl.value='0';
 }
 
 function _tdcklLegendHtml(){
@@ -8932,9 +9450,10 @@ function _tdcklBoardHtml(s,row){
       const completedOnVal=it.completedOn||'';
       const mandatoryMark=it.mandatory?'<span title="Mandatory" style="color:#dc2626;font-weight:700;margin-left:3px">*</span>':'';
       const infoIcon=it.description?`<span title="${Utils.esc(it.description)}" style="display:inline-flex;vertical-align:middle;margin-left:4px;cursor:help"><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#94a3b8" stroke-width="1.6"/><line x1="12" y1="11" x2="12" y2="16.5" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.3" r="1.1" fill="#94a3b8"/></svg></span>`:'';
+      const noteBubble=_tdcklNoteBubbleHtml(row.id,it._i,(it.notes||[]).length);
       return `<tr>
         <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${it._i+1}</td>
-        <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}</td>
+        <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}${noteBubble}</td>
         <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>
         <td style="padding:6px 4px;vertical-align:top">
           <span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>
@@ -8973,7 +9492,7 @@ function _tdcklBoardHtml(s,row){
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
-        ${_tdcklAddItemRowHtml(row.id,p.id,locked)}
+        ${_tdcklAddItemRowHtml(row.id,p.id,locked,locked?_tdcklPhaseLockReason(s,p.id):'')}
       </div>
     </div>`;
   }).join('');
@@ -9211,6 +9730,23 @@ function _tdaKpiColumnsHtml(s,forExport){
     </div>`;
 
   const assessLabel=s.assessmentType&&s.assessmentType!=='None'?s.assessmentType:'None configured';
+  // External Sessions build (2026-08-13, per Sandra): Assessment Results doesn't apply to
+  // External (Assessment was removed entirely) -- shows 4 checklist-style KPI cards instead,
+  // counting how many participants have each of the 4 attendance-tab checkboxes checked.
+  const isExternalKpi=s.deliveryType==='External';
+  const countChecked=(field)=>all.filter(r=>!!r[field]).length;
+  const bondSignedCount=countChecked('bondSigned'), poCompletionCount=countChecked('proofOfCompletion');
+  const surveyCount=countChecked('postTrainingSurvey'), poktCount=countChecked('proofOfKnowledgeTransfer');
+  const checklistCards=`
+    <div>
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Checklist</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+        ${_tdaKpiCard('check','var(--green)','Training Bond Signed',bondSignedCount,pct(bondSignedCount,total),'var(--text3)')}
+        ${_tdaKpiCard('filecheck','var(--sky)','Proof of Completion',poCompletionCount,pct(poCompletionCount,total),'var(--text3)')}
+        ${_tdaKpiCard('clipboard','#7c3aed','Post Training Survey',surveyCount,pct(surveyCount,total),'var(--text3)')}
+        ${_tdaKpiCard('award','var(--amber)','Proof of Knowledge Transfer',poktCount,pct(poktCount,total),'var(--text3)')}
+      </div>
+    </div>`;
   const assessmentCards=`
     <div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
@@ -9227,7 +9763,7 @@ function _tdaKpiColumnsHtml(s,forExport){
       </div>
     </div>`;
 
-  return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch;margin-bottom:16px">${attendanceCards}<div style="width:1px;background:var(--border);align-self:stretch"></div>${assessmentCards}</div>`;
+  return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch;margin-bottom:16px">${attendanceCards}<div style="width:1px;background:var(--border);align-self:stretch"></div>${isExternalKpi?checklistCards:assessmentCards}</div>`;
 }
 
 function _tdaRenderTab(s){
@@ -9276,15 +9812,20 @@ function _tdaRenderTab(s){
   // get one status column per day plus a single "Attendance Score" column instead of the one
   // "Attendance Status" column single-day sessions keep.
   const dayHeaders=isMultiDay?dayList.map((d,i)=>`Day ${i+1}<div style="font-size:9.5px;color:var(--text3);font-weight:400">${d.slice(5)}</div>`):['Attendance Status'];
-  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Department',...dayHeaders,...(isMultiDay?['Attendance Score']:[]),'Pre-Test','Post-Test','Gain','Remarks',''];
+  // External Sessions build (2026-08-13, per Sandra): External sessions replace the
+  // Pre-Test/Post-Test/Gain columns with 4 checkboxes (Training Bond Signed, Proof of Completion,
+  // Post Training Survey, Proof of Knowledge Transfer) -- ILT/VILT keep the test-score columns.
+  const isExternal=s.deliveryType==='External';
+  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Department',...dayHeaders,...(isMultiDay?['Attendance Score']:[]),
+    ...(isExternal?['Training Bond Signed','Proof of Completion','Post Training Survey','Proof of Knowledge Transfer']:['Pre-Test','Post-Test','Gain']),'Remarks',''];
   // Checkbox column centered (2026-08-11, per Sandra): the select-all header checkbox and every
   // row's checkbox were left-aligned inside a column wide enough for the "#" header text next to
   // it, so they visually sat off-center relative to each other -- centering both the <th> and each
   // row's <td> (see _tdaRowHtml/_tdaAddPickerRowHtml) lines them up in a single tight column.
   const thead=`<tr>${theadCols.map((c,i)=>i===0?`<th style="text-align:center;width:36px">${c}</th>`:`<th>${c}</th>`).join('')}</tr>`;
 
-  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType,dayList):'';
-  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType,dayList)).join('');
+  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType,dayList,isExternal):'';
+  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType,dayList,isExternal)).join('');
   const emptyRow=`<tr><td colspan="${theadCols.length}" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.</td></tr>`;
   const tbody=addRow+(bodyRows||(addRow?'':emptyRow));
 
@@ -9335,7 +9876,7 @@ function _tdaStatusSelectHtml(value,onchange,dis){
   </select>`;
 }
 
-function _tdaRowHtml(r,i,locked,assessmentType,dayList){
+function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal){
   const p=_tdaPersonInfo(r);
   const isMultiDay=(dayList||[]).length>1;
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
@@ -9344,6 +9885,9 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList){
   const dis=locked?'disabled':'';
   const preDis=(dis||!preApplicable)?'disabled':'';
   const postDis=(dis||!postApplicable)?'disabled':'';
+  // External Sessions build (2026-08-13): 4 checkboxes replace Pre-Test/Post-Test/Gain.
+  const extChk=(field)=>`<input type="checkbox" ${dis} ${r[field]?'checked':''} onchange="_tdaSetField('${r.id}','${field}',this.checked)">`;
+  const extCells=`<td style="text-align:center">${extChk('bondSigned')}</td><td style="text-align:center">${extChk('proofOfCompletion')}</td><td style="text-align:center">${extChk('postTrainingSurvey')}</td><td style="text-align:center">${extChk('proofOfKnowledgeTransfer')}</td>`;
   const statusCells=isMultiDay
     ?dayList.map(d=>`<td>${_tdaStatusSelectHtml(_tdaGetDayStatus(r,d),`_tdaSetDayField('${r.id}','${d}',this.value)`,dis)}</td>`).join('')
     :`<td>${_tdaStatusSelectHtml(r.attendanceStatus||'pending',`_tdaSetField('${r.id}','attendanceStatus',this.value)`,dis)}</td>`;
@@ -9356,15 +9900,15 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList){
     <td>${_tdaDeptSelectHtml(r,dis)}</td>
     ${statusCells}
     ${scoreCell}
-    <td>${preApplicable?`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    ${isExternal?extCells:`<td>${preApplicable?`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${postApplicable?`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
-    <td>${gainHtml}</td>
+    <td>${gainHtml}</td>`}
     <td><input type="text" class="form-control" ${dis} style="width:120px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.remarks||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','remarks',this.value)"></td>
     <td>${locked?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdaRemoveRow('${r.id}')" title="Remove participant">✕</button>`}</td>
   </tr>`;
 }
 
-function _tdaAddPickerRowHtml(assessmentType,dayList){
+function _tdaAddPickerRowHtml(assessmentType,dayList,isExternal){
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
   const isMultiDay=(dayList||[]).length>1;
   // At add-time, a single status dropdown sets the SAME initial status for every day of a
@@ -9381,9 +9925,9 @@ function _tdaAddPickerRowHtml(assessmentType,dayList){
     <td><select id="tda-add-dept" class="form-control" style="font-size:12.5px;min-width:110px"><option value="">— Select —</option>${Sel.active(Store.DEPARTMENTS).map(d=>`<option value="${d.id}">${Utils.esc(d.name)}</option>`).join('')}</select></td>
     ${isMultiDay?dayList.map(()=>'<td style="color:var(--text3)">—</td>').join(''):statusCell}
     ${isMultiDay?'<td style="color:var(--text3)">—</td>':''}
-    <td>${preApplicable?'<input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    ${isExternal?'<td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td>':`<td>${preApplicable?'<input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${postApplicable?'<input type="number" id="tda-add-post" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
-    <td style="color:var(--text3)">—</td>
+    <td style="color:var(--text3)">—</td>`}
     <td><input type="text" id="tda-add-remarks" class="form-control" style="width:120px;padding:5px 8px;font-size:12.5px" placeholder="—"></td>
     <td><div style="display:flex;gap:6px"><button class="btn btn-sm btn-primary" onclick="_tdaConfirmAdd()">Add</button><button class="btn btn-sm btn-ghost" onclick="_tdaToggleAddPicker()">Cancel</button></div></td>
   </tr>`;
@@ -9594,7 +10138,12 @@ async function _tdaPersistRows(){
     const patch={sessionId:r.sessionId, profileId:r.profileId||null, externalName:r.externalName||null,
       departmentId:r.departmentId||null, externalSupervisor:r.externalSupervisor||null, employeeId:r.employeeId||null,
       attendanceStatus:r.attendanceStatus||'pending', attendanceByDay:r.attendanceByDay||{}, preTestScore:r.preTestScore??null, postTestScore:r.postTestScore??null,
-      remarks:r.remarks||'', attended, notes:r.notes||''};
+      remarks:r.remarks||'', attended, notes:r.notes||'',
+      // External Sessions build (2026-08-13): Training Bond Signed / Proof of Completion / Post
+      // Training Survey / Proof of Knowledge Transfer checkboxes (replace Pre/Post/Gain for
+      // External sessions only -- these columns just stay false/unused for other delivery types).
+      bondSigned:!!r.bondSigned, proofOfCompletion:!!r.proofOfCompletion,
+      postTrainingSurvey:!!r.postTrainingSurvey, proofOfKnowledgeTransfer:!!r.proofOfKnowledgeTransfer};
     if(r._isNew){
       const saved=await SessionParticipantsDB.create({...patch, id:r.id});
       r._isNew=false;
@@ -10717,9 +11266,9 @@ function renderTrainingDetail(){
   if(!s){ closeTrainingDetail(); return; }
   const ownerType=_tdIsOwnerType(s.deliveryType);
   const _tdGrp=_tdFieldGroup(s.deliveryType);
-  const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'Facilitator':'Trainer');
+  const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'L&D Owner':'Trainer');
   const personName=Utils.esc(_tdPersonName(s));
-  const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, _tdDateCell(s), s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
+  const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, _tdDateCell(s), _venueDisplayName(s)||null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
 
   // Self-led sessions (2026-08-06, Phase59): no trainer delivers/evaluates a self-led session, so
   // Attendance & Performance and Trainer Evaluation don't apply -- hide both tab buttons entirely
@@ -10736,11 +11285,18 @@ function renderTrainingDetail(){
   const _tdMoActive=!!_tdManualOverrideReport(s);
   const visibleTabs=((_tdGrp==='owner'
     ?TD_DETAIL_TABS.filter(t=>t.id!=='participants'&&t.id!=='trainer-eval'&&(t.id!=='report'||s.isMandatory))
-    :TD_DETAIL_TABS).filter(t=>t.id!=='checklist'||s.deliveryType==='ILT'))
+    :TD_DETAIL_TABS).filter(t=>t.id!=='checklist'||s.deliveryType==='ILT')
+    // External Sessions build (2026-08-13, per Sandra): no Training Report tab for External --
+    // "Attendance and Checklist" covers what External needs (attendance + the 4 checklist items).
+    .filter(t=>t.id!=='report'||s.deliveryType!=='External'))
     .filter(t=>!_tdMoActive||!(t.id==='checklist'||t.id==='participants'||t.id==='report'));
   if(!visibleTabs.some(t=>t.id===_tdDetailTab)) _tdDetailTab='overview';
+  // External Sessions build (2026-08-13, per Sandra): the "Attendance & Performance" tab is
+  // relabeled "Attendance and Checklist" for External sessions -- same tab/content, just a name
+  // that fits the checklist-style KPI cards shown there instead of Assessment Results.
   const tabsHtml=visibleTabs.map(t=>{
-    return `<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(t.label)}</button>`;
+    const label=(t.id==='participants'&&s.deliveryType==='External')?'Attendance and Checklist':t.label;
+    return `<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(label)}</button>`;
   }).join('');
 
   let tabBody='';
@@ -10803,7 +11359,7 @@ function _tddAssessmentDisplay(s){
 }
 
 function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
-  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):null;
+  const venueName=_venueDisplayName(s)||null;
   const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
   const coFac=s.coFacilitatorId?DB.byId(s.coFacilitatorId):null;
   const coFacDisplay=coFac?(coFac.firstName+' '+coFac.lastName):(s.coFacilitatorGuestName?s.coFacilitatorGuestName+' (Guest)':null);
@@ -10821,7 +11377,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     return `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
-        <a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>
+        ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
       </div>
       <div style="${gridStyle}">
         ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
@@ -10847,10 +11403,48 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
       ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
   }
+  // External Sessions Overview (2026-08-13, per Sandra's explicit 5-row spec): a dedicated layout
+  // distinct from the shared ILT/VILT layout below -- mirrors the External branch of
+  // _tddSessionInfoEditContent field-for-field so the view state always matches the edit state.
+  if(grp==='external'){
+    const ldOwner=s.ldOwnerId?DB.byId(s.ldOwnerId):null;
+    const ldOwnerDisplay=ldOwner?Utils.esc(ldOwner.firstName+' '+ldOwner.lastName):'<span style="color:var(--text3);font-weight:400">— not set —</span>';
+    return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
+      ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
+    </div>
+    <div style="${gridStyle}">
+      ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
+      ${_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('filetext','var(--sky)','Program Title',Utils.esc(s.trainingProgram||'—'))}
+      ${_tddInfoBlock('filetext','var(--sky)','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('user','#0369a1','L&D Owner',ldOwnerDisplay)}
+      ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('filetext','#64748b','RICA Ticket',s.ricaTicket?Utils.esc(s.ricaTicket):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('list','#7c3aed','Training Classification',s.trainingClassification?Utils.esc(s.trainingClassification):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
+      ${_tddInfoBlock('clock','#0369a1','Training Bond Period',s.trainingBondMonths?`${s.trainingBondMonths} months`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('calendar','#0369a1','Training Bond End Date',s.trainingBondEndDate?Utils.esc(s.trainingBondEndDate):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('edit3','#64748b','Training Bond Document Link',s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener" style="font-size:13.5px">▶ View</a>`:'<span style="color:var(--text3);font-weight:400">— none —</span>')}
+      ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
+    </div>
+    ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
+    `;
+  }
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
-      <a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>
+      ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
     </div>
     <div style="${gridStyle}">
       ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
@@ -10860,7 +11454,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     </div>
     <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
-      ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>'):(grp==='external'?_tddInfoBlock('filetext','#7c3aed','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):'')}
+      ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>'):''}
       ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
       ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
@@ -10885,6 +11479,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
 // to this session -- consumed by the Checklist tab (see tdDetailSwitchTab('checklist')).
 function _tdChecklistTemplateDisplay(s){
   if(!s.checklistTemplateId) return '<span style="color:var(--text3);font-weight:400">— not set —</span>';
+  if(s.checklistTemplateId===CKTPL_NONE_SENTINEL) return '<span style="color:var(--text3);font-weight:400">No Checklist Required</span>';
   const t=ChecklistTemplateDB.byId(s.checklistTemplateId);
   if(!t) return '<span style="color:var(--text3);font-weight:400">— template deleted —</span>';
   return `${Utils.esc(t.title)} <a href="javascript:void(0)" onclick="tdDetailSwitchTab('checklist')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600;margin-left:4px">View →</a>`;
@@ -11244,6 +11839,37 @@ function _tdOverviewStageDot(state,bgOverride){
    data-driven status strip. Stages support 3 states -- pending/in_progress/done -- so partial
    completion (e.g. half the roster assessed) shows as in_progress rather than a binary toggle. */
 function _tdOverviewJourneySteps(s,ownerType){
+  // External Sessions build (2026-08-13, per Sandra): External was previously falling into the
+  // Self-led branch below (both share _tdIsOwnerType()===true, a pre-existing conflation) and
+  // showing "Completion Tracked"/"Report Submitted" steps that reference Required Participants
+  // and a Training Report -- neither of which exist for External anymore. Dedicated sequence:
+  // Scheduled, Attendance Recorded, Checklist (the 4 Attendance-tab checkboxes), Evaluated.
+  if(s.deliveryType==='External'){
+    const partRows=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
+    const totalP=partRows.length;
+    const pendingP=partRows.filter(r=>!r.attendanceStatus||r.attendanceStatus==='pending').length;
+    const markedP=totalP-pendingP;
+    const steps=[{label:'Scheduled',state:'done'}];
+    let attState='pending', attSub=totalP?`0 of ${totalP}`:null;
+    if(totalP>0){
+      if(pendingP===0){ attState='done'; attSub=`${totalP} of ${totalP}`; }
+      else if(markedP>0){ attState='in_progress'; attSub=`${markedP} of ${totalP}`; }
+    }
+    steps.push({label:'Attendance Recorded',state:attState,sub:attSub});
+    const checklistFields=['bondSigned','proofOfCompletion','postTrainingSurvey','proofOfKnowledgeTransfer'];
+    const totalChecks=totalP*checklistFields.length;
+    const doneChecks=partRows.reduce((n,r)=>n+checklistFields.filter(f=>!!r[f]).length,0);
+    let cklState='pending';
+    if(totalChecks>0 && doneChecks===totalChecks) cklState='done';
+    else if(doneChecks>0) cklState='in_progress';
+    steps.push({label:'Checklist',state:cklState,sub:totalP?`${doneChecks} of ${totalChecks}`:null});
+    const evals=EvalDB.all().filter(e=>e.sessionId===s.id);
+    let evalState='pending';
+    if(evals.some(e=>e.status==='completed')) evalState='done';
+    else if(evals.length) evalState='in_progress';
+    steps.push({label:'Evaluated',state:evalState});
+    return steps;
+  }
   // Self-led progress steps (2026-08-07, per Sandra): entirely different sequence from the ILT
   // steps below -- Scheduled, Ongoing, Completion Tracked, Report Submitted. There's no separate
   // Attendance/Assessed/Evaluated concept for Self-led. "Ongoing" tracks the session's own
@@ -11352,6 +11978,12 @@ function _tdOverviewChecklistWidget(s){
       <div style="font-size:12.5px;color:var(--text3);margin-top:6px">No checklist template assigned yet -- pick one above in Session Information.</div>
     </div>`;
   }
+  if(s.checklistTemplateId===CKTPL_NONE_SENTINEL){
+    return `<div class="card" style="padding:16px 20px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14.5px">Trainer Checklist</div>
+      <div style="font-size:12.5px;color:var(--text3);margin-top:6px">No checklist required for this session.</div>
+    </div>`;
+  }
   const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
   if(!row){
     return `<div class="card" style="padding:16px 20px;margin-bottom:16px">
@@ -11418,6 +12050,31 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
   // Summary/Actions used to sit (neither applies to Self-led). Section 1 (Session Information)
   // and the journey/progress block are shared with the ILT path below (the journey steps
   // themselves already branch on ownerType inside _tdOverviewJourneySteps).
+  // External Sessions build (2026-08-13, per Sandra): External was previously falling into the
+  // Self-led branch below (both share _tdIsOwnerType()===true) and rendering the Self-led-only
+  // Completion Metrics/Per-Cluster/Survey L1 widgets, which don't apply to External at all -- a
+  // pre-existing mismatch, now split out since External also has no Training Report tab to link
+  // to (removed this same phase). External Overview is just Session Info + Journey, then
+  // Evaluations + Actions, same shape as the manual-override branch below minus the banner.
+  if(s.deliveryType==='External'){
+    return `
+      <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:stretch;margin-bottom:16px">
+        <div class="card" id="tdd-session-info-card" style="padding:18px 20px;height:100%;box-sizing:border-box">
+          ${_tdDetailEditing?_tddSessionInfoEditContent(s,ownerType):_tddSessionInfoViewContent(s,ownerType,personLabel,personName)}
+        </div>
+        ${_tdOverviewJourneyBlockVertical(s,ownerType)}
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
+        <div>
+          ${_tdOverviewEvaluationsBlock(s,ownerType)}
+        </div>
+        <div>
+          ${_tdOverviewActionsBlock(s,ownerType)}
+        </div>
+      </div>
+    `;
+  }
+
   if(ownerType){
     const {completion,cluster,survey}=_tdOverviewSltBlocks(s);
     return `
@@ -11569,10 +12226,10 @@ async function _tdExportSummaryImage(sessionId){
     }
   }
   const _tdGrp=_tdFieldGroup(s.deliveryType);
-  const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'Facilitator':'Trainer');
+  const personLabel=_tdGrp==='owner'?'Owner':(_tdGrp==='external'?'L&D Owner':'Trainer');
   const personName=Utils.esc(_tdPersonName(s))||'—';
   const venueLabel=_tdVenueTypeFor(s.deliveryType)==='platform'?'Platform':'Venue';
-  const venueName=s.venueId?Sel.nameOf(Store.VENUES,s.venueId):'—';
+  const venueName=_venueDisplayName(s)||'—';
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const summaryHtml=report?_tdrSummaryInnerHtml(report):'<div style="font-size:12.5px;color:var(--text3)">No training report available.</div>';
   // hideFeedback=true here: the two free-text learner-feedback callouts (What learners found
@@ -11664,6 +12321,11 @@ const _msddPlaceholder={};  // id -> placeholder text shown when nothing is sele
 function _audienceMultiSelectHtml(id, selected, extraStyle){
   return _msddHtml(id, _audienceOptionNames(), selected, 'Select audience(s)…', extraStyle);
 }
+// Search box inside the panel (2026-08-13, per Sandra: Audience list is long enough that
+// scrolling to find one is a chore) -- only shown once there are enough options to warrant it.
+// Filters via plain DOM show/hide of the existing .msdd-opt labels (not a re-render), so typing
+// never touches _msddState/loses the checkboxes' checked state or steals focus mid-keystroke.
+const MSDD_SEARCH_THRESHOLD=8;
 function _msddHtml(id, names, selected, placeholder, extraStyle){
   _msddState[id]=_sortedNames(selected);
   _msddPlaceholder[id]=placeholder;
@@ -11671,21 +12333,36 @@ function _msddHtml(id, names, selected, placeholder, extraStyle){
   const hasSel=_msddState[id].length>0;
   const text=hasSel?_msddState[id].join(', '):placeholder;
   const opts=names.length
-    ? names.map(n=>`<label class="msdd-opt"><input type="checkbox" value="${Utils.esc(n)}" ${sel.has(n)?'checked':''} onchange="_msddToggle('${id}',this.value,this.checked)"> ${Utils.esc(n)}</label>`).join('')
+    ? names.map(n=>`<label class="msdd-opt" data-name="${Utils.esc(n.toLowerCase())}"><input type="checkbox" value="${Utils.esc(n)}" ${sel.has(n)?'checked':''} onchange="_msddToggle('${id}',this.value,this.checked)"> ${Utils.esc(n)}</label>`).join('')
     : `<div class="msdd-empty">No options yet — add some in Settings → Lists.</div>`;
+  const searchBox=names.length>MSDD_SEARCH_THRESHOLD?`<input type="text" class="form-control msdd-search" id="${id}-search" placeholder="Search…" style="margin-bottom:6px;font-size:12.5px;padding:5px 8px" oninput="_msddFilterOptions('${id}',this.value)">`:'';
   return `<div class="msdd" id="${id}-wrap">
     <div class="msdd-trigger form-control" ${extraStyle?`style="${extraStyle}"`:''} onclick="_msddOpenToggle('${id}')">
       <span class="msdd-trigger-text${hasSel?'':' ph'}" id="${id}-triggertext">${Utils.esc(text)}</span>
       <span class="msdd-caret">▾</span>
     </div>
-    <div class="msdd-panel" id="${id}-panel">${opts}</div>
+    <div class="msdd-panel" id="${id}-panel">${searchBox}<div id="${id}-opts">${opts}</div></div>
   </div>`;
+}
+function _msddFilterOptions(id,query){
+  const q=(query||'').trim().toLowerCase();
+  const optsWrap=document.getElementById(`${id}-opts`); if(!optsWrap) return;
+  optsWrap.querySelectorAll('.msdd-opt').forEach(el=>{
+    const name=el.getAttribute('data-name')||'';
+    el.style.display=(!q||name.includes(q))?'':'none';
+  });
 }
 function _msddOpenToggle(id){
   const wrap=document.getElementById(`${id}-wrap`); if(!wrap) return;
   const wasOpen=wrap.classList.contains('open');
   document.querySelectorAll('.msdd.open').forEach(w=>w.classList.remove('open'));
-  if(!wasOpen) wrap.classList.add('open');
+  if(!wasOpen){
+    wrap.classList.add('open');
+    // Reset any leftover search text/filter from a previous open so it doesn't look like some
+    // options are mysteriously missing.
+    const searchEl=document.getElementById(`${id}-search`);
+    if(searchEl){ searchEl.value=''; _msddFilterOptions(id,''); setTimeout(()=>searchEl.focus(),30); }
+  }
 }
 if(!window.__msddOutsideClickBound){
   window.__msddOutsideClickBound=true;
@@ -11743,56 +12420,74 @@ function _tddSessionInfoEditContent(s,ownerType){
       </select>`)}
       ${_tddInfoBlockEdit('target','#0891b2','Delivery Method',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap')}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
       <div style="min-width:0">
-        <div id="tdd-batch-wrap" class="${grp==='owner'?'hidden':''}">${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`)}</div>
+        <div id="tdd-batch-wrap" class="${grp==='owner'||grp==='external'?'hidden':''}">${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`)}</div>
         <div id="tdd-mandatory-wrap" class="${grp==='owner'?'':'hidden'}">${_tddInfoBlockEdit('flag','#dc2626','Mandatory',`<label style="display:flex;align-items:center;gap:6px;margin-top:2px;cursor:pointer"><input type="checkbox" id="tdd-mandatory" ${s.isMandatory?'checked':''} style="width:16px;height:16px"> <span style="font-size:13px">Mandatory</span></label>`)}</div>
       </div>
     </div>
     <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('user','#0369a1','L&amp;D Owner',`<select id="tdd-ldowner" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-ldowner-wrap')}
+      ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`)}
+      ${_tddInfoBlockEdit('filetext','#64748b','RICA Ticket',`<input type="text" id="tdd-ricaticket" class="form-control" ${smallInput} placeholder="e.g. RICA-00123" value="${Utils.esc(s.ricaTicket||'')}">`,'tdd-ricaticket-wrap')}
+      ${_tddInfoBlockEdit('list','#7c3aed','Training Classification',`<select id="tdd-classification" class="form-control" ${smallInput}>
+        <option value="">— Select —</option>
+        <option value="Developmental Training" ${s.trainingClassification==='Developmental Training'?'selected':''}>Developmental Training</option>
+        <option value="Certification-Based Training" ${s.trainingClassification==='Certification-Based Training'?'selected':''}>Certification-Based Training</option>
+        <option value="Licensure or High-Impact Qualification" ${s.trainingClassification==='Licensure or High-Impact Qualification'?'selected':''}>Licensure or High-Impact Qualification</option>
+      </select>`,'tdd-classification-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control ${isGuestOnEntry?'hidden':''}" ${smallInput} onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select>
         <div id="tdd-guest-name-wrap" class="${isGuestOnEntry?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
           <input type="text" id="tdd-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Trainer Name" value="${Utils.esc(s.guestTrainerName||'')}">
           <a href="javascript:void(0)" onclick="_tddClearGuestTrainer()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
         </div>`,'tdd-trainer-wrap')}
       ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`,'tdd-owner-wrap')}
-      ${_tddInfoBlockEdit('user','var(--sky)','Facilitator Name',`<input type="text" id="tdd-facilitator" class="form-control" ${smallInput} value="${Utils.esc(s.facilitatorName||'')}">`,'tdd-facilitator-wrap')}
       ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput} onchange="_tddCofacSelectChange()"><option value="">— None —</option></select>
         <div id="tdd-cofacilitator-guest-wrap" class="hidden" style="display:flex;gap:6px;align-items:center">
           <input type="text" id="tdd-cofacilitator-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Co-Facilitator Name">
           <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
         </div>`,'tdd-cofacilitator-wrap')}
-      ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
       ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(showsDateRange?' / Period':''),`<div style="display:flex;gap:6px">
         <div style="display:flex;flex-direction:column;flex:1;min-width:0">
-          <input type="date" id="tdd-date" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.trainingDate||''}">
+          <input type="date" id="tdd-date" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.trainingDate||''}" onchange="_tdUpdateBondEndPreview('tdd')">
           <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">${showsDateRange?'Start Date':'Date'}</div>
         </div>
         <div ${showsDateRange?'':'class="hidden"'} id="tdd-enddate-wrap" style="display:flex;flex-direction:column;flex:1;min-width:0">
-          <input type="date" id="tdd-enddate" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.endDate||''}">
+          <input type="date" id="tdd-enddate" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.endDate||''}" onchange="_tdUpdateBondEndPreview('tdd')">
           <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">End Date</div>
         </div>
       </div>`)}
-      ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
+      ${_tddInfoBlockEdit('clock','#0369a1','Training Bond Period',`<select id="tdd-bondmonths" class="form-control" ${smallInput} onchange="_tdUpdateBondEndPreview('tdd')">
+        <option value="">— None —</option>
+        <option value="3" ${String(s.trainingBondMonths)==='3'?'selected':''}>3 months</option>
+        <option value="6" ${String(s.trainingBondMonths)==='6'?'selected':''}>6 months</option>
+        <option value="12" ${String(s.trainingBondMonths)==='12'?'selected':''}>12 months</option>
+        <option value="18" ${String(s.trainingBondMonths)==='18'?'selected':''}>18 months</option>
+        <option value="24" ${String(s.trainingBondMonths)==='24'?'selected':''}>24 months</option>
+      </select>`,'tdd-bondmonths-wrap')}
+      ${_tddInfoBlockEdit('calendar','#0369a1','Training Bond End Date',`<input type="text" id="tdd-bondend-display" class="form-control" ${smallInput} readonly style="background:var(--bg2)" value="${Utils.esc(s.trainingBondEndDate||'')}" placeholder="Auto-computed from bond period">`,'tdd-bondend-wrap')}
     </div>
     <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`)}
       ${_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`)}
       ${_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],smallInputStyle))}
-      ${_tddInfoBlockEdit('users','var(--sky)','<span id="tdd-expected-label">'+(grp==='owner'?'Required Participants':'Maximum Participants')+'</span>',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
-        <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
-        <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
-        <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
-        <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
-      </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
-      ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">'+(ownerType?'Report Link':'Recording Link')+'</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
+      ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">'+(s.deliveryType==='External'?'Training Bond Document Link':(ownerType?'Report Link':'Recording Link'))+'</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
+      ${_tddInfoBlockEdit('users','var(--sky)','<span id="tdd-expected-label">'+(grp==='owner'?'Required Participants':'Maximum Participants')+'</span>',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`,'tdd-expected-wrap')}
       ${_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
         ${ownerType?`<option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>`:(s.status==='completed'?`<option value="completed" selected>Completed</option>`:'')}
         <option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>
       </select>${ownerType?'':`<div style="font-size:10.5px;color:var(--text3);margin-top:3px">Completed is set automatically once Attendance &amp; Performance is tagged Complete.</div>`}`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      <div id="tdd-assessment-wrap">${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
+        <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
+        <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
+        <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
+        <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
+      </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}</div>
       <div id="tdd-checklisttpl-wrap" class="${s.deliveryType==='ILT'?'':'hidden'}">${_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`)}</div>
     </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt)">
@@ -11852,7 +12547,16 @@ function _tddPopulateEditDropdowns(s,ownerType){
     const activeUsers=DB.all().filter(u=>u.isActive||u.id===s.ownerId).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
     ownerSel.innerHTML='<option value="">— Select Owner —</option>'+activeUsers.map(u=>`<option value="${u.id}" ${u.id===s.ownerId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
   }
+  // L&D Owner (2026-08-13, per Sandra): accountable internal L&D team member for External
+  // sessions -- same active-roster pattern as Owner above.
+  const ldOwnerSel=document.getElementById('tdd-ldowner');
+  if(ldOwnerSel){
+    const eligibleLdOwners=DB.all().filter(u=>u.isActive||u.id===s.ldOwnerId).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
+    ldOwnerSel.innerHTML='<option value="">— Select —</option>'+eligibleLdOwners.map(u=>`<option value="${u.id}" ${u.id===s.ldOwnerId?'selected':''}>${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
+  }
   _tdPopulateVenueOptions('tdd',s.deliveryType,s.venueId);
+  const tddVenueOtherInput=document.getElementById('tdd-venue-other');
+  if(tddVenueOtherInput) tddVenueOtherInput.value=s.venueOtherName||'';
   _toggleVenueOtherWrap('tdd');
   const modIdSel=document.getElementById('tdd-modalityid');
   if(modIdSel){
@@ -11864,7 +12568,14 @@ function _tddPopulateEditDropdowns(s,ownerType){
   const cktplSel=document.getElementById('tdd-checklisttpl');
   if(cktplSel){
     const opts=ChecklistTemplateDB.all().filter(t=>t.isActive||t.id===s.checklistTemplateId).slice().sort((a,b)=>(a.title||'').localeCompare(b.title||''));
-    cktplSel.innerHTML='<option value="">— None —</option>'+opts.map(t=>`<option value="${t.id}" ${t.id===s.checklistTemplateId?'selected':''}>${Utils.esc(t.title)}${t.isActive?'':' (inactive)'}</option>`).join('');
+    // Trainer Checklist now required for ILT sessions (2026-08-13, per Sandra) -- "— None —"
+    // (unselected) is no longer a valid save state; "No Checklist Required" is an explicit,
+    // deliberate opt-out instead, stored as the sentinel string CKTPL_NONE_SENTINEL rather than
+    // null, so it's distinguishable from "hasn't picked one yet" in tdDetailSave's validation and
+    // everywhere else that reads s.checklistTemplateId.
+    cktplSel.innerHTML='<option value="">— Select —</option>'
+      +`<option value="${CKTPL_NONE_SENTINEL}" ${s.checklistTemplateId===CKTPL_NONE_SENTINEL?'selected':''}>No Checklist Required</option>`
+      +opts.map(t=>`<option value="${t.id}" ${t.id===s.checklistTemplateId?'selected':''}>${Utils.esc(t.title)}${t.isActive?'':' (inactive)'}</option>`).join('');
   }
 }
 
@@ -11940,16 +12651,34 @@ function _tddToggleTypeFields(){
   document.getElementById('tdd-trainer-wrap').classList.toggle('hidden',grp!=='trainer');
   document.getElementById('tdd-cofacilitator-wrap').classList.toggle('hidden',grp!=='trainer');
   document.getElementById('tdd-owner-wrap').classList.toggle('hidden',grp!=='owner');
-  document.getElementById('tdd-facilitator-wrap').classList.toggle('hidden',grp!=='external');
+  // Facilitator Name element was removed entirely from the External template (2026-08-13, per
+  // Sandra) -- no tdd-facilitator-wrap to toggle anymore. (Previously this line called
+  // getElementById on a now-nonexistent element, throwing and silently aborting every toggle
+  // after it in this function -- that's why Assessment/Maximum Participants kept showing for
+  // External despite being "removed": the crash happened before those toggles ever ran.)
   document.getElementById('tdd-provider-wrap').classList.toggle('hidden',grp!=='external');
   document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!_tdShowsDateRange(dt));
-  // Report Link / Recording Link (2026-08-06, Phase61): same field, relabeled -- Self-led now
-  // shows it (previously hidden entirely for ownerType) as "Report Link"; everyone else keeps
-  // "Recording Link".
-  document.getElementById('tdd-recording-label').textContent=ownerType?'Report Link':'Recording Link';
-  document.getElementById('tdd-batch-wrap').classList.toggle('hidden',grp==='owner');
+  // Report Link / Recording Link (2026-08-06, Phase61): same field, relabeled -- Self-led shows
+  // it as "Report Link"; External (2026-08-13) relabels it "Training Bond Document Link" (still
+  // the same recordingLink column); everyone else keeps "Recording Link". Check External before
+  // the generic ownerType branch since _tdIsOwnerType() is true for BOTH Self-led and External.
+  document.getElementById('tdd-recording-label').textContent=grp==='external'?'Training Bond Document Link':(ownerType?'Report Link':'Recording Link');
+  // Batch No. (2026-08-13, per Sandra): hidden for External too, not just Self-led.
+  document.getElementById('tdd-batch-wrap').classList.toggle('hidden',grp==='owner'||grp==='external');
   document.getElementById('tdd-mandatory-wrap').classList.toggle('hidden',grp!=='owner');
   document.getElementById('tdd-expected-label').textContent=grp==='owner'?'Required Participants':'Maximum Participants';
+  // Expected/Maximum Participants (2026-08-13, per Sandra): hidden for External.
+  document.getElementById('tdd-expected-wrap').classList.toggle('hidden',grp==='external');
+  // External Sessions build (2026-08-13): Training Classification / RICA Ticket / Training Bond
+  // Period+End Date / L&D Owner are External-only; Assessment is removed entirely for External
+  // (per Sandra).
+  document.getElementById('tdd-classification-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('tdd-ricaticket-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('tdd-bondmonths-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('tdd-bondend-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('tdd-ldowner-wrap').classList.toggle('hidden',grp!=='external');
+  document.getElementById('tdd-assessment-wrap').classList.toggle('hidden',grp==='external');
+  _tdUpdateBondEndPreview('tdd');
   document.getElementById('tdd-modalityid-wrap').classList.toggle('hidden',!_tdShowsModality(dt));
   document.getElementById('tdd-checklisttpl-wrap').classList.toggle('hidden',dt!=='ILT');
   _tdPopulateVenueOptions('tdd',dt);
