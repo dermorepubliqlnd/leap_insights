@@ -1599,6 +1599,7 @@
                     <option value="VILT">VILT</option>
                     <option value="Self-led">Self-led</option>
                     <option value="External">External</option>
+                    <option value="Ad-hoc">Ad-hoc</option>
                   </select>
                 </div>
                 <div class="form-group" style="margin:0;min-width:170px">
@@ -1722,8 +1723,8 @@
             </div>
 
             <div class="card" style="padding:16px 18px;margin-top:14px">
-              <div style="font-weight:700;font-size:13.5px;margin-bottom:4px">Trainer Workload</div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Live facilitation hours vs. capacity for the selected period — configurable in Settings → Trainer Workload.</div>
+              <div style="font-weight:700;font-size:13.5px;margin-bottom:4px">Trainer Delivery</div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Live facilitation hours vs. capacity for the selected period — configurable in Settings → Trainer Delivery.</div>
               <div id="tdash-workload-empty" class="dash-empty hidden">No trainer activity in this period.</div>
               <div style="overflow-x:auto"><table class="dash-tbl" id="tdash-workload-table"></table></div>
             </div>
@@ -1770,6 +1771,7 @@
                   <option value="ILT">ILT</option>
                   <option value="Self-led">Self-led</option>
                   <option value="External">External</option>
+                  <option value="Ad-hoc">Ad-hoc</option>
                 </select>
               </div>
               <div class="form-group" style="margin:0;min-width:170px">
@@ -1852,6 +1854,7 @@
                     <th>Position</th>
                     <th>Supervisor</th>
                     <th>Emp. Status</th>
+                    <th>Delivery %</th>
                     <th class="th-f" id="th-account" onclick="thToggle(event,'account')">
                       <span class="th-f-lbl">Account <span class="th-f-caret">▼</span></span>
                       <div class="th-dd" id="th-dd-account">
@@ -2040,9 +2043,9 @@
               <input type="date" id="mu-hiredate" class="form-control">
             </div>
             <div class="form-group">
-              <label class="form-label">Workload Allocation %</label>
+              <label class="form-label">Delivery Allocation %</label>
               <input type="number" id="mu-workload-pct" class="form-control" style="width:100px" min="0" max="100" step="1" value="60">
-              <p class="form-hint" style="margin-top:4px">% of this person's standard working hours allocated to training delivery. Used as the capacity denominator on the Trainer Workload dashboard.</p>
+              <p class="form-hint" style="margin-top:4px">% of this person's standard working hours allocated to training delivery. Used as the capacity denominator on the Trainer Delivery dashboard.</p>
             </div>
             <div class="form-group" style="margin-bottom:0" id="mu-empstat-row">
               <label class="form-label">Employment Status</label>
@@ -2398,10 +2401,11 @@
     </div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Pick a delivery type to continue — this determines which fields you'll fill in next.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="td-type-pick-grid">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="td-type-pick-grid">
         <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('ILT')">ILT</button>
         <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('Self-led')">Self-led</button>
         <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('External')">External</button>
+        <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('Ad-hoc')">Ad-hoc Task</button>
       </div>
       <div class="modal-err hidden" id="td-type-pick-error"></div>
     </div>
@@ -4747,7 +4751,8 @@ function renderUsers(){
     const scopeBadge=u.isAdmin?'':(u.dashScope==='full'?'<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe" title="Full org dashboard view">⊞ Full View</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0" title="Team data only">⊟ Team View</span>');
     const toggleBtn=!isMe?(u.isActive?`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',false)">Deactivate</button>`:`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',true)">Activate</button>`):'';
     const deleteBtn=!isMe?`<button class="btn btn-sm btn-ghost" style="color:#b91c1c" onclick="deleteUserConfirm('${u.id}')">Delete</button>`:'';
-    return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}${scopeBadge}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}${deleteBtn}</div></td></tr>`;
+    const deliveryPct=`<span style="font-size:13px">${u.workloadAllocationPct??60}%</span>`;
+    return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td>${deliveryPct}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}${scopeBadge}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}${deleteBtn}</div></td></tr>`;
   }).join('');
 }
 
@@ -4892,7 +4897,7 @@ async function saveUser(){
   if(!lname) return showErr('Last name is required.');
   if(!email) return showErr('Email address is required.');
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('Please enter a valid email address.');
-  if(isNaN(workloadAllocationPct)||workloadAllocationPct<0||workloadAllocationPct>100) return showErr('Workload Allocation % must be between 0 and 100.');
+  if(isNaN(workloadAllocationPct)||workloadAllocationPct<0||workloadAllocationPct>100) return showErr('Delivery Allocation % must be between 0 and 100.');
   const isNew=!id;
   if(isNew){
     const dup=DB.byEmail(email); if(dup) return showErr('Another user with this email already exists.');
@@ -5190,7 +5195,7 @@ let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
 let _settingsShowInactive={};  // per-key: true=show inactive, false=hide
 
 function renderSettings(){
-  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Workload'},{id:'backup',label:'Data & Backup'}];
+  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Delivery'},{id:'backup',label:'Data & Backup'}];
   document.getElementById('stabs').innerHTML=sections.map(t=>`<div class="stab${t.id===activeSettingsSection?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
   document.querySelectorAll('#stabs .stab').forEach(el=>el.addEventListener('click',()=>{activeSettingsSection=el.dataset.stab;renderSettings();}));
   document.getElementById('stab-panes').innerHTML=
@@ -5280,7 +5285,7 @@ function renderWorkloadSettingsPane(){
       <td style="font-size:13px">${Utils.esc(h.name)}</td>
       <td><button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="deletePhHoliday('${h.id}')">Delete</button></td>
     </tr>`).join('');
-  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Trainer Workload</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Standard Weekly Hours × each person's own Workload Allocation % (set in User Management) × real working days in the period (weekends and PH Holidays below excluded) = that person's capacity. Workload % = Live Facilitation Hours ÷ Capacity × 100.</div></div></div>
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Trainer Delivery</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Standard Weekly Hours × each person's own Delivery Allocation % (set in User Management) × real working days in the period (weekends and PH Holidays below excluded) = that person's capacity. Delivery % = Live Facilitation Hours ÷ Capacity × 100.</div></div></div>
     <div class="card" style="padding:18px 20px;max-width:460px;margin-bottom:16px">
       <div style="display:flex;flex-direction:column;gap:14px">
         <div>
@@ -5289,7 +5294,7 @@ function renderWorkloadSettingsPane(){
           <p class="form-hint" style="margin-top:4px">Assumes a 5-day work week (e.g. 37.5 hrs/week = 7.5 hrs/day).</p>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:14px">
-          <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Workload band upper bounds (% of capacity) -- anything above the High bound shows as Over Capacity.</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Delivery band upper bounds (% of capacity) -- anything above the High bound shows as Over Capacity.</div>
           <div style="display:flex;gap:16px;flex-wrap:wrap">
             <div><label class="form-label">Light max %</label><input type="number" id="wstg-light" class="form-control" style="width:90px" min="0" max="500" step="1" value="${cfg.lightMaxPct}"></div>
             <div><label class="form-label">Balanced max %</label><input type="number" id="wstg-balanced" class="form-control" style="width:90px" min="0" max="500" step="1" value="${cfg.balancedMaxPct}"></div>
@@ -5300,7 +5305,7 @@ function renderWorkloadSettingsPane(){
       <div class="modal-err hidden" id="wstg-error" style="margin-top:12px"></div>
       <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="saveWorkloadSettings()">Save</button>
     </div>
-    <div class="sec-hdr" style="margin-top:8px"><div><strong style="font-size:14px">Philippine Holidays</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Excluded from working-day counts on the Trainer Workload dashboard. Seeded with the official 2026 list (Proclamation No. 1006) -- Eidul Fitr/Eidul Adha dates are announced later in the year via a separate proclamation, add them here once known.</div></div></div>
+    <div class="sec-hdr" style="margin-top:8px"><div><strong style="font-size:14px">Philippine Holidays</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Excluded from working-day counts on the Trainer Delivery dashboard. Seeded with the official 2026 list (Proclamation No. 1006) -- Eidul Fitr/Eidul Adha dates are announced later in the year via a separate proclamation, add them here once known.</div></div></div>
     <div class="card" style="padding:18px 20px;max-width:460px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
         <div><label class="form-label">Date</label><input type="date" id="phh-date" class="form-control" style="width:150px"></div>
@@ -6619,7 +6624,8 @@ const TD_TYPE_COLORS={
   'ILT':{bg:'#eff6ff',fg:'#1d4ed8',dot:'#3b82f6'},
   'VILT':{bg:'#f5f3ff',fg:'#6d28d9',dot:'#8b5cf6'},
   'Self-led':{bg:'#f0fdf4',fg:'#15803d',dot:'#22c55e'},
-  'External':{bg:'#fff7ed',fg:'#c2410c',dot:'#f97316'}
+  'External':{bg:'#fff7ed',fg:'#c2410c',dot:'#f97316'},
+  'Ad-hoc':{bg:'#f1f5f9',fg:'#475569',dot:'#64748b'}
 };
 
 // tdashPeriodRange (2026-08-12): translates the Period select into an actual [start,end] ISO
@@ -6682,7 +6688,7 @@ function _tdashComputeHoursRange(rows,startStr,endStr){
   // tdF.status to let someone deliberately filter TO cancelled sessions), this dashboard has no
   // status filter of its own, so there's no legitimate case where a cancelled session's hours
   // should count toward Scheduled Training Hours here.
-  let iltHrs=0, externalHrs=0;
+  let iltHrs=0, externalHrs=0, adhocHrs=0;
   const sltSeen=new Map();
   rows.forEach(s=>{
     if(!s.trainingDate) return;
@@ -6695,10 +6701,16 @@ function _tdashComputeHoursRange(rows,startStr,endStr){
     } else if(s.deliveryType==='Self-led'){
       const start=s.trainingDate, end=s.endDate||s.trainingDate;
       if(start<=endStr && end>=startStr && !sltSeen.has(s.id)) sltSeen.set(s.id,hrs);
+    } else if(s.deliveryType==='Ad-hoc'){
+      // Ad-hoc Task (2026-08-13, per Sandra): single-date only (no range), counted the same
+      // per-calendar-day way as ILT/External via _tdSessionDayList (which just returns the one
+      // date for a non-ranged session) -- folded into forecastedHrs below, not siloed into its
+      // own separate total the way SLT is.
+      _tdSessionDayList(s).forEach(d=>{ if(d>=startStr && d<=endStr) adhocHrs+=hrs; });
     }
   });
   let sltHrs=0; sltSeen.forEach(h=>{ sltHrs+=h; });
-  return {forecastedHrs:iltHrs+externalHrs+sltHrs, iltHrs, externalHrs, sltHrs};
+  return {forecastedHrs:iltHrs+externalHrs+sltHrs+adhocHrs, iltHrs, externalHrs, sltHrs, adhocHrs};
 }
 
 function _tdashPopulateFilterOptions(){
@@ -6890,6 +6902,7 @@ function renderTrainingDashboardHoursSection(rows,range,scheduled,completed){
     row('ILT / VILT',scheduled.iltHrs,completed.iltHrs)+
     row('Self-led (SLT)',scheduled.sltHrs,completed.sltHrs)+
     row('External',scheduled.externalHrs,completed.externalHrs)+
+    row('Ad-hoc Tasks',scheduled.adhocHrs||0,completed.adhocHrs||0)+
     row('TOTAL',scheduled.forecastedHrs,completed.forecastedHrs,true);
   const tbl=document.getElementById('tdash-hours-table');
   if(tbl) tbl.innerHTML=`
@@ -7391,8 +7404,11 @@ function _tdaComputeTrainerWorkload(range){
 
   const rosterIds=new Set();
   DB.all().filter(p=>p.formTrainer&&p.isActive).forEach(p=>rosterIds.add(p.id));
+  // Ad-hoc Tasks (2026-08-13, per Sandra: "hours counted alongside, not siloed from, other
+  // scheduled training") also have a Trainer/Co-Facilitator field, so they count toward this same
+  // per-trainer capacity roster/liveSessions math, same as ILT/VILT.
   rows.forEach(s=>{
-    if((s.deliveryType==='ILT'||s.deliveryType==='VILT')){
+    if((s.deliveryType==='ILT'||s.deliveryType==='VILT'||s.deliveryType==='Ad-hoc')){
       if(s.trainerId) rosterIds.add(s.trainerId);
       if(s.coFacilitatorId) rosterIds.add(s.coFacilitatorId);
     }
@@ -7406,7 +7422,7 @@ function _tdaComputeTrainerWorkload(range){
     // resolution Sandra confirmed; no day-by-day proration if the % changed mid-period).
     const allocPct=WorkloadPctHistoryDB.resolveAsOf(id,effRange.end);
     const periodCapacity=dailyHours*workingDays*(allocPct/100);
-    const liveSessions=rows.filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT') && (s.trainerId===id||s.coFacilitatorId===id) && overlaps(s));
+    const liveSessions=rows.filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT'||s.deliveryType==='Ad-hoc') && (s.trainerId===id||s.coFacilitatorId===id) && overlaps(s));
     const completedSessions=liveSessions.filter(s=>_tdStatus(s)==='Completed');
     const scheduledHours=_tdashComputeHoursRange(liveSessions,effRange.start,effRange.end).forecastedHrs;
     const completedHours=_tdashComputeHoursRange(completedSessions,effRange.start,effRange.end).forecastedHrs;
@@ -7440,7 +7456,7 @@ function renderTrainingDashboardWorkload(range){
       <th style="text-align:right">Completed ILT Hours</th>
       <th style="text-align:right">Sessions Completed</th>
       <th style="text-align:right">SLT Managed</th>
-      <th style="text-align:left">Workload %</th>
+      <th style="text-align:left">Delivery %</th>
       <th style="text-align:left">Status</th>
       <th style="text-align:right">Capacity</th>
     </tr></thead><tbody>${rows.map(r=>{
@@ -7500,6 +7516,11 @@ function _tdSessionDayList(s){
 function _tdFieldGroup(deliveryType){
   if(deliveryType==='Self-led') return 'owner';
   if(deliveryType==='External') return 'external';
+  // Ad-hoc Task (2026-08-13, per Sandra): a lightweight 5th delivery type for quick, un-programmed
+  // work items (e.g. a one-off huddle, a quick coaching session) -- has its own field group
+  // because it shares Trainer/Co-Facilitator/Delivery Method with ILT/VILT but drops everything
+  // else (Venue, Batch, Audience, Assessment, Checklist, Recording Link) that 'trainer' implies.
+  if(deliveryType==='Ad-hoc') return 'adhoc';
   return 'trainer';
 }
 
@@ -7510,7 +7531,9 @@ function _tdVenueTypeFor(deliveryType){ return deliveryType==='Self-led'?'platfo
 // definition, so asking would be redundant (2026-08-05, supersedes phase35's ILT/VILT-only gate).
 // Delivery Method (2026-08-06, per Sandra): Self-led sessions don't need a Delivery Method
 // field at all -- removed from that set, ILT/External still show it.
-function _tdShowsModality(deliveryType){ return deliveryType==='ILT'||deliveryType==='External'; }
+// Ad-hoc (2026-08-13, per Sandra): also shows Delivery Method -- it's one of the fields she
+// explicitly listed for the Ad-hoc Task form.
+function _tdShowsModality(deliveryType){ return deliveryType==='ILT'||deliveryType==='External'||deliveryType==='Ad-hoc'; }
 
 // Populates a Venue/Platform <select id="{prefix}-venue"> filtered by delivery type -- ILT/VILT/
 // External see physical venues, Self-led sees platform entries (relabelled "Platform" in the UI).
@@ -8194,8 +8217,8 @@ function _tdHoursExcludeCancelled(){ return tdF.status!=='Cancelled'; }
 
 function _tdHoursForDay(rows,dateStr){
   const excludeCancelled=_tdHoursExcludeCancelled();
-  let ilt=0, external=0, slt=0;
-  const iltSessions=[], sltSessions=[], externalSessions=[];
+  let ilt=0, external=0, slt=0, adhoc=0;
+  const iltSessions=[], sltSessions=[], externalSessions=[], adhocSessions=[];
   rows.forEach(s=>{
     if(!s.trainingDate) return;
     if(excludeCancelled && s.status==='cancelled') return;
@@ -8213,10 +8236,15 @@ function _tdHoursForDay(rows,dateStr){
     } else if(s.deliveryType==='External'){
       external+=hrs;
       externalSessions.push({s,hrs});
+    } else if(s.deliveryType==='Ad-hoc'){
+      // Ad-hoc Task (2026-08-13, per Sandra): folded into `forecasted` below alongside the other
+      // types, not siloed the way SLT's separate "Available" total is.
+      adhoc+=hrs;
+      adhocSessions.push({s,hrs});
     }
   });
-  const forecasted=ilt+external+slt;
-  return {forecasted,ilt,external,slt,iltSessions,sltSessions,externalSessions};
+  const forecasted=ilt+external+slt+adhoc;
+  return {forecasted,ilt,external,slt,adhoc,iltSessions,sltSessions,externalSessions,adhocSessions};
 }
 
 // Monthly figures MUST be computed independently from the daily cells (see block comment above)
@@ -8227,7 +8255,7 @@ function _tdComputeMonthlyHours(rows,year,month){
   const pad=n=>String(n).padStart(2,'0');
   const daysInMonth=new Date(year,month+1,0).getDate();
   const monthStartStr=`${year}-${pad(month+1)}-01`, monthEndStr=`${year}-${pad(month+1)}-${pad(daysInMonth)}`;
-  let iltHrs=0, externalHrs=0;
+  let iltHrs=0, externalHrs=0, adhocHrs=0;
   const sltSeen=new Map();
   rows.forEach(s=>{
     if(!s.trainingDate) return;
@@ -8240,6 +8268,8 @@ function _tdComputeMonthlyHours(rows,year,month){
     } else if(s.deliveryType==='Self-led'){
       const start=s.trainingDate, end=s.endDate||s.trainingDate;
       if(start<=monthEndStr && end>=monthStartStr && !sltSeen.has(s.id)) sltSeen.set(s.id,hrs);
+    } else if(s.deliveryType==='Ad-hoc'){
+      _tdSessionDayList(s).forEach(d=>{ if(d>=monthStartStr && d<=monthEndStr) adhocHrs+=hrs; });
     }
   });
   let sltHrs=0; sltSeen.forEach(h=>{ sltHrs+=h; });
@@ -8249,7 +8279,7 @@ function _tdComputeMonthlyHours(rows,year,month){
     const start=s.trainingDate, end=s.endDate||s.trainingDate;
     return start<=monthEndStr && end>=monthStartStr;
   }).length;
-  return {forecastedHrs:iltHrs+externalHrs+sltHrs,iltHrs,externalHrs,sltHrs,implementations};
+  return {forecastedHrs:iltHrs+externalHrs+sltHrs+adhocHrs,iltHrs,externalHrs,sltHrs,adhocHrs,implementations};
 }
 
 function _tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,isToday,isSelected,stat){
@@ -8263,6 +8293,7 @@ function _tdHoursDayCellHtml(day,dateStr,gridRow,gridCol,isToday,isSelected,stat
     <div style="font-size:10px;color:${TD_TYPE_COLORS.ILT.dot};margin-top:1px">● ILT: ${stat.ilt.toFixed(1)} hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS.External.dot}">● External: ${stat.external.toFixed(1)} hrs</div>
     <div style="font-size:10px;color:${TD_TYPE_COLORS['Self-led'].dot}">● SLT Available: ${stat.slt.toFixed(1)} hrs</div>
+    ${stat.adhoc?`<div style="font-size:10px;color:${TD_TYPE_COLORS['Ad-hoc'].dot}">● Ad-hoc: ${stat.adhoc.toFixed(1)} hrs</div>`:''}
   </div>`;
 }
 
@@ -8282,6 +8313,8 @@ function _tdHoursDayPanelHtml(dateStr,stat){
     const range=x.s.endDate&&x.s.endDate!==x.s.trainingDate?`${x.s.trainingDate} – ${x.s.endDate}`:x.s.trainingDate;
     return row(x.s,x.hrs,'Available: '+Utils.esc(range));
   }).join(''):'<div style="font-size:11px;color:var(--text3)">None</div>';
+  // Ad-hoc Task (2026-08-13, per Sandra): same detail-row treatment as ILT/External above.
+  const adhocHtml=(stat.adhocSessions||[]).map(x=>row(x.s,x.hrs,[_tdPersonName(x.s)].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; '))).join('');
 
   return `<div style="width:280px;flex-shrink:0;border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--white);max-height:620px;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
@@ -8291,13 +8324,15 @@ function _tdHoursDayPanelHtml(dateStr,stat){
     <div style="font-size:16px;font-weight:700;color:${TD_TYPE_COLORS.VILT.dot};margin-bottom:8px">${stat.forecasted.toFixed(1)} hrs <span style="font-size:11.5px;font-weight:500;color:var(--text2)">Forecasted Learning Hours</span></div>
     <div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS.ILT.dot}">●</span> ILT Hours: ${stat.ilt.toFixed(1)} hrs</div>
     ${stat.external?`<div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS.External.dot}">●</span> External Hours: ${stat.external.toFixed(1)} hrs</div>`:''}
-    <div style="font-size:11.5px;color:var(--text2);margin-bottom:14px"><span style="color:${TD_TYPE_COLORS['Self-led'].dot}">●</span> SLT Available Hours: ${stat.slt.toFixed(1)} hrs</div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:2px"><span style="color:${TD_TYPE_COLORS['Self-led'].dot}">●</span> SLT Available Hours: ${stat.slt.toFixed(1)} hrs</div>
+    ${stat.adhoc?`<div style="font-size:11.5px;color:var(--text2);margin-bottom:14px"><span style="color:${TD_TYPE_COLORS['Ad-hoc'].dot}">●</span> Ad-hoc Hours: ${stat.adhoc.toFixed(1)} hrs</div>`:'<div style="margin-bottom:14px"></div>'}
 
     <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${TD_TYPE_COLORS.ILT.dot};margin-bottom:6px">ILT Sessions (${stat.iltSessions.length})</div>
     ${iltHtml}
     ${stat.externalSessions.length?`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${TD_TYPE_COLORS.External.dot};margin:12px 0 6px">External (${stat.externalSessions.length})</div>${extHtml}`:''}
     <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${TD_TYPE_COLORS['Self-led'].dot};margin:12px 0 6px">SLT Available (${stat.sltSessions.length})</div>
     ${sltHtml}
+    ${(stat.adhocSessions||[]).length?`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${TD_TYPE_COLORS['Ad-hoc'].dot};margin:12px 0 6px">Ad-hoc (${stat.adhocSessions.length})</div>${adhocHtml}`:''}
   </div>`;
 }
 
@@ -8344,6 +8379,7 @@ function _tdRenderHoursCalendar(rows){
   const legend=`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS.ILT.dot};display:inline-block"></span>ILT</span>
     <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS['Self-led'].dot};display:inline-block"></span>SLT</span>
     <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS.External.dot};display:inline-block"></span>External</span>
+    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS['Ad-hoc'].dot};display:inline-block"></span>Ad-hoc</span>
     <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:${TD_TYPE_COLORS.VILT.dot};display:inline-block"></span>Forecasted Hours</span>`;
 
   wrap.innerHTML=`<div class="card" style="padding:14px 16px">
@@ -8696,7 +8732,7 @@ function tdDetailSwitchTab(tab){
 // or director"). Admins always retain full access, same as every other permission gate in this file.
 function _tdResponsiblePersonIds(s){
   const grp=_tdFieldGroup(s.deliveryType);
-  if(grp==='trainer') return [s.trainerId,s.coFacilitatorId].filter(Boolean);
+  if(grp==='trainer'||grp==='adhoc') return [s.trainerId,s.coFacilitatorId].filter(Boolean);
   if(grp==='owner') return [s.ownerId].filter(Boolean);
   return [s.createdBy].filter(Boolean); // external
 }
@@ -8745,65 +8781,73 @@ async function tdDetailSave(){
   const deliveryType=document.getElementById('tdd-type').value;
   const ownerType=_tdIsOwnerType(deliveryType);
   const grp=_tdFieldGroup(deliveryType);
-  const expectedRaw=document.getElementById('tdd-expected').value.trim();
-  const passingRaw=document.getElementById('tdd-passing').value.trim();
-  const durationRaw=document.getElementById('tdd-duration').value.trim();
+  // Null-safe field reads (2026-08-13, per Sandra's alignment-fix request): the edit form is now
+  // built as a dedicated per-type layout (see _tddSessionInfoEditContent), so fields that don't
+  // apply to the CURRENT delivery type genuinely don't exist in the DOM at all anymore (previously
+  // every field existed everywhere, just hidden via CSS). Every read below is optional-chained so
+  // switching type / saving never throws on a field this type doesn't render.
+  const expectedRaw=document.getElementById('tdd-expected')?.value.trim()||'';
+  const passingRaw=document.getElementById('tdd-passing')?.value.trim()||'';
+  const durationRaw=document.getElementById('tdd-duration')?.value.trim()||'';
   // Guest Trainer fallback (Phase39 item 1, simplified from Phase38's separate checkbox):
   // mutually exclusive with the system-user trainerId -- when the Trainer dropdown's value is
   // the "__SME__" sentinel (swapped to a text input in the UI), trainerId is cleared and
   // guestTrainerName is saved instead (and vice versa).
+  // Ad-hoc (2026-08-13, per Sandra): shares the Trainer/Co-Facilitator/Guest-fallback fields with
+  // 'trainer' (ILT/VILT) -- treated the same as 'trainer' everywhere below for those fields.
   const trainerSelVal=document.getElementById('tdd-trainer')?.value||'';
-  const isGuestTrainer=grp==='trainer'&&trainerSelVal==='__SME__';
+  const isGuestTrainer=(grp==='trainer'||grp==='adhoc')&&trainerSelVal==='__SME__';
   // Same Guest fallback pattern extended to Co-Facilitator (Phase46, 2026-08-06): mutually
   // exclusive with coFacilitatorId.
   const cofacSelVal=document.getElementById('tdd-cofacilitator')?.value||'';
-  const isGuestCofac=grp==='trainer'&&cofacSelVal==='__SME__';
+  const isGuestCofac=(grp==='trainer'||grp==='adhoc')&&cofacSelVal==='__SME__';
   const d={
     deliveryType,
-    trainingProgram:document.getElementById('tdd-program').value.trim(),
+    trainingProgram:document.getElementById('tdd-program')?.value.trim()||'',
     // Batch No. (2026-08-13, per Sandra): not collected for External either, not just Self-led.
-    batchNo:grp==='external'?'':document.getElementById('tdd-batch').value.trim(),
-    trainingDate:document.getElementById('tdd-date').value,
-    endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('tdd-enddate').value||null):null,
-    trainerId:(grp==='trainer'&&!isGuestTrainer)?(trainerSelVal||null):null,
-    guestTrainerName:(grp==='trainer'&&isGuestTrainer)?(document.getElementById('tdd-guest-name').value.trim()||null):null,
-    ownerId:grp==='owner'?(document.getElementById('tdd-owner').value||null):null,
+    // Ad-hoc doesn't render this field at all -- grp==='trainer' check (rather than the earlier
+    // "not owner/external" negation) makes that explicit now that a 4th non-batch group exists.
+    batchNo:grp==='trainer'?(document.getElementById('tdd-batch')?.value.trim()||''):'',
+    trainingDate:document.getElementById('tdd-date')?.value||'',
+    endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('tdd-enddate')?.value||null):null,
+    trainerId:((grp==='trainer'||grp==='adhoc')&&!isGuestTrainer)?(trainerSelVal||null):null,
+    guestTrainerName:((grp==='trainer'||grp==='adhoc')&&isGuestTrainer)?(document.getElementById('tdd-guest-name')?.value.trim()||null):null,
+    ownerId:grp==='owner'?(document.getElementById('tdd-owner')?.value||null):null,
     // Facilitator Name removed entirely for External (2026-08-13, per Sandra) -- the field no
     // longer exists in this form; L&D Owner (below) covers accountability instead.
     facilitatorName:null,
-    trainingProvider:grp==='external'?document.getElementById('tdd-provider').value.trim():null,
+    trainingProvider:grp==='external'?(document.getElementById('tdd-provider')?.value.trim()||''):null,
     // L&D Owner (2026-08-13, per Sandra): accountable internal team member for External sessions.
-    ldOwnerId:grp==='external'?(document.getElementById('tdd-ldowner').value||null):null,
-    coFacilitatorId:(grp==='trainer'&&!isGuestCofac)?(cofacSelVal||null):null,
-    coFacilitatorGuestName:(grp==='trainer'&&isGuestCofac)?(document.getElementById('tdd-cofacilitator-guest-name').value.trim()||null):null,
+    ldOwnerId:grp==='external'?(document.getElementById('tdd-ldowner')?.value||null):null,
+    coFacilitatorId:((grp==='trainer'||grp==='adhoc')&&!isGuestCofac)?(cofacSelVal||null):null,
+    coFacilitatorGuestName:((grp==='trainer'||grp==='adhoc')&&isGuestCofac)?(document.getElementById('tdd-cofacilitator-guest-name')?.value.trim()||null):null,
     ..._tdResolveVenue('tdd'),
-    audience:_readMultiSelect('tdd-audience'),
+    audience:grp==='adhoc'?[]:_readMultiSelect('tdd-audience'),
     // Expected/Maximum Participants (2026-08-13, per Sandra): not collected for External.
     expectedParticipants:grp==='external'?null:(expectedRaw?parseInt(expectedRaw,10):null),
     durationHours:durationRaw?parseFloat(durationRaw):null,
-    category:document.getElementById('tdd-category').value||null,
-    description:document.getElementById('tdd-description').value.trim(),
+    category:document.getElementById('tdd-category')?.value||null,
+    description:document.getElementById('tdd-description')?.value.trim()||'',
     // Report Link / Recording Link / Training Bond Document Link (2026-08-06 Phase62, extended
     // 2026-08-13): captured for every delivery type now, relabeled per type in the UI.
-    recordingLink:document.getElementById('tdd-recording').value.trim(),
+    recordingLink:document.getElementById('tdd-recording')?.value.trim()||'',
     // Assessment removed entirely for External (per Sandra, 2026-08-13) -- cleared on save
     // regardless of what the (now-hidden) dropdown/field still hold in the DOM.
-    assessmentType:grp==='external'?'None':document.getElementById('tdd-assessment').value,
+    assessmentType:grp==='external'?'None':(document.getElementById('tdd-assessment')?.value||'None'),
     passingScore:grp==='external'?null:(passingRaw?parseInt(passingRaw,10):null),
-    modalityId:_tdShowsModality(deliveryType)?(document.getElementById('tdd-modalityid').value||null):null,
-    status:document.getElementById('tdd-status').value,
-    // Mandatory tag (2026-08-06, Phase62): Self-led-only field; checkbox stays in the DOM (just
-    // hidden) for non-owner types, so always read it but it's only ever surfaced in the UI when
-    // grp==='owner'.
-    isMandatory:document.getElementById('tdd-mandatory')?document.getElementById('tdd-mandatory').checked:false,
+    modalityId:_tdShowsModality(deliveryType)?(document.getElementById('tdd-modalityid')?.value||null):null,
+    status:document.getElementById('tdd-status')?.value||'scheduled',
+    // Mandatory tag (2026-08-06, Phase62): Self-led-only field -- only rendered in the DOM at all
+    // when grp==='owner' now, so always optional-chained.
+    isMandatory:document.getElementById('tdd-mandatory')?.checked||false,
     // Trainer Checklist template selector (Phase D2, 2026-08-07): ILT-only, mirrors the
     // Modality field's "only meaningful for certain delivery types, cleared otherwise" pattern.
     checklistTemplateId:deliveryType==='ILT'?(document.getElementById('tdd-checklisttpl')?.value||null):null,
     // External-only fields (2026-08-13): Training Classification, RICA Ticket, and Training Bond
     // Period + auto-computed End Date (anchored to endDate||trainingDate, see _tdBondEndDate).
-    trainingClassification:grp==='external'?(document.getElementById('tdd-classification').value||null):null,
-    ricaTicket:grp==='external'?document.getElementById('tdd-ricaticket').value.trim():null,
-    trainingBondMonths:grp==='external'?(document.getElementById('tdd-bondmonths').value?parseInt(document.getElementById('tdd-bondmonths').value,10):null):null
+    trainingClassification:grp==='external'?(document.getElementById('tdd-classification')?.value||null):null,
+    ricaTicket:grp==='external'?(document.getElementById('tdd-ricaticket')?.value.trim()||''):null,
+    trainingBondMonths:grp==='external'?(document.getElementById('tdd-bondmonths')?.value?parseInt(document.getElementById('tdd-bondmonths').value,10):null):null
   };
   if(grp==='external'){
     const anchor=d.endDate||d.trainingDate;
@@ -8813,17 +8857,18 @@ async function tdDetailSave(){
   }
   const errs=[];
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
-  if(!d.trainingProgram) errs.push('Training Program / Title is required.');
-  if(grp!=='owner' && grp!=='external' && !d.batchNo) errs.push('Batch No. is required.');
+  if(!d.trainingProgram) errs.push(grp==='adhoc'?'Task Name is required.':'Training Program / Title is required.');
+  if(grp==='trainer' && !d.batchNo) errs.push('Batch No. is required.');
   if(!d.trainingDate) errs.push('Start Date is required.');
-  if(!d.description) errs.push('Description is required.');
+  if(!d.description) errs.push(grp==='adhoc'?'Notes is required.':'Description is required.');
   // Guest Trainer fallback (Phase38 item 1): either a real system-user Trainer OR a Guest
   // Trainer Name is required for ILT/VILT sessions, not neither (replaces the old unconditional
-  // "!d.trainerId" check).
-  if(grp==='trainer' && !d.trainerId && !d.guestTrainerName) errs.push('Please select a Trainer, or enter a Guest Trainer Name.');
+  // "!d.trainerId" check). Ad-hoc (2026-08-13) shares this same Trainer requirement.
+  if((grp==='trainer'||grp==='adhoc') && !d.trainerId && !d.guestTrainerName) errs.push('Please select a Trainer, or enter a Guest Trainer Name.');
   if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
   if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
-  if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Delivery Method is required for ILT, Self-led, and External sessions.');
+  if(_tdShowsModality(deliveryType) && !d.modalityId) errs.push('Delivery Method is required for ILT, External, and Ad-hoc sessions.');
+  if(grp==='adhoc' && d.durationHours==null) errs.push('Hours is required for Ad-hoc Tasks.');
   // Phase38 item 2 (Sandra's explicit request): make ALL Session Information fields required for
   // ILT sessions except Co-Facilitator. Interpreting "all details" as the structured fields below
   // -- Assessment Type/Passing Score remain optional (an assessment nobody has necessarily
@@ -8839,7 +8884,11 @@ async function tdDetailSave(){
     if(!d.checklistTemplateId) errs.push('Please select a Trainer Checklist template, or choose "No Checklist Required".');
   }
   if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
-  if(_isOtherVenue(document.getElementById('tdd-venue').value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
+  // Venue field doesn't exist in the DOM at all for Ad-hoc (2026-08-13) -- guard against the
+  // element lookup itself, not just its value, since document.getElementById('tdd-venue').value
+  // would throw on null for that type.
+  const tddVenueEl=document.getElementById('tdd-venue');
+  if(tddVenueEl&&_isOtherVenue(tddVenueEl.value)&&!(document.getElementById('tdd-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
   if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
   // Guard (2026-08-10, per Sandra): for ILT/VILT/External, "Completed" is only reachable via
   // Attendance & Performance -> Mark Complete (which validates the roster). The tdd-status <select>
@@ -8847,7 +8896,9 @@ async function tdDetailSave(){
   // check closes the gap in case of a stale/tampered DOM value -- newly setting status to
   // 'completed' from here is blocked; it's only allowed to pass through unchanged if the session
   // was already completed (e.g. an admin editing other fields on an already-completed session).
-  if(grp!=='owner' && d.status==='completed' && s.status!=='completed'){
+  // Ad-hoc (2026-08-13, per Sandra) is exempt like Self-led -- its Status dropdown IS the direct
+  // Completed/Not Completed toggle, with no Attendance workflow behind it at all.
+  if(grp!=='owner' && grp!=='adhoc' && d.status==='completed' && s.status!=='completed'){
     errs.push('Sessions can only be marked Completed from the Attendance & Performance tab (Mark Complete), which checks that attendance has been taken.');
   }
   const errEl=document.getElementById('tdd-error');
@@ -11347,7 +11398,10 @@ function renderTrainingDetail(){
     // External Sessions build (2026-08-13, per Sandra): no Training Report tab for External --
     // "Attendance and Checklist" covers what External needs (attendance + the 4 checklist items).
     .filter(t=>t.id!=='report'||s.deliveryType!=='External'))
-    .filter(t=>!_tdMoActive||!(t.id==='checklist'||t.id==='participants'||t.id==='report'));
+    .filter(t=>!_tdMoActive||!(t.id==='checklist'||t.id==='participants'||t.id==='report'))
+    // Ad-hoc Task (2026-08-13, per Sandra): "no attendance/checklist/report requirement" -- leaves
+    // only Overview and Audit History, same minimal set as a non-mandatory Self-led session.
+    .filter(t=>_tdGrp!=='adhoc'||t.id==='overview'||t.id==='audit');
   if(!visibleTabs.some(t=>t.id===_tdDetailTab)) _tdDetailTab='overview';
   // External Sessions build (2026-08-13, per Sandra): the "Attendance & Performance" tab is
   // relabeled "Attendance and Checklist" for External sessions -- same tab/content, just a name
@@ -11409,7 +11463,7 @@ function _tddInfoBlock(iconName,color,label,value){
   </div>`;
 }
 
-const _TD_MODALITY_LABEL={ILT:'In-Person (ILT)',VILT:'Virtual (VILT)','Self-led':'Self-Led',External:'External'};
+const _TD_MODALITY_LABEL={ILT:'In-Person (ILT)',VILT:'Virtual (VILT)','Self-led':'Self-Led',External:'External','Ad-hoc':'Ad-hoc'};
 
 function _tddAssessmentDisplay(s){
   if(!s.assessmentType||s.assessmentType==='None') return 'None';
@@ -11497,6 +11551,30 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
       ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
     </div>
     ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
+    `;
+  }
+  // Ad-hoc Task (2026-08-13, per Sandra): mirrors the Ad-hoc branch of _tddSessionInfoEditContent
+  // field-for-field -- Format/Delivery Method/Task Name/Status, then Trainer/Co-Facilitator/Date/
+  // Hours, then Notes (relabeled description).
+  if(grp==='adhoc'){
+    return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
+      ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
+    </div>
+    <div style="${gridStyle}">
+      ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
+      ${_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('filetext','var(--sky)','Task Name',Utils.esc(s.trainingProgram||'—'))}
+      ${_tddInfoBlock('check','#64748b','Status',s.status==='completed'?'<span class="badge" style="background:#dcfce7;color:#15803d">Completed</span>':'<span class="badge" style="background:#fef9c3;color:#a16207">Not Completed</span>')}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlock('user','var(--sky)','Trainer',Utils.esc(personName||'—'))}
+      ${_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>')}
+      ${_tddInfoBlock('calendar','var(--amber)','Date',_tdDateCell(s))}
+      ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+    </div>
+    ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600">Notes</div>${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
   }
   return `
@@ -12453,6 +12531,17 @@ function _tddInfoBlockEdit(iconName,color,label,inputHtml,wrapId){
   </div>`;
 }
 
+// Rebuilt (2026-08-13, per Sandra -- reported ILT session's Overview edit form had fields "all
+// over the place" vs. the clean view-mode layout). Root cause: this used to be ONE shared 4-col
+// grid per row with irrelevant-for-this-type fields hidden via display:none -- which removes them
+// from the grid's flow, so the remaining visible fields collapse leftward into whatever columns
+// are left instead of leaving a gap. View mode never had this bug because it already builds a
+// distinct, purpose-built layout per delivery type (see _tddSessionInfoViewContent) instead of
+// hiding cells in one shared grid. Fix: mirror that same per-type-branch approach here, so a
+// field that doesn't apply to this type is never rendered at all (not hidden -- just absent),
+// and every row is built from only the fields that actually belong together. Because the DOM
+// structure now genuinely differs per branch, _tddToggleTypeFields() below re-renders this whole
+// block on Format change instead of toggling CSS classes on fields shared across branches.
 function _tddSessionInfoEditContent(s,ownerType){
   const smallInputStyle='font-size:13px;padding:5px 8px';
   const smallInput=`style="${smallInputStyle}"`;
@@ -12463,52 +12552,35 @@ function _tddSessionInfoEditContent(s,ownerType){
   // swaps the SAME field slot from the dropdown to a text input (never both visible at once).
   // "Choose from list" (✕) switches back and clears the guest name.
   const isGuestOnEntry=!s.trainerId&&!!s.guestTrainerName;
+  const isGuestCofacOnEntry=!s.coFacilitatorId&&!!s.coFacilitatorGuestName;
   const showsDateRange=_tdShowsDateRange(s.deliveryType);
-  return `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
       <span style="font-size:11.5px;color:var(--text3)">Editing…</span>
+    </div>`;
+  // Description/Notes footer relabeled "Notes" for Ad-hoc (2026-08-13, per Sandra's spec: "free-
+  // text Notes, reusing existing description field") -- same underlying tdd-description field and
+  // column, just a label that fits the Ad-hoc mental model better than "Description".
+  const footer=`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt)">
+      <label class="form-label" style="font-size:11px;color:var(--text3)">${grp==='adhoc'?'Notes':'Description'}</label>
+      <textarea id="tdd-description" class="form-control" rows="3" style="font-size:13px">${Utils.esc(s.description||'')}</textarea>
     </div>
-    <div style="${gridStyle}">
-      ${_tddInfoBlockEdit('target','#64748b','Format',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
+    <div class="modal-err hidden" id="tdd-error"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-primary btn-sm" id="tdd-save-btn" onclick="tdDetailSave()">Save</button>
+      <button class="btn btn-secondary btn-sm" onclick="tdDetailCancelEdit()">Cancel</button>
+    </div>`;
+  const formatField=_tddInfoBlockEdit('target','#64748b','Format',`<select id="tdd-type" class="form-control" ${smallInput} onchange="_tddToggleTypeFields()">
         <option value="ILT" ${s.deliveryType==='ILT'?'selected':''}>ILT</option>
         ${s.deliveryType==='VILT'?`<option value="VILT" selected>VILT</option>`:''}
         <option value="Self-led" ${s.deliveryType==='Self-led'?'selected':''}>Self-led</option>
         <option value="External" ${s.deliveryType==='External'?'selected':''}>External</option>
-      </select>`)}
-      ${_tddInfoBlockEdit('target','#0891b2','Delivery Method',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap')}
-      ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
-      ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`,'tdd-provider-wrap')}
-      <div style="min-width:0">
-        <div id="tdd-batch-wrap" class="${grp==='owner'||grp==='external'?'hidden':''}">${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`)}</div>
-        <div id="tdd-mandatory-wrap" class="${grp==='owner'?'':'hidden'}">${_tddInfoBlockEdit('flag','#dc2626','Mandatory',`<label style="display:flex;align-items:center;gap:6px;margin-top:2px;cursor:pointer"><input type="checkbox" id="tdd-mandatory" ${s.isMandatory?'checked':''} style="width:16px;height:16px"> <span style="font-size:13px">Mandatory</span></label>`)}</div>
-      </div>
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('user','#0369a1','L&amp;D Owner',`<select id="tdd-ldowner" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-ldowner-wrap')}
-      ${_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`)}
-      ${_tddInfoBlockEdit('filetext','#64748b','RICA Ticket',`<input type="text" id="tdd-ricaticket" class="form-control" ${smallInput} placeholder="e.g. RICA-00123" value="${Utils.esc(s.ricaTicket||'')}">`,'tdd-ricaticket-wrap')}
-      ${_tddInfoBlockEdit('list','#7c3aed','Training Classification',`<select id="tdd-classification" class="form-control" ${smallInput}>
-        <option value="">— Select —</option>
-        <option value="Developmental Training" ${s.trainingClassification==='Developmental Training'?'selected':''}>Developmental Training</option>
-        <option value="Certification-Based Training" ${s.trainingClassification==='Certification-Based Training'?'selected':''}>Certification-Based Training</option>
-        <option value="Licensure or High-Impact Qualification" ${s.trainingClassification==='Licensure or High-Impact Qualification'?'selected':''}>Licensure or High-Impact Qualification</option>
-      </select>`,'tdd-classification-wrap')}
-      ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control ${isGuestOnEntry?'hidden':''}" ${smallInput} onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select>
-        <div id="tdd-guest-name-wrap" class="${isGuestOnEntry?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="tdd-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Trainer Name" value="${Utils.esc(s.guestTrainerName||'')}">
-          <a href="javascript:void(0)" onclick="_tddClearGuestTrainer()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
-        </div>`,'tdd-trainer-wrap')}
-      ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`,'tdd-owner-wrap')}
-      ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control" ${smallInput} onchange="_tddCofacSelectChange()"><option value="">— None —</option></select>
-        <div id="tdd-cofacilitator-guest-wrap" class="hidden" style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="tdd-cofacilitator-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Co-Facilitator Name">
-          <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
-        </div>`,'tdd-cofacilitator-wrap')}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`)}
-      ${_tddInfoBlockEdit('calendar','var(--amber)','Date'+(showsDateRange?' / Period':''),`<div style="display:flex;gap:6px">
+        <option value="Ad-hoc" ${s.deliveryType==='Ad-hoc'?'selected':''}>Ad-hoc</option>
+      </select>`);
+  const modalityField=_tddInfoBlockEdit('target','#0891b2','Delivery Method',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap');
+  const categoryField=_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`);
+  const venueField=_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`);
+  const dateField=_tddInfoBlockEdit('calendar','var(--amber)','Date'+(showsDateRange?' / Period':''),`<div style="display:flex;gap:6px">
         <div style="display:flex;flex-direction:column;flex:1;min-width:0">
           <input type="date" id="tdd-date" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.trainingDate||''}" onchange="_tdUpdateBondEndPreview('tdd')">
           <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">${showsDateRange?'Start Date':'Date'}</div>
@@ -12517,7 +12589,73 @@ function _tddSessionInfoEditContent(s,ownerType){
           <input type="date" id="tdd-enddate" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.endDate||''}" onchange="_tdUpdateBondEndPreview('tdd')">
           <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">End Date</div>
         </div>
-      </div>`)}
+      </div>`);
+  const durationField=_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`);
+  const audienceField=_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],smallInputStyle));
+  // Ad-hoc (2026-08-13, per Sandra: Status is a direct Completed/Not Completed toggle, not gated
+  // by an Attendance workflow like ILT/VILT/External) -- treated the same as ownerType (Self-led)
+  // for purposes of "can this type set Completed directly from this dropdown".
+  const directCompletable=ownerType||grp==='adhoc';
+  const statusField=_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
+        <option value="scheduled" ${s.status==='scheduled'?'selected':''}>${grp==='adhoc'?'Not Completed':'Scheduled'}</option>
+        ${directCompletable?`<option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>`:(s.status==='completed'?`<option value="completed" selected>Completed</option>`:'')}
+        ${grp==='adhoc'?'':`<option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>`}
+      </select>${directCompletable?'':`<div style="font-size:10.5px;color:var(--text3);margin-top:3px">Completed is set automatically once Attendance &amp; Performance is tagged Complete.</div>`}`);
+
+  if(grp==='owner'){
+    // Self-led (mirrors _tddSessionInfoViewContent's owner branch row-for-row).
+    return header+`
+    <div style="${gridStyle}">
+      ${formatField}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${dateField}
+      ${_tddInfoBlockEdit('flag','#dc2626','Mandatory',`<label style="display:flex;align-items:center;gap:6px;margin-top:2px;cursor:pointer"><input type="checkbox" id="tdd-mandatory" ${s.isMandatory?'checked':''} style="width:16px;height:16px"> <span style="font-size:13px">Mandatory</span></label>`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`)}
+      ${categoryField}
+      ${venueField}
+      ${durationField}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${audienceField}
+      ${_tddInfoBlockEdit('users','var(--sky)','Required Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
+      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
+        <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
+        <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
+        <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
+        <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
+      </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
+      ${statusField}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('edit3','#64748b','Report Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
+    </div>`+footer;
+  }
+
+  if(grp==='external'){
+    // External (mirrors _tddSessionInfoViewContent's external branch row-for-row).
+    return header+`
+    <div style="${gridStyle}">
+      ${formatField}
+      ${modalityField}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('user','#0369a1','L&amp;D Owner',`<select id="tdd-ldowner" class="form-control" ${smallInput}><option value="">— Select —</option></select>`)}
+      ${categoryField}
+      ${_tddInfoBlockEdit('filetext','#64748b','RICA Ticket',`<input type="text" id="tdd-ricaticket" class="form-control" ${smallInput} placeholder="e.g. RICA-00123" value="${Utils.esc(s.ricaTicket||'')}">`)}
+      ${_tddInfoBlockEdit('list','#7c3aed','Training Classification',`<select id="tdd-classification" class="form-control" ${smallInput}>
+        <option value="">— Select —</option>
+        <option value="Developmental Training" ${s.trainingClassification==='Developmental Training'?'selected':''}>Developmental Training</option>
+        <option value="Certification-Based Training" ${s.trainingClassification==='Certification-Based Training'?'selected':''}>Certification-Based Training</option>
+        <option value="Licensure or High-Impact Qualification" ${s.trainingClassification==='Licensure or High-Impact Qualification'?'selected':''}>Licensure or High-Impact Qualification</option>
+      </select>`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${venueField}
+      ${dateField}
       ${_tddInfoBlockEdit('clock','#0369a1','Training Bond Period',`<select id="tdd-bondmonths" class="form-control" ${smallInput} onchange="_tdUpdateBondEndPreview('tdd')">
         <option value="">— None —</option>
         <option value="3" ${String(s.trainingBondMonths)==='3'?'selected':''}>3 months</option>
@@ -12525,39 +12663,86 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="12" ${String(s.trainingBondMonths)==='12'?'selected':''}>12 months</option>
         <option value="18" ${String(s.trainingBondMonths)==='18'?'selected':''}>18 months</option>
         <option value="24" ${String(s.trainingBondMonths)==='24'?'selected':''}>24 months</option>
-      </select>`,'tdd-bondmonths-wrap')}
-      ${_tddInfoBlockEdit('calendar','#0369a1','Training Bond End Date',`<input type="text" id="tdd-bondend-display" class="form-control" ${smallInput} readonly style="background:var(--bg2)" value="${Utils.esc(s.trainingBondEndDate||'')}" placeholder="Auto-computed from bond period">`,'tdd-bondend-wrap')}
+      </select>`)}
+      ${_tddInfoBlockEdit('calendar','#0369a1','Training Bond End Date',`<input type="text" id="tdd-bondend-display" class="form-control" ${smallInput} readonly style="background:var(--bg2)" value="${Utils.esc(s.trainingBondEndDate||'')}" placeholder="Auto-computed from bond period">`)}
     </div>
     <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`)}
-      ${_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],smallInputStyle))}
-      ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">'+(s.deliveryType==='External'?'Training Bond Document Link':(ownerType?'Report Link':'Recording Link'))+'</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`,'tdd-recording-wrap')}
-      ${_tddInfoBlockEdit('users','var(--sky)','<span id="tdd-expected-label">'+(grp==='owner'?'Required Participants':'Maximum Participants')+'</span>',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`,'tdd-expected-wrap')}
-      ${_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
-        <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
-        ${ownerType?`<option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>`:(s.status==='completed'?`<option value="completed" selected>Completed</option>`:'')}
-        <option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>
-      </select>${ownerType?'':`<div style="font-size:10.5px;color:var(--text3);margin-top:3px">Completed is set automatically once Attendance &amp; Performance is tagged Complete.</div>`}`)}
+      ${durationField}
+      ${audienceField}
+      ${_tddInfoBlockEdit('edit3','#64748b','Training Bond Document Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
+      ${statusField}
+    </div>`+footer;
+  }
+
+  if(grp==='adhoc'){
+    // Ad-hoc Task (2026-08-13, per Sandra's explicit field list): Trainer + Co-Facilitator +
+    // Delivery Method + a single Date + Status + Notes (description) + Hours (durationHours) --
+    // deliberately no Venue/Batch/Audience/Recording Link/Assessment/Checklist, and no date RANGE
+    // (single Date only, per spec -- _tdShowsDateRange() already returns false for Ad-hoc).
+    const isGuestOnEntryAdhoc=!s.trainerId&&!!s.guestTrainerName;
+    const isGuestCofacOnEntryAdhoc=!s.coFacilitatorId&&!!s.coFacilitatorGuestName;
+    return header+`
+    <div style="${gridStyle}">
+      ${formatField}
+      ${modalityField}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Task Name',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${statusField}
     </div>
     <div style="${gridStyle};margin-top:18px">
-      <div id="tdd-assessment-wrap">${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
+      ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control ${isGuestOnEntryAdhoc?'hidden':''}" ${smallInput} onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select>
+        <div id="tdd-guest-name-wrap" class="${isGuestOnEntryAdhoc?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="tdd-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Trainer Name" value="${Utils.esc(s.guestTrainerName||'')}">
+          <a href="javascript:void(0)" onclick="_tddClearGuestTrainer()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
+        </div>`,'tdd-trainer-wrap')}
+      ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control ${isGuestCofacOnEntryAdhoc?'hidden':''}" ${smallInput} onchange="_tddCofacSelectChange()"><option value="">— None —</option></select>
+        <div id="tdd-cofacilitator-guest-wrap" class="${isGuestCofacOnEntryAdhoc?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="tdd-cofacilitator-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Co-Facilitator Name" value="${Utils.esc(s.coFacilitatorGuestName||'')}">
+          <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
+        </div>`,'tdd-cofacilitator-wrap')}
+      ${dateField}
+      ${durationField}
+    </div>`+footer;
+  }
+
+  // ILT / VILT (mirrors _tddSessionInfoViewContent's default/trainer branch row-for-row).
+  return header+`
+    <div style="${gridStyle}">
+      ${formatField}
+      ${_tdShowsModality(s.deliveryType)?modalityField:''}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control ${isGuestOnEntry?'hidden':''}" ${smallInput} onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select>
+        <div id="tdd-guest-name-wrap" class="${isGuestOnEntry?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="tdd-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Trainer Name" value="${Utils.esc(s.guestTrainerName||'')}">
+          <a href="javascript:void(0)" onclick="_tddClearGuestTrainer()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
+        </div>`,'tdd-trainer-wrap')}
+      ${_tddInfoBlockEdit('users','#7c3aed','Co-Facilitator',`<select id="tdd-cofacilitator" class="form-control ${isGuestCofacOnEntry?'hidden':''}" ${smallInput} onchange="_tddCofacSelectChange()"><option value="">— None —</option></select>
+        <div id="tdd-cofacilitator-guest-wrap" class="${isGuestCofacOnEntry?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="tdd-cofacilitator-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Co-Facilitator Name" value="${Utils.esc(s.coFacilitatorGuestName||'')}">
+          <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
+        </div>`,'tdd-cofacilitator-wrap')}
+      ${dateField}
+      ${venueField}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${categoryField}
+      ${durationField}
+      ${audienceField}
+      ${_tddInfoBlockEdit('users','var(--sky)','Maximum Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
+    </div>
+    <div style="${gridStyle};margin-top:18px">
+      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
         <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
         <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
-      </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}</div>
-      <div id="tdd-checklisttpl-wrap" class="${s.deliveryType==='ILT'?'':'hidden'}">${_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`)}</div>
-    </div>
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt)">
-      <label class="form-label" style="font-size:11px;color:var(--text3)">Description</label>
-      <textarea id="tdd-description" class="form-control" rows="3" style="font-size:13px">${Utils.esc(s.description||'')}</textarea>
-    </div>
-    <div class="modal-err hidden" id="tdd-error"></div>
-    <div style="display:flex;gap:8px;margin-top:14px">
-      <button class="btn btn-primary btn-sm" id="tdd-save-btn" onclick="tdDetailSave()">Save</button>
-      <button class="btn btn-secondary btn-sm" onclick="tdDetailCancelEdit()">Cancel</button>
-    </div>
-  `;
+      </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
+      ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">Recording Link</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
+      ${statusField}
+      ${s.deliveryType==='ILT'?_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`):''}
+    </div>`+footer;
 }
 
 function _tddPopulateEditDropdowns(s,ownerType){
@@ -12702,45 +12887,65 @@ function _tddClearCofacGuest(){
   if(sel){ sel.classList.remove('hidden'); sel.value=''; }
 }
 
+// Rebuilt (2026-08-13, per Sandra, alongside _tddSessionInfoEditContent above) -- the edit form
+// is now three structurally-different per-type layouts instead of one shared grid with fields
+// hidden via CSS, so there's no longer a fixed set of wrap ids to toggle .hidden on when the
+// Format dropdown changes. Instead: snapshot whatever the user has already typed into the CURRENT
+// form, merge it over the underlying session record with the new deliveryType, fully re-render
+// #tdd-session-info-card from that merged object, then repopulate the dropdowns exactly as the
+// initial edit-mode render does. This also still runs once on the initial edit-mode render (see
+// renderTrainingDetail's `_tddPopulateEditDropdowns(s,ownerType); _tddToggleTypeFields();` call) --
+// in that case the snapshot below just reads back the values the form was already rendered with,
+// so the re-render is a harmless no-op rebuild of the same branch.
 function _tddToggleTypeFields(){
   const dt=document.getElementById('tdd-type').value;
+  const original=TrSessionDB.byId(_tdDetailId);
+  if(!original) return;
+  const trainerSelVal=document.getElementById('tdd-trainer')?.value||'';
+  const cofacSelVal=document.getElementById('tdd-cofacilitator')?.value||'';
+  const durationRaw=document.getElementById('tdd-duration')?.value.trim()||'';
+  const expectedRaw=document.getElementById('tdd-expected')?.value.trim()||'';
+  const passingRaw=document.getElementById('tdd-passing')?.value.trim()||'';
+  // Merge: keep every field from the underlying record (so switching type never loses data the
+  // current layout doesn't show an editor for), then overlay whatever's currently on-screen for
+  // fields that DO have an editor right now, then apply the new deliveryType.
+  const snapshot={
+    ...original,
+    deliveryType:dt,
+    trainingProgram:document.getElementById('tdd-program')?.value.trim()??original.trainingProgram,
+    trainingProvider:document.getElementById('tdd-provider')?.value.trim()??original.trainingProvider,
+    batchNo:document.getElementById('tdd-batch')?.value.trim()??original.batchNo,
+    isMandatory:document.getElementById('tdd-mandatory')?document.getElementById('tdd-mandatory').checked:original.isMandatory,
+    trainingDate:document.getElementById('tdd-date')?.value??original.trainingDate,
+    endDate:document.getElementById('tdd-enddate')?.value??original.endDate,
+    trainerId:(trainerSelVal&&trainerSelVal!=='__SME__')?trainerSelVal:(trainerSelVal==='__SME__'?null:original.trainerId),
+    guestTrainerName:trainerSelVal==='__SME__'?(document.getElementById('tdd-guest-name')?.value.trim()||original.guestTrainerName):(trainerSelVal?null:original.guestTrainerName),
+    coFacilitatorId:(cofacSelVal&&cofacSelVal!=='__SME__')?cofacSelVal:(cofacSelVal==='__SME__'?null:original.coFacilitatorId),
+    coFacilitatorGuestName:cofacSelVal==='__SME__'?(document.getElementById('tdd-cofacilitator-guest-name')?.value.trim()||original.coFacilitatorGuestName):(cofacSelVal?null:original.coFacilitatorGuestName),
+    ownerId:document.getElementById('tdd-owner')?.value||original.ownerId,
+    ldOwnerId:document.getElementById('tdd-ldowner')?.value||original.ldOwnerId,
+    category:document.getElementById('tdd-category')?.value||original.category,
+    ricaTicket:document.getElementById('tdd-ricaticket')?.value.trim()??original.ricaTicket,
+    trainingClassification:document.getElementById('tdd-classification')?.value||original.trainingClassification,
+    trainingBondMonths:document.getElementById('tdd-bondmonths')?.value||original.trainingBondMonths,
+    durationHours:durationRaw?parseFloat(durationRaw):(durationRaw===''?null:original.durationHours),
+    audience:document.getElementById('tdd-audience')?_readMultiSelect('tdd-audience'):original.audience,
+    recordingLink:document.getElementById('tdd-recording')?.value.trim()??original.recordingLink,
+    expectedParticipants:expectedRaw?parseInt(expectedRaw,10):(expectedRaw===''?null:original.expectedParticipants),
+    status:document.getElementById('tdd-status')?.value||original.status,
+    assessmentType:document.getElementById('tdd-assessment')?.value||original.assessmentType,
+    passingScore:passingRaw?parseInt(passingRaw,10):(passingRaw===''?null:original.passingScore),
+    modalityId:document.getElementById('tdd-modalityid')?.value||original.modalityId,
+    checklistTemplateId:document.getElementById('tdd-checklisttpl')?.value||original.checklistTemplateId,
+    description:document.getElementById('tdd-description')?.value??original.description,
+    venueId:document.getElementById('tdd-venue')?.value||original.venueId,
+    venueOtherName:document.getElementById('tdd-venue-other')?.value??original.venueOtherName
+  };
   const ownerType=_tdIsOwnerType(dt);
-  const grp=_tdFieldGroup(dt);
-  document.getElementById('tdd-trainer-wrap').classList.toggle('hidden',grp!=='trainer');
-  document.getElementById('tdd-cofacilitator-wrap').classList.toggle('hidden',grp!=='trainer');
-  document.getElementById('tdd-owner-wrap').classList.toggle('hidden',grp!=='owner');
-  // Facilitator Name element was removed entirely from the External template (2026-08-13, per
-  // Sandra) -- no tdd-facilitator-wrap to toggle anymore. (Previously this line called
-  // getElementById on a now-nonexistent element, throwing and silently aborting every toggle
-  // after it in this function -- that's why Assessment/Maximum Participants kept showing for
-  // External despite being "removed": the crash happened before those toggles ever ran.)
-  document.getElementById('tdd-provider-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('tdd-enddate-wrap').classList.toggle('hidden',!_tdShowsDateRange(dt));
-  // Report Link / Recording Link (2026-08-06, Phase61): same field, relabeled -- Self-led shows
-  // it as "Report Link"; External (2026-08-13) relabels it "Training Bond Document Link" (still
-  // the same recordingLink column); everyone else keeps "Recording Link". Check External before
-  // the generic ownerType branch since _tdIsOwnerType() is true for BOTH Self-led and External.
-  document.getElementById('tdd-recording-label').textContent=grp==='external'?'Training Bond Document Link':(ownerType?'Report Link':'Recording Link');
-  // Batch No. (2026-08-13, per Sandra): hidden for External too, not just Self-led.
-  document.getElementById('tdd-batch-wrap').classList.toggle('hidden',grp==='owner'||grp==='external');
-  document.getElementById('tdd-mandatory-wrap').classList.toggle('hidden',grp!=='owner');
-  document.getElementById('tdd-expected-label').textContent=grp==='owner'?'Required Participants':'Maximum Participants';
-  // Expected/Maximum Participants (2026-08-13, per Sandra): hidden for External.
-  document.getElementById('tdd-expected-wrap').classList.toggle('hidden',grp==='external');
-  // External Sessions build (2026-08-13): Training Classification / RICA Ticket / Training Bond
-  // Period+End Date / L&D Owner are External-only; Assessment is removed entirely for External
-  // (per Sandra).
-  document.getElementById('tdd-classification-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('tdd-ricaticket-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('tdd-bondmonths-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('tdd-bondend-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('tdd-ldowner-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('tdd-assessment-wrap').classList.toggle('hidden',grp==='external');
+  const card=document.getElementById('tdd-session-info-card');
+  if(card) card.innerHTML=_tddSessionInfoEditContent(snapshot,ownerType);
+  _tddPopulateEditDropdowns(snapshot,ownerType);
   _tdUpdateBondEndPreview('tdd');
-  document.getElementById('tdd-modalityid-wrap').classList.toggle('hidden',!_tdShowsModality(dt));
-  document.getElementById('tdd-checklisttpl-wrap').classList.toggle('hidden',dt!=='ILT');
-  _tdPopulateVenueOptions('tdd',dt);
-  _toggleVenueOtherWrap('tdd');
 }
 
 function _durationToMinutes(str){
