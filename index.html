@@ -2030,6 +2030,11 @@
               <label class="form-label">Hire Date</label>
               <input type="date" id="mu-hiredate" class="form-control">
             </div>
+            <div class="form-group">
+              <label class="form-label">Workload Allocation %</label>
+              <input type="number" id="mu-workload-pct" class="form-control" style="width:100px" min="0" max="100" step="1" value="60">
+              <p class="form-hint" style="margin-top:4px">% of this person's standard working hours allocated to training delivery. Used as the capacity denominator on the Trainer Workload dashboard.</p>
+            </div>
             <div class="form-group" style="margin-bottom:0" id="mu-empstat-row">
               <label class="form-label">Employment Status</label>
               <div class="status-display">
@@ -2669,7 +2674,11 @@ const _FIELD_MAPS = {
     positionId:'position_id', supervisorId:'supervisor_id', hireDate:'hire_date', dashScope:'dash_scope',
     isActive:'is_active', isAdmin:'is_admin', isReportsViewer:'is_reports_viewer',
     formTrainer:'form_trainer', formIDQA:'form_idqa', formCQA:'form_cqa',
-    mustChangePassword:'must_change_password', createdAt:'created_at', updatedAt:'updated_at'
+    mustChangePassword:'must_change_password', createdAt:'created_at', updatedAt:'updated_at',
+    // Workload Allocation % (Phase O, 2026-08-13, per Sandra): % of this person's monthly standard
+    // working hours that's allocated to training delivery. Applies to all users, not just Trainers
+    // -- feeds the per-trainer capacity denominator on the Trainer Workload dashboard.
+    workloadAllocationPct:'workload_allocation_pct'
   },
   positions:{ id:'id', name:'name', isActive:'is_active' },
   venues:{ id:'id', name:'name', isActive:'is_active', type:'type' },
@@ -2684,10 +2693,25 @@ const _FIELD_MAPS = {
   // per Late / Left Early day when computing an attendee's Attendance Score on multi-day sessions.
   attendance_settings:{ id:'id', lateDeduction:'late_deduction', leftEarlyDeduction:'left_early_deduction', updatedAt:'updated_at' },
   // Trainer Workload Settings (Phase N, 2026-08-12, per Sandra's Trainer Workload spec): single
-  // row ('default') holding the configurable Monthly Live Facilitation Capacity (default 60 hrs)
-  // and the three workload-band upper bounds (Light/Balanced/High -- anything above highMaxPct is
-  // Over Capacity). Same single-row pattern as attendance_settings above.
-  workload_settings:{ id:'id', monthlyCapacityHours:'monthly_capacity_hours', lightMaxPct:'light_max_pct', balancedMaxPct:'balanced_max_pct', highMaxPct:'high_max_pct', updatedAt:'updated_at' },
+  // row ('default') holding the three workload-band upper bounds (Light/Balanced/High -- anything
+  // above highMaxPct is Over Capacity). Same single-row pattern as attendance_settings above.
+  // Phase O (2026-08-13): the old flat monthlyCapacityHours (shared by every trainer) was replaced
+  // by standardWeeklyHours -- a single global "standard work week" figure combined with each
+  // trainer's OWN workloadAllocationPct (see profiles above) and real PH-holiday-aware working
+  // days to derive a per-trainer capacity. monthly_capacity_hours column is left in the DB,
+  // unused, rather than dropped (no data loss if we ever need to reference the old baseline).
+  workload_settings:{ id:'id', monthlyCapacityHours:'monthly_capacity_hours', standardWeeklyHours:'standard_weekly_hours', lightMaxPct:'light_max_pct', balancedMaxPct:'balanced_max_pct', highMaxPct:'high_max_pct', updatedAt:'updated_at' },
+  // PH Holidays (Phase O, 2026-08-13, per Sandra): admin-managed list of Philippine regular +
+  // special non-working days, seeded with the official 2026 list (Proclamation No. 1006). Used to
+  // exclude holiday dates from the Trainer Workload capacity's working-day count. Eidul Fitr /
+  // Eidul Adha dates are announced later in the year via a separate proclamation -- add them here
+  // once known, no code change needed.
+  ph_holidays:{ id:'id', date:'holiday_date', name:'name' },
+  // Workload % History (Phase P, 2026-08-13, per Sandra): every profile's Workload Allocation %
+  // over time, so past Trainer Workload periods keep showing whatever % was actually in effect
+  // then, even after someone's current % changes later. One row per change (never updated in
+  // place); resolved by "most recent row with effective_date <= the date being asked about."
+  workload_pct_history:{ id:'id', profileId:'profile_id', pct:'pct', effectiveDate:'effective_date', createdAt:'created_at' },
   // Agenda Templates (Phase49, 2026-08-06): title + a jsonb array of {topic,duration} items,
   // a genuinely different shape from the flat name-only lists above (Categories/Audiences/etc.)
   // -- managed via a bespoke Settings drawer, not the generic renderSelList single-name-field UI.
@@ -2836,7 +2860,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -2897,7 +2921,7 @@ const Store = {
   POS:'positions', VENUES:'venues', MODALS:'modalities', DELIVERABLES:'deliverables',
   CATEGORIES:'categories', AUDIENCES:'audiences', AGENDA_TEMPLATES:'agenda_templates',
   CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
-  DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings',
+  DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings', PH_HOLIDAYS:'ph_holidays', WORKLOAD_PCT_HISTORY:'workload_pct_history',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -2951,6 +2975,63 @@ const Sel = {
     if(error){ _surfaceDbError(error,'Delete item'); throw error; }
     Cache.data[k]=Cache.data[k].filter(i=>i.id!==id);
     if(typeof AuditLog!=='undefined'&&item) await AuditLog.record('delete',_selModuleLabel(k),id,`Deleted ${_selModuleLabel(k).toLowerCase()} "${item.name}"`);
+  }
+};
+
+/* ── PH HOLIDAYS (Phase O, 2026-08-13) ────────────────────────────────────────────────────
+   Simple admin-managed date+name list, kept separate from Sel's generic name/isActive shape
+   since holidays don't fit that pattern (no isActive toggle, unique on date not name). Read via
+   .all()/.isHoliday(); mutated via .add()/.remove(), same async-write-then-patch-cache pattern
+   as Sel above. */
+const PhHolidaysDB = {
+  all(){ return (Cache.data[Store.PH_HOLIDAYS]||[]).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0); },
+  isHoliday(dateStr){ return this.all().some(h=>h.date===dateStr); },
+  async add(date,name){
+    const item={ id:Utils.uid(), date, name };
+    const row=patchToSnake(Store.PH_HOLIDAYS,item);
+    const {data,error}=await sb.from(Store.PH_HOLIDAYS).insert(row).select().single();
+    if(error){ _surfaceDbError(error,'Add holiday'); throw error; }
+    const saved=rowToCamel(Store.PH_HOLIDAYS,data);
+    Cache.data[Store.PH_HOLIDAYS].push(saved);
+    if(typeof AuditLog!=='undefined') await AuditLog.record('create','PH Holidays',saved.id,`Added holiday "${saved.name}" (${saved.date})`);
+    return saved;
+  },
+  async remove(id){
+    const item=this.all().find(h=>h.id===id);
+    const {error}=await sb.from(Store.PH_HOLIDAYS).delete().eq('id',id);
+    if(error){ _surfaceDbError(error,'Delete holiday'); throw error; }
+    Cache.data[Store.PH_HOLIDAYS]=Cache.data[Store.PH_HOLIDAYS].filter(h=>h.id!==id);
+    if(typeof AuditLog!=='undefined'&&item) await AuditLog.record('delete','PH Holidays',id,`Deleted holiday "${item.name}" (${item.date})`);
+  }
+};
+
+/* ── WORKLOAD % HISTORY (Phase P, 2026-08-13) ─────────────────────────────────────────────
+   Append-only: a new row per change, never edited/deleted in place. resolveAsOf(profileId,date)
+   answers "what was this person's Workload Allocation % on this date" -- the most recent row
+   with effective_date <= date, falling back to the profile's current live value if no history
+   row exists yet (e.g. right after a fresh signup, before anything writes a history row). */
+const WorkloadPctHistoryDB = {
+  all(profileId){
+    const rows=(Cache.data[Store.WORKLOAD_PCT_HISTORY]||[]).filter(h=>h.profileId===profileId);
+    return rows.slice().sort((a,b)=>a.effectiveDate<b.effectiveDate?-1:a.effectiveDate>b.effectiveDate?1:0);
+  },
+  resolveAsOf(profileId,dateStr){
+    const rows=this.all(profileId).filter(h=>h.effectiveDate<=dateStr);
+    if(rows.length) return Number(rows[rows.length-1].pct);
+    const trainer=DB.byId(profileId);
+    return trainer&&trainer.workloadAllocationPct!=null?Number(trainer.workloadAllocationPct):60;
+  },
+  // Called from saveUser() whenever the Workload Allocation % field actually changed -- logs a
+  // new dated row rather than silently losing what the OLD % was.
+  async record(profileId,pct,effectiveDate){
+    const item={ id:Utils.uid(), profileId, pct, date:effectiveDate };
+    const row=patchToSnake(Store.WORKLOAD_PCT_HISTORY,{profileId,pct,effectiveDate});
+    row.id=item.id;
+    const {data,error}=await sb.from(Store.WORKLOAD_PCT_HISTORY).insert(row).select().single();
+    if(error){ _surfaceDbError(error,'Save workload % history'); throw error; }
+    const saved=rowToCamel(Store.WORKLOAD_PCT_HISTORY,data);
+    Cache.data[Store.WORKLOAD_PCT_HISTORY].push(saved);
+    return saved;
   }
 };
 
@@ -4555,6 +4636,7 @@ function updateEmpStat(h){
 function openAddUser(){
   document.getElementById('mu-id').value='';
   ['mu-empid','mu-fname','mu-lname','mu-email','mu-hiredate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mu-workload-pct').value='60';
   document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false; setDashScopeUI('team');
   document.getElementById('mu-title').textContent='Add New User';
   document.getElementById('mu-subtitle').textContent='Fill in the details below to create a new user account.';
@@ -4573,6 +4655,7 @@ function openEditUser(id){
   document.getElementById('mu-id').value=u.id; document.getElementById('mu-empid').value=u.employeeId||'';
   document.getElementById('mu-fname').value=u.firstName; document.getElementById('mu-lname').value=u.lastName;
   document.getElementById('mu-email').value=u.email; document.getElementById('mu-hiredate').value=u.hireDate||'';
+  document.getElementById('mu-workload-pct').value=u.workloadAllocationPct??60;
   document.getElementById('mu-active').checked=u.isActive; document.getElementById('mu-admin').checked=u.isAdmin; document.getElementById('mu-reports-viewer').checked=u.isReportsViewer||false;
   document.getElementById('mu-title').textContent='Edit User';
   document.getElementById('mu-subtitle').textContent=`${u.firstName} ${u.lastName}  ·  ${u.email}`;
@@ -4646,6 +4729,8 @@ async function saveUser(){
   const posId=document.getElementById('mu-position').value;
   const supId=document.getElementById('mu-supervisor').value;
   const hireDate=document.getElementById('mu-hiredate').value;
+  const workloadPctRaw=document.getElementById('mu-workload-pct').value;
+  const workloadAllocationPct=workloadPctRaw===''?60:parseFloat(workloadPctRaw);
   const isActive=document.getElementById('mu-active').checked;
   const isAdmin=document.getElementById('mu-admin').checked;
   const isReportsViewer=document.getElementById('mu-reports-viewer').checked;
@@ -4658,6 +4743,7 @@ async function saveUser(){
   if(!lname) return showErr('Last name is required.');
   if(!email) return showErr('Email address is required.');
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('Please enter a valid email address.');
+  if(isNaN(workloadAllocationPct)||workloadAllocationPct<0||workloadAllocationPct>100) return showErr('Workload Allocation % must be between 0 and 100.');
   const isNew=!id;
   if(isNew){
     const dup=DB.byEmail(email); if(dup) return showErr('Another user with this email already exists.');
@@ -4666,7 +4752,7 @@ async function saveUser(){
     if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
     let result;
     try{
-      result=await DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+      result=await DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
     }catch(e){ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} return; }
     if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;}
     closeModal('user'); renderUsers();
@@ -4682,7 +4768,16 @@ async function saveUser(){
     const saveBtn=document.getElementById('mu-save'); const origTxt=saveBtn?saveBtn.textContent:'';
     if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
     try{
-      await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+      const oldPct=ex.workloadAllocationPct!=null?Number(ex.workloadAllocationPct):60;
+      await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,dashScope});
+      // Phase P (2026-08-13, per Sandra): log a dated history row on actual change, rather than
+      // just silently overwriting the old % -- otherwise past Trainer Workload periods would
+      // retroactively show whatever % this person happens to have TODAY, which is wrong for trend
+      // reporting (e.g. "60% last quarter, 50% now" needs last quarter's view to still say 60%).
+      if(oldPct!==workloadAllocationPct){
+        try{ await WorkloadPctHistoryDB.record(id,workloadAllocationPct,new Date().toISOString().slice(0,10)); }
+        catch(e){ /* error already surfaced by record() */ }
+      }
       if(id===Auth.user.id){Auth.refresh();setupNav();}
       toast(`${fname} ${lname} updated.`,'success');
     }catch(e){ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} return; }
@@ -4985,7 +5080,10 @@ async function saveAttendanceSettings(){
 function _workloadSettings(){
   const row=Cache.data[Store.WORKLOAD_SETTINGS]&&Cache.data[Store.WORKLOAD_SETTINGS][0];
   return {
+    // monthlyCapacityHours kept for read-back compatibility only -- no longer used to compute
+    // capacity as of Phase O (2026-08-13); see standardWeeklyHours below.
     monthlyCapacityHours: row&&row.monthlyCapacityHours!=null?Number(row.monthlyCapacityHours):60,
+    standardWeeklyHours: row&&row.standardWeeklyHours!=null?Number(row.standardWeeklyHours):37.5,
     lightMaxPct: row&&row.lightMaxPct!=null?Number(row.lightMaxPct):59,
     balancedMaxPct: row&&row.balancedMaxPct!=null?Number(row.balancedMaxPct):80,
     highMaxPct: row&&row.highMaxPct!=null?Number(row.highMaxPct):100
@@ -4994,12 +5092,18 @@ function _workloadSettings(){
 function renderWorkloadSettingsPane(){
   const pane=document.getElementById('spane-workload'); if(!pane) return;
   const cfg=_workloadSettings();
-  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Trainer Workload</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Monthly Live Facilitation Capacity is only part of a trainer's total working hours -- the remainder is assumed to cover prep, reporting, LMS admin, SLT management, and other admin work. Workload % = Live Facilitation Hours ÷ Capacity (prorated for the selected period) × 100.</div></div></div>
-    <div class="card" style="padding:18px 20px;max-width:460px">
+  const holidayRows=PhHolidaysDB.all().map(h=>`<tr>
+      <td style="font-size:13px">${Utils.esc(Utils.formatDate(h.date))}</td>
+      <td style="font-size:13px">${Utils.esc(h.name)}</td>
+      <td><button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="deletePhHoliday('${h.id}')">Delete</button></td>
+    </tr>`).join('');
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Trainer Workload</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Standard Weekly Hours × each person's own Workload Allocation % (set in User Management) × real working days in the period (weekends and PH Holidays below excluded) = that person's capacity. Workload % = Live Facilitation Hours ÷ Capacity × 100.</div></div></div>
+    <div class="card" style="padding:18px 20px;max-width:460px;margin-bottom:16px">
       <div style="display:flex;flex-direction:column;gap:14px">
         <div>
-          <label class="form-label">Monthly Live Facilitation Capacity (hrs)</label>
-          <input type="number" id="wstg-capacity" class="form-control" style="width:120px" min="1" step="1" value="${cfg.monthlyCapacityHours}">
+          <label class="form-label">Standard Weekly Hours</label>
+          <input type="number" id="wstg-weeklyhours" class="form-control" style="width:120px" min="1" step="0.5" value="${cfg.standardWeeklyHours}">
+          <p class="form-hint" style="margin-top:4px">Assumes a 5-day work week (e.g. 37.5 hrs/week = 7.5 hrs/day).</p>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:14px">
           <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Workload band upper bounds (% of capacity) -- anything above the High bound shows as Over Capacity.</div>
@@ -5012,19 +5116,29 @@ function renderWorkloadSettingsPane(){
       </div>
       <div class="modal-err hidden" id="wstg-error" style="margin-top:12px"></div>
       <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="saveWorkloadSettings()">Save</button>
+    </div>
+    <div class="sec-hdr" style="margin-top:8px"><div><strong style="font-size:14px">Philippine Holidays</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Excluded from working-day counts on the Trainer Workload dashboard. Seeded with the official 2026 list (Proclamation No. 1006) -- Eidul Fitr/Eidul Adha dates are announced later in the year via a separate proclamation, add them here once known.</div></div></div>
+    <div class="card" style="padding:18px 20px;max-width:460px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+        <div><label class="form-label">Date</label><input type="date" id="phh-date" class="form-control" style="width:150px"></div>
+        <div style="flex:1;min-width:160px"><label class="form-label">Name</label><input type="text" id="phh-name" class="form-control" placeholder="e.g. Bonifacio Day"></div>
+        <button class="btn btn-secondary btn-sm" onclick="addPhHoliday()">+ Add</button>
+      </div>
+      <div class="modal-err hidden" id="phh-error" style="margin-bottom:10px"></div>
+      ${holidayRows?`<table class="stg-tbl"><thead><tr><th>Date</th><th>Name</th><th style="width:80px"></th></tr></thead><tbody>${holidayRows}</tbody></table>`:'<div style="font-size:12.5px;color:var(--text3)">No holidays added yet.</div>'}
     </div>`;
 }
 async function saveWorkloadSettings(){
-  const capacity=parseFloat(document.getElementById('wstg-capacity').value);
+  const weeklyHours=parseFloat(document.getElementById('wstg-weeklyhours').value);
   const light=parseFloat(document.getElementById('wstg-light').value);
   const balanced=parseFloat(document.getElementById('wstg-balanced').value);
   const high=parseFloat(document.getElementById('wstg-high').value);
   const errEl=document.getElementById('wstg-error');
-  if(isNaN(capacity)||capacity<=0||isNaN(light)||isNaN(balanced)||isNaN(high)||!(light<balanced&&balanced<high)){
-    errEl.textContent='Capacity must be greater than 0, and the band bounds must increase: Light < Balanced < High.'; errEl.classList.remove('hidden'); return;
+  if(isNaN(weeklyHours)||weeklyHours<=0||isNaN(light)||isNaN(balanced)||isNaN(high)||!(light<balanced&&balanced<high)){
+    errEl.textContent='Standard Weekly Hours must be greater than 0, and the band bounds must increase: Light < Balanced < High.'; errEl.classList.remove('hidden'); return;
   }
   errEl.classList.add('hidden');
-  const patch={monthlyCapacityHours:capacity, lightMaxPct:light, balancedMaxPct:balanced, highMaxPct:high};
+  const patch={standardWeeklyHours:weeklyHours, lightMaxPct:light, balancedMaxPct:balanced, highMaxPct:high};
   const row=patchToSnake(Store.WORKLOAD_SETTINGS,patch);
   const {data,error}=await sb.from(Store.WORKLOAD_SETTINGS).update(row).eq('id','default').select().single();
   if(error){ _surfaceDbError(error,'Save'); return; }
@@ -5034,6 +5148,26 @@ async function saveWorkloadSettings(){
   if(i>=0) arr[i]=saved; else arr.push(saved);
   toast('Trainer workload settings saved.','success');
   renderTrainingDashboardKpis();
+}
+async function addPhHoliday(){
+  const date=document.getElementById('phh-date').value;
+  const name=document.getElementById('phh-name').value.trim();
+  const errEl=document.getElementById('phh-error');
+  if(!date||!name){ errEl.textContent='Please enter both a date and a name.'; errEl.classList.remove('hidden'); return; }
+  if(PhHolidaysDB.isHoliday(date)){ errEl.textContent='A holiday is already recorded on this date.'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  try{
+    await PhHolidaysDB.add(date,name);
+    toast(`${name} added.`,'success');
+    renderWorkloadSettingsPane();
+  }catch(e){ /* error already surfaced */ }
+}
+function deletePhHoliday(id){
+  const item=PhHolidaysDB.all().find(h=>h.id===id); if(!item) return;
+  confirm$('Delete Holiday',`Remove <strong>${Utils.esc(item.name)}</strong> (${Utils.esc(Utils.formatDate(item.date))}) from the PH Holidays list?`,'Delete',async()=>{
+    try{ await PhHolidaysDB.remove(id); toast('Holiday removed.','info'); renderWorkloadSettingsPane(); }
+    catch(e){ /* error already surfaced */ }
+  });
 }
 
 // Agenda Templates (Phase49, 2026-08-06, per Sandra): reusable ILT agenda blueprints. Settings
@@ -5778,7 +5912,7 @@ function _selHandleCSVFile(key,file){
 const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
-  'departments','attendance_settings','checklist_templates','session_checklists',
+  'departments','attendance_settings','workload_settings','ph_holidays','workload_pct_history','checklist_templates','session_checklists',
   'training_sessions','audit_log','session_participants','training_reports'
 ];
 
@@ -6953,11 +7087,19 @@ function scrollToId(id){
 // SLTs Managed is shown separately and never converted into facilitation hours (spec item 6).
 // Co-facilitators get the SAME full session hours as the lead trainer (spec item 7 -- person-hours,
 // not session-hours, so the roster's total will not equal org-wide Scheduled Training Hours).
-function _workingDaysBetween(startStr,endStr){
+// excludeHolidays defaults true -- pass false for any caller that still wants the plain
+// weekday count (kept as an option rather than silently changing every existing caller's math).
+function _workingDaysBetween(startStr,endStr,excludeHolidays){
+  const exclHol=excludeHolidays!==false;
   const start=new Date(startStr+'T00:00:00'), end=new Date(endStr+'T00:00:00');
   if(isNaN(start.getTime())||isNaN(end.getTime())||end<start) return 0;
   let n=0; const cur=new Date(start);
-  while(cur<=end){ const dow=cur.getDay(); if(dow!==0&&dow!==6) n++; cur.setDate(cur.getDate()+1); }
+  while(cur<=end){
+    const dow=cur.getDay();
+    const iso=cur.toISOString().slice(0,10);
+    if(dow!==0&&dow!==6&&!(exclHol&&PhHolidaysDB.isHoliday(iso))) n++;
+    cur.setDate(cur.getDate()+1);
+  }
   return n;
 }
 // "All Time"/open-ended Period selections use sentinel dates (0000-01-01 / 9999-12-31, see
@@ -7003,16 +7145,16 @@ function _tdaComputeTrainerWorkload(range){
   const cfg=_workloadSettings();
   const rows=tdashFilteredRows().filter(s=>s.status!=='cancelled');
   const effRange=_workloadEffectiveRange(range,rows);
-  // Full-month presets ("This Month"/"Last Month") show flat Monthly Capacity, unprorated -- per
-  // Sandra's original spec ("full month = 60hrs; shorter custom ranges prorate by working days").
-  // The ÷21.75-average-working-days formula she later confirmed for the prorating math is only
-  // meant to size a PARTIAL period against a full month, not to nudge a full month's own capacity
-  // up/down just because that particular month happens to have more/fewer weekdays than average
-  // (e.g. July 2026's 23 weekdays vs. the 21.75 average was inflating a full-month view to 63.4
-  // hrs, which isn't what "full month = 60hrs" meant).
-  const isFullMonth=(tdashF.period==='thismonth'||tdashF.period==='lastmonth');
+  // Phase O (2026-08-13, per Sandra): capacity is now PER-TRAINER rather than one flat global
+  // number. Real working days in the effective range (weekends AND PH Holidays excluded --
+  // _workingDaysBetween defaults to excluding holidays) x each trainer's own Standard Weekly
+  // Hours-derived daily rate x their own Workload Allocation % (set in User Management). This
+  // replaces the old flat-for-full-month / ÷21.75-average-prorated-for-partial-periods logic --
+  // now that holidays are actually subtracted day-by-day, a real month's working-day count is
+  // itself accurate (e.g. a month with a holiday genuinely shows fewer available hours), so there's
+  // no more "63.4 vs 60" average-vs-real mismatch to work around with a separate flat case.
   const workingDays=_workingDaysBetween(effRange.start,effRange.end);
-  const periodCapacity=isFullMonth?cfg.monthlyCapacityHours:cfg.monthlyCapacityHours*(workingDays/21.75);
+  const dailyHours=cfg.standardWeeklyHours/5;
   const overlaps=s=>{ if(!s.trainingDate) return false; const start=s.trainingDate, end=s.endDate||s.trainingDate; return start<=effRange.end && end>=effRange.start; };
 
   const rosterIds=new Set();
@@ -7027,6 +7169,11 @@ function _tdaComputeTrainerWorkload(range){
 
   const result=[...rosterIds].map(id=>{
     const trainer=DB.byId(id); if(!trainer) return null;
+    // Phase P (2026-08-13, per Sandra): resolve the % that was actually in effect for THIS period,
+    // not necessarily the trainer's current profile value -- as of the period's END date (simplest
+    // resolution Sandra confirmed; no day-by-day proration if the % changed mid-period).
+    const allocPct=WorkloadPctHistoryDB.resolveAsOf(id,effRange.end);
+    const periodCapacity=dailyHours*workingDays*(allocPct/100);
     const liveSessions=rows.filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT') && (s.trainerId===id||s.coFacilitatorId===id) && overlaps(s));
     const completedSessions=liveSessions.filter(s=>_tdStatus(s)==='Completed');
     const scheduledHours=_tdashComputeHoursRange(liveSessions,effRange.start,effRange.end).forecastedHrs;
@@ -7044,7 +7191,7 @@ function _tdaComputeTrainerWorkload(range){
     };
   }).filter(Boolean);
   result.sort((a,b)=>b.workloadPct-a.workloadPct);
-  return {rows:result, periodCapacity, effRange};
+  return {rows:result, workingDays, dailyHours, effRange};
 }
 function renderTrainingDashboardWorkload(range){
   const tbl=document.getElementById('tdash-workload-table'); if(!tbl) return;
@@ -10341,6 +10488,27 @@ function _tdManualOverrideBanner(s){
     <a href="${Utils.esc(c.manualReportLink||'#')}" target="_blank" rel="noopener" style="color:#1e40af;font-weight:700;text-decoration:none;white-space:nowrap">View report link →</a>
   </div>`;
 }
+// Reopen for manually-submitted reports (Phase Q, 2026-08-13, per Sandra): the normal Request/
+// Approve/Deny Reopen flow (_tdrRequestReopen etc.) lives on the Training Report tab, which is
+// deliberately HIDDEN for manual-override sessions (see _tdMoActive tab filter) since there's no
+// live report content to show there. Placed on the Overview tab instead, next to the manual-
+// override banner, as a direct admin action (no one-up approval loop) -- consistent with how the
+// override itself was a direct, unapproved admin action, not a request. Reopening unlocks the
+// report (status back to draft) and clears manualOverride so the Report/Attendance/Checklist
+// tabs reappear for either a corrected manual re-log or a normal in-app submission.
+function _tdManualOverrideReopen(){
+  const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
+  const report=_tdManualOverrideReport(s); if(!report) return;
+  confirm$('Reopen Manually-Submitted Report',`This report was logged as already submitted via email on <strong>${Utils.esc(report.content.manualSubmittedDate||'—')}</strong>. Reopening unlocks it (status returns to Draft) — this session's Report, Attendance &amp; Performance, and Checklist tabs will reappear so it can be corrected and re-logged, or submitted normally in-app. Continue?`,'Reopen',async()=>{
+    try{
+      const patch={sessionId:report.sessionId, status:'draft', content:{...report.content, manualOverride:false}};
+      await TrainingReportsDB.update(report.id,patch);
+      await AuditLog.record('report_manual_override_reopened','Training Report',report.id,`Manually-submitted report (logged ${report.content.manualSubmittedDate||'—'}) reopened by ${Auth.user.firstName} ${Auth.user.lastName}`);
+      renderTrainingDetail();
+      toast('Manually-submitted report reopened.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
 
 /* ── RECORDING EXEMPTION WORKFLOW (2026-08-06, per Sandra) ────────────────────────────────
    A report can't be submitted without the session's Recording Link saved, UNLESS a supervisor-
@@ -11292,6 +11460,9 @@ function _tddOverviewView(s,ownerType,personLabel,personName){
     </div>
     <div class="card" style="padding:18px 20px;margin-bottom:16px">
       ${moBanner}
+      ${(Auth.user&&(Auth.user.isAdmin||Auth.formAccess(Auth.user).trainerEval))?`<div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <button class="btn btn-sm btn-secondary" onclick="_tdManualOverrideReopen()">↩ Reopen This Report</button>
+      </div>`:''}
     </div>
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
       <div>
