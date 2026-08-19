@@ -12621,137 +12621,138 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
   const modalityLabel=_TD_MODALITY_LABEL[s.deliveryType]||s.deliveryType||'—';
   const naVal='<span style="color:var(--text3);font-weight:400">— n/a —</span>';
   const gridStyle='display:grid;grid-template-columns:repeat(4,1fr);gap:18px 12px';
+  // Field-order redesign (2026-08-19, per Sandra): mirrors _tddSessionInfoEditContent's layout --
+  // Row 1 is Format/Title/Date/Duration/Status for every type, everything else grouped under
+  // "Who & Where" / "Assessment & Compliance" and collapsed+greyed while Status is Tentative,
+  // using the exact same tdd-confirm-section/tdd-confirm-toggle-link ids and toggle functions as
+  // the edit form (view and edit are never both in the DOM at once, so ids are safe to reuse).
+  const row1Style='display:grid;grid-template-columns:0.8fr 1.8fr 1.1fr 0.8fr 1fr;gap:18px 12px';
+  const whoWhereLabel=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">Who &amp; Where</div>`;
+  const assessGroupLabel=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin:18px 0 6px">Assessment &amp; Compliance</div>`;
+  const wrapConfirm=(innerHtml)=>{
+    if(grp==='adhoc') return innerHtml;
+    const isTentative=s.status==='tentative';
+    return `<div id="tdd-confirm-toggle-link" class="${isTentative?'':'hidden'}" style="margin-top:14px">
+        <a href="javascript:void(0)" onclick="_tddToggleConfirmSection()" style="font-size:12px;color:var(--sky);text-decoration:none;font-weight:600"><span id="tdd-confirm-toggle-text">${isTentative?'+ Show additional details':'− Hide additional details'}</span> <span style="font-weight:400;color:var(--text3)">(optional while Tentative)</span></a>
+      </div>
+      <div id="tdd-confirm-section" class="${isTentative?'hidden':''}" style="opacity:${isTentative?'.5':'1'}">${innerHtml}</div>`;
+  };
   const mandatoryBadge=s.isMandatory?'<span class="badge" style="background:#fee2e2;color:#dc2626">Mandatory</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b">Optional</span>';
   const reportLinkVal=s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener" style="font-size:13.5px">▶ View</a>`:'<span style="color:var(--text3);font-weight:400">— none —</span>';
-  // Self-led Session Information (2026-08-06, Phase60, per Sandra's explicit row spec): a
-  // dedicated 4-row layout distinct from the shared ILT/External/VILT layout below -- Self-led
-  // has no Trainer/Venue/Recording-as-hidden concepts, and gains a Mandatory tag + a Report Link
-  // (the un-hidden, relabeled Recording Link field) that doesn't fit the generic grid.
-  if(grp==='owner'){
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  const editOrLockHeader=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
         ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
-      </div>
-      <div style="${gridStyle}">
+      </div>`;
+  // Self-led Session Information (2026-08-06, Phase60; reordered 2026-08-19 to match the edit
+  // form's Row 1 + Who & Where + Assessment & Compliance grouping).
+  if(grp==='owner'){
+    return editOrLockHeader+`
+      <div style="${row1Style}">
         ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
         ${_tddInfoBlock('filetext','var(--sky)','Program Title',Utils.esc(s.trainingProgram||'—'))}
         ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
-        ${_tddInfoBlock('flag','#dc2626','Mandatory',mandatoryBadge)}
-      </div>
-      <div style="${gridStyle};margin-top:18px">
+        ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+        ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
+      </div>` + wrapConfirm(`
+      ${whoWhereLabel}
+      <div style="${gridStyle}">
         ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
         ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
         ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-        ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+        ${_tddInfoBlock('flag','#dc2626','Mandatory',mandatoryBadge)}
       </div>
-      <div style="${gridStyle};margin-top:18px">
+      ${assessGroupLabel}
+      <div style="${gridStyle}">
         ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
         ${_tddInfoBlock('users','var(--sky)','Required Participants',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
         ${_tddInfoBlock('clipboard','var(--sky)','Assessment',_tddAssessmentDisplay(s))}
-        ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
-      </div>
-      <div style="${gridStyle};margin-top:18px">
         ${_tddInfoBlock('edit3','#64748b','Report Link',reportLinkVal)}
-      </div>
-      ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
+      </div>`)+
+      `${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
   }
-  // External Sessions Overview (2026-08-13, per Sandra's explicit 5-row spec): a dedicated layout
-  // distinct from the shared ILT/VILT layout below -- mirrors the External branch of
-  // _tddSessionInfoEditContent field-for-field so the view state always matches the edit state.
+  // External Sessions Overview (2026-08-13, Phase Q spec; reordered 2026-08-19 to match the edit
+  // form's Row 1 + Who & Where + Assessment & Compliance grouping).
   if(grp==='external'){
     const ldOwner=s.ldOwnerId?DB.byId(s.ldOwnerId):null;
     const ldOwnerDisplay=ldOwner?Utils.esc(ldOwner.firstName+' '+ldOwner.lastName):'<span style="color:var(--text3);font-weight:400">— not set —</span>';
-    return `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
-      ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
-    </div>
-    <div style="${gridStyle}">
+    return editOrLockHeader+`
+    <div style="${row1Style}">
       ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
-      ${_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('filetext','var(--sky)','Program Title',Utils.esc(s.trainingProgram||'—'))}
+      ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
+      ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
+    </div>` + wrapConfirm(`
+    ${whoWhereLabel}
+    <div style="${gridStyle}">
+      ${_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('filetext','var(--sky)','Training Provider',s.trainingProvider?Utils.esc(s.trainingProvider):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('user','#0369a1','L&D Owner',ldOwnerDisplay)}
+      ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+    </div>
+    ${assessGroupLabel}
+    <div style="${gridStyle}">
       ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('filetext','#64748b','RICA Ticket',s.ricaTicket?Utils.esc(s.ricaTicket):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('list','#7c3aed','Training Classification',s.trainingClassification?Utils.esc(s.trainingClassification):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-      ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
       ${_tddInfoBlock('clock','#0369a1','Training Bond Period',s.trainingBondMonths?`${s.trainingBondMonths} months`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('calendar','#0369a1','Training Bond End Date',s.trainingBondEndDate?Utils.esc(s.trainingBondEndDate):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-      ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('edit3','#64748b','Training Bond Document Link',s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener" style="font-size:13.5px">▶ View</a>`:'<span style="color:var(--text3);font-weight:400">— none —</span>')}
-      ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
-    </div>
-    ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
+    </div>`)+
+    `${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
   }
-  // Ad-hoc Task (2026-08-13, per Sandra): mirrors the Ad-hoc branch of _tddSessionInfoEditContent
-  // field-for-field -- Format/Delivery Method/Task Name/Status, then Trainer/Co-Facilitator/Date/
-  // Hours, then Notes (relabeled description).
+  // Ad-hoc Task (2026-08-13; reordered 2026-08-19 for Row 1 consistency only -- no Tentative
+  // concept, no collapsible section).
   if(grp==='adhoc'){
-    return `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
-      ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
-    </div>
-    <div style="${gridStyle}">
+    return editOrLockHeader+`
+    <div style="${row1Style}">
       ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
-      ${_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('filetext','var(--sky)','Task Name',Utils.esc(s.trainingProgram||'—'))}
-      ${_tddInfoBlock('check','#64748b','Status',s.status==='completed'?'<span class="badge" style="background:#dcfce7;color:#15803d">Completed</span>':'<span class="badge" style="background:#fef9c3;color:#a16207">Not Completed</span>')}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${_tddInfoBlock('user','var(--sky)','Trainer',Utils.esc(personName||'—'))}
-      ${_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>')}
       ${_tddInfoBlock('calendar','var(--amber)','Date',_tdDateCell(s))}
       ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('check','#64748b','Status',s.status==='completed'?'<span class="badge" style="background:#dcfce7;color:#15803d">Completed</span>':'<span class="badge" style="background:#fef9c3;color:#a16207">Not Completed</span>')}
     </div>
-    <div style="${gridStyle};margin-top:18px">
+    ${whoWhereLabel}
+    <div style="${gridStyle}">
+      ${_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('user','var(--sky)','Trainer',Utils.esc(personName||'—'))}
+      ${_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>')}
       ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
     ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600">Notes</div>${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
   }
-  return `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
-      ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
-    </div>
-    <div style="${gridStyle}">
+  // ILT / VILT (reordered 2026-08-19 to match the edit form's Row 1 + Who & Where +
+  // Assessment & Compliance grouping).
+  return editOrLockHeader+`
+    <div style="${row1Style}">
       ${_tddInfoBlock('target','#64748b','Format',Utils.esc(modalityLabel))}
-      ${_tdShowsModality(s.deliveryType)?_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):''}
       ${_tddInfoBlock('filetext','var(--sky)','Program Title',Utils.esc(s.trainingProgram||'—'))}
+      ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
+      ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
+      ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
+    </div>` + wrapConfirm(`
+    ${whoWhereLabel}
+    <div style="${gridStyle}">
+      ${_tdShowsModality(s.deliveryType)?_tddInfoBlock('target','#0891b2','Delivery Method',s.modalityId?Utils.esc(Sel.nameOf(Store.MODALS,s.modalityId)):'<span style="color:var(--text3);font-weight:400">— not set —</span>'):''}
       ${grp==='owner'?'':_tddInfoBlock('clipboard','var(--sky)','Batch',Utils.esc(s.batchNo||'—'))}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('user','var(--sky)',personLabel,Utils.esc(personName||'—'))}
       ${grp==='trainer'?_tddInfoBlock('users','#7c3aed','Co-Facilitator',coFacDisplay?Utils.esc(coFacDisplay):'<span style="color:var(--text3);font-weight:400">— none —</span>'):''}
-      ${_tddInfoBlock('calendar','var(--amber)','Date'+(_tdShowsDateRange(s.deliveryType)?' / Period':'')+' & Time',_tdDateCell(s))}
       ${_tddInfoBlock('mappin','var(--red)',venueLabel,venueName?Utils.esc(venueName):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlock('list','#7c3aed','Category',s.category?Utils.esc(s.category):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
-      ${_tddInfoBlock('clock','var(--amber)','Duration (in Hours)',s.durationHours!=null?`${s.durationHours}h`:'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('users','var(--sky)','Audience',(s.audience&&s.audience.length)?Utils.esc(_sortedNames(s.audience).join(', ')):'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
       ${_tddInfoBlock('users','var(--sky)','Maximum Participants',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
     </div>
-    <div style="${gridStyle};margin-top:18px">
+    ${assessGroupLabel}
+    <div style="${gridStyle}">
       ${_tddInfoBlock('clipboard','var(--sky)','Assessment',_tddAssessmentDisplay(s))}
       ${ownerType?'':_tddInfoBlock('edit3','#64748b','Recording Link',s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener" style="font-size:13.5px">▶ View</a>`:'<span style="color:var(--text3);font-weight:400">— none —</span>')}
-      ${_tddInfoBlock('check','#64748b','Status',_tdStatusBadge(_tdStatus(s)))}
       ${s.deliveryType==='ILT'?_tddInfoBlock('clipboard','#0369a1','Trainer Checklist',_tdChecklistTemplateDisplay(s)):''}
-    </div>
-    ${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
+    </div>`)+
+    `${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
   `;
 }
 
@@ -13704,6 +13705,12 @@ function _tddSessionInfoEditContent(s,ownerType){
   const smallInputStyle='font-size:13px;padding:5px 8px';
   const smallInput=`style="${smallInputStyle}"`;
   const gridStyle='display:grid;grid-template-columns:repeat(4,1fr);gap:18px 12px';
+  // Field-order redesign (2026-08-19, per Sandra, alongside the Tentative status): Row 1 is now
+  // IDENTICAL across every delivery type -- Format, Title, Date, Duration, Status -- because those
+  // are exactly the fields required to save a Tentative (pencil-booked) session. Everything else
+  // (who/where, assessment/compliance) is grouped below into labeled sections and collapsed by
+  // default while Status is Tentative, since none of it is required until the session is confirmed.
+  const row1Style='display:grid;grid-template-columns:0.8fr 1.8fr 1.1fr 0.8fr 1fr;gap:18px 12px';
   const grp=_tdFieldGroup(s.deliveryType);
   // Guest Trainer fallback (Phase39 item 1, simplifies Phase38's separate-checkbox design):
   // the Trainer <select> itself is the trigger -- choosing the "SME / Guest" sentinel option
@@ -13755,30 +13762,55 @@ function _tddSessionInfoEditContent(s,ownerType){
   // for purposes of "can this type set Completed directly from this dropdown".
   const directCompletable=ownerType||grp==='adhoc';
   // Pencil-book / Tentative (2026-08-19, per Sandra): not offered for Ad-hoc Task, which has its
-  // own direct Completed/Not Completed toggle with no Tentative concept.
-  const statusField=_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
+  // own direct Completed/Not Completed toggle with no Tentative concept. onchange re-reveals the
+  // collapsed "additional details" section the moment Status is changed away from Tentative, since
+  // those fields become required again by tdDetailSave's validation the instant that happens.
+  const statusField=_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput} onchange="_tddStatusChanged()">
         ${grp==='adhoc'?'':`<option value="tentative" ${s.status==='tentative'?'selected':''}>Tentative</option>`}
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>${grp==='adhoc'?'Not Completed':'Scheduled'}</option>
         ${directCompletable?`<option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>`:(s.status==='completed'?`<option value="completed" selected>Completed</option>`:'')}
         ${grp==='adhoc'?'':`<option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>`}
-      </select>${directCompletable?'':`<div style="font-size:10.5px;color:var(--text3);margin-top:3px">Completed is set automatically once Attendance &amp; Performance is tagged Complete.</div>`}`);
+      </select>`);
+
+  // Section-group labels + collapsible wrapper (2026-08-19, per Sandra): "Who & Where" and
+  // "Assessment & Compliance" group everything that ISN'T required for a Tentative booking.
+  // Ad-hoc has no Tentative concept, so its fields are never wrapped/collapsed -- always visible.
+  const whoWhereLabel=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">Who &amp; Where</div>`;
+  const assessLabel=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin:18px 0 6px">Assessment &amp; Compliance</div>`;
+  // Toggle link (2026-08-19): visible only while Status is Tentative -- once confirmed, the
+  // section is required and always shown, so there's nothing left to toggle. Bidirectional: same
+  // link text flips between "+ Show" / "− Hide" so the section can be collapsed back down too.
+  const wrapConfirm=(innerHtml)=>{
+    if(grp==='adhoc') return innerHtml;
+    const isTentative=s.status==='tentative';
+    const collapsed=isTentative;
+    return `<div id="tdd-confirm-toggle-link" class="${isTentative?'':'hidden'}" style="margin-top:14px">
+        <a href="javascript:void(0)" onclick="_tddToggleConfirmSection()" style="font-size:12px;color:var(--sky);text-decoration:none;font-weight:600"><span id="tdd-confirm-toggle-text">${collapsed?'+ Show additional details':'− Hide additional details'}</span> <span style="font-weight:400;color:var(--text3)">(optional while Tentative)</span></a>
+      </div>
+      <div id="tdd-confirm-section" class="${collapsed?'hidden':''}" style="opacity:${collapsed?'.5':'1'}">${innerHtml}</div>`;
+  };
 
   if(grp==='owner'){
-    // Self-led (mirrors _tddSessionInfoViewContent's owner branch row-for-row).
+    // Self-led (mirrors _tddSessionInfoViewContent's owner branch, reordered per the 2026-08-19
+    // field-order redesign: Row 1 = Format/Title/Date/Duration/Status, everything else grouped +
+    // collapsible below).
     return header+`
-    <div style="${gridStyle}">
+    <div style="${row1Style}">
       ${formatField}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
       ${dateField}
-      ${_tddInfoBlockEdit('flag','#dc2626','Mandatory',`<label style="display:flex;align-items:center;gap:6px;margin-top:2px;cursor:pointer"><input type="checkbox" id="tdd-mandatory" ${s.isMandatory?'checked':''} style="width:16px;height:16px"> <span style="font-size:13px">Mandatory</span></label>`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
+      ${durationField}
+      ${statusField}
+    </div>` + wrapConfirm(`
+    ${whoWhereLabel}
+    <div style="${gridStyle}">
       ${_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`)}
       ${categoryField}
       ${venueField}
-      ${durationField}
+      ${_tddInfoBlockEdit('flag','#dc2626','Mandatory',`<label style="display:flex;align-items:center;gap:6px;margin-top:2px;cursor:pointer"><input type="checkbox" id="tdd-mandatory" ${s.isMandatory?'checked':''} style="width:16px;height:16px"> <span style="font-size:13px">Mandatory</span></label>`)}
     </div>
-    <div style="${gridStyle};margin-top:18px">
+    ${assessLabel}
+    <div style="${gridStyle}">
       ${audienceField}
       ${_tddInfoBlockEdit('users','var(--sky)','Required Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
       ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
@@ -13787,24 +13819,30 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
       </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
-      ${statusField}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('edit3','#64748b','Report Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
-    </div>`+footer;
+    </div>`)+footer;
   }
 
   if(grp==='external'){
-    // External (mirrors _tddSessionInfoViewContent's external branch row-for-row).
+    // External (reordered per the 2026-08-19 field-order redesign).
     return header+`
-    <div style="${gridStyle}">
+    <div style="${row1Style}">
       ${formatField}
-      ${modalityField}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${dateField}
+      ${durationField}
+      ${statusField}
+    </div>` + wrapConfirm(`
+    ${whoWhereLabel}
+    <div style="${gridStyle}">
+      ${modalityField}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Training Provider',`<input type="text" id="tdd-provider" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProvider||'')}">`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('user','#0369a1','L&amp;D Owner',`<select id="tdd-ldowner" class="form-control" ${smallInput}><option value="">— Select —</option></select>`)}
+      ${venueField}
+      ${audienceField}
+    </div>
+    ${assessLabel}
+    <div style="${gridStyle}">
       ${categoryField}
       ${_tddInfoBlockEdit('filetext','#64748b','RICA Ticket',`<input type="text" id="tdd-ricaticket" class="form-control" ${smallInput} placeholder="e.g. RICA-00123" value="${Utils.esc(s.ricaTicket||'')}">`)}
       ${_tddInfoBlockEdit('list','#7c3aed','Training Classification',`<select id="tdd-classification" class="form-control" ${smallInput}>
@@ -13813,10 +13851,6 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Certification-Based Training" ${s.trainingClassification==='Certification-Based Training'?'selected':''}>Certification-Based Training</option>
         <option value="Licensure or High-Impact Qualification" ${s.trainingClassification==='Licensure or High-Impact Qualification'?'selected':''}>Licensure or High-Impact Qualification</option>
       </select>`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${venueField}
-      ${dateField}
       ${_tddInfoBlockEdit('clock','#0369a1','Training Bond Period',`<select id="tdd-bondmonths" class="form-control" ${smallInput} onchange="_tdUpdateBondEndPreview('tdd')">
         <option value="">— None —</option>
         <option value="3" ${String(s.trainingBondMonths)==='3'?'selected':''}>3 months</option>
@@ -13826,30 +13860,29 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="24" ${String(s.trainingBondMonths)==='24'?'selected':''}>24 months</option>
       </select>`)}
       ${_tddInfoBlockEdit('calendar','#0369a1','Training Bond End Date',`<input type="text" id="tdd-bondend-display" class="form-control" ${smallInput} readonly style="background:var(--bg2)" value="${Utils.esc(s.trainingBondEndDate||'')}" placeholder="Auto-computed from bond period">`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
-      ${durationField}
-      ${audienceField}
       ${_tddInfoBlockEdit('edit3','#64748b','Training Bond Document Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
-      ${statusField}
-    </div>`+footer;
+    </div>`)+footer;
   }
 
   if(grp==='adhoc'){
     // Ad-hoc Task (2026-08-13, per Sandra's explicit field list): Trainer + Co-Facilitator +
     // Delivery Method + a single Date + Status + Notes (description) + Hours (durationHours) --
     // deliberately no Venue/Batch/Audience/Recording Link/Assessment/Checklist, and no date RANGE
-    // (single Date only, per spec -- _tdShowsDateRange() already returns false for Ad-hoc).
+    // (single Date only, per spec -- _tdShowsDateRange() already returns false for Ad-hoc). No
+    // Tentative concept and no collapsible section -- reordered for Row 1 consistency only.
     const isGuestOnEntryAdhoc=!s.trainerId&&!!s.guestTrainerName;
     const isGuestCofacOnEntryAdhoc=!s.coFacilitatorId&&!!s.coFacilitatorGuestName;
     return header+`
-    <div style="${gridStyle}">
+    <div style="${row1Style}">
       ${formatField}
-      ${modalityField}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Task Name',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${dateField}
+      ${durationField}
       ${statusField}
     </div>
-    <div style="${gridStyle};margin-top:18px">
+    ${whoWhereLabel}
+    <div style="${gridStyle}">
+      ${modalityField}
       ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control ${isGuestOnEntryAdhoc?'hidden':''}" ${smallInput} onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select>
         <div id="tdd-guest-name-wrap" class="${isGuestOnEntryAdhoc?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
           <input type="text" id="tdd-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Trainer Name" value="${Utils.esc(s.guestTrainerName||'')}">
@@ -13860,23 +13893,23 @@ function _tddSessionInfoEditContent(s,ownerType){
           <input type="text" id="tdd-cofacilitator-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Co-Facilitator Name" value="${Utils.esc(s.coFacilitatorGuestName||'')}">
           <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
         </div>`,'tdd-cofacilitator-wrap')}
-      ${dateField}
-      ${durationField}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${categoryField}
     </div>`+footer;
   }
 
-  // ILT / VILT (mirrors _tddSessionInfoViewContent's default/trainer branch row-for-row).
+  // ILT / VILT (reordered per the 2026-08-19 field-order redesign).
   return header+`
-    <div style="${gridStyle}">
+    <div style="${row1Style}">
       ${formatField}
-      ${_tdShowsModality(s.deliveryType)?modalityField:''}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Program Title',`<input type="text" id="tdd-program" class="form-control" ${smallInput} value="${Utils.esc(s.trainingProgram||'')}">`)}
+      ${dateField}
+      ${durationField}
+      ${statusField}
+    </div>` + wrapConfirm(`
+    ${whoWhereLabel}
+    <div style="${gridStyle}">
+      ${_tdShowsModality(s.deliveryType)?modalityField:''}
       ${_tddInfoBlockEdit('filetext','var(--sky)','Batch',`<input type="text" id="tdd-batch" class="form-control" ${smallInput} value="${Utils.esc(s.batchNo||'')}">`)}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${_tddInfoBlockEdit('user','var(--sky)','Trainer',`<select id="tdd-trainer" class="form-control ${isGuestOnEntry?'hidden':''}" ${smallInput} onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select>
         <div id="tdd-guest-name-wrap" class="${isGuestOnEntry?'':'hidden'}" style="display:flex;gap:6px;align-items:center">
           <input type="text" id="tdd-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Trainer Name" value="${Utils.esc(s.guestTrainerName||'')}">
@@ -13887,16 +13920,13 @@ function _tddSessionInfoEditContent(s,ownerType){
           <input type="text" id="tdd-cofacilitator-guest-name" class="form-control" ${smallInput} style="flex:1" placeholder="Guest Co-Facilitator Name" value="${Utils.esc(s.coFacilitatorGuestName||'')}">
           <a href="javascript:void(0)" onclick="_tddClearCofacGuest()" title="Choose from list" style="font-size:13px;color:var(--text3);text-decoration:none;flex-shrink:0">✕</a>
         </div>`,'tdd-cofacilitator-wrap')}
-      ${dateField}
       ${venueField}
-    </div>
-    <div style="${gridStyle};margin-top:18px">
       ${categoryField}
-      ${durationField}
       ${audienceField}
       ${_tddInfoBlockEdit('users','var(--sky)','Maximum Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
     </div>
-    <div style="${gridStyle};margin-top:18px">
+    ${assessLabel}
+    <div style="${gridStyle}">
       ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment',`<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:90px"><select id="tdd-assessment" class="form-control" ${smallInput}>
         <option value="None" ${!s.assessmentType||s.assessmentType==='None'?'selected':''}>None</option>
         <option value="Pre-test only" ${s.assessmentType==='Pre-test only'?'selected':''}>Pre-test only</option>
@@ -13904,9 +13934,39 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
       </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
       ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">Recording Link</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
-      ${statusField}
       ${s.deliveryType==='ILT'?_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`):''}
-    </div>`+footer;
+    </div>`)+footer;
+}
+
+// Collapsible "additional details" section (2026-08-19, per Sandra): while a session's Status is
+// Tentative, Who & Where / Assessment & Compliance fields are hidden+greyed by default (none of
+// them are required yet) behind a "+ Show additional details" link. The moment Status changes to
+// anything else, the section is force-revealed since those fields become required by
+// tdDetailSave's validation. Safe to call even when the section doesn't exist in the DOM (Ad-hoc).
+function _tddSetConfirmSectionVisible(visible){
+  const sec=document.getElementById('tdd-confirm-section');
+  const toggleText=document.getElementById('tdd-confirm-toggle-text');
+  if(sec){ sec.classList.toggle('hidden',!visible); sec.style.opacity=visible?'1':'.5'; }
+  if(toggleText) toggleText.textContent=visible?'− Hide additional details':'+ Show additional details';
+}
+// Bidirectional (2026-08-19, per Sandra): re-clicking the same link re-collapses the section, so
+// it's not a one-way reveal -- only reachable while Status is still Tentative (the toggle link
+// itself is hidden once Status changes, per _tddStatusChanged below).
+function _tddToggleConfirmSection(){
+  const sec=document.getElementById('tdd-confirm-section');
+  _tddSetConfirmSectionVisible(!!(sec&&sec.classList.contains('hidden')));
+}
+function _tddStatusChanged(){
+  const val=document.getElementById('tdd-status')?.value;
+  const link=document.getElementById('tdd-confirm-toggle-link');
+  if(val && val!=='tentative'){
+    // No longer optional -- force the section open and remove the toggle entirely.
+    _tddSetConfirmSectionVisible(true);
+    if(link) link.classList.add('hidden');
+  } else if(val==='tentative' && link){
+    // Switched back to Tentative -- restore the toggle (section stays as it currently is).
+    link.classList.remove('hidden');
+  }
 }
 
 function _tddPopulateEditDropdowns(s,ownerType){
