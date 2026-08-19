@@ -1769,6 +1769,7 @@
                 <label class="form-label" style="margin-bottom:4px">Status</label>
                 <select id="td-f-status" class="form-control" onchange="tdSetFilter('status',this.value)">
                   <option value="all">All Statuses</option>
+                  <option value="Tentative">Tentative</option>
                   <option value="Upcoming">Upcoming</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Completed">Completed</option>
@@ -2075,8 +2076,13 @@
         </div>
 
         <div id="view-cost-analysis" class="hidden">
-          <div style="margin:-4px 0 16px">
+          <div style="margin:-4px 0 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span class="badge" style="background:#ede9fe;color:#5b21b6">🔒 Restricted Access</span>
+          </div>
+
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e;display:flex;gap:8px;align-items:flex-start">
+            <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;flex-shrink:0;margin-top:1px"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.5A1.5 1.5 0 0 0 3.1 21h17.8a1.5 1.5 0 0 0 1.3-2.5L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z" stroke="#92400e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span><strong>Cost data is reliable from August 2026 onward.</strong> Earlier months may show incomplete or skewed figures due to sessions not yet marked Completed, missing attendance records, or facilitator rate history not backdated far enough. Treat pre-August numbers as directional only.</span>
           </div>
 
           <div class="card" style="padding:14px 18px;margin-bottom:16px">
@@ -8315,6 +8321,10 @@ function _tdPersonName(s){
 function _tdStatus(s){
   if(s.status==='cancelled') return 'Cancelled';
   if(s.status==='completed') return 'Completed';
+  // Pencil-book / Tentative (2026-08-19, per Sandra): a session can be booked with only a Title +
+  // Duration, no trainer/venue/etc yet -- it stays "Tentative" (not date-derived) until someone
+  // flips Status to Scheduled, at which point the full required-field validation kicks in.
+  if(s.status==='tentative') return 'Tentative';
   const today=new Date().toISOString().slice(0,10);
   const start=s.trainingDate||'';
   const end=s.endDate||s.trainingDate||'';
@@ -8326,6 +8336,7 @@ function _tdStatus(s){
 
 function _tdStatusBadge(st){
   const map={
+    'Tentative':'background:#f1f5f9;color:#475569',
     'Upcoming':'background:#fef9c3;color:#a16207',
     'In Progress':'background:#dbeafe;color:#1d4ed8',
     'Completed':'background:#dcfce7;color:#15803d',
@@ -8341,6 +8352,12 @@ function _tdTypeBadge(dt){
 }
 
 function _tdDocStatus(s){
+  // Ad-hoc Tasks (2026-08-19, per Sandra): exempt from Training Report tracking entirely -- no
+  // report tab is ever offered for Ad-hoc (see visibleTabs filter), so show N/A instead of
+  // falsely flagging every Ad-hoc Task as "Report Pending".
+  // Tentative (2026-08-19, per Sandra): not confirmed yet -- no report requirement until Status
+  // is changed to Scheduled.
+  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return '<span style="color:var(--text3)">N/A</span>';
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep) return '<span class="badge" style="background:#fef9c3;color:#a16207">Report Pending</span>';
   if(rep.status==='approved') return '<span class="badge" style="background:#dcfce7;color:#15803d">Report Approved</span>';
@@ -8375,6 +8392,9 @@ function _tdBusinessDaysBetween(startDateStr,endDateStr){
 // resubmit cycle automatically reflects the newest submission with no separate first/last
 // submission tracking needed (2026-07-31, per Sandra's reopen-workflow spec).
 function _tdReportSLA(s){
+  // Ad-hoc Tasks (2026-08-19, per Sandra): exempt from Report SLA tracking entirely. Tentative
+  // sessions are exempt too until confirmed (Status changed to Scheduled).
+  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return '<span style="color:var(--text3)">N/A</span>';
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep||!rep.submittedAt) return '<span class="txt-muted">—</span>';
   // 2026-08-06 QA fix: anchor to the session's END date (falls back to trainingDate for
@@ -8400,12 +8420,14 @@ function _tdEvalStatus(s){
 // Plain-text mirrors of the badge-producing functions above, used only as sortable values for
 // the List view's Documentation/Report SLA/Trainer Evaluation columns (Phase46, 2026-08-06).
 function _tdDocStatusText(s){
+  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return 'N/A';
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep) return 'Report Pending';
   const map={approved:'Report Approved',submitted:'Report Submitted',returned:'Report Returned',draft:'Report Draft'};
   return map[rep.status]||'Report Pending';
 }
 function _tdReportSLADays(s){
+  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return null;
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep||!rep.submittedAt) return null;
   return _tdBusinessDaysBetween(s.endDate||s.trainingDate,rep.submittedAt);
@@ -9122,12 +9144,24 @@ function _tdCalTitle(s){
 }
 // Single-day chip: program + trainer/owner/facilitator + venue/platform + date, with a full
 // native title tooltip (program + person + venue + duration + status).
+// Pencil-book / Tentative status icons (2026-08-19, per Sandra): pencil for Tentative, clock for
+// Scheduled/Upcoming/In Progress, check for Completed, slashed-circle ("x") for Cancelled -- shown
+// on every calendar block regardless of delivery-type color, using the icon set already defined
+// further down the file (_TDA_ICON_PATHS/_tdIconSvg) -- no new icon paths needed.
+function _tdCalStatusIcon(s,color){
+  const st=_tdStatus(s);
+  const name=st==='Tentative'?'edit3':st==='Completed'?'check':st==='Cancelled'?'x':'clock';
+  return _tdIconSvg(name,color,11);
+}
+function _tdCalBorderStyle(s,fg){
+  return _tdStatus(s)==='Tentative'?`1.5px dashed ${fg}`:'1px solid transparent';
+}
 function _tdCalChipHtml(s){
   const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
   const venueName=_venueDisplayName(s);
   const person=_tdPersonName(s);
-  return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3">
-    <div style="font-weight:600;white-space:normal;word-break:break-word">● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
+  return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3;border:${_tdCalBorderStyle(s,c.fg)};box-sizing:border-box">
+    <div style="font-weight:600;white-space:normal;word-break:break-word;display:flex;align-items:center;gap:3px">${_tdCalStatusIcon(s,c.fg)}<span>${Utils.esc(s.trainingProgram||s.code||'')}</span></div>
     <div style="font-size:9px;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(person)}${venueName?' · '+Utils.esc(venueName):''}</div>
   </div>`;
 }
@@ -9236,8 +9270,8 @@ function renderTDCalendar(rows){
         const top=20+b.lane*BAR_H;
         const barVenueName=_venueDisplayName(s);
         const barPerson=_tdPersonName(s);
-        return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box;line-height:1.3">
-          <div>● ${Utils.esc(s.trainingProgram||s.code||'')}</div>
+        return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box;line-height:1.3;border:${_tdCalBorderStyle(s,bc.fg)}">
+          <div style="display:flex;align-items:center;gap:3px">${_tdCalStatusIcon(s,bc.fg)}<span>${Utils.esc(s.trainingProgram||s.code||'')}</span></div>
           <div style="font-size:9px;font-weight:400;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(barPerson)}${barVenueName?' · '+Utils.esc(barVenueName):''}</div>
         </div>`;
       }).join('');
@@ -9755,10 +9789,15 @@ async function _tdCreateFromTypePick(deliveryType){
   const errEl=document.getElementById('td-type-pick-error');
   if(errEl) errEl.classList.add('hidden');
   try{
+    // Pencil-book / Tentative (2026-08-19, per Sandra): new sessions default to Tentative status
+    // -- only Title + Duration required to save -- so unconfirmed/planned trainings can be seen on
+    // the calendar before a trainer/venue/full details are locked in. Ad-hoc Task keeps its own
+    // 'scheduled' default (its Status dropdown is a direct Completed/Not Completed toggle with no
+    // Tentative concept, per its existing minimal-fields design).
     const rec=await TrSessionDB.create({
       deliveryType,
       code:generateSessionCode(),
-      status:'scheduled',
+      status:deliveryType==='Ad-hoc'?'scheduled':'tentative',
       createdBy:Auth.user.id
     });
     closeModal('td-type-pick');
@@ -9933,6 +9972,16 @@ async function tdDetailSave(){
     d.trainingBondEndDate=null;
   }
   const errs=[];
+  // Pencil-book / Tentative (2026-08-19, per Sandra): a session staying Tentative only needs a
+  // Title + Duration -- trainer, venue, audience, etc. aren't required yet since the booking isn't
+  // confirmed. The moment Status is changed to anything else (typically Scheduled), the full
+  // existing required-field validation below applies as normal.
+  if(d.status==='tentative'){
+    if(!d.deliveryType) errs.push('Please select a Delivery Type.');
+    if(!d.trainingProgram) errs.push('Title is required.');
+    if(!d.trainingDate) errs.push('Start Date is required.');
+    if(d.durationHours==null) errs.push('Duration is required.');
+  } else {
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
   if(!d.trainingProgram) errs.push(grp==='adhoc'?'Task Name is required.':'Training Program / Title is required.');
   if(grp==='trainer' && !d.batchNo) errs.push('Batch No. is required.');
@@ -9977,6 +10026,7 @@ async function tdDetailSave(){
   // Completed/Not Completed toggle, with no Attendance workflow behind it at all.
   if(grp!=='owner' && grp!=='adhoc' && d.status==='completed' && s.status!=='completed'){
     errs.push('Sessions can only be marked Completed from the Attendance & Performance tab (Mark Complete), which checks that attendance has been taken.');
+  }
   }
   const errEl=document.getElementById('tdd-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
@@ -10949,7 +10999,11 @@ function _tdaKpiColumnsHtml(s,forExport){
       </div>
     </div>`;
 
-  return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch;margin-bottom:16px">${attendanceCards}<div style="width:1px;background:var(--border);align-self:stretch"></div>${isExternalKpi?checklistCards:assessmentCards}</div>`;
+  // External Sessions (2026-08-19, per Sandra): External no longer tracks attendance at all --
+  // only the 4-item checklist applies -- so the Attendance Summary card is dropped entirely and
+  // the checklist card takes the full width instead of sharing space with it.
+  if(isExternalKpi) return `<div style="margin-bottom:16px">${checklistCards}</div>`;
+  return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch;margin-bottom:16px">${attendanceCards}<div style="width:1px;background:var(--border);align-self:stretch"></div>${assessmentCards}</div>`;
 }
 
 function _tdaRenderTab(s){
@@ -10958,7 +11012,10 @@ function _tdaRenderTab(s){
   const total=all.length;
   const dayList=_tdaDayList(s);
   const isMultiDay=dayList.length>1;
-  const pending=isMultiDay?all.filter(r=>dayList.some(d=>_tdaGetDayStatus(r,d)==='pending')).length:all.filter(r=>r.attendanceStatus==='pending').length;
+  // External Sessions (2026-08-19, per Sandra): External no longer tracks attendance status at
+  // all -- only the 4-item checklist -- so there's no such thing as "pending attendance" here.
+  const isExternal=s.deliveryType==='External';
+  const pending=isExternal?0:(isMultiDay?all.filter(r=>dayList.some(d=>_tdaGetDayStatus(r,d)==='pending')).length:all.filter(r=>r.attendanceStatus==='pending').length);
   const rows=all;
   const locked=s.status==='completed';
 
@@ -10997,12 +11054,13 @@ function _tdaRenderTab(s){
   // Department (2026-08-06, per Sandra) replaces Role. Multi-day sessions (endDate spans >1 day)
   // get one status column per day plus a single "Attendance Score" column instead of the one
   // "Attendance Status" column single-day sessions keep.
-  const dayHeaders=isMultiDay?dayList.map((d,i)=>`Day ${i+1}<div style="font-size:9.5px;color:var(--text3);font-weight:400">${d.slice(5)}</div>`):['Attendance Status'];
+  // External Sessions (2026-08-19, per Sandra): External no longer tracks attendance at all --
+  // no day/status columns, no Attendance Score column -- only the 4-item checklist applies.
+  const dayHeaders=isExternal?[]:(isMultiDay?dayList.map((d,i)=>`Day ${i+1}<div style="font-size:9.5px;color:var(--text3);font-weight:400">${d.slice(5)}</div>`):['Attendance Status']);
   // External Sessions build (2026-08-13, per Sandra): External sessions replace the
   // Pre-Test/Post-Test/Gain columns with 4 checkboxes (Training Bond Signed, Proof of Completion,
   // Post Training Survey, Proof of Knowledge Transfer) -- ILT/VILT keep the test-score columns.
-  const isExternal=s.deliveryType==='External';
-  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Department',...dayHeaders,...(isMultiDay?['Attendance Score']:[]),
+  const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Department',...dayHeaders,...((!isExternal&&isMultiDay)?['Attendance Score']:[]),
     ...(isExternal?['Training Bond Signed','Proof of Completion','Post Training Survey','Proof of Knowledge Transfer']:['Pre-Test','Post-Test','Gain']),'Remarks',''];
   // Checkbox column centered (2026-08-11, per Sandra): the select-all header checkbox and every
   // row's checkbox were left-aligned inside a column wide enough for the "#" header text next to
@@ -11015,7 +11073,9 @@ function _tdaRenderTab(s){
   const emptyRow=`<tr><td colspan="${theadCols.length}" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.</td></tr>`;
   const tbody=addRow+(bodyRows||(addRow?'':emptyRow));
 
-  const legend=`<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);margin-top:10px">
+  // External Sessions (2026-08-19, per Sandra): no attendance status/Gain legend applies since
+  // External no longer tracks attendance -- only the 4-item checklist.
+  const legend=isExternal?'':`<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);margin-top:10px">
       <span>● <span style="color:var(--green)">Present</span></span>
       <span>● <span style="color:var(--amber)">Late</span></span>
       <span>● <span style="color:var(--orange)">Left Early</span></span>
@@ -11074,10 +11134,11 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal){
   // External Sessions build (2026-08-13): 4 checkboxes replace Pre-Test/Post-Test/Gain.
   const extChk=(field)=>`<input type="checkbox" ${dis} ${r[field]?'checked':''} onchange="_tdaSetField('${r.id}','${field}',this.checked)">`;
   const extCells=`<td style="text-align:center">${extChk('bondSigned')}</td><td style="text-align:center">${extChk('proofOfCompletion')}</td><td style="text-align:center">${extChk('postTrainingSurvey')}</td><td style="text-align:center">${extChk('proofOfKnowledgeTransfer')}</td>`;
-  const statusCells=isMultiDay
+  // External Sessions (2026-08-19, per Sandra): no attendance status/score columns for External.
+  const statusCells=isExternal?'':(isMultiDay
     ?dayList.map(d=>`<td>${_tdaStatusSelectHtml(_tdaGetDayStatus(r,d),`_tdaSetDayField('${r.id}','${d}',this.value)`,dis)}</td>`).join('')
-    :`<td>${_tdaStatusSelectHtml(r.attendanceStatus||'pending',`_tdaSetField('${r.id}','attendanceStatus',this.value)`,dis)}</td>`;
-  const scoreCell=isMultiDay?`<td style="font-weight:600">${_tdaAttendanceScore(r,dayList).label}</td>`:'';
+    :`<td>${_tdaStatusSelectHtml(r.attendanceStatus||'pending',`_tdaSetField('${r.id}','attendanceStatus',this.value)`,dis)}</td>`);
+  const scoreCell=(!isExternal&&isMultiDay)?`<td style="font-weight:600">${_tdaAttendanceScore(r,dayList).label}</td>`:'';
   return `<tr data-row-id="${r.id}">
     <td style="text-align:center"><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
@@ -11109,8 +11170,8 @@ function _tdaAddPickerRowHtml(assessmentType,dayList,isExternal){
     <td><input type="text" id="tda-add-employeeid" class="form-control" style="font-size:12.5px;min-width:90px" placeholder="Employee ID"></td>
     <td><input type="text" id="tda-add-name" class="form-control" style="font-size:12.5px;min-width:140px" placeholder="Full name"></td>
     <td><select id="tda-add-dept" class="form-control" style="font-size:12.5px;min-width:110px"><option value="">— Select —</option>${Sel.active(Store.DEPARTMENTS).map(d=>`<option value="${d.id}">${Utils.esc(d.name)}</option>`).join('')}</select></td>
-    ${isMultiDay?dayList.map(()=>'<td style="color:var(--text3)">—</td>').join(''):statusCell}
-    ${isMultiDay?'<td style="color:var(--text3)">—</td>':''}
+    ${isExternal?'':(isMultiDay?dayList.map(()=>'<td style="color:var(--text3)">—</td>').join(''):statusCell)}
+    ${(!isExternal&&isMultiDay)?'<td style="color:var(--text3)">—</td>':''}
     ${isExternal?'<td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td>':`<td>${preApplicable?'<input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${postApplicable?'<input type="number" id="tda-add-post" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td style="color:var(--text3)">—</td>`}
@@ -12473,18 +12534,22 @@ function renderTrainingDetail(){
     ?TD_DETAIL_TABS.filter(t=>t.id!=='participants'&&t.id!=='trainer-eval'&&(t.id!=='report'||s.isMandatory))
     :TD_DETAIL_TABS).filter(t=>t.id!=='checklist'||s.deliveryType==='ILT')
     // External Sessions build (2026-08-13, per Sandra): no Training Report tab for External --
-    // "Attendance and Checklist" covers what External needs (attendance + the 4 checklist items).
+    // the (2026-08-19) "Checklist"-relabeled tab covers what External needs (the 4 checklist items).
     .filter(t=>t.id!=='report'||s.deliveryType!=='External'))
     .filter(t=>!_tdMoActive||!(t.id==='checklist'||t.id==='participants'||t.id==='report'))
     // Ad-hoc Task (2026-08-13, per Sandra): "no attendance/checklist/report requirement" -- leaves
     // only Overview and Audit History, same minimal set as a non-mandatory Self-led session.
-    .filter(t=>_tdGrp!=='adhoc'||t.id==='overview'||t.id==='audit');
+    .filter(t=>_tdGrp!=='adhoc'||t.id==='overview'||t.id==='audit')
+    // Pencil-book / Tentative (2026-08-19, per Sandra): a Tentative session only has a Title +
+    // Duration -- no trainer/venue/audience yet -- so Checklist/Attendance/Report don't apply
+    // until it's confirmed (Status changed to Scheduled, which requires the full field set).
+    .filter(t=>s.status!=='tentative'||t.id==='overview'||t.id==='audit');
   if(!visibleTabs.some(t=>t.id===_tdDetailTab)) _tdDetailTab='overview';
-  // External Sessions build (2026-08-13, per Sandra): the "Attendance & Performance" tab is
-  // relabeled "Attendance and Checklist" for External sessions -- same tab/content, just a name
-  // that fits the checklist-style KPI cards shown there instead of Assessment Results.
+  // External Sessions (2026-08-19, per Sandra): the "Attendance & Performance" tab is relabeled
+  // just "Checklist" for External sessions -- attendance tracking was removed entirely for
+  // External, so only the 4-item checklist remains and the label reflects that.
   const tabsHtml=visibleTabs.map(t=>{
-    const label=(t.id==='participants'&&s.deliveryType==='External')?'Attendance and Checklist':t.label;
+    const label=(t.id==='participants'&&s.deliveryType==='External')?'Checklist':t.label;
     return `<button class="btn btn-sm ${_tdDetailTab===t.id?'btn-primary':'btn-ghost'}" style="border-radius:8px 8px 0 0" onclick="tdDetailSwitchTab('${t.id}')">${Utils.esc(label)}</button>`;
   }).join('');
 
@@ -13689,7 +13754,10 @@ function _tddSessionInfoEditContent(s,ownerType){
   // by an Attendance workflow like ILT/VILT/External) -- treated the same as ownerType (Self-led)
   // for purposes of "can this type set Completed directly from this dropdown".
   const directCompletable=ownerType||grp==='adhoc';
+  // Pencil-book / Tentative (2026-08-19, per Sandra): not offered for Ad-hoc Task, which has its
+  // own direct Completed/Not Completed toggle with no Tentative concept.
   const statusField=_tddInfoBlockEdit('check','#64748b','Status',`<select id="tdd-status" class="form-control" ${smallInput}>
+        ${grp==='adhoc'?'':`<option value="tentative" ${s.status==='tentative'?'selected':''}>Tentative</option>`}
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>${grp==='adhoc'?'Not Completed':'Scheduled'}</option>
         ${directCompletable?`<option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>`:(s.status==='completed'?`<option value="completed" selected>Completed</option>`:'')}
         ${grp==='adhoc'?'':`<option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>`}
