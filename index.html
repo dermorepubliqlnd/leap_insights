@@ -6643,7 +6643,20 @@ function _makeRecordDB(table, moduleLabel, labelOf){
       if(table==='training_sessions' && p.status){
         const pre=this.byId(id);
         if(pre && p.status==='completed' && pre.status!=='completed'){
-          const hrs=Number(p.durationHours??pre.durationHours)||0;
+          // 2026-08-20 fix: was Number(p.durationHours??pre.durationHours) alone -- a per-session
+          // lump sum that under-counted any multi-day ILT session by not multiplying by the real
+          // training-day count (see _tdSessionTotalHours's comment for the full explanation).
+          // _tdSessionDayList needs dateMode/sessionDates/trainingDate/endDate too, not just
+          // durationHours, so merge every field it reads the same patch-over-existing way
+          // trainerId/coFacilitatorId/trainingDate already do just below.
+          const effectiveForHours={
+            durationHours:p.durationHours!==undefined?p.durationHours:pre.durationHours,
+            dateMode:p.dateMode!==undefined?p.dateMode:pre.dateMode,
+            sessionDates:p.sessionDates!==undefined?p.sessionDates:pre.sessionDates,
+            trainingDate:p.trainingDate!==undefined?p.trainingDate:pre.trainingDate,
+            endDate:p.endDate!==undefined?p.endDate:pre.endDate
+          };
+          const hrs=_tdSessionTotalHours(effectiveForHours);
           const trainerId=p.trainerId!==undefined?p.trainerId:pre.trainerId;
           const coFacilitatorId=p.coFacilitatorId!==undefined?p.coFacilitatorId:pre.coFacilitatorId;
           const trainingDate=p.trainingDate||pre.trainingDate;
@@ -6891,7 +6904,9 @@ function _caFilteredSessions(){
   });
 }
 function _caSessionCalc(s){
-  const hrs=Number(s.durationHours)||0;
+  // 2026-08-20 fix: was Number(s.durationHours) alone (a per-session lump sum) -- see the big
+  // comment on _tdSessionTotalHours for why that under-counted every multi-day ILT session.
+  const hrs=_tdSessionTotalHours(s);
   const isCompleted=_tdStatus(s)==='Completed';
   let facHourly=0, coHourly=0;
   if(isCompleted && s.facilitationCostLockedAt){
@@ -8267,6 +8282,26 @@ function _tdSessionEndDate(s){
     return days.length?days[days.length-1]:(s.trainingDate||'');
   }
   return s.endDate||s.trainingDate||'';
+}
+// Total hours for a session (2026-08-20, per Sandra -- Facilitation Cost audit finding): per the
+// Training Hours View rule established in Phase J ("ILT/VILT & External = per-day durationHours
+// applied to each calendar day in range" -- see the big comment above _tdHoursForDay),
+// durationHours has ALWAYS meant "hours per training day," not "total hours for the whole
+// session," for any multi-day ILT session -- that's the very reason a 32-hour/2-weekend course
+// blew up to 8x14=112 hours before _tdSessionDayList existed. Facilitation Cost (_caSessionCalc
+// and the completion-lock snapshot below) never got that same day-count multiplication and was
+// silently treating durationHours as a session-wide lump sum instead -- under-counting facilitator
+// pay by the number of real training days on any multi-day ILT session (Range or Specific mode;
+// VILT is always single-day per _tdShowsDateRange, so day-count is always 1 there and this changes
+// nothing for it). NOTE: any session already Completed before this fix has its cost PERMANENTLY
+// frozen via facilitationCostLockedAt -- this fix only corrects going forward; already-locked
+// multi-day sessions need a manual reopen/re-complete (or a one-off data fix) to pick up the
+// corrected total, which is a separate remediation step, not something code alone can retroactively
+// apply to already-written snapshot columns.
+function _tdSessionTotalHours(s){
+  const perDay=Number(s.durationHours)||0;
+  const days=_tdSessionDayList(s).length;
+  return perDay*days;
 }
 
 function _tdFieldGroup(deliveryType){
