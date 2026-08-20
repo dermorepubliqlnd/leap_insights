@@ -2132,6 +2132,8 @@
 
           <div class="kpi-strip" id="ca-kpis" style="margin-bottom:16px;grid-template-columns:repeat(6,1fr)"></div>
 
+          <div id="ca-dynamic-caveat" style="margin-bottom:16px"></div>
+
           <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
             <div class="card" style="padding:16px 18px">
               <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Cost by Facilitator</div>
@@ -6732,6 +6734,38 @@ function _makeRecordDB(table, moduleLabel, labelOf){
       return saved;
     },
     async update(id,p){
+      // Facilitation Cost completion-lock (2026-08-19, per Sandra, Phase Q follow-up): the moment
+      // a training_sessions row transitions INTO 'completed' for the first time, freeze the
+      // facilitator/co-facilitator hourly rate + computed cost into the 5 snapshot columns so a
+      // LATER edit to someone's rate history (e.g. backdating a raise) can never silently change
+      // the cost of an already-completed session. _caSessionCalc already prefers this snapshot
+      // over the live rate lookup when it's present -- this is what actually populates it.
+      // Reopening (status leaving 'completed') clears the snapshot so the next completion re-locks
+      // fresh values rather than replaying stale ones. Gated to training_sessions only -- this
+      // factory is shared by evaluations/idqa_reviews/cdqa_reviews, which have no such columns.
+      if(table==='training_sessions' && p.status){
+        const pre=this.byId(id);
+        if(pre && p.status==='completed' && pre.status!=='completed'){
+          const hrs=Number(p.durationHours??pre.durationHours)||0;
+          const trainerId=p.trainerId!==undefined?p.trainerId:pre.trainerId;
+          const coFacilitatorId=p.coFacilitatorId!==undefined?p.coFacilitatorId:pre.coFacilitatorId;
+          const trainingDate=p.trainingDate||pre.trainingDate;
+          let facRate=0, coRate=0;
+          if(trainerId){ const r=FacilitationRateDB.rateAsOf(trainerId,trainingDate); if(r) facRate=facilitationHourlyRate(r.monthlyCostBasis); }
+          if(coFacilitatorId){ const r=FacilitationRateDB.rateAsOf(coFacilitatorId,trainingDate); if(r) coRate=facilitationHourlyRate(r.monthlyCostBasis); }
+          p.facilitationHoursApplied=hrs;
+          p.facilitatorRateApplied=facRate;
+          p.coFacilitatorRateApplied=coRate;
+          p.facilitationCostApplied=hrs*facRate+(coFacilitatorId?hrs*coRate:0);
+          p.facilitationCostLockedAt=new Date().toISOString();
+        } else if(pre && pre.status==='completed' && p.status!=='completed'){
+          p.facilitationHoursApplied=null;
+          p.facilitatorRateApplied=null;
+          p.coFacilitatorRateApplied=null;
+          p.facilitationCostApplied=null;
+          p.facilitationCostLockedAt=null;
+        }
+      }
       const dbRow=patchToSnake(table,p);
       const {data,error}=await sb.from(table).update(dbRow).eq('id',id).select().single();
       if(error){ _surfaceDbError(error,`Update ${moduleLabel.toLowerCase()}`); throw error; }
@@ -7009,12 +7043,41 @@ function renderCostAnalysis(){
   const filtered=_caFilteredSessions();
 
   let schedHours=0, compHours=0, schedCost=0, compCost=0, learnersHandled=0;
+  // Dynamic data-quality banner (2026-08-19, per Sandra, Phase Q follow-up to the static caveat):
+  // count, within the CURRENT filter/period, the two real data-hygiene gaps that were flagged as
+  // most likely to skew numbers -- (a) a Completed session with zero attendance taken (inflates
+  // Cost per Learner, since its cost counts but its learner count doesn't), and (b) a past-dated
+  // session never manually flipped to Completed (its cost sits in "Scheduled" only, understating
+  // "Completed" totals for training that already happened).
+  let missingAttendanceCount=0, notMarkedCompleteCount=0;
+  const todayStr=_todayStr();
   filtered.forEach(s=>{
     const c=_caSessionCalc(s);
     schedHours+=c.hrs; schedCost+=c.cost;
-    if(c.isCompleted){ compHours+=c.hrs; compCost+=c.cost; learnersHandled+=_caLearnersHandled(s.id); }
+    if(c.isCompleted){
+      compHours+=c.hrs; compCost+=c.cost;
+      const handled=_caLearnersHandled(s.id);
+      learnersHandled+=handled;
+      if(handled===0) missingAttendanceCount++;
+    } else if((s.trainingDate||'')<todayStr){
+      notMarkedCompleteCount++;
+    }
   });
   const costPerLearner=learnersHandled>0 ? compCost/learnersHandled : 0;
+  const caveatEl=document.getElementById('ca-dynamic-caveat');
+  if(caveatEl){
+    if(missingAttendanceCount>0 || notMarkedCompleteCount>0){
+      const parts=[];
+      if(missingAttendanceCount>0) parts.push(`<strong>${missingAttendanceCount}</strong> Completed session${missingAttendanceCount===1?'':'s'} with no attendance recorded (inflates Cost per Learner)`);
+      if(notMarkedCompleteCount>0) parts.push(`<strong>${notMarkedCompleteCount}</strong> past session${notMarkedCompleteCount===1?'':'s'} not yet marked Completed (understates Completed totals)`);
+      caveatEl.innerHTML=`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;display:flex;gap:8px;align-items:flex-start">
+        <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;flex-shrink:0;margin-top:1px"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.5A1.5 1.5 0 0 0 3.1 21h17.8a1.5 1.5 0 0 0 1.3-2.5L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z" stroke="#92400e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>In this view: ${parts.join(' · ')}.</span>
+      </div>`;
+    } else {
+      caveatEl.innerHTML='';
+    }
+  }
 
   const kpis=[
     {label:'Scheduled Facilitation Hours',val:schedHours.toFixed(1)},
