@@ -2131,6 +2131,7 @@
           </div>
 
           <div class="kpi-strip" id="ca-kpis" style="margin-bottom:16px;grid-template-columns:repeat(6,1fr)"></div>
+          <div style="font-size:11px;color:var(--text3);margin:-10px 0 16px">Scheduled = every session in this period regardless of status · Completed = only the realized subset already tagged Completed</div>
 
           <div id="ca-dynamic-caveat" style="margin-bottom:16px"></div>
 
@@ -2556,148 +2557,6 @@
   </div>
 </div>
 
-<!-- ══ MODAL: ADD/EDIT TRAINING (Training Delivery module) ═════════════ -->
-<div id="modal-training" class="modal-overlay" onclick="if(event.target===this)closeModal('training')">
-  <div class="modal modal-xl">
-    <div class="modal-hdr">
-      <span class="modal-title" id="td-modal-title">Add Training</span>
-      <button class="modal-close" onclick="closeModal('training')">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="td-id">
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Delivery Type <span class="req">*</span></label>
-          <select id="td-type" class="form-control" onchange="_tdToggleTypeFields()">
-            <option value="">— Select —</option>
-            <option value="ILT">ILT</option>
-            <option value="VILT">VILT</option>
-            <option value="Self-led">Self-led</option>
-            <option value="External">External</option>
-          </select>
-        </div>
-        <div class="form-group" style="grid-column:span 2">
-          <label class="form-label">Training Program / Title <span class="req">*</span></label>
-          <input type="text" id="td-program" class="form-control" placeholder="e.g. Product Knowledge Training">
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group" id="td-batch-wrap">
-          <label class="form-label">Batch No. <span class="req">*</span></label>
-          <input type="text" id="td-batch" class="form-control" placeholder="e.g. 2026-01">
-        </div>
-        <div class="form-group">
-          <label class="form-label" id="td-date-label">Start Date <span class="req">*</span></label>
-          <input type="date" id="td-date" class="form-control" onchange="_tdUpdateBondEndPreview('td')">
-        </div>
-        <div class="form-group hidden" id="td-enddate-wrap">
-          <label class="form-label">End Date</label>
-          <input type="date" id="td-enddate" class="form-control" onchange="_tdUpdateBondEndPreview('td')">
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group" id="td-trainer-wrap">
-          <label class="form-label">Trainer <span class="req">*</span></label>
-          <select id="td-trainer" class="form-control"><option value="">— Select Trainer —</option></select>
-        </div>
-        <div class="form-group hidden" id="td-owner-wrap">
-          <label class="form-label">Owner <span class="req">*</span></label>
-          <select id="td-owner" class="form-control"><option value="">— Select Owner —</option></select>
-        </div>
-        <div class="form-group hidden" id="td-facilitator-wrap">
-          <label class="form-label">Facilitator Name <span class="req">*</span></label>
-          <input type="text" id="td-facilitator" class="form-control" placeholder="e.g. Jane Dela Cruz">
-        </div>
-        <div class="form-group hidden" id="td-provider-wrap">
-          <label class="form-label">Training Provider <span class="req">*</span></label>
-          <input type="text" id="td-provider" class="form-control" placeholder="e.g. ACME Learning Solutions">
-        </div>
-        <div class="form-group hidden" id="td-ldowner-wrap">
-          <label class="form-label">L&amp;D Owner</label>
-          <select id="td-ldowner" class="form-control"><option value="">— Select L&amp;D Owner —</option></select>
-        </div>
-        <div class="form-group hidden" id="td-classification-wrap">
-          <label class="form-label">Training Classification</label>
-          <select id="td-classification" class="form-control">
-            <option value="">— Select —</option>
-            <option value="Developmental Training">Developmental Training</option>
-            <option value="Certification-Based Training">Certification-Based Training</option>
-            <option value="Licensure or High-Impact Qualification">Licensure or High-Impact Qualification</option>
-          </select>
-        </div>
-        <div class="form-group hidden" id="td-ricaticket-wrap">
-          <label class="form-label">RICA Ticket</label>
-          <input type="text" id="td-ricaticket" class="form-control" placeholder="e.g. RICA-00123">
-        </div>
-        <div class="form-group hidden" id="td-bondmonths-wrap">
-          <label class="form-label">Training Bond Period</label>
-          <select id="td-bondmonths" class="form-control" onchange="_tdUpdateBondEndPreview('td')">
-            <option value="">— None —</option>
-            <option value="3">3 months</option>
-            <option value="6">6 months</option>
-            <option value="12">12 months</option>
-            <option value="18">18 months</option>
-            <option value="24">24 months</option>
-          </select>
-        </div>
-        <div class="form-group hidden" id="td-bondend-wrap">
-          <label class="form-label">Training Bond End Date</label>
-          <input type="text" id="td-bondend-display" class="form-control" readonly style="background:var(--bg2)" placeholder="Auto-computed from bond period">
-        </div>
-        <div class="form-group">
-          <label class="form-label" id="td-venue-label">Venue</label>
-          <select id="td-venue" class="form-control" onchange="_toggleVenueOtherWrap('td')"><option value="">— Select Venue —</option></select>
-        </div>
-        <div class="form-group hidden" id="td-venue-other-wrap">
-          <label class="form-label" id="td-venue-other-label">Specify Venue</label>
-          <input type="text" id="td-venue-other" class="form-control" placeholder="Enter venue/platform name">
-        </div>
-        <div class="form-group" id="td-audience-wrap">
-          <label class="form-label">Audience</label>
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group" id="td-expected-wrap">
-          <label class="form-label">Expected Participants</label>
-          <input type="number" id="td-expected" class="form-control" min="1" step="1" placeholder="e.g. 25">
-        </div>
-        <div class="form-group" id="td-recording-wrap">
-          <label class="form-label" id="td-recording-label">Recording Link</label>
-          <input type="url" id="td-recording" class="form-control" placeholder="https://…">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status <span class="req">*</span></label>
-          <select id="td-status" class="form-control">
-            <option value="scheduled">Scheduled</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row-3" id="td-assessment-row">
-        <div class="form-group">
-          <label class="form-label">Assessment Type</label>
-          <select id="td-assessment" class="form-control">
-            <option value="None">None</option>
-            <option value="Pre-test only">Pre-test only</option>
-            <option value="Post-test only">Post-test only</option>
-            <option value="Pre & Post">Pre &amp; Post</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Passing Score (%)</label>
-          <input type="number" id="td-passing" class="form-control" min="0" max="100" step="1" placeholder="e.g. 80">
-        </div>
-      </div>
-      <div class="modal-err hidden" id="td-error"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('training')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTrainingModal()">Save</button>
-    </div>
-  </div>
-</div>
-
 <!-- ══ MODAL: NEW TRAINING — DELIVERY TYPE PICKER ═════════════ -->
 <div id="modal-td-type-pick" class="modal-overlay" onclick="if(event.target===this)closeModal('td-type-pick')">
   <div class="modal modal-sm">
@@ -2714,80 +2573,6 @@
         <button type="button" class="btn btn-secondary" style="padding:14px 10px;font-size:13.5px" onclick="_tdCreateFromTypePick('Ad-hoc')">Ad-hoc Task</button>
       </div>
       <div class="modal-err hidden" id="td-type-pick-error"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ MODAL: TRAINING SESSION ═════════════ -->
-<div id="modal-session" class="modal-overlay" onclick="if(event.target===this)closeModal('session')">
-  <div class="modal modal-xl">
-    <div class="modal-hdr">
-      <span class="modal-title" id="sess-modal-title">Log Training Session</span>
-      <button class="modal-close" onclick="closeModal('session')">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="sess-id">
-      <div class="form-group">
-        <label class="form-label">Trainer <span class="req">*</span></label>
-        <select id="sess-trainer" class="form-control"><option value="">— Select Trainer —</option></select>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group" style="grid-column:span 2">
-          <label class="form-label">Training Program / Title <span class="req">*</span></label>
-          <input type="text" id="sess-program" class="form-control" placeholder="e.g. Product Knowledge Training">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Batch No. <span class="req">*</span></label>
-          <input type="text" id="sess-batch" class="form-control" placeholder="e.g. 2026-01">
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Session Date <span class="req">*</span></label>
-          <input type="date" id="sess-date" class="form-control">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Venue <span class="req">*</span></label>
-          <select id="sess-venue" class="form-control" onchange="_toggleVenueOtherWrap('sess')"><option value="">— Select Venue —</option></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Delivery Method <span class="req">*</span></label>
-          <select id="sess-modality" class="form-control"><option value="">— Select Delivery Method —</option></select>
-        </div>
-      </div>
-      <div class="form-group hidden" id="sess-venue-other-wrap">
-        <label class="form-label">Specify Venue <span class="req">*</span></label>
-        <input type="text" id="sess-venue-other" class="form-control" placeholder="Enter venue name/location">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Recording Link</label>
-        <input type="url" id="sess-recording" class="form-control" placeholder="https://…">
-      </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Number of Participants</label>
-          <input type="number" id="sess-participants" class="form-control" min="1" step="1" placeholder="e.g. 25">
-          <div class="form-hint">Required if Completed.</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Session Duration (hh:mm)</label>
-          <input type="text" id="sess-duration" class="form-control" placeholder="e.g. 02:30" pattern="^\d{1,3}:[0-5]\d$">
-          <div class="form-hint">Required if Completed.</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status <span class="req">*</span></label>
-          <select id="sess-status" class="form-control">
-            <option value="scheduled">Scheduled</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-err hidden" id="sess-error"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('session')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSessionModal()">Save</button>
     </div>
   </div>
 </div>
@@ -3167,7 +2952,16 @@ const _FIELD_MAPS = {
     // Self-led or External sessions (no internal facilitation labor to cost).
     facilitationHoursApplied:'facilitation_hours_applied',
     facilitatorRateApplied:'facilitator_rate_applied', coFacilitatorRateApplied:'co_facilitator_rate_applied',
-    facilitationCostApplied:'facilitation_cost_applied', facilitationCostLockedAt:'facilitation_cost_locked_at'
+    facilitationCostApplied:'facilitation_cost_applied', facilitationCostLockedAt:'facilitation_cost_locked_at',
+    // Specific Dates (2026-08-19, per Sandra): a session's date-range fields (trainingDate/endDate)
+    // assume EVERY calendar day between them is an actual training day -- wrong for e.g. a 32-hour
+    // course split across 2 weekends (Start-to-End spans 14 days, only 4 are real). dateMode ('range',
+    // the default/existing behavior, or 'specific') picks which model applies; sessionDates holds the
+    // exact occurrence dates for 'specific' mode. trainingDate is still kept in sync as the EARLIEST
+    // date in sessionDates (so every existing "start date" assumption elsewhere in the app keeps
+    // working); endDate is left null for 'specific' mode (see _tdSessionEndDate for the mode-aware
+    // replacement anchor used by SLA/Manual Override/Bond-date calculations).
+    dateMode:'date_mode', sessionDates:'session_dates'
   },
   // Per-session Checklist progress (Phase D2, 2026-08-07): a SNAPSHOT of the template's items at
   // the time the checklist tab was first opened for this session, plus status/completedOn per
@@ -7504,8 +7298,11 @@ function _tdashComputeHoursRange(rows,startStr,endStr){
     } else if(s.deliveryType==='External'){
       _tdSessionDayList(s).forEach(d=>{ if(d>=startStr && d<=endStr) externalHrs+=hrs; });
     } else if(s.deliveryType==='Self-led'){
-      const start=s.trainingDate, end=s.endDate||s.trainingDate;
-      if(start<=endStr && end>=startStr && !sltSeen.has(s.id)) sltSeen.set(s.id,hrs);
+      // Specific Dates fix (2026-08-19): was a raw start<=end/end>=start overlap test against
+      // trainingDate/endDate, which assumed every day in that range was real -- wrong for a
+      // Specific-Dates-mode session (no endDate at all). Checking _tdSessionDayList(s) instead
+      // works correctly for BOTH modes (for 'range' mode it's equivalent to the old overlap test).
+      if(!sltSeen.has(s.id) && _tdSessionDayList(s).some(d=>d>=startStr&&d<=endStr)) sltSeen.set(s.id,hrs);
     } else if(s.deliveryType==='Ad-hoc'){
       // Ad-hoc Task (2026-08-13, per Sandra): single-date only (no range), counted the same
       // per-calendar-day way as ILT/External via _tdSessionDayList (which just returns the one
@@ -7599,8 +7396,10 @@ function renderTrainingDashboardKpis(){
   const sessionsInPeriod=rows.filter(s=>{
     if(s.deliveryType!=='ILT'&&s.deliveryType!=='VILT') return false;
     if(!s.trainingDate) return false;
-    const start=s.trainingDate, end=s.endDate||s.trainingDate;
-    return start<=range.end && end>=range.start;
+    // Specific Dates fix (2026-08-19): day-list membership test instead of a raw start/end overlap
+    // check, so this correctly matches only the real occurrence dates for a Specific-Dates-mode
+    // session (equivalent to the old check for 'range' mode sessions).
+    return _tdSessionDayList(s).some(d=>d>=range.start&&d<=range.end);
   });
   const sessionIds=new Set(sessionsInPeriod.map(s=>s.id));
   const learners=new Set();
@@ -7766,7 +7565,7 @@ function renderTrainingDashboardHoursSection(rows,range,scheduled,completed){
 // (only shown when at least one session actually has none) rather than silently disappearing
 // from the totals.
 function renderTrainingDashboardCategorySection(rows,range){
-  const inRange=s=>{ if(!s.trainingDate) return false; const start=s.trainingDate, end=s.endDate||s.trainingDate; return start<=range.end && end>=range.start; };
+  const inRange=s=>{ if(!s.trainingDate) return false; return _tdSessionDayList(s).some(d=>d>=range.start&&d<=range.end); };
   const nonCancelled=rows.filter(inRange).filter(s=>s.status!=='cancelled');
 
   const cats=_categoryOptionNames();
@@ -8205,7 +8004,7 @@ function _tdaComputeTrainerWorkload(range){
   // no more "63.4 vs 60" average-vs-real mismatch to work around with a separate flat case.
   const workingDays=_workingDaysBetween(effRange.start,effRange.end);
   const dailyHours=cfg.standardWeeklyHours/5;
-  const overlaps=s=>{ if(!s.trainingDate) return false; const start=s.trainingDate, end=s.endDate||s.trainingDate; return start<=effRange.end && end>=effRange.start; };
+  const overlaps=s=>{ if(!s.trainingDate) return false; return _tdSessionDayList(s).some(d=>d>=effRange.start&&d<=effRange.end); };
 
   const rosterIds=new Set();
   DB.all().filter(p=>p.formTrainer&&p.isActive).forEach(p=>rosterIds.add(p.id));
@@ -8306,7 +8105,17 @@ function _tdShowsDateRange(deliveryType){ return deliveryType==='ILT'||_tdIsOwne
 // sessions (or sessions whose type doesn't support a date range) return just the one date --
 // existing single-day attendance behavior is untouched. Does NOT skip weekends: the session's own
 // Start/End Date IS the definition of which days it runs, so no day-of-week filtering here.
+//
+// Specific Dates mode (2026-08-19, per Sandra): a plain Start/End range assumes EVERY calendar day
+// between them is a real training day -- wrong for e.g. a 32-hour course split across 2 weekends
+// (Start-to-End spans 14 days, only 4 are real). When s.dateMode==='specific', this returns the
+// session's own sessionDates array (sorted) instead of walking the calendar range -- every caller
+// of this function (Attendance & Performance's day columns, Training Hours calcs, etc.) benefits
+// automatically without needing to know which mode a given session uses.
 function _tdSessionDayList(s){
+  if(s.dateMode==='specific'){
+    return (s.sessionDates||[]).slice().sort();
+  }
   const start=s.trainingDate;
   if(!start) return [];
   if(!s.endDate||s.endDate===start) return [start];
@@ -8316,6 +8125,18 @@ function _tdSessionDayList(s){
   const cur=new Date(startD);
   while(cur<=endD){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
   return days;
+}
+// Mode-aware "last day this session covers" -- the correct replacement for the old `s.endDate||
+// s.trainingDate` pattern used throughout for SLA anchoring, Manual Override eligibility, and the
+// Training Bond End Date anchor. For 'specific' mode there IS no endDate (left null), so the old
+// pattern would have silently fallen back to the START date -- wrong. Falls back to trainingDate
+// only if sessionDates is somehow empty (defensive, shouldn't happen since it's now validated).
+function _tdSessionEndDate(s){
+  if(s.dateMode==='specific'){
+    const days=_tdSessionDayList(s);
+    return days.length?days[days.length-1]:(s.trainingDate||'');
+  }
+  return s.endDate||s.trainingDate||'';
 }
 
 function _tdFieldGroup(deliveryType){
@@ -8350,7 +8171,16 @@ function _tdPopulateVenueOptions(prefix,deliveryType,selectedId){
   const isPlatform=wantType==='platform';
   const opts=Sel.active(Store.VENUES).filter(v=>v.type===wantType||_isOtherVenue(v.id)).sort((a,b)=>(_isOtherVenue(a.id)?1:0)-(_isOtherVenue(b.id)?1:0));
   const cur=selectedId!==undefined?selectedId:sel.value;
-  sel.innerHTML=`<option value="">— Select ${isPlatform?'Platform':'Venue'} —</option>`+opts.map(v=>`<option value="${v.id}">${Utils.esc(v.name)}</option>`).join('');
+  // Fix (2026-08-19, audit finding): if the session's currently-assigned venue was deactivated
+  // (or its type no longer matches, e.g. delivery type changed), it wouldn't appear in `opts` above
+  // -- the <select> would silently fall back to blank, and an unrelated Save would null it out.
+  // Include it explicitly, same "include if currently assigned" pattern already used for
+  // Trainer/Co-Facilitator/Owner/Checklist Template.
+  if(cur && !opts.some(v=>v.id===cur)){
+    const assigned=Sel.byId(Store.VENUES,cur);
+    if(assigned) opts.push(assigned);
+  }
+  sel.innerHTML=`<option value="">— Select ${isPlatform?'Platform':'Venue'} —</option>`+opts.map(v=>`<option value="${v.id}">${Utils.esc(v.name)}${v.isActive?'':' (inactive)'}</option>`).join('');
   if(cur) sel.value=cur;
   const lbl=document.getElementById(`${prefix}-venue-label`);
   if(lbl) lbl.textContent=isPlatform?'Platform':'Venue';
@@ -8390,7 +8220,7 @@ function _tdStatus(s){
   if(s.status==='tentative') return 'Tentative';
   const today=new Date().toISOString().slice(0,10);
   const start=s.trainingDate||'';
-  const end=s.endDate||s.trainingDate||'';
+  const end=_tdSessionEndDate(s);
   if(start && today<start) return 'Upcoming';
   if(start && today>=start && today<=end) return 'In Progress';
   if(end && today>end) return 'In Progress'; // scheduled but date passed & not yet marked complete
@@ -8414,13 +8244,19 @@ function _tdTypeBadge(dt){
   return `<span class="badge" style="background:${c.bg};color:${c.fg}">${Utils.esc(dt)}</span>`;
 }
 
+// Shared "does this session even get a Training Report tab" check (2026-08-19, per Sandra) --
+// used by every Documentation/SLA function below so they never drift out of sync with
+// visibleTabs' own report-tab filter. A session with NO possible report should show N/A, never
+// "Report Pending" -- Report Pending must mean "the report tab exists but nobody's filled it in
+// yet", not "this type structurally never gets one". Covers: Ad-hoc (no report tab at all),
+// Tentative (not confirmed yet), External (no report tab -- Checklist covers what External needs),
+// and non-mandatory Self-led (report tab only shown when isMandatory is true).
+function _tdHasNoReportRequirement(s){
+  return s.deliveryType==='Ad-hoc' || s.status==='tentative' || s.deliveryType==='External' ||
+    (s.deliveryType==='Self-led' && !s.isMandatory);
+}
 function _tdDocStatus(s){
-  // Ad-hoc Tasks (2026-08-19, per Sandra): exempt from Training Report tracking entirely -- no
-  // report tab is ever offered for Ad-hoc (see visibleTabs filter), so show N/A instead of
-  // falsely flagging every Ad-hoc Task as "Report Pending".
-  // Tentative (2026-08-19, per Sandra): not confirmed yet -- no report requirement until Status
-  // is changed to Scheduled.
-  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return '<span style="color:var(--text3)">N/A</span>';
+  if(_tdHasNoReportRequirement(s)) return '<span style="color:var(--text3)">N/A</span>';
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep) return '<span class="badge" style="background:#fef9c3;color:#a16207">Report Pending</span>';
   if(rep.status==='approved') return '<span class="badge" style="background:#dcfce7;color:#15803d">Report Approved</span>';
@@ -8455,26 +8291,27 @@ function _tdBusinessDaysBetween(startDateStr,endDateStr){
 // resubmit cycle automatically reflects the newest submission with no separate first/last
 // submission tracking needed (2026-07-31, per Sandra's reopen-workflow spec).
 function _tdReportSLA(s){
-  // Ad-hoc Tasks (2026-08-19, per Sandra): exempt from Report SLA tracking entirely. Tentative
-  // sessions are exempt too until confirmed (Status changed to Scheduled).
-  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return '<span style="color:var(--text3)">N/A</span>';
+  if(_tdHasNoReportRequirement(s)) return '<span style="color:var(--text3)">N/A</span>';
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep||!rep.submittedAt) return '<span class="txt-muted">—</span>';
   // 2026-08-06 QA fix: anchor to the session's END date (falls back to trainingDate for
   // single-day sessions) -- multi-day ILT/Self-led/External sessions were previously measured
   // from Day 1, so a 2-day session already had 1 of its 2 SLA days gone before the session even
   // finished.
-  const days=_tdBusinessDaysBetween(s.endDate||s.trainingDate,rep.submittedAt);
+  const days=_tdBusinessDaysBetween(_tdSessionEndDate(s),rep.submittedAt);
   if(days==null) return '<span class="txt-muted">—</span>';
   if(days<=2) return `<span class="badge" style="background:#dcfce7;color:#15803d">Within SLA (${days}d)</span>`;
   return `<span class="badge" style="background:#fee2e2;color:#dc2626">Passed SLA (${days}d)</span>`;
 }
 
 function _tdEvalStatus(s){
-  if(_tdIsOwnerType(s.deliveryType)) return '<span style="color:var(--text3)">N/A</span>';
+  // "N/A" means evaluation structurally doesn't apply (Self-led/External, or not confirmed yet).
+  // "Awaiting Recording" means it DOES apply but isn't actionable yet -- kept distinct from N/A
+  // (2026-08-19, per audit finding) so a list scan can tell "doesn't apply" from "not ready yet".
+  if(_tdIsOwnerType(s.deliveryType)||s.status==='tentative') return '<span style="color:var(--text3)">N/A</span>';
   const evs=EvalDB.all().filter(e=>e.sessionId===s.id);
   if(!evs.length){
-    return s.recordingLink?'<span class="badge" style="background:#dbeafe;color:#1d4ed8">Ready for Eval</span>':'<span style="color:var(--text3)">N/A</span>';
+    return s.recordingLink?'<span class="badge" style="background:#dbeafe;color:#1d4ed8">Ready for Eval</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b">Awaiting Recording</span>';
   }
   const done=evs.find(e=>e.status==='completed'||e.status==='pending_ack');
   return done?'<span class="badge" style="background:#dcfce7;color:#15803d">Evaluated</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8">Ready for Eval</span>';
@@ -8483,22 +8320,22 @@ function _tdEvalStatus(s){
 // Plain-text mirrors of the badge-producing functions above, used only as sortable values for
 // the List view's Documentation/Report SLA/Trainer Evaluation columns (Phase46, 2026-08-06).
 function _tdDocStatusText(s){
-  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return 'N/A';
+  if(_tdHasNoReportRequirement(s)) return 'N/A';
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep) return 'Report Pending';
   const map={approved:'Report Approved',submitted:'Report Submitted',returned:'Report Returned',draft:'Report Draft'};
   return map[rep.status]||'Report Pending';
 }
 function _tdReportSLADays(s){
-  if(s.deliveryType==='Ad-hoc'||s.status==='tentative') return null;
+  if(_tdHasNoReportRequirement(s)) return null;
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   if(!rep||!rep.submittedAt) return null;
-  return _tdBusinessDaysBetween(s.endDate||s.trainingDate,rep.submittedAt);
+  return _tdBusinessDaysBetween(_tdSessionEndDate(s),rep.submittedAt);
 }
 function _tdEvalStatusText(s){
-  if(_tdIsOwnerType(s.deliveryType)) return 'N/A';
+  if(_tdIsOwnerType(s.deliveryType)||s.status==='tentative') return 'N/A';
   const evs=EvalDB.all().filter(e=>e.sessionId===s.id);
-  if(!evs.length) return s.recordingLink?'Ready for Eval':'N/A';
+  if(!evs.length) return s.recordingLink?'Ready for Eval':'Awaiting Recording';
   const done=evs.find(e=>e.status==='completed'||e.status==='pending_ack');
   return done?'Evaluated':'Ready for Eval';
 }
@@ -8512,6 +8349,13 @@ function _tdRecordingCell(s){
 }
 
 function _tdDateCell(s){
+  // Specific Dates (2026-08-19/20): show a compact "N dates" summary with the full list as a
+  // tooltip, instead of a Start–End range that would misleadingly imply every day in between.
+  if(s.dateMode==='specific'){
+    const dates=(s.sessionDates||[]).slice().sort();
+    if(!dates.length) return Utils.esc(s.trainingDate||'—');
+    return `<span title="${Utils.esc(dates.join(', '))}">${dates.length} date${dates.length!==1?'s':''} (${Utils.esc(dates[0])}${dates.length>1?' …':''})</span>`;
+  }
   if(s.endDate && s.endDate!==s.trainingDate) return `${Utils.esc(s.trainingDate||'—')} – ${Utils.esc(s.endDate)}`;
   return Utils.esc(s.trainingDate||'—');
 }
@@ -8844,6 +8688,11 @@ function tdCalToday(){ tdHoursSelectedDay=null; tdCalCursor=new Date(); tdCalCur
 // Duration text for the calendar chip/tooltip -- "N days (start – end)" for date-range entries,
 // otherwise just the single date (2026-07-31, richer pill content + SLT continuous bar work).
 function _tdCalDuration(s){
+  // Specific Dates (2026-08-19/20): list the picked dates instead of a Start-End span.
+  if(s.dateMode==='specific'){
+    const dates=(s.sessionDates||[]).slice().sort();
+    return dates.length?`${dates.length} day${dates.length!==1?'s':''} (${dates.join(', ')})`:(s.trainingDate||'—');
+  }
   if(s.endDate && s.endDate!==s.trainingDate){
     const start=new Date(s.trainingDate+'T00:00:00'), end=new Date(s.endDate+'T00:00:00');
     const days=Math.round((end-start)/86400000)+1;
@@ -8914,8 +8763,7 @@ function _tcBaseRows(){
     if(s.deliveryType!=='ILT') return false;
     if(s.status==='cancelled') return false;
     if(!s.trainingDate) return false;
-    const start=s.trainingDate, end=s.endDate||s.trainingDate;
-    if(!(start<=range.end && end>=range.start)) return false;
+    if(!_tdSessionDayList(s).some(d=>d>=range.start&&d<=range.end)) return false;
     if(tcF.program && !(s.trainingProgram||'').toLowerCase().includes(tcF.program.toLowerCase())) return false;
     if(tcF.category!=='all' && (s.category||'')!==tcF.category) return false;
     if(tcF.facilitator!=='all' && s.trainerId!==tcF.facilitator && s.coFacilitatorId!==tcF.facilitator) return false;
@@ -9257,9 +9105,16 @@ function renderTDCalendar(rows){
   const todayStr=new Date().toISOString().slice(0,10);
 
   // Split into single-day chips (rendered per day cell, cap 2 + "N more") vs genuine multi-day
-  // date-range entries (rendered as an overlay bar across their week rows).
+  // date-range entries (rendered as an overlay bar across their week rows). Specific Dates
+  // (2026-08-19/20) sessions are excluded from both buckets here -- they get routed to repeated
+  // single-day chips (one per picked date) below instead of either a continuous bar (which would
+  // wrongly imply every day in between is a training day) or a single chip on just trainingDate
+  // (which would hide every date after the first).
   const singleDay=[], multiDay=[];
-  rows.forEach(s=>{ if(s.endDate && s.endDate!==s.trainingDate) multiDay.push(s); else singleDay.push(s); });
+  rows.forEach(s=>{
+    if(s.dateMode==='specific') return;
+    if(s.endDate && s.endDate!==s.trainingDate) multiDay.push(s); else singleDay.push(s);
+  });
 
   // Keyed by dateStr (YYYY-MM-DD), not just day-of-month number, and NOT restricted to the
   // current month -- this lets the leading/trailing grey "overlap" cells (days that belong to
@@ -9271,6 +9126,13 @@ function renderTDCalendar(rows){
   singleDay.forEach(s=>{
     if(!s.trainingDate) return;
     (byDate[s.trainingDate]=byDate[s.trainingDate]||[]).push(s);
+  });
+  // Specific Dates (2026-08-19/20): same session pushed into every one of its picked dates' chip
+  // lists -- _tdCalChipHtml doesn't read s.trainingDate for display (just program/person/venue),
+  // so reusing the identical session object across multiple day cells here is safe.
+  rows.forEach(s=>{
+    if(s.dateMode!=='specific') return;
+    (s.sessionDates||[]).forEach(d=>{ (byDate[d]=byDate[d]||[]).push(s); });
   });
 
   const CHIP_CAP=2;
@@ -9396,8 +9258,10 @@ function _tdHoursForDay(rows,dateStr){
   rows.forEach(s=>{
     if(!s.trainingDate) return;
     if(excludeCancelled && s.status==='cancelled') return;
-    const start=s.trainingDate, end=s.endDate||s.trainingDate;
-    if(dateStr<start||dateStr>end) return;
+    // Specific Dates fix (2026-08-19): was a start<=dateStr<=end range check against trainingDate/
+    // endDate, which assumed every day in that range was a real training day -- wrong for a
+    // Specific-Dates-mode session. Checking day-list membership works correctly for both modes.
+    if(!_tdSessionDayList(s).includes(dateStr)) return;
     const hrs=Number(s.durationHours)||0;
     // Full session `s` is kept (not just id/label) so the day-click side panel (2026-08-12) can
     // show person/venue/date-range details without a second lookup pass.
@@ -9440,8 +9304,8 @@ function _tdComputeMonthlyHours(rows,year,month){
     } else if(s.deliveryType==='External'){
       _tdSessionDayList(s).forEach(d=>{ if(d>=monthStartStr && d<=monthEndStr) externalHrs+=hrs; });
     } else if(s.deliveryType==='Self-led'){
-      const start=s.trainingDate, end=s.endDate||s.trainingDate;
-      if(start<=monthEndStr && end>=monthStartStr && !sltSeen.has(s.id)) sltSeen.set(s.id,hrs);
+      // Specific Dates fix (2026-08-19): see matching note in _tdashComputeHoursRange.
+      if(!sltSeen.has(s.id) && _tdSessionDayList(s).some(d=>d>=monthStartStr&&d<=monthEndStr)) sltSeen.set(s.id,hrs);
     } else if(s.deliveryType==='Ad-hoc'){
       _tdSessionDayList(s).forEach(d=>{ if(d>=monthStartStr && d<=monthEndStr) adhocHrs+=hrs; });
     }
@@ -9450,8 +9314,7 @@ function _tdComputeMonthlyHours(rows,year,month){
   const implementations=rows.filter(s=>{
     if(!s.trainingDate) return false;
     if(excludeCancelled && s.status==='cancelled') return false;
-    const start=s.trainingDate, end=s.endDate||s.trainingDate;
-    return start<=monthEndStr && end>=monthStartStr;
+    return _tdSessionDayList(s).some(d=>d>=monthStartStr&&d<=monthEndStr);
   }).length;
   return {forecastedHrs:iltHrs+externalHrs+sltHrs+adhocHrs,iltHrs,externalHrs,sltHrs,adhocHrs,implementations};
 }
@@ -9484,7 +9347,9 @@ function _tdHoursDayPanelHtml(dateStr,stat){
   const iltHtml=stat.iltSessions.length?stat.iltSessions.map(x=>row(x.s,x.hrs,[_tdPersonName(x.s),venueOf(x.s)].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; '))).join(''):'<div style="font-size:11px;color:var(--text3)">None</div>';
   const extHtml=stat.externalSessions.map(x=>row(x.s,x.hrs,[_tdPersonName(x.s),venueOf(x.s)].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; '))).join('');
   const sltHtml=stat.sltSessions.length?stat.sltSessions.map(x=>{
-    const range=x.s.endDate&&x.s.endDate!==x.s.trainingDate?`${x.s.trainingDate} – ${x.s.endDate}`:x.s.trainingDate;
+    // Specific Dates (2026-08-19/20): show the picked dates rather than a misleading Start-End span.
+    const range=x.s.dateMode==='specific'?(x.s.sessionDates||[]).slice().sort().join(', ')
+      :(x.s.endDate&&x.s.endDate!==x.s.trainingDate?`${x.s.trainingDate} – ${x.s.endDate}`:x.s.trainingDate);
     return row(x.s,x.hrs,'Available: '+Utils.esc(range));
   }).join(''):'<div style="font-size:11px;color:var(--text3)">None</div>';
   // Ad-hoc Task (2026-08-13, per Sandra): same detail-row treatment as ILT/External above.
@@ -9579,161 +9444,11 @@ function _tdRenderHoursCalendar(rows){
   </div>`;
 }
 
-/* ── ADD / EDIT TRAINING MODAL ────────────────────────────────────────────────────────── */
-function _tdToggleTypeFields(){
-  const dt=document.getElementById('td-type').value;
-  const ownerType=_tdIsOwnerType(dt);
-  const grp=_tdFieldGroup(dt);
-  document.getElementById('td-trainer-wrap').classList.toggle('hidden',grp!=='trainer');
-  document.getElementById('td-owner-wrap').classList.toggle('hidden',grp!=='owner');
-  // Facilitator Name removed entirely for External (2026-08-13, per Sandra) -- always hidden now.
-  document.getElementById('td-facilitator-wrap').classList.add('hidden');
-  document.getElementById('td-provider-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('td-enddate-wrap').classList.toggle('hidden',!_tdShowsDateRange(dt));
-  // Recording Link (2026-08-13 fix): only truly hidden for Self-led (grp==='owner') -- External
-  // was previously swept into the same hidden bucket via ownerType (true for both Self-led AND
-  // External); it now shows, relabeled "Training Bond Document Link".
-  document.getElementById('td-recording-wrap').classList.toggle('hidden',grp==='owner');
-  document.getElementById('td-recording-label').textContent=grp==='external'?'Training Bond Document Link':(ownerType?'Report Link':'Recording Link');
-  // Batch No. (2026-08-13, per Sandra): hidden for External too, not just Self-led.
-  document.getElementById('td-batch-wrap').classList.toggle('hidden',grp==='owner'||grp==='external');
-  // Expected/Maximum Participants (2026-08-13, per Sandra): hidden for External.
-  document.getElementById('td-expected-wrap').classList.toggle('hidden',grp==='external');
-  // External Sessions build (2026-08-13): Classification / RICA Ticket / Bond Period+End Date /
-  // L&D Owner are External-only; Assessment is removed entirely for External (per Sandra).
-  document.getElementById('td-classification-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('td-ricaticket-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('td-bondmonths-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('td-bondend-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('td-ldowner-wrap').classList.toggle('hidden',grp!=='external');
-  document.getElementById('td-assessment-row').classList.toggle('hidden',grp==='external');
-  _tdPopulateVenueOptions('td',dt);
-  _toggleVenueOtherWrap('td');
-  _tdUpdateBondEndPreview('td');
-}
-
-function openTrainingModal(id){
-  document.getElementById('td-error').classList.add('hidden');
-  const s=id?TrSessionDB.byId(id):null;
-  // Trainer eligibility (Phase P, 2026-08-12, per Sandra): opened up from "Position = Trainer
-  // (pos_6) only" to the full active roster -- any team member can be asked to facilitate a
-  // session, not just people whose formal Position is Trainer. Still sorted so the list stays
-  // usable at roster scale.
-  const eligibleTrainers=DB.all().filter(u=>u.isActive||u.id===(s&&s.trainerId)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
-  document.getElementById('td-trainer').innerHTML='<option value="">— Select Trainer —</option>'+eligibleTrainers.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
-  const activeUsers=DB.all().filter(u=>u.isActive||u.id===(s&&s.ownerId)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
-  document.getElementById('td-owner').innerHTML='<option value="">— Select Owner —</option>'+activeUsers.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
-  // L&D Owner (2026-08-13, per Sandra): accountable internal L&D team member for External
-  // sessions -- same active-roster pattern as Trainer/Owner above.
-  const eligibleLdOwners=DB.all().filter(u=>u.isActive||u.id===(s&&s.ldOwnerId)).sort((a,b)=>(a.firstName+a.lastName).localeCompare(b.firstName+b.lastName));
-  document.getElementById('td-ldowner').innerHTML='<option value="">— Select L&amp;D Owner —</option>'+eligibleLdOwners.map(u=>`<option value="${u.id}">${Utils.esc(u.firstName+' '+u.lastName)}${u.isActive?'':' (inactive)'}</option>`).join('');
-  _tdPopulateVenueOptions('td',s?.deliveryType||'',s?.venueId||'');
-  document.getElementById('td-audience-wrap').innerHTML='<label class="form-label">Audience</label>'+_audienceMultiSelectHtml('td-audience',s?.audience||[]);
-
-  document.getElementById('td-id').value=id||'';
-  document.getElementById('td-modal-title').textContent=id?'Edit Training':'Add Training';
-  document.getElementById('td-type').value=s?.deliveryType||'';
-  document.getElementById('td-program').value=s?.trainingProgram||'';
-  document.getElementById('td-batch').value=s?.batchNo||'';
-  document.getElementById('td-date').value=s?.trainingDate||'';
-  document.getElementById('td-enddate').value=s?.endDate||'';
-  document.getElementById('td-trainer').value=s?.trainerId||'';
-  document.getElementById('td-owner').value=s?.ownerId||'';
-  document.getElementById('td-facilitator').value=s?.facilitatorName||'';
-  document.getElementById('td-provider').value=s?.trainingProvider||'';
-  document.getElementById('td-venue').value=s?.venueId||'';
-  document.getElementById('td-venue-other').value=s?.venueOtherName||'';
-  document.getElementById('td-expected').value=s?.expectedParticipants??'';
-  document.getElementById('td-recording').value=s?.recordingLink||'';
-  document.getElementById('td-assessment').value=s?.assessmentType||'None';
-  document.getElementById('td-passing').value=s?.passingScore??'';
-  document.getElementById('td-status').value=s?.status||'scheduled';
-  document.getElementById('td-classification').value=s?.trainingClassification||'';
-  document.getElementById('td-ricaticket').value=s?.ricaTicket||'';
-  document.getElementById('td-bondmonths').value=s?.trainingBondMonths||'';
-  document.getElementById('td-bondend-display').value=s?.trainingBondEndDate||'';
-  document.getElementById('td-ldowner').value=s?.ldOwnerId||'';
-  _tdToggleTypeFields();
-  openModal('training');
-}
-
-async function saveTrainingModal(){
-  const id=document.getElementById('td-id').value||null;
-  const deliveryType=document.getElementById('td-type').value;
-  const ownerType=_tdIsOwnerType(deliveryType);
-  const grp=_tdFieldGroup(deliveryType);
-  const expectedRaw=document.getElementById('td-expected').value.trim();
-  const passingRaw=document.getElementById('td-passing').value.trim();
-  const d={
-    deliveryType,
-    trainingProgram:document.getElementById('td-program').value.trim(),
-    // Batch No. (2026-08-13, per Sandra): not collected for External either, not just Self-led.
-    batchNo:grp==='external'?'':document.getElementById('td-batch').value.trim(),
-    trainingDate:document.getElementById('td-date').value,
-    endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('td-enddate').value||null):null,
-    trainerId:grp==='trainer'?(document.getElementById('td-trainer').value||null):null,
-    ownerId:grp==='owner'?(document.getElementById('td-owner').value||null):null,
-    // Facilitator Name removed entirely for External (2026-08-13, per Sandra) -- field stays
-    // hidden in the DOM; L&D Owner (below) covers accountability instead.
-    facilitatorName:null,
-    trainingProvider:grp==='external'?document.getElementById('td-provider').value.trim():null,
-    // L&D Owner (2026-08-13, per Sandra): accountable internal team member for External sessions.
-    ldOwnerId:grp==='external'?(document.getElementById('td-ldowner').value||null):null,
-    ..._tdResolveVenue('td'),
-    audience:_readMultiSelect('td-audience'),
-    // Expected/Maximum Participants (2026-08-13, per Sandra): not collected for External.
-    expectedParticipants:grp==='external'?null:(expectedRaw?parseInt(expectedRaw,10):null),
-    // Recording Link / Report Link / Training Bond Document Link (2026-08-13 fix): previously
-    // cleared for ALL ownerType deliveries (Self-led AND External) -- now only cleared for
-    // Self-led (grp==='owner'); External keeps it (relabeled, holds the Bond Document Link).
-    recordingLink:grp==='owner'?'':document.getElementById('td-recording').value.trim(),
-    // Assessment removed entirely for External (per Sandra) -- cleared on save regardless of
-    // what the (now-hidden) dropdown/field still hold in the DOM.
-    assessmentType:grp==='external'?'None':document.getElementById('td-assessment').value,
-    passingScore:grp==='external'?null:(passingRaw?parseInt(passingRaw,10):null),
-    status:document.getElementById('td-status').value,
-    // External-only fields (2026-08-13): Training Classification, RICA Ticket, and Training Bond
-    // Period + auto-computed End Date (anchored to endDate||trainingDate, see _tdBondEndDate).
-    trainingClassification:grp==='external'?(document.getElementById('td-classification').value||null):null,
-    ricaTicket:grp==='external'?document.getElementById('td-ricaticket').value.trim():null,
-    trainingBondMonths:grp==='external'?(document.getElementById('td-bondmonths').value?parseInt(document.getElementById('td-bondmonths').value,10):null):null
-  };
-  if(grp==='external'){
-    const anchor=d.endDate||d.trainingDate;
-    d.trainingBondEndDate=_tdBondEndDate(anchor,d.trainingBondMonths);
-  } else {
-    d.trainingBondEndDate=null;
-  }
-  const errs=[];
-  if(!d.deliveryType) errs.push('Please select a Delivery Type.');
-  if(!d.trainingProgram) errs.push('Training Program / Title is required.');
-  if(grp!=='owner' && grp!=='external' && !d.batchNo) errs.push('Batch No. is required.');
-  if(!d.trainingDate) errs.push('Start Date is required.');
-  if(grp==='trainer' && !d.trainerId) errs.push('Please select a Trainer.');
-  if(grp==='owner' && !d.ownerId) errs.push('Please select an Owner.');
-  if(grp==='external' && !d.trainingProvider) errs.push('Please enter the Training Provider.');
-  if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
-  if(_isOtherVenue(document.getElementById('td-venue').value)&&!(document.getElementById('td-venue-other')?.value||'').trim()) errs.push(`Please specify the ${_tdVenueTypeFor(deliveryType)==='platform'?'platform':'venue'} name.`);
-  if((deliveryType==='ILT'||deliveryType==='VILT') && d.status==='completed' && !d.recordingLink) errs.push('A recording link is required before marking an ILT/VILT session as Completed.');
-  const errEl=document.getElementById('td-error');
-  if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
-  errEl.classList.add('hidden');
-  const saveBtn=document.querySelector('#modal-training .btn-primary'); const origTxt=saveBtn?saveBtn.textContent:'';
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
-  try{
-    if(id){
-      await TrSessionDB.update(id,d); toast('Training updated.','success');
-      closeModal('training');
-      renderTrainingDelivery();
-    } else {
-      const rec=await TrSessionDB.create({...d,code:generateSessionCode(),createdBy:Auth.user.id});
-      toast('Training added.','success');
-      closeModal('training');
-      openTrainingDetail(rec.id);
-    }
-  }catch(e){ /* error already surfaced */ }
-  finally{ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} }
-}
+// Removed (2026-08-19, low-priority cleanup per audit): _tdToggleTypeFields, openTrainingModal,
+// and saveTrainingModal were dead code left over from before the 2026-07-31 minimal "+ Add
+// Training" flow -- nothing in the current UI ever calls openTrainingModal (the #modal-training
+// markup it targeted was removed in the same cleanup), so this was unreachable code carrying its
+// own separately-maintained (and increasingly stale) validation logic vs. tdDetailSave.
 
 function deleteTrainingRecord(id){
   const s=TrSessionDB.byId(id); if(!s) return;
@@ -9779,6 +9494,15 @@ function deleteTrainingRecord(id){
 let _tdDetailId=null;
 let _tdDetailTab='overview';
 let _tdDetailEditing=false;
+// Specific Dates (2026-08-19/20, per Sandra: non-consecutive occurrence dates for a session that
+// spans e.g. 2 weekends but shouldn't be counted as running every day in between). Draft state for
+// the edit form's date-mode toggle -- deliberately module-level rather than read from the DOM/
+// snapshot object, so it survives a Delivery Type switch mid-edit (_tddToggleTypeFields fully
+// re-renders the Session Information card, but these two variables are untouched by that). Reset
+// only when entering edit mode fresh (tdDetailToggleEdit), from the session's saved dateMode/
+// sessionDates (defaulting to 'range'/[] for any session saved before this feature existed).
+let _tddDateMode='range';
+let _tddSpecificDates=[];
 
 // Attendance & Performance tab working state (2026-07-30) -- participants are edited as an
 // in-memory working copy (_tdPartRows) and only persisted on Save Draft / Mark Completed, so
@@ -9942,6 +9666,10 @@ function _tdCanEditSession(s){
 function tdDetailToggleEdit(){
   const s=TrSessionDB.byId(_tdDetailId);
   if(!_tdCanEditSession(s)){ toast('Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session.','error'); return; }
+  // Specific Dates (2026-08-19/20): (re)seed the draft state fresh every time edit mode is
+  // entered, from whatever's actually saved on the record.
+  _tddDateMode=s.dateMode==='specific'?'specific':'range';
+  _tddSpecificDates=(s.sessionDates||[]).slice().sort();
   _tdDetailEditing=true;
   renderTrainingDetail();
   armLeaveGuard('tdd-session-info-card');
@@ -9980,6 +9708,16 @@ async function tdDetailSave(){
   // exclusive with coFacilitatorId.
   const cofacSelVal=document.getElementById('tdd-cofacilitator')?.value||'';
   const isGuestCofac=(grp==='trainer'||grp==='adhoc')&&cofacSelVal==='__SME__';
+  // Specific Dates (2026-08-19/20, per Sandra): only meaningful where _tdShowsDateRange applies
+  // (ILT/Self-led/External) AND the draft toggle is currently set to 'specific' -- everything else
+  // (VILT/Ad-hoc, or a date-range type left on 'Range') saves exactly as before: a plain
+  // trainingDate/endDate pair, dateMode 'range', sessionDates empty. In specific mode, trainingDate
+  // becomes the earliest picked date (kept in sync so every existing "trainingDate" call site that
+  // hasn't been made mode-aware still shows something sane) and endDate is explicitly null --
+  // _tdSessionEndDate/_tdSessionDayList are the mode-aware functions that read sessionDates instead.
+  const dateRangeApplies=_tdShowsDateRange(deliveryType);
+  const effectiveDateMode=(dateRangeApplies&&_tddDateMode==='specific')?'specific':'range';
+  const specificDatesSorted=_tddSpecificDates.slice().sort();
   const d={
     deliveryType,
     trainingProgram:document.getElementById('tdd-program')?.value.trim()||'',
@@ -9987,8 +9725,10 @@ async function tdDetailSave(){
     // Ad-hoc doesn't render this field at all -- grp==='trainer' check (rather than the earlier
     // "not owner/external" negation) makes that explicit now that a 4th non-batch group exists.
     batchNo:grp==='trainer'?(document.getElementById('tdd-batch')?.value.trim()||''):'',
-    trainingDate:document.getElementById('tdd-date')?.value||'',
-    endDate:_tdShowsDateRange(deliveryType)?(document.getElementById('tdd-enddate')?.value||null):null,
+    trainingDate:effectiveDateMode==='specific'?(specificDatesSorted[0]||''):(document.getElementById('tdd-date')?.value||''),
+    endDate:effectiveDateMode==='specific'?null:(dateRangeApplies?(document.getElementById('tdd-enddate')?.value||null):null),
+    dateMode:effectiveDateMode,
+    sessionDates:effectiveDateMode==='specific'?specificDatesSorted:[],
     trainerId:((grp==='trainer'||grp==='adhoc')&&!isGuestTrainer)?(trainerSelVal||null):null,
     guestTrainerName:((grp==='trainer'||grp==='adhoc')&&isGuestTrainer)?(document.getElementById('tdd-guest-name')?.value.trim()||null):null,
     ownerId:grp==='owner'?(document.getElementById('tdd-owner')?.value||null):null,
@@ -10029,7 +9769,7 @@ async function tdDetailSave(){
     trainingBondMonths:grp==='external'?(document.getElementById('tdd-bondmonths')?.value?parseInt(document.getElementById('tdd-bondmonths').value,10):null):null
   };
   if(grp==='external'){
-    const anchor=d.endDate||d.trainingDate;
+    const anchor=_tdSessionEndDate(d);
     d.trainingBondEndDate=_tdBondEndDate(anchor,d.trainingBondMonths);
   } else {
     d.trainingBondEndDate=null;
@@ -10072,7 +9812,17 @@ async function tdDetailSave(){
     if(!d.category) errs.push('Category is required for ILT sessions.');
     if(!d.checklistTemplateId) errs.push('Please select a Trainer Checklist template, or choose "No Checklist Required".');
   }
-  if(_tdShowsDateRange(deliveryType) && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
+  // End Date now required, not optional (2026-08-19, per Sandra, audit finding): a blank End Date
+  // on a multi-day-capable type (ILT/Self-led) let Manual Override's "session end date must be in
+  // the past" eligibility check silently fall back to the START date, which could already be in
+  // the past on Day 2 of a still-running multi-day training. Only enforced outside Tentative,
+  // since Tentative sessions deliberately don't require this yet.
+  if(dateRangeApplies && effectiveDateMode==='range' && !d.endDate) errs.push('End Date is required.');
+  if(dateRangeApplies && effectiveDateMode==='range' && d.endDate && d.endDate<d.trainingDate) errs.push('End Date cannot be before Start Date.');
+  // Specific Dates (2026-08-19/20): the range-mode End Date requirement above doesn't apply in
+  // this mode (there's no single End Date -- see _tdSessionEndDate), so require at least one
+  // picked date instead.
+  if(dateRangeApplies && effectiveDateMode==='specific' && !specificDatesSorted.length) errs.push('Please add at least one session date.');
   // Venue field doesn't exist in the DOM at all for Ad-hoc (2026-08-13) -- guard against the
   // element lookup itself, not just its value, since document.getElementById('tdd-venue').value
   // would throw on null for that type.
@@ -10087,10 +9837,34 @@ async function tdDetailSave(){
   // was already completed (e.g. an admin editing other fields on an already-completed session).
   // Ad-hoc (2026-08-13, per Sandra) is exempt like Self-led -- its Status dropdown IS the direct
   // Completed/Not Completed toggle, with no Attendance workflow behind it at all.
-  if(grp!=='owner' && grp!=='adhoc' && d.status==='completed' && s.status!=='completed'){
-    errs.push('Sessions can only be marked Completed from the Attendance & Performance tab (Mark Complete), which checks that attendance has been taken.');
+  if(grp!=='owner' && grp!=='adhoc' && d.status==='completed'){
+    if(s.status!=='completed'){
+      // External's "Attendance & Performance" tab is relabeled "Checklist" -- point the error at
+      // whichever tab name this delivery type actually shows (2026-08-19 fix: message previously
+      // always said "Attendance & Performance", which doesn't exist in the External UI).
+      errs.push(deliveryType==='External'
+        ?'Sessions can only be marked Completed from the Checklist tab (Tag Session Complete), which checks that attendance has been taken.'
+        :'Sessions can only be marked Completed from the Attendance & Performance tab (Mark Complete), which checks that attendance has been taken.');
+    } else if(deliveryType!==s.deliveryType){
+      // Delivery-type switch bypass guard (2026-08-19, per audit finding): the check above only
+      // fires when status is TRANSITIONING to completed. A session marked Completed under a
+      // direct-completable type (Self-led/Ad-hoc, no attendance gate) could otherwise have its
+      // Delivery Type switched to ILT/VILT/External afterward while staying "Completed" -- keeping
+      // that status even though attendance was never actually recorded for the new type.
+      const originalGrp=_tdFieldGroup(s.deliveryType);
+      if(originalGrp==='owner'||originalGrp==='adhoc'){
+        errs.push('This session was marked Completed under its previous Delivery Type, which does not require attendance to be recorded. Please change Status back to Scheduled, save, then use Attendance & Performance (or Checklist, for External) to Tag Session Complete once attendance is taken.');
+      }
+    }
   }
   }
+  // Numeric sanity guardrails (2026-08-19, audit finding): the form's min/max attributes are
+  // decorative only (no <form> element, no reportValidity() call anywhere), so a negative or
+  // out-of-range number could otherwise be typed in and saved with no error at all. Applies
+  // regardless of delivery type/Tentative -- these three fields are meaningless if invalid.
+  if(d.durationHours!=null && d.durationHours<0) errs.push('Duration cannot be negative.');
+  if(d.expectedParticipants!=null && d.expectedParticipants<1) errs.push('Participants must be at least 1.');
+  if(d.passingScore!=null && (d.passingScore<0||d.passingScore>100)) errs.push('Passing % must be between 0 and 100.');
   const errEl=document.getElementById('tdd-error');
   if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
   errEl.classList.add('hidden');
@@ -10412,7 +10186,7 @@ function _tdcklAddWorkingDays(dateStr,n){
 // Post are tracked now.
 function _tdcklTargetDate(s,phase,timelineDays){
   const n=Number(timelineDays)||0;
-  if(phase==='post') return _tdcklAddDays(s.endDate||s.trainingDate,n);
+  if(phase==='post') return _tdcklAddDays(_tdSessionEndDate(s),n);
   return _tdcklAddDays(s.trainingDate,-n);
 }
 function _tdcklTargetDateLabel(s,phase,timelineDays){
@@ -10465,7 +10239,7 @@ function _tdcklPhaseLocked(s,phase){
     return !!(lockDate && _todayStr()>=lockDate);
   }
   if(phase==='post'){
-    const end=s.endDate||s.trainingDate;
+    const end=_tdSessionEndDate(s);
     const lockDate=_tdcklAddDays(end,5);
     if(lockDate && _todayStr()>=lockDate) return true;
     const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
@@ -10485,7 +10259,7 @@ function _tdcklPhaseLockReason(s,phase){
     return lockDate?Utils.formatDate(lockDate):'';
   }
   if(phase==='post'){
-    const end=s.endDate||s.trainingDate;
+    const end=_tdSessionEndDate(s);
     const lockDate=_tdcklAddDays(end,5);
     if(lockDate && _todayStr()>=lockDate) return Utils.formatDate(lockDate);
     const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
@@ -10726,6 +10500,11 @@ function _tdcklLegendHtml(){
 function _tdcklSessionDatesLabel(s){
   if(!s.trainingDate) return '—';
   const fmt=(d)=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'});
+  // Specific Dates (2026-08-19/20): list the picked dates rather than a misleading Start-End span.
+  if(s.dateMode==='specific'){
+    const dates=(s.sessionDates||[]).slice().sort();
+    return dates.length?dates.map(fmt).join(', '):fmt(s.trainingDate);
+  }
   return (s.endDate && s.endDate!==s.trainingDate)?`${fmt(s.trainingDate)} – ${fmt(s.endDate)}`:fmt(s.trainingDate);
 }
 
@@ -11138,12 +10917,12 @@ function _tdaRenderTab(s){
 
   // External Sessions (2026-08-19, per Sandra): no attendance status/Gain legend applies since
   // External no longer tracks attendance -- only the 4-item checklist.
+  // Legend now generated from _TDA_STATUS_STYLE (2026-08-19, low-priority cleanup per audit)
+  // instead of hand-duplicated markup -- previously this legend had its own hardcoded
+  // labels/colors separate from the single source of truth already used to build the status
+  // dropdowns, so a future status rename/addition there would silently NOT update here.
   const legend=isExternal?'':`<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);margin-top:10px">
-      <span>● <span style="color:var(--green)">Present</span></span>
-      <span>● <span style="color:var(--amber)">Late</span></span>
-      <span>● <span style="color:var(--orange)">Left Early</span></span>
-      <span>● <span style="color:var(--red)">Absent</span></span>
-      <span>● <span style="color:#64748b">Pending</span></span>
+      ${Object.values(_TDA_STATUS_STYLE).map(st=>`<span>● <span style="color:${st.fg}">${st.label}</span></span>`).join('\n      ')}
       ${isMultiDay?'<span>Attendance Score = points across all days ÷ total days (Late/Left Early = partial credit, set in Settings)</span>':''}
       <span>Gain = Post-Test − Pre-Test</span>
     </div>`;
@@ -11539,10 +11318,11 @@ function _tdaReopenBlockedReason(s){
   if(report&&report.status==='submitted'){
     return 'A Training Report has already been submitted for this session — Attendance & Performance can no longer be reopened.';
   }
-  const evalDone=EvalDB.all().some(e=>e.sessionId===s.id&&e.status!=='draft');
-  if(evalDone){
-    return 'An evaluation has already been conducted for this session — Attendance & Performance can no longer be reopened.';
-  }
+  // Removed (2026-08-19, per Sandra): Trainer Evaluation and Attendance & Performance are two
+  // separate, independently-sequenced flows -- an evaluation can be submitted whether or not
+  // attendance is done yet, and it should never lock Attendance & Performance out of being
+  // reopened. Previously any non-draft evaluation permanently blocked reopening here with no
+  // override, which was an unintended workflow trap.
   if(report&&report.submittedAt){
     const daysSince=(Date.now()-new Date(report.submittedAt).getTime())/86400000;
     if(daysSince>7){
@@ -12294,10 +12074,16 @@ function _tdrSubmitReport(){
 // treats it consistently with a normally-completed session. Only offered for sessions that have
 // already ended (end date before today) -- eligibility is derived from the session's own dates,
 // no separate manual tagging step needed.
+// Manual Override cutoff (2026-08-19, per Sandra): this is a July-backfill tool for sessions that
+// were submitted by email before the app existed, NOT a general "force-complete an old session"
+// bypass. Restricted to sessions dated before the Supabase cutover -- combined with the End Date
+// now being required (see tdDetailSave), this closes the loophole where a still-running multi-day
+// session with no End Date could otherwise slip through as "already in the past".
+const MANUAL_OVERRIDE_CUTOFF='2026-08-01';
 function _tdrManualOverrideEligible(s){
   if(!s) return false;
-  const end=s.endDate||s.trainingDate;
-  return !!(end && end<_todayStr());
+  const end=_tdSessionEndDate(s);
+  return !!(end && end<_todayStr() && (s.trainingDate||'')<MANUAL_OVERRIDE_CUTOFF);
 }
 function _tdrOpenManualOverride(){
   const d=document.getElementById('mro-date'); if(d) d.value=_todayStr();
@@ -13225,7 +13011,7 @@ function _tdOverviewJourneySteps(s,ownerType){
   // Participants (same check as the required-headcount guardrail on the Training Report tab).
   if(ownerType){
     const steps=[{label:'Scheduled',state:'done'}];
-    const today=_todayStr(), start=s.trainingDate, end=s.endDate||s.trainingDate;
+    const today=_todayStr(), start=s.trainingDate, end=_tdSessionEndDate(s);
     let ongoingState='pending', ongoingSub=null;
     if(start){
       if(today<start){ ongoingState='pending'; }
@@ -13654,9 +13440,16 @@ async function _tdExportSummaryImage(sessionId){
 const CATEGORY_OPTIONS_FALLBACK=['Onboarding','Leadership','Professional Development','Technical'];
 // 2026-08-06 (per Sandra): Category options are always shown alphabetically, regardless of the
 // order they were added in Settings.
-function _categoryOptionNames(){
+// includeName (2026-08-19, fix for audit finding): the session-edit call site passes its OWN
+// currently-assigned category name here so a deactivated/renamed category a session already uses
+// still appears (and stays selected) in its dropdown -- without this, the <select> silently falls
+// back to "— Select —" and a Save with no other changes would null out a still-valid category.
+// Mirrors the same "include if currently assigned" pattern already used for Trainer/Venue/etc.
+function _categoryOptionNames(includeName){
   const active=Sel.active(Store.CATEGORIES).map(c=>c.name);
-  return (active.length?active:CATEGORY_OPTIONS_FALLBACK).slice().sort((a,b)=>a.localeCompare(b));
+  const base=(active.length?active:CATEGORY_OPTIONS_FALLBACK).slice();
+  if(includeName && !base.includes(includeName)) base.push(includeName);
+  return base.sort((a,b)=>a.localeCompare(b));
 }
 
 // 2026-08-06 (per Sandra): Audience can now be tagged with more than one value (e.g. a session
@@ -13806,9 +13599,25 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Ad-hoc" ${s.deliveryType==='Ad-hoc'?'selected':''}>Ad-hoc</option>
       </select>`);
   const modalityField=_tddInfoBlockEdit('target','#0891b2','Delivery Method',`<select id="tdd-modalityid" class="form-control" ${smallInput}><option value="">— Select —</option></select>`,'tdd-modalityid-wrap');
-  const categoryField=_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames().map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`);
+  const categoryField=_tddInfoBlockEdit('list','#7c3aed','Category',`<select id="tdd-category" class="form-control" ${smallInput}><option value="">— Select —</option>${_categoryOptionNames(s.category).map(c=>`<option value="${Utils.esc(c)}" ${s.category===c?'selected':''}>${Utils.esc(c)}</option>`).join('')}</select>`);
   const venueField=_tddInfoBlockEdit('mappin','var(--red)','<span id="tdd-venue-label">Venue</span>',`<select id="tdd-venue" class="form-control" ${smallInput} onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" ${smallInput} placeholder="Enter venue/platform name"></div>`);
-  const dateField=_tddInfoBlockEdit('calendar','var(--amber)','Date'+(showsDateRange?' / Period':''),`<div style="display:flex;gap:6px">
+  // Specific Dates (2026-08-19/20, per Sandra): a new Date-mode toggle, only offered where
+  // _tdShowsDateRange is true (ILT, Self-led, External) -- VILT/Ad-hoc keep the single plain
+  // Date field they've always had, untouched. "Range" is the original consecutive-days behavior
+  // (unchanged); "Specific" lets non-consecutive occurrence dates be picked individually (e.g. a
+  // 32-hour course split across 2 weekends), so Training Hours/Cost/Checklist/SLA calculations
+  // (_tdSessionDayList) only count the real training days instead of every calendar day between
+  // Start and End. Draft state lives in the module-level _tddDateMode/_tddSpecificDates (see
+  // declaration above) so it survives a Delivery Type switch mid-edit.
+  const dateModeInitial=showsDateRange?_tddDateMode:'range';
+  // Date-mode toggle now sits inline next to the field label itself (per Sandra, 2026-08-20 --
+  // originally sat above the inputs, which read as a separate control rather than part of the
+  // label) rather than as a separate row above the date inputs.
+  const dateLabelHtml=`<span style="display:inline-flex;align-items:center;gap:6px">Date${showsDateRange?' / Period':''}${showsDateRange?`<span style="display:inline-flex;gap:0;border:1px solid var(--border-lt);border-radius:5px;overflow:hidden">
+        <button type="button" onclick="_tddSetDateMode('range')" id="tdd-datemode-btn-range" title="Date Range — consecutive calendar days" style="border:none;background:${dateModeInitial==='range'?'var(--sky)':'transparent'};color:${dateModeInitial==='range'?'#fff':'var(--text3)'};font-size:9.5px;padding:1px 6px;cursor:pointer">Range</button>
+        <button type="button" onclick="_tddSetDateMode('specific')" id="tdd-datemode-btn-specific" title="Specific Dates — non-consecutive occurrence dates" style="border:none;background:${dateModeInitial==='specific'?'var(--sky)':'transparent'};color:${dateModeInitial==='specific'?'#fff':'var(--text3)'};font-size:9.5px;padding:1px 6px;cursor:pointer">Specific</button>
+      </span>`:''}</span>`;
+  const dateField=_tddInfoBlockEdit('calendar','var(--amber)',dateLabelHtml,`<div id="tdd-daterange-wrap" class="${dateModeInitial==='specific'?'hidden':''}" style="display:flex;gap:6px">
         <div style="display:flex;flex-direction:column;flex:1;min-width:0">
           <input type="date" id="tdd-date" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.trainingDate||''}" onchange="_tdUpdateBondEndPreview('tdd')">
           <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">${showsDateRange?'Start Date':'Date'}</div>
@@ -13817,8 +13626,16 @@ function _tddSessionInfoEditContent(s,ownerType){
           <input type="date" id="tdd-enddate" class="form-control" style="font-size:12.5px;padding:5px 6px;width:100%" value="${s.endDate||''}" onchange="_tdUpdateBondEndPreview('tdd')">
           <div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">End Date</div>
         </div>
-      </div>`);
-  const durationField=_tddInfoBlockEdit('clock','var(--amber)','Duration (in Hours)',`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}">`);
+      </div>
+      ${showsDateRange?`<div id="tdd-specificdates-wrap" class="${dateModeInitial==='specific'?'':'hidden'}" style="display:flex;flex-direction:column;gap:4px">
+        <div id="tdd-specificdates-list" style="display:flex;flex-wrap:wrap;gap:4px">${_tddSpecificDatesChipsHtml()}</div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <input type="date" id="tdd-specificdates-add-input" class="form-control" style="font-size:11px;padding:4px 5px;flex:1;min-width:0">
+          <button type="button" onclick="_tddAddSpecificDate()" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:3px 7px;white-space:nowrap">+ Add</button>
+        </div>
+      </div>`:''}`);
+  const durationLabelInitial=(showsDateRange&&dateModeInitial==='specific')?'Hours per Day':'Duration (in Hours)';
+  const durationField=_tddInfoBlockEdit('clock','var(--amber)',`<span id="tdd-duration-label">${durationLabelInitial}</span>`,`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}" oninput="_tddUpdateHoursTotal()"><div id="tdd-hours-total" style="font-size:9.5px;color:var(--text3);margin-top:2px">${Utils.esc(_tddHoursTotalText(s.durationHours,_tddSpecificDates.length,showsDateRange&&dateModeInitial==='specific'))}</div>`);
   const audienceField=_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],smallInputStyle));
   // Ad-hoc (2026-08-13, per Sandra: Status is a direct Completed/Not Completed toggle, not gated
   // by an Attendance workflow like ILT/VILT/External) -- treated the same as ownerType (Self-led)
@@ -14006,6 +13823,64 @@ function _tddSessionInfoEditContent(s,ownerType){
 // them are required yet) behind a "+ Show additional details" link. The moment Status changes to
 // anything else, the section is force-revealed since those fields become required by
 // tdDetailSave's validation. Safe to call even when the section doesn't exist in the DOM (Ad-hoc).
+// Specific Dates helpers (2026-08-19/20, per Sandra) -- all read/write the module-level
+// _tddDateMode/_tddSpecificDates draft state declared near _tdDetailEditing. Kept as small,
+// targeted DOM updates (not full-card re-renders) so toggling mode / adding a date never
+// disturbs whatever else the user has typed elsewhere in the still-open edit form.
+function _tddSpecificDatesChipsHtml(){
+  const fmt=d=>(typeof Utils!=='undefined'&&Utils.formatDate)?Utils.formatDate(d):d;
+  if(!_tddSpecificDates.length) return `<span style="font-size:11px;color:var(--text3)">No dates added yet</span>`;
+  return _tddSpecificDates.map(d=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--border-lt);border-radius:5px;padding:2px 6px;font-size:11px">${Utils.esc(fmt(d))}<a href="javascript:void(0)" onclick="_tddRemoveSpecificDate('${Utils.esc(d)}')" style="color:var(--text3);text-decoration:none;font-weight:700">✕</a></span>`).join('');
+}
+function _tddHoursTotalText(perDay,n,active){
+  if(!active) return '';
+  const p=(perDay===''||perDay==null)?null:parseFloat(perDay);
+  if(p!=null && !isNaN(p) && n>0) return `${p} hrs × ${n} day${n!==1?'s':''} = ${+((p*n).toFixed(2))} total hours`;
+  return n>0?`${n} day${n!==1?'s':''} selected`:'Add session dates below';
+}
+function _tddRenderSpecificDatesList(){
+  const wrap=document.getElementById('tdd-specificdates-list');
+  if(wrap) wrap.innerHTML=_tddSpecificDatesChipsHtml();
+  _tddUpdateHoursTotal();
+}
+function _tddAddSpecificDate(){
+  const inp=document.getElementById('tdd-specificdates-add-input');
+  const val=inp?.value||'';
+  if(!val) return;
+  if(!_tddSpecificDates.includes(val)){ _tddSpecificDates.push(val); _tddSpecificDates.sort(); }
+  if(inp) inp.value='';
+  _tddRenderSpecificDatesList();
+}
+function _tddRemoveSpecificDate(dateStr){
+  _tddSpecificDates=_tddSpecificDates.filter(d=>d!==dateStr);
+  _tddRenderSpecificDatesList();
+}
+function _tddUpdateDurationLabel(){
+  const lbl=document.getElementById('tdd-duration-label');
+  if(!lbl) return;
+  const dt=document.getElementById('tdd-type')?.value||'';
+  lbl.textContent=(_tdShowsDateRange(dt)&&_tddDateMode==='specific')?'Hours per Day':'Duration (in Hours)';
+}
+function _tddUpdateHoursTotal(){
+  const totalEl=document.getElementById('tdd-hours-total');
+  if(!totalEl) return;
+  const dt=document.getElementById('tdd-type')?.value||'';
+  const active=_tdShowsDateRange(dt)&&_tddDateMode==='specific';
+  const perDayRaw=document.getElementById('tdd-duration')?.value;
+  totalEl.textContent=_tddHoursTotalText(perDayRaw,_tddSpecificDates.length,active);
+}
+function _tddSetDateMode(mode){
+  _tddDateMode=mode;
+  const rangeWrap=document.getElementById('tdd-daterange-wrap');
+  const specWrap=document.getElementById('tdd-specificdates-wrap');
+  if(rangeWrap) rangeWrap.classList.toggle('hidden',mode==='specific');
+  if(specWrap) specWrap.classList.toggle('hidden',mode!=='specific');
+  const rBtn=document.getElementById('tdd-datemode-btn-range'), sBtn=document.getElementById('tdd-datemode-btn-specific');
+  if(rBtn){ rBtn.style.background=mode==='range'?'var(--sky)':'transparent'; rBtn.style.color=mode==='range'?'#fff':'var(--text3)'; }
+  if(sBtn){ sBtn.style.background=mode==='specific'?'var(--sky)':'transparent'; sBtn.style.color=mode==='specific'?'#fff':'var(--text3)'; }
+  _tddUpdateDurationLabel();
+  _tddRenderSpecificDatesList();
+}
 function _tddSetConfirmSectionVisible(visible){
   const sec=document.getElementById('tdd-confirm-section');
   const toggleText=document.getElementById('tdd-confirm-toggle-text');
@@ -14090,7 +13965,17 @@ function _tddPopulateEditDropdowns(s,ownerType){
   _toggleVenueOtherWrap('tdd');
   const modIdSel=document.getElementById('tdd-modalityid');
   if(modIdSel){
-    modIdSel.innerHTML='<option value="">— Select —</option>'+Sel.active(Store.MODALS).map(m=>`<option value="${m.id}" ${m.id===s.modalityId?'selected':''}>${Utils.esc(m.name)}</option>`).join('');
+    // Fix (2026-08-19, audit finding): include the session's already-assigned Delivery Method even
+    // if it was since deactivated -- same "include if currently assigned" pattern as Trainer/Venue/
+    // Checklist Template. Without this, a deactivated modality silently fell back to blank, and
+    // since Modality is a REQUIRED field for ILT/External/Ad-hoc, this could also wrongly block
+    // re-saving a session whose modality was deactivated.
+    const modOpts=Sel.active(Store.MODALS).slice();
+    if(s.modalityId && !modOpts.some(m=>m.id===s.modalityId)){
+      const assigned=Sel.byId(Store.MODALS,s.modalityId);
+      if(assigned) modOpts.push(assigned);
+    }
+    modIdSel.innerHTML='<option value="">— Select —</option>'+modOpts.map(m=>`<option value="${m.id}" ${m.id===s.modalityId?'selected':''}>${Utils.esc(m.name)}${m.isActive?'':' (inactive)'}</option>`).join('');
   }
   // Trainer Checklist template selector (Phase D2, 2026-08-07): active templates, plus the
   // session's already-assigned template even if it was since deactivated (never silently drop
@@ -14188,6 +14073,12 @@ function _tddToggleTypeFields(){
   const dt=document.getElementById('tdd-type').value;
   const original=TrSessionDB.byId(_tdDetailId);
   if(!original) return;
+  // Specific Dates (2026-08-19/20): VILT/Ad-hoc have no date-range concept at all, so force the
+  // draft mode back to 'range' when switching into one of those types -- otherwise a stray
+  // 'specific' mode picked while e.g. ILT was selected would linger invisibly and could surface
+  // oddly if the user switches back. The draft _tddSpecificDates array itself is left untouched
+  // (not cleared) so switching back to a date-range type restores whatever dates were picked.
+  if(!_tdShowsDateRange(dt)) _tddDateMode='range';
   const trainerSelVal=document.getElementById('tdd-trainer')?.value||'';
   const cofacSelVal=document.getElementById('tdd-cofacilitator')?.value||'';
   const durationRaw=document.getElementById('tdd-duration')?.value.trim()||'';
@@ -14235,12 +14126,6 @@ function _tddToggleTypeFields(){
   _tdUpdateBondEndPreview('tdd');
 }
 
-function _durationToMinutes(str){
-  if(!str) return -1;
-  const m=String(str).match(/^(\d{1,3}):([0-5]\d)$/);
-  if(!m) return -1;
-  return parseInt(m[1],10)*60+parseInt(m[2],10);
-}
 function _durationToMinutes(str){
   if(!str) return -1;
   const m=String(str).match(/^(\d{1,3}):([0-5]\d)$/);
