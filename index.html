@@ -29,7 +29,7 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
       --sb:#0d1b2e;--sb-h:rgba(255,255,255,.055);--sb-a:rgba(59,130,246,.18);--sb-acc:#3b82f6;
-      --sb-t:rgba(255,255,255,.60);--sb-ta:#fff;--sb-sec:rgba(255,255,255,.26);--sbw:238px;
+      --sb-t:rgba(255,255,255,.60);--sb-ta:#fff;--sb-sec:rgba(255,255,255,.26);--sbw:238px;--sbw-collapsed:68px;
       --pri:#2563eb;--pri-h:#1d4ed8;--pri-lt:#eff6ff;
       --teal:#0891b2;--green:#16a34a;--green-lt:#f0fdf4;
       --orange:#ea580c;--orange-lt:#fff7ed;--purple:#7c3aed;--purple-lt:#f5f3ff;
@@ -178,8 +178,28 @@
        (subpixel height rounding pushes the OUTER container into overflow too). Only .sb-nav should
        ever scroll -- the brand header and the user-profile footer are fixed-height flex children,
        so the outer sidebar itself never needs to. */
-    .sidebar{width:var(--sbw);background:var(--sb);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;overflow:hidden}
+    .sidebar{width:var(--sbw);background:var(--sb);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;overflow:hidden;transition:width .18s ease}
+    /* Collapsible sidebar (2026-08-20, per Sandra): click-to-toggle, icons-only when collapsed
+       with the page name on hover (native title tooltips on every nav row -- see
+       _sbInitNavTooltips -- rather than a custom flyout, since it's simple, has zero extra DOM/
+       positioning logic, and every nav row already needs a label anyway). The collapsed width only
+       needs to fit one 16px icon + its row padding -- see --sbw-collapsed above. `.nav-collapsed`
+       lives on .app-layout (the shared ancestor of .sidebar and .main-wrap) so both the sidebar's
+       own width AND the content area's margin-left can react to the same single class toggle. */
+    .app-layout.nav-collapsed .sidebar{width:var(--sbw-collapsed)}
+    /* position:fixed (not absolute) so this sits half outside the sidebar's own right edge without
+       being clipped by .sidebar's overflow:hidden -- an absolutely-positioned child would get cut
+       off there, since its containing block (.sidebar) is exactly what clips it. Fixed positioning
+       is relative to the viewport instead, so its `left` has to track the sidebar's current width
+       directly (mirrors .main-wrap's margin-left toggle) rather than just "right:-12px". */
+    .sb-collapse-btn{position:fixed;top:20px;left:calc(var(--sbw) - 12px);width:24px;height:24px;border-radius:50%;background:var(--white);border:1px solid var(--border);box-shadow:var(--sh-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:250;color:var(--text2);transition:left .18s ease}
+    .app-layout.nav-collapsed .sb-collapse-btn{left:calc(var(--sbw-collapsed) - 12px)}
+    .sb-collapse-btn:hover{background:#f8fafc}
+    .sb-collapse-btn svg{width:13px;height:13px;transition:transform .18s ease}
+    .app-layout.nav-collapsed .sb-collapse-btn svg{transform:rotate(180deg)}
     .sb-brand{padding:18px 16px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
+    .app-layout.nav-collapsed .sb-brand{padding-left:0;padding-right:0;justify-content:center}
+    .app-layout.nav-collapsed .sb-brand-text{display:none}
     .brand-mark{width:34px;height:34px;flex-shrink:0}
     .brand-nt{font-size:14px;font-weight:700;color:#fff;line-height:1.25;font-family:var(--font-heading)}
     .brand-st{font-size:9.5px;color:rgba(255,255,255,.32);letter-spacing:.8px;text-transform:uppercase;margin-top:1px}
@@ -205,17 +225,48 @@
     .nav-sub-item{display:flex;align-items:center;gap:8px;padding:7px 16px 7px 38px;color:var(--sb-t);cursor:pointer;font-size:13px;font-weight:400;transition:all .15s;border-left:2.5px solid transparent;user-select:none}
     .nav-sub-item:hover{color:var(--sb-ta);background:var(--sb-h)}
     .nav-sub-item.active{color:var(--sb-ta);background:var(--sb-a);border-left-color:var(--sb-acc);font-weight:500}
+    /* Collapsed state (fixed 2026-08-20 -- Sandra flagged the first version as "weird": the label
+       text is a plain text node with no wrapping <span>, so clipping it with overflow:hidden while
+       also centering the row via justify-content:center made an OVERFLOWING row get cropped from
+       BOTH sides symmetrically -- visually chopped mid-word ("Dashboar", "ructional De") instead of
+       cleanly hidden. Fix: font-size:0 collapses the trailing text to zero rendered width (it still
+       exists in the DOM/for the title tooltip, just invisible) without touching the icon at all,
+       since the icon's own size comes from explicit px width/height on .nav-ic/svg, never from
+       font-size. With the text now taking no space, centering the icon works cleanly. Section
+       headers have no icon to fall back to, so they're hidden outright. The Evaluations sub-group
+       is forced permanently open (ignoring its own collapsed/expanded toggle state) so ID QA/
+       Content QA/Trainer eval stay reachable -- their indent resets to match top-level rows since
+       there's no room for it. Alignment/spacing in the EXPANDED state is untouched by any of this
+       -- every rule below is scoped under .app-layout.nav-collapsed so it only ever applies while
+       collapsed. */
+    .app-layout.nav-collapsed .nav-item,
+    .app-layout.nav-collapsed .nav-parent,
+    .app-layout.nav-collapsed .nav-sub-item{font-size:0;overflow:hidden;white-space:nowrap;justify-content:center;padding-left:0;padding-right:0;gap:0}
+    .app-layout.nav-collapsed .nav-sec{display:none}
+    .app-layout.nav-collapsed .nav-chevron{display:none}
+    .app-layout.nav-collapsed .nav-sub-group{max-height:1000px !important}
     .sb-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0}
+    .app-layout.nav-collapsed .sb-footer{padding-left:0;padding-right:0}
     .sb-user{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+    .app-layout.nav-collapsed .sb-user{justify-content:center;margin-bottom:0}
+    .app-layout.nav-collapsed .sb-user-text{display:none}
     .u-ava{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
     .su-name{font-size:13px;font-weight:500;color:#fff;line-height:1.3}
     .su-role{font-size:11px;color:rgba(255,255,255,.38)}
     .sb-footer-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+    /* Collapsed footer buttons (Password / Sign Out): these use an emoji glyph INSIDE the same
+       text node as the label ("🔑 Password"), not a separate SVG icon element like the nav rows --
+       font-size:0 would hide the emoji too, and clipping would risk the same center-crop bug. Given
+       there's no clean icon-only rendering available without reworking these into real SVG icons
+       (out of scope here), hiding the row entirely while collapsed is the safer fix; both actions
+       remain one click away via expanding the sidebar. */
+    .app-layout.nav-collapsed .sb-footer-btns{display:none}
     .btn-sb{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);color:rgba(255,255,255,.55);font-size:11.5px;padding:6px 8px;cursor:pointer;font-family:var(--font);transition:all .15s;text-align:center}
     .btn-sb:hover{background:rgba(255,255,255,.12);color:rgba(255,255,255,.9)}
 
     /* ── MAIN ── */
-    .main-wrap{margin-left:var(--sbw);flex:1;min-width:0;min-height:100vh;display:flex;flex-direction:column}
+    .main-wrap{margin-left:var(--sbw);flex:1;min-width:0;min-height:100vh;display:flex;flex-direction:column;transition:margin-left .18s ease}
+    .app-layout.nav-collapsed .main-wrap{margin-left:var(--sbw-collapsed)}
     .topbar{position:sticky;top:0;z-index:100;background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;min-height:54px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh-xs)}
     .topbar-title-group{display:flex;flex-direction:column;gap:1px;padding:9px 0}
     .topbar-title{font-size:16px;font-weight:600;color:var(--text);font-family:var(--font-heading)}
@@ -576,6 +627,14 @@
        Delivery) that weren't part of this ask and still want the roomier default padding. */
     #td-list-table thead th{padding:6px 14px}
     #td-list-table td{padding:4px 14px}
+    /* Freeze column (2026-08-20, per Sandra: hard to tell which row you're on once Session ID/
+       Program scroll off-screen while browsing a wide table horizontally). Sticky cells need an
+       explicit background (transparent won't block the scrolling content behind them), which
+       otherwise breaks the existing row-hover highlight -- restore it explicitly here, scoped to
+       #td-list-table only so this doesn't touch the other .eval-tbl-based tables in the app. */
+    #td-list-table tbody tr:hover td.td-frozen-cell{background:#fafbfc}
+    #td-list-table .td-col-freeze-btn{display:inline-flex;cursor:pointer;flex-shrink:0}
+    #td-list-table .td-col-freeze-btn:hover{opacity:1 !important}
     .eval-group-hdr{background:#f8fafc;padding:9px 14px;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
     .b-pending{background:#f5f3ff;color:#7c3aed}
     .b-completed{background:var(--green-lt);color:var(--green)}
@@ -868,9 +927,12 @@
 <div id="app">
   <div class="app-layout">
     <aside class="sidebar">
+      <button type="button" class="sb-collapse-btn" id="sb-collapse-btn" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <div class="sb-brand">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" style="width:34px;height:34px;flex-shrink:0;"><rect width="72" height="72" rx="18" fill="#1e1b4b"/><circle cx="36" cy="43" r="3.5" fill="#a5b4fc" opacity="0.5"/><circle cx="27" cy="49" r="2.5" fill="#a5b4fc" opacity="0.35"/><circle cx="45" cy="48" r="2" fill="#a5b4fc" opacity="0.35"/><polyline points="24,45 36,22 48,45" fill="none" stroke="#c7d2fe" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="30,34 36,22 42,34" fill="#818cf8" stroke="none"/></svg>
-        <div><div class="brand-nt">LEAP Insights</div><div class="brand-st">L&amp;D Platform</div></div>
+        <div class="sb-brand-text"><div class="brand-nt">LEAP Insights</div><div class="brand-st">L&amp;D Platform</div></div>
       </div>
       <nav class="sb-nav">
         <div class="nav-sec">Overview</div>
@@ -901,11 +963,11 @@
       <div class="sb-footer">
         <div class="sb-user">
           <div class="u-ava" id="sb-ava">?</div>
-          <div><div class="su-name" id="sb-name">—</div><div class="su-role" id="sb-role">—</div></div>
+          <div class="sb-user-text"><div class="su-name" id="sb-name">—</div><div class="su-role" id="sb-role">—</div></div>
         </div>
         <div class="sb-footer-btns">
-          <button class="btn-sb" onclick="openChangePassModal()">🔑 Password</button>
-          <button class="btn-sb" id="signout-btn">↩ Sign Out</button>
+          <button class="btn-sb" title="Password" onclick="openChangePassModal()">🔑 Password</button>
+          <button class="btn-sb" id="signout-btn" title="Sign Out">↩ Sign Out</button>
         </div>
       </div>
     </aside>
@@ -3511,9 +3573,50 @@ function showScreen(id){
   ['login-screen','chg-pass-screen'].forEach(s=>{const el=document.getElementById(s);el.classList.remove('show');el.style.display='none';});
   document.getElementById('app').style.display='none';
   if(id==='login-screen'){ document.getElementById('f-email').value=''; document.getElementById('f-pass').value=''; document.getElementById('login-alert').classList.remove('show'); document.getElementById('login-alert').style.cssText=''; }
-  if(id==='app'){ document.getElementById('app').style.display='block'; }
+  if(id==='app'){ document.getElementById('app').style.display='block'; _applySidebarCollapse(); }
   else{ const el=document.getElementById(id); el.style.display='flex'; el.classList.add('show'); }
 }
+
+/* ── COLLAPSIBLE SIDEBAR (2026-08-20, per Sandra) ──────────────────────────────────────────────
+   Click the small chevron button pinned to the sidebar's right edge to collapse it down to just
+   icons (main content's margin-left/the sidebar's own width both react to one shared class --
+   .nav-collapsed on .app-layout -- so the page scales/reflows in step with the transition
+   instead of the sidebar just overlapping the content). Per-browser preference (same Store
+   pattern as every other small UI flag in this app -- see the Store comment further down), so
+   whichever state Sandra leaves it in persists across reloads. Hover tooltips while collapsed are
+   just native `title` attributes set once on every nav row (_sbInitNavTooltips) rather than a
+   custom flyout -- far simpler, and the browser's own tooltip already does exactly what "show the
+   page name on hover" asked for. */
+let _sbCollapsed=!!Store.get('leap_sidebar_collapsed');
+function _applySidebarCollapse(){
+  const layout=document.querySelector('.app-layout');
+  if(layout) layout.classList.toggle('nav-collapsed',_sbCollapsed);
+  const btn=document.getElementById('sb-collapse-btn');
+  if(btn) btn.title=_sbCollapsed?'Expand sidebar':'Collapse sidebar';
+}
+function toggleSidebarCollapse(){
+  _sbCollapsed=!_sbCollapsed;
+  Store.set('leap_sidebar_collapsed',_sbCollapsed);
+  _applySidebarCollapse();
+}
+// One-time pass (markup is static, not re-rendered per view) giving every nav row a native title
+// tooltip matching its visible label -- doesn't touch rows that already carry a deliberate custom
+// title (e.g. the Knowledge Base link's "Opens in a new tab"). Read from .nav-parent-left rather
+// than .nav-parent itself for the Evaluations parent row, since .nav-parent's own textContent
+// would otherwise include the trailing chevron glyph ("Evaluations▾").
+function _sbInitNavTooltips(){
+  document.querySelectorAll('.sb-nav .nav-item, .sb-nav .nav-sub-item').forEach(el=>{
+    if(!el.title) el.title=el.textContent.trim();
+  });
+  document.querySelectorAll('.sb-nav .nav-parent').forEach(el=>{
+    if(!el.title){
+      const left=el.querySelector('.nav-parent-left');
+      el.title=(left?left.textContent:el.textContent).trim();
+    }
+  });
+}
+_sbInitNavTooltips();
+_applySidebarCollapse();
 
 /* ── NAVIGATION ───────────────────── */
 const PAGE_TITLES={dashboard:'Dashboard',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
@@ -7130,6 +7233,12 @@ function _tdDefaultColOrder(){ return _TD_COL_DEFS.map(c=>c.id); }
 let _tdColOrder=_tdDefaultColOrder();
 let _tdColHidden={};
 let _tdColWidths={};
+// Freeze column (2026-08-20, per Sandra: browsing wide the List view horizontally made it hard to
+// tell which row/training you were even looking at once Session ID/Program scrolled off). Modeled
+// as an Excel-style "freeze up to here" boundary -- every column at or before _tdFreezeUpTo's
+// position in the current _tdColOrder becomes sticky-positioned, not just a single arbitrary
+// column, since a sticky column ahead of an unfrozen one has nothing to visually anchor it to.
+let _tdFreezeUpTo=null;
 (function _tdLoadColPrefs(){
   const saved=Store.get(_TD_COL_PREFS_KEY);
   if(saved && Array.isArray(saved.order)){
@@ -7140,9 +7249,30 @@ let _tdColWidths={};
     _tdColOrder=['sid',...order,'actions'];
     _tdColHidden=saved.hidden||{};
     _tdColWidths=saved.widths||{};
+    _tdFreezeUpTo=saved.freezeUpTo||null;
   }
 })();
-function _tdSaveColPrefs(){ Store.set(_TD_COL_PREFS_KEY,{order:_tdColOrder,hidden:_tdColHidden,widths:_tdColWidths}); }
+function _tdSaveColPrefs(){ Store.set(_TD_COL_PREFS_KEY,{order:_tdColOrder,hidden:_tdColHidden,widths:_tdColWidths,freezeUpTo:_tdFreezeUpTo}); }
+// Returns an array parallel to `cols` (visible columns, in display order): {frozen, left, isLastFrozen}.
+// `left` is the cumulative pixel offset from the table's left edge (sum of every earlier frozen
+// column's current width), used as the sticky `left` value so frozen columns stack correctly
+// left-to-right instead of overlapping. If the freeze target isn't currently visible (e.g. hidden
+// via the column picker), treat it as "no freeze" rather than freezing everything or nothing.
+function _tdFreezeInfo(cols){
+  const freezeIdx=_tdFreezeUpTo?cols.findIndex(c=>c.id===_tdFreezeUpTo):-1;
+  let left=0;
+  return cols.map((c,i)=>{
+    const frozen=freezeIdx>=0&&i<=freezeIdx;
+    const info={frozen,left:frozen?left:0,isLastFrozen:frozen&&i===freezeIdx};
+    if(frozen) left+=(_tdColWidths[c.id]||c.width);
+    return info;
+  });
+}
+function _tdSetFreezeUpTo(colId){
+  _tdFreezeUpTo=(_tdFreezeUpTo===colId)?null:colId;
+  _tdSaveColPrefs();
+  renderTDList(_tdFilteredRows());
+}
 // Compact Rows toggle (2026-08-11, per Sandra): per-browser preference, same persistence pattern
 // as the column show/hide/order/width prefs above -- not per-user-in-DB.
 let _tdCompactRows=!!Store.get('leap_td_compact_v1');
@@ -8537,22 +8667,34 @@ function renderTrainingDelivery(){
 // Column header cell: click anywhere on the label to sort (all columns except Actions are
 // sortable); the small resizer handle on the right edge drag-resizes the column without
 // triggering a sort; non-locked headers are draggable to reorder (Session ID/Actions excluded).
-function _tdThHtml(col){
+function _tdThHtml(col,freeze){
   const sortable=!col.noSort;
   const isSorted=_tdSort.col===col.id;
   const arrow=isSorted?(_tdSort.dir==='asc'?' ▲':' ▼'):'';
   const draggableAttr=col.locked?'':'draggable="true"';
   const dragHandlers=col.locked?'':`ondragstart="_tdColDragStart(event,'${col.id}')" ondragover="_tdColDragOver(event)" ondrop="_tdColDrop(event,'${col.id}')" ondragend="_tdColDragEnd(event)"`;
-  return `<th data-col="${col.id}" style="position:relative;${sortable?'cursor:pointer;':''}user-select:none" ${draggableAttr} ${dragHandlers} ${sortable?`onclick="tdSortBy('${col.id}')"`:''} title="${col.locked?'Fixed column':(sortable?'Click to sort · drag to reorder':'')}">
-    <span>${Utils.esc(col.label)}${arrow}</span>
+  // Freeze column (2026-08-20, per Sandra): a small pin toggle on every column except Actions
+  // (freezing "up to" the last column would freeze the whole table, not useful). Reuses the
+  // 'mappin' SVG icon already in this file's icon set rather than an emoji, per house convention.
+  // Freeze icon (2026-08-20, per Sandra: map pin read oddly for this) -- reuses the existing
+  // 'lock' SVG (already in this file's icon set, used for locked checklist items), which reads
+  // more naturally as "this column is fixed/locked in place" and needed no new icon authoring.
+  const freezeBtn=col.id==='actions'?'':`<span class="td-col-freeze-btn" onclick="event.stopPropagation();_tdSetFreezeUpTo('${col.id}')" title="${freeze.frozen?'Unfreeze columns':'Freeze columns up to here'}" style="${freeze.frozen?'opacity:1':'opacity:.35'}">${_tdIconSvg('lock',freeze.frozen?'var(--pri)':'#94a3b8',12)}</span>`;
+  const stickyStyle=freeze.frozen?`position:sticky;left:${freeze.left}px;z-index:3;background:#f8fafc;${freeze.isLastFrozen?'box-shadow:2px 0 4px rgba(0,0,0,.08)':''}`:'';
+  return `<th data-col="${col.id}" style="position:relative;${sortable?'cursor:pointer;':''}user-select:none;${stickyStyle}" ${draggableAttr} ${dragHandlers} ${sortable?`onclick="tdSortBy('${col.id}')"`:''} title="${col.locked?'Fixed column':(sortable?'Click to sort · drag to reorder':'')}">
+    <span style="display:inline-flex;align-items:center;gap:4px">${freezeBtn}${Utils.esc(col.label)}${arrow}</span>
     <span class="td-col-resizer" onmousedown="_tdColResizeStart(event,'${col.id}')" onclick="event.stopPropagation()"></span>
   </th>`;
 }
 function _tdColgroupHtml(cols){
   return `<colgroup>${cols.map(c=>`<col style="width:${(_tdColWidths[c.id]||c.width)}px">`).join('')}</colgroup>`;
 }
-function _tdRowHtmlDynamic(s,cols){
-  return `<tr>${cols.map(c=>`<td>${c.cell(s)}</td>`).join('')}</tr>`;
+function _tdRowHtmlDynamic(s,cols,freezeInfo){
+  return `<tr>${cols.map((c,i)=>{
+    const fz=freezeInfo&&freezeInfo[i];
+    const stickyStyle=fz&&fz.frozen?`position:sticky;left:${fz.left}px;z-index:1;background:var(--white);${fz.isLastFrozen?'box-shadow:2px 0 4px rgba(0,0,0,.08)':''}`:'';
+    return `<td class="${fz&&fz.frozen?'td-frozen-cell':''}" style="${stickyStyle}">${c.cell(s)}</td>`;
+  }).join('')}</tr>`;
 }
 let _tdColPanelOpen=false;
 function _tdColManagerButtonHtml(){
@@ -8562,6 +8704,10 @@ function _tdColManagerButtonHtml(){
     <div id="td-col-panel" class="td-col-panel ${_tdColPanelOpen?'':'hidden'}">
       <div style="font-size:11px;color:var(--text3);padding:2px 8px 8px">Show/hide columns. Drag a column header to reorder it — Session ID and Actions stay fixed.</div>
       ${hideable.map(c=>`<label class="td-col-panel-item"><input type="checkbox" ${_tdColHidden[c.id]?'':'checked'} onchange="_tdToggleColHidden('${c.id}',this.checked)"> ${Utils.esc(c.label)}</label>`).join('')}
+      <div style="border-top:1px solid var(--border-lt);margin-top:6px;padding-top:8px;padding-left:8px;padding-right:8px">
+        ${(()=>{const active=_tdFreezeUpTo&&!_tdColHidden[_tdFreezeUpTo];return `<div style="font-size:11px;color:var(--text3);margin-bottom:4px">${_tdIconSvg('lock','#94a3b8',11)} Freeze columns: ${active?`up to <strong>${Utils.esc((_TD_COL_DEFS.find(c=>c.id===_tdFreezeUpTo)||{}).label||'')}</strong>`:'none — click the lock icon on any column header'}</div>
+        ${active?`<a href="javascript:void(0)" onclick="_tdSetFreezeUpTo('${_tdFreezeUpTo}')" style="font-size:11.5px;color:var(--pri);text-decoration:none">Unfreeze</a>`:''}`;})()}
+      </div>
       <div style="border-top:1px solid var(--border-lt);margin-top:6px;padding-top:6px">
         <a href="javascript:void(0)" onclick="_tdResetColPrefs()" style="font-size:11.5px;color:var(--pri);text-decoration:none">Reset to default</a>
       </div>
@@ -8578,6 +8724,7 @@ function _tdResetColPrefs(){
   _tdColOrder=_tdDefaultColOrder();
   _tdColHidden={};
   _tdColWidths={};
+  _tdFreezeUpTo=null;
   _tdSaveColPrefs();
   renderTDList(_tdFilteredRows());
 }
@@ -8644,6 +8791,7 @@ function renderTDList(rows){
   const start=(tdPage-1)*tdPageSize;
   const pageRows=rows.slice(start,start+tdPageSize);
   const cols=_tdVisibleCols();
+  const freezeInfo=_tdFreezeInfo(cols);
   const pager=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12.5px;color:var(--text3)">Showing ${rows.length?start+1:0}–${Math.min(start+tdPageSize,rows.length)} of ${rows.length}</div>
@@ -8672,8 +8820,8 @@ function renderTDList(rows){
     </div>
     <div class="eval-tbl-wrap" style="min-height:220px"><table class="eval-tbl" id="td-list-table" style="table-layout:fixed">
     ${_tdColgroupHtml(cols)}
-    <thead><tr>${cols.map(_tdThHtml).join('')}</tr></thead>
-    <tbody>${pageRows.map(s=>_tdRowHtmlDynamic(s,cols)).join('')}</tbody>
+    <thead><tr>${cols.map((c,i)=>_tdThHtml(c,freezeInfo[i])).join('')}</tr></thead>
+    <tbody>${pageRows.map(s=>_tdRowHtmlDynamic(s,cols,freezeInfo)).join('')}</tbody>
   </table></div>${pager}</div>`;
 }
 
