@@ -11498,7 +11498,11 @@ async function _tdaMarkCompleted(){
   }
   const _tdaSess=TrSessionDB.byId(_tdDetailId);
   const _tdaPreApp=_tdaPreApplicable(_tdaSess?.assessmentType), _tdaPostApp=_tdaPostApplicable(_tdaSess?.assessmentType);
-  const missingScores=_tdPartRows.filter(r=>(_tdaPreApp&&r.preTestScore==null)||(_tdaPostApp&&r.postTestScore==null)).length;
+  // Fully-absent participants (2026-08-26, v4.83) have their scores intentionally auto-cleared
+  // and can never have one -- don't count them as "missing" a score they were never expected to
+  // sit, or Tag Complete would be permanently blocked by the very fix meant to keep their data
+  // clean. Only participants who DID attend but still have no score block completion.
+  const missingScores=_tdPartRows.filter(r=>!_tdaIsFullyAbsent(r,_tdaDaysForComplete,_tdaMultiForComplete)&&((_tdaPreApp&&r.preTestScore==null)||(_tdaPostApp&&r.postTestScore==null))).length;
   if(missingScores>0){
     toast(`Cannot tag session complete — ${missingScores} participant(s) missing a required Pre-Test/Post-Test score.`,'error');
     return;
