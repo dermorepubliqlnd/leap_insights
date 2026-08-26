@@ -18641,12 +18641,18 @@ function init(){
   // page load, then again on future sign-in/sign-out — this replaces both the old
   // _fbAuth.onAuthStateChanged listener and the manual Store.SESSION localStorage restore.
   sb.auth.onAuthStateChange(async(event,session)=>{
-    if(_bootHandled&&event!=='SIGNED_IN'&&event!=='SIGNED_OUT') return;
+    // PASSWORD_RECOVERY: Supabase fires this (instead of/alongside SIGNED_IN) when the session
+    // was created by clicking a "reset password" email link. Must always fall through to the
+    // handling below and force the set-new-password screen — never treat it as an already-booted
+    // no-op, even if _bootHandled is already true or this looks like the same user re-firing.
+    // (2026-08-26, per Sandra: a recovery link was silently logging users straight into the
+    // dashboard instead of prompting a new password.)
+    if(_bootHandled&&event!=='SIGNED_IN'&&event!=='SIGNED_OUT'&&event!=='PASSWORD_RECOVERY') return;
     // Auth.login() (called from the login form submit handler) already loads the cache,
     // validates the profile, and calls afterLogin() itself for a snappier login — so if that
     // already happened for this exact user, skip redoing all of it here when Supabase fires
-    // its own SIGNED_IN event for the same sign-in.
-    if(session&&session.user&&Auth.user&&Auth.user.id===session.user.id){ _bootHandled=true; return; }
+    // its own SIGNED_IN event for the same sign-in. Recovery must never be skipped this way.
+    if(event!=='PASSWORD_RECOVERY'&&session&&session.user&&Auth.user&&Auth.user.id===session.user.id){ _bootHandled=true; return; }
     if(session&&session.user){
       try{
         document.getElementById('fs-loading-msg').textContent='Loading data…';
@@ -18655,7 +18661,15 @@ function init(){
         if(u&&u.isActive){
           Auth._u=u; _bootHandled=true;
           document.getElementById('fs-loading').style.display='none';
-          afterLogin(u); return;
+          if(event==='PASSWORD_RECOVERY'){
+            document.getElementById('cp-alert').classList.remove('show');
+            document.getElementById('cp-new').value='';
+            document.getElementById('cp-confirm').value='';
+            showScreen('chg-pass-screen');
+          } else {
+            afterLogin(u);
+          }
+          return;
         }
         console.warn('No active LEAP profile found for signed-in Supabase user:',session.user.email);
         await sb.auth.signOut();
