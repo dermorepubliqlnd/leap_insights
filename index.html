@@ -10872,6 +10872,29 @@ function _tdaSetDayStatus(r,date,value){
   r.attendanceByDay=r.attendanceByDay?{...r.attendanceByDay}:{};
   r.attendanceByDay[date]=value;
 }
+// A participant only counts as "fully absent" for Pre/Post-Test purposes when they never
+// attended at all -- single-day: attendanceStatus is Absent; multi-day: EVERY day is Absent
+// (attending even one day still means they could have sat the post-test). Pending is
+// deliberately excluded (not yet confirmed absent), matching the "attended" calc already used
+// at persist time in _tdaPersistRows.
+function _tdaIsFullyAbsent(r,dayList,isMultiDay){
+  if(isMultiDay) return (dayList||[]).length>0 && dayList.every(d=>_tdaGetDayStatus(r,d)==='absent');
+  return (r.attendanceStatus||'pending')==='absent';
+}
+// Auto-clears any entered Pre/Post-Test score once a participant becomes fully absent (2026-08-26,
+// per Sandra: a trainer manually typing 0 for someone who didn't attend was dragging down the
+// Average Post-Test Score and Pass Rate exactly like a real failing score, even though those KPIs
+// already correctly exclude null scores). Disabling+clearing the field removes the loophole at
+// the source rather than relying on trainers to remember to leave it blank. Returns true if a
+// score was actually cleared, so callers can surface a toast.
+function _tdaClearAssessmentIfAbsent(r,s){
+  if(!s) return false;
+  const dayList=_tdaDayList(s), isMultiDay=dayList.length>1;
+  if(!_tdaIsFullyAbsent(r,dayList,isMultiDay)) return false;
+  const hadScore=r.preTestScore!=null||r.postTestScore!=null;
+  r.preTestScore=null; r.postTestScore=null;
+  return hadScore;
+}
 // Point value for one day's status -- Present=1, Absent/Pending=0, Late/Left Early get the
 // admin-configured deduction from Settings > Attendance (default .25 each).
 function _tdaDayPoint(status){
@@ -11154,8 +11177,9 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal){
   const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
   const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
   const dis=locked?'disabled':'';
-  const preDis=(dis||!preApplicable)?'disabled':'';
-  const postDis=(dis||!postApplicable)?'disabled':'';
+  const fullyAbsent=_tdaIsFullyAbsent(r,dayList,isMultiDay);
+  const preDis=(dis||!preApplicable||fullyAbsent)?'disabled':'';
+  const postDis=(dis||!postApplicable||fullyAbsent)?'disabled':'';
   // External Sessions build (2026-08-13): 4 checkboxes replace Pre-Test/Post-Test/Gain.
   const extChk=(field)=>`<input type="checkbox" ${dis} ${r[field]?'checked':''} onchange="_tdaSetField('${r.id}','${field}',this.checked)">`;
   const extCells=`<td style="text-align:center">${extChk('bondSigned')}</td><td style="text-align:center">${extChk('proofOfCompletion')}</td><td style="text-align:center">${extChk('postTrainingSurvey')}</td><td style="text-align:center">${extChk('proofOfKnowledgeTransfer')}</td>`;
@@ -11172,8 +11196,8 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal){
     <td>${_tdaDeptSelectHtml(r,dis)}</td>
     ${statusCells}
     ${scoreCell}
-    ${isExternal?extCells:`<td>${preApplicable?`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
-    <td>${postApplicable?`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    ${isExternal?extCells:`<td>${preApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    <td>${postApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${gainHtml}</td>`}
     <td><input type="text" class="form-control" ${dis} style="width:120px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.remarks||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','remarks',this.value)"></td>
     <td>${locked?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdaRemoveRow('${r.id}')" title="Remove participant">✕</button>`}</td>
@@ -11223,12 +11247,14 @@ function _tdaConfirmAdd(){
   const s=TrSessionDB.byId(_tdDetailId);
   const dayList=s?_tdaDayList(s):[];
   const attendanceByDay=dayList.length>1?Object.fromEntries(dayList.map(d=>[d,status])):{};
-  _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, departmentId,
+  const newRow={id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, departmentId,
     attended:false, attendanceStatus:status, attendanceByDay, preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
-    remarks, notes:'', _isNew:true});
+    remarks, notes:'', _isNew:true};
+  const scoreCleared=_tdaClearAssessmentIfAbsent(newRow,s);
+  _tdPartRows.push(newRow);
   _tdPartAddPickerOpen=false;
   renderTrainingDetail();
-  toast('Participant added to roster (unsaved — click Save Draft to persist).','info');
+  toast(`Participant added to roster (unsaved — click Save Draft to persist).${scoreCleared?' Pre/Post-test score cleared (marked Absent).':''}`,'info');
 }
 
 function _tdaSetField(rowId,field,value){
@@ -11237,6 +11263,10 @@ function _tdaSetField(rowId,field,value){
     r[field]=value===''?null:Number(value);
   } else {
     r[field]=value;
+    if(field==='attendanceStatus'){
+      const s=TrSessionDB.byId(_tdDetailId);
+      if(_tdaClearAssessmentIfAbsent(r,s)) toast('Pre/Post-test score cleared — participant marked Absent.','info');
+    }
   }
   renderTrainingDetail();
 }
@@ -11244,6 +11274,8 @@ function _tdaSetField(rowId,field,value){
 function _tdaSetDayField(rowId,date,value){
   const r=_tdPartRows.find(x=>x.id===rowId); if(!r) return;
   _tdaSetDayStatus(r,date,value);
+  const s=TrSessionDB.byId(_tdDetailId);
+  if(_tdaClearAssessmentIfAbsent(r,s)) toast('Pre/Post-test score cleared — participant absent on all days.','info');
   renderTrainingDetail();
 }
 
@@ -11288,13 +11320,15 @@ function _tdaBulkMarkAttendance(){
   const s=TrSessionDB.byId(_tdDetailId);
   const dayList=s?_tdaDayList(s):[];
   const isMultiDay=dayList.length>1;
+  let clearedCount=0;
   ids.forEach(id=>{
     const r=_tdPartRows.find(x=>x.id===id); if(!r) return;
     if(isMultiDay) dayList.forEach(d=>_tdaSetDayStatus(r,d,status));
     else r.attendanceStatus=status;
+    if(_tdaClearAssessmentIfAbsent(r,s)) clearedCount++;
   });
   renderTrainingDetail();
-  toast(`Marked ${ids.length} participant(s) as ${(_TDA_STATUS_STYLE[status]||{}).label||status}.`,'success');
+  toast(`Marked ${ids.length} participant(s) as ${(_TDA_STATUS_STYLE[status]||{}).label||status}.${clearedCount?` ${clearedCount} pre/post-test score(s) cleared (Absent).`:''}`,'success');
 }
 
 function _tdaBulkRemove(){
