@@ -1098,6 +1098,10 @@
                       <input type="date" id="ef-date" class="form-control">
                     </div>
                     <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label">Evaluation Date <span style="color:#f87171">*</span></label>
+                      <input type="date" id="ef-eval-date" class="form-control">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Venue <span style="color:#f87171">*</span></label>
                       <select id="ef-venue" class="form-control" onchange="_toggleVenueOtherWrap('ef')"><option value="">— Select Venue —</option></select>
                     </div>
@@ -2664,6 +2668,10 @@
       <button class="modal-close" onclick="closeModal('eval-mode')">✕</button>
     </div>
     <div class="modal-body">
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Evaluation Date <span style="color:#f87171">*</span></label>
+        <input type="date" id="em-eval-date" class="form-control">
+      </div>
       <p style="font-size:14px;color:var(--text2);line-height:1.65">Is this evaluation being conducted live (sitting in on the session) or by reviewing a recording afterward?</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
         <button class="btn btn-secondary" id="em-live-btn" style="justify-content:flex-start">🧑‍🤝‍🧑 Live (Sit-in)</button>
@@ -3076,7 +3084,11 @@ const _FIELD_MAPS = {
     // *_id columns — MUST be verified against the live Supabase schema before go-live. If the
     // column doesn't exist, evaluation create/update calls that carry a sessionId will fail
     // loudly via the existing error Toast rather than silently, but this needs a real test.
-    sessionId:'session_id', evaluationMode:'evaluation_mode'
+    sessionId:'session_id', evaluationMode:'evaluation_mode',
+    // Evaluation Date (2026-08-28, per Sandra) -- the date the evaluation itself was conducted
+    // (live sit-in or recording review), distinct from trainingDate (the session's own date).
+    // Same "verify against live schema before go-live" caveat as sessionId/evaluationMode above.
+    evaluationDate:'evaluation_date'
   },
   idqa_reviews:{
     id:'id', code:'code', status:'status', projectTitle:'project_title', delivType:'deliv_type',
@@ -8479,7 +8491,11 @@ function _tdEvalStatus(s){
     return s.recordingLink?'<span class="badge" style="background:#dbeafe;color:#1d4ed8">Ready for Eval</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b">Awaiting Recording</span>';
   }
   const done=evs.find(e=>e.status==='completed'||e.status==='pending_ack');
-  return done?'<span class="badge" style="background:#dcfce7;color:#15803d">Evaluated</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8">Ready for Eval</span>';
+  if(!done) return '<span class="badge" style="background:#dbeafe;color:#1d4ed8">Ready for Eval</span>';
+  // 2026-08-28 (per Sandra): show the actual evaluation date under the "Evaluated" badge, so the
+  // list surfaces when the eval was conducted, not just that one exists.
+  const dateSub=done.evaluationDate?`<div style="font-size:10.5px;color:var(--text3);margin-top:2px;white-space:nowrap">${Utils.formatDate(done.evaluationDate)}</div>`:'';
+  return `<span class="badge" style="background:#dcfce7;color:#15803d">Evaluated</span>${dateSub}`;
 }
 
 // Plain-text mirrors of the badge-producing functions above, used only as sortable values for
@@ -14414,6 +14430,7 @@ const EVAL_COLS=[
   {id:'evaluator', label:'Evaluator',        sort:'evaluator'},
   {id:'program',   label:'Training Program', sort:'program'},
   {id:'date',      label:'Session Date',     sort:'date'},
+  {id:'evaldate',  label:'Evaluation Date',  sort:'evaldate'},
   {id:'submitted', label:'Eval Submitted',   sort:'submitted'},
   {id:'score',     label:'Score',            sort:'score'},
   {id:'status',    label:'Status',           sort:null},
@@ -14671,6 +14688,8 @@ function openEvalView(id){
   const dateEl=document.getElementById('ef-date');
   dateEl.value=ev.trainingDate||'';
   dateEl.max=_todayStr();
+  const evalDateElV=document.getElementById('ef-eval-date');
+  if(evalDateElV){ evalDateElV.value=ev.evaluationDate||''; evalDateElV.max=_todayStr(); }
   _rteSet('ef-observations', ev.observations||'');
   document.getElementById('eval-form-title').textContent='';
   document.getElementById('eval-error').classList.add('hidden');
@@ -14874,6 +14893,7 @@ function renderEvaluations(){
   visible=[...visible].sort((a,b)=>{
     let va,vb;
     if(col==='date'){va=a.trainingDate||'';vb=b.trainingDate||'';}
+    else if(col==='evaldate'){va=a.evaluationDate||'';vb=b.evaluationDate||'';}
     else if(col==='score'){va=a.overallScore||0;vb=b.overallScore||0;}
     else if(col==='trainer'){const u=DB.byId(a.trainerId);const v=DB.byId(b.trainerId);va=(u?`${u.lastName} ${u.firstName}`:'');vb=(v?`${v.lastName} ${v.firstName}`:'');}
     else if(col==='evaluator'){const u=DB.byId(a.evaluatorId);const v=DB.byId(b.evaluatorId);va=(u?`${u.lastName} ${u.firstName}`:'');vb=(v?`${v.lastName} ${v.firstName}`:'');}
@@ -14909,6 +14929,7 @@ function renderEvaluations(){
     if(col==='evaluator') return `<td>${Utils.esc(evName)}</td>`;
     if(col==='program')   return `<td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(ev.trainingProgram||'—')}</td>`;
     if(col==='date')      return `<td style="white-space:nowrap">${Utils.formatDate(ev.trainingDate)}</td>`;
+    if(col==='evaldate')  return `<td style="white-space:nowrap">${ev.evaluationDate?Utils.formatDate(ev.evaluationDate):'<span class="txt-muted">—</span>'}</td>`;
     if(col==='submitted') return `<td style="white-space:nowrap">${submitted}</td>`;
     if(col==='score')     return `<td>${score}</td>`;
     if(col==='status')    return `<td>${_evalStatusBadge(ev.status)}</td>`;
@@ -15004,7 +15025,7 @@ function openDraftChoiceModal(onContinue,onDelete){
   openModal('draft-choice');
 }
 
-function _openPrefilledEval(s,mode){
+function _openPrefilledEval(s,mode,evalDate){
   openNewEval();
   document.getElementById('ef-session-id').value=s.id;
   document.getElementById('ef-evaluation-mode').value=mode||'';
@@ -15012,6 +15033,8 @@ function _openPrefilledEval(s,mode){
   document.getElementById('ef-program').value=s.trainingProgram||'';
   document.getElementById('ef-batch').value=s.batchNo||'';
   document.getElementById('ef-date').value=s.trainingDate||'';
+  const evalDateEl=document.getElementById('ef-eval-date');
+  if(evalDateEl){ evalDateEl.value=evalDate||_todayStr(); evalDateEl.max=_todayStr(); }
   document.getElementById('ef-venue').value=s.venueId||'';
   document.getElementById('ef-venue-other').value='';
   _toggleVenueOtherWrap('ef');
@@ -15062,7 +15085,7 @@ function startSessionEvaluation(sessionId){
   if(mine){
     if(mine.status==='draft'){
       openDraftChoiceModal(()=>{ openEvalForm(mine.id); },()=>{
-        EvalDB.delete(mine.id).then(()=>openEvalModeModal(mode=>{ _startSessionEvaluationWithMode(sessionId,mode); })).catch(()=>{});
+        EvalDB.delete(mine.id).then(()=>openEvalModeModal((mode,evalDate)=>{ _startSessionEvaluationWithMode(sessionId,mode,evalDate); })).catch(()=>{});
       });
       return;
     }
@@ -15075,19 +15098,25 @@ function startSessionEvaluation(sessionId){
   }
   // Phase33 item 6: ask Live (Sit-in) vs Virtual (Recording) before proceeding -- this replaces
   // the old blanket "session must be Completed" gate with type-specific checks below.
-  openEvalModeModal(mode=>{ _startSessionEvaluationWithMode(sessionId,mode); });
+  openEvalModeModal((mode,evalDate)=>{ _startSessionEvaluationWithMode(sessionId,mode,evalDate); });
 }
 
 // Small modal asking whether the evaluation is being conducted Live (sitting in on the
 // session) or Virtual (reviewing a recording afterward). Used only for session-linked
 // evaluations (startSessionEvaluation / "Evaluate This Training").
 function openEvalModeModal(onChoose){
-  document.getElementById('em-live-btn').onclick=()=>{ closeModal('eval-mode'); onChoose('live'); };
-  document.getElementById('em-virtual-btn').onclick=()=>{ closeModal('eval-mode'); onChoose('virtual'); };
+  const dateEl=document.getElementById('em-eval-date');
+  if(dateEl){ dateEl.value=_todayStr(); dateEl.max=_todayStr(); }
+  const choose=mode=>{
+    if(dateEl && !dateEl.value){ toast('Please select the evaluation date.','error'); return; }
+    closeModal('eval-mode'); onChoose(mode, dateEl?dateEl.value:_todayStr());
+  };
+  document.getElementById('em-live-btn').onclick=()=>choose('live');
+  document.getElementById('em-virtual-btn').onclick=()=>choose('virtual');
   openModal('eval-mode');
 }
 
-function _startSessionEvaluationWithMode(sessionId,mode){
+function _startSessionEvaluationWithMode(sessionId,mode,evalDate){
   let s=TrSessionDB.byId(sessionId); if(!s) return;
   // Type-specific checks replacing the old status==='completed' gate:
   //  - Live: the evaluator has the eval form open while sitting in the live session, so same-day
@@ -15105,10 +15134,10 @@ function _startSessionEvaluationWithMode(sessionId,mode){
   const others=sessionEvals.filter(e=>e.status==='completed');
   if(others.length){
     const names=[...new Set(others.map(e=>{ const u=DB.byId(e.evaluatorId); return u?`${u.firstName} ${u.lastName}`:'another evaluator'; }))];
-    confirm$('Already Evaluated by Someone Else',`This session has already been evaluated by <strong>${Utils.esc(names.join(', '))}</strong>. Do you want to submit your own evaluation?`,'Submit My Own',()=>{ _openPrefilledEval(s,mode); });
+    confirm$('Already Evaluated by Someone Else',`This session has already been evaluated by <strong>${Utils.esc(names.join(', '))}</strong>. Do you want to submit your own evaluation?`,'Submit My Own',()=>{ _openPrefilledEval(s,mode,evalDate); });
     return;
   }
-  _openPrefilledEval(s,mode);
+  _openPrefilledEval(s,mode,evalDate);
 }
 
 function _initColResize(tbl){
@@ -15185,6 +15214,8 @@ function openNewEval(){
   const dateEl=document.getElementById('ef-date');
   dateEl.value='';
   dateEl.max=_todayStr();
+  const evalDateEl0=document.getElementById('ef-eval-date');
+  if(evalDateEl0){ evalDateEl0.value=''; evalDateEl0.max=_todayStr(); }
   _rteSet('ef-observations','');
   document.getElementById('eval-form-title').textContent='New Trainer Evaluation';
   document.getElementById('eval-form-status-badge').innerHTML='';
@@ -15221,6 +15252,8 @@ function openEvalForm(id){
   const dateEl=document.getElementById('ef-date');
   dateEl.value=ev.trainingDate||'';
   dateEl.max=_todayStr();
+  const evalDateElF=document.getElementById('ef-eval-date');
+  if(evalDateElF){ evalDateElF.value=ev.evaluationDate||''; evalDateElF.max=_todayStr(); }
   _rteSet('ef-observations', ev.observations||'');
   document.getElementById('eval-form-title').textContent='Edit Trainer Evaluation';
   document.getElementById('eval-form-status-badge').innerHTML=_evalStatusBadge(ev.status);
@@ -15360,6 +15393,7 @@ function _getCurrentData(){
     trainingProgram:document.getElementById('ef-program').value.trim(),
     batchNo:document.getElementById('ef-batch').value.trim(),
     trainingDate:document.getElementById('ef-date').value,
+    evaluationDate:document.getElementById('ef-eval-date')?.value||'',
     venueId:_resolveVenueId('ef'),
     modalityId:document.getElementById('ef-modality').value,
     sessionId:document.getElementById('ef-session-id').value||null,
@@ -15422,6 +15456,7 @@ function _validateEval(forFinalize){
   if(!d.trainingProgram)  errs.push('Training Program / Title is required.');
   if(!d.batchNo)          errs.push('Batch No. is required.');
   if(!d.trainingDate)     errs.push('Date is required.');
+  if(!d.evaluationDate)   errs.push('Evaluation Date is required.');
   if(!d.venueId)          errs.push('Venue is required.');
   if(_isOtherVenue(document.getElementById('ef-venue').value)&&!(document.getElementById('ef-venue-other')?.value||'').trim()) errs.push('Please specify the venue name.');
   // Modality is optional only when this eval is session-linked and that session had no
@@ -15527,6 +15562,7 @@ function _buildEvalHTML(ev){
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Training Program</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(ev.trainingProgram||'—')}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Batch No.</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(ev.batchNo||'—')}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Session Date</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.formatDate(ev.trainingDate)}</div></div>
+    <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Evaluation Date</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${ev.evaluationDate?Utils.formatDate(ev.evaluationDate):'—'}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Venue</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(venue)}</div></div>
     <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8">Delivery Method</div><div style="font-size:13px;color:#0f172a;margin-top:3px">${Utils.esc(modality)}</div></div>
   </div>
