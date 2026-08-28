@@ -1123,6 +1123,14 @@
                     <label class="form-label">Session Recording</label>
                     <div class="eval-readonly"><a id="ef-recording-link" href="#" target="_blank" rel="noopener" style="color:#93c5fd">▶ View Recording</a></div>
                   </div>
+                  <div class="form-group hidden" id="ef-submitted-wrap" style="margin-bottom:0">
+                    <label class="form-label">Evaluation Submitted</label>
+                    <div class="eval-readonly" id="ef-submitted-display" style="font-weight:600"></div>
+                  </div>
+                  <div class="form-group hidden" id="ef-acknowledged-wrap" style="margin-bottom:0">
+                    <label class="form-label">Acknowledged</label>
+                    <div class="eval-readonly" id="ef-acknowledged-display" style="font-weight:600"></div>
+                  </div>
                   <!-- score widget -->
                   <div class="cqa-score-widget" style="align-self:center">
                     <div class="cqa-score-big" id="ef-score-val">—</div>
@@ -2643,6 +2651,23 @@
   </div>
 </div>
 
+<!-- ══ MODAL: UNSAVED NEW TRAINING SESSION ═════════════ -->
+<div id="modal-td-unsaved-session" class="modal-overlay" onclick="if(event.target===this)closeModal('td-unsaved-session')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title">Unsaved Training Session</span>
+      <button class="modal-close" onclick="closeModal('td-unsaved-session')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.65">This training session hasn't been saved yet. Leaving now will discard it. Would you like to save it, or discard it?</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" id="tdus-discard-btn" style="color:#dc2626;border-color:#dc2626">Discard Session</button>
+      <button class="btn btn-primary" id="tdus-save-btn">Save Session</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: DRAFT ALREADY EXISTS ═════════════ -->
 <div id="modal-draft-choice" class="modal-overlay" onclick="if(event.target===this)closeModal('draft-choice')">
   <div class="modal modal-sm">
@@ -3694,6 +3719,14 @@ function armLeaveGuard(containerId){ const s=_formSnapshot(containerId); _leaveG
 function disarmLeaveGuard(){ _leaveGuard=null; }
 function _isLeaveGuarded(){ return !!(_leaveGuard && _leaveGuard.isDirtyFn()); }
 function guardedLeave(action){
+  // Unsaved-new-training-session guard (2026-08-28, per Sandra) takes priority over the generic
+  // dirty-form check below: an auto-created-but-never-saved session (see _tdNewlyCreatedId) is
+  // already a real row in the DB even when the form looks completely untouched, so the ordinary
+  // "has anything changed" check would miss it entirely. See _tdGuardExit.
+  if(typeof _tdDetailId!=='undefined' && _tdDetailId && _tdDetailId===_tdNewlyCreatedId){
+    _tdGuardExit(action);
+    return;
+  }
   if(_isLeaveGuarded()){
     confirm$('Unsaved Changes','You have unsaved changes on this form. Leave without saving?','Leave Without Saving',()=>{ disarmLeaveGuard(); action(); });
     return;
@@ -9693,6 +9726,15 @@ function deleteTrainingRecord(id){
 let _tdDetailId=null;
 let _tdDetailTab='overview';
 let _tdDetailEditing=false;
+// Unsaved-new-session guard (2026-08-28, per Sandra): "+ Add Training" creates a bare
+// training_sessions row immediately (see _tdCreateFromTypePick below), before the user has
+// entered or saved any real details -- if they then navigate away without saving, that blank row
+// was silently orphaned with no warning. _tdNewlyCreatedId tracks "this session exists only
+// because of the auto-create step and hasn't been explicitly saved by the user yet" -- set right
+// after creation, cleared the moment a real save succeeds (_tdDetailPerformSave). guardedLeave()
+// checks this before its normal dirty-form check and, if set, routes through _tdGuardExit() to
+// offer Save or Discard instead of silently leaving the orphan behind.
+let _tdNewlyCreatedId=null;
 // Specific Dates (2026-08-19/20, per Sandra: non-consecutive occurrence dates for a session that
 // spans e.g. 2 weekends but shouldn't be counted as running every day in between). Draft state for
 // the edit form's date-mode toggle -- deliberately module-level rather than read from the DOM/
@@ -9786,12 +9828,43 @@ async function _tdCreateFromTypePick(deliveryType){
       status:deliveryType==='Ad-hoc'?'scheduled':'tentative',
       createdBy:Auth.user.id
     });
+    _tdNewlyCreatedId=rec.id;
     closeModal('td-type-pick');
     openTrainingDetail(rec.id);
     tdDetailToggleEdit();
   }catch(e){
     if(errEl){ errEl.textContent='Could not create the training record. Please try again.'; errEl.classList.remove('hidden'); }
   }
+}
+
+// Unsaved-new-session prompt (2026-08-28, per Sandra): shown by guardedLeave() in place of its
+// normal handling whenever the user tries to leave a session that only exists because "+ Add
+// Training" auto-created it and it hasn't been explicitly saved yet (_tdNewlyCreatedId). Offers a
+// real choice instead of silently discarding: Save runs the exact same validation/save path as the
+// regular Save button (so a session missing required fields stays open with the usual inline
+// error, rather than being force-saved or silently dropped), Discard actually deletes the orphaned
+// row before continuing. Either way, once resolved, `action` (whatever navigation the user
+// originally triggered -- Back to list, a different nav item, Cancel-editing, etc.) runs exactly
+// as it would have without this guard.
+function _tdGuardExit(action){
+  document.getElementById('tdus-discard-btn').onclick=async()=>{
+    closeModal('td-unsaved-session');
+    const idToDelete=_tdDetailId;
+    try{ await TrSessionDB.delete(idToDelete); }catch(e){ /* best-effort -- don't trap the user here */ }
+    if(_tdNewlyCreatedId===idToDelete) _tdNewlyCreatedId=null;
+    disarmLeaveGuard();
+    toast('Untitled training session discarded.','info');
+    action();
+  };
+  document.getElementById('tdus-save-btn').onclick=async()=>{
+    closeModal('td-unsaved-session');
+    await tdDetailSave();
+    // tdDetailSave() only exits edit mode (_tdDetailEditing=false) on a successful save -- a
+    // validation failure returns early with _tdDetailEditing still true and its own inline error
+    // already shown, so re-check it here rather than assuming success.
+    if(!_tdDetailEditing) action();
+  };
+  openModal('td-unsaved-session');
 }
 
 function openTrainingDetail(id){
@@ -10094,6 +10167,7 @@ async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete){
     }
     toast('Training updated.','success');
     disarmLeaveGuard();
+    if(_tdDetailId===_tdNewlyCreatedId) _tdNewlyCreatedId=null;
     _tdDetailEditing=false;
     renderTrainingDetail();
   }catch(e){ /* error already surfaced */ }
@@ -12656,7 +12730,7 @@ function renderTrainingDetail(){
 
   wrap.innerHTML=`
     <div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">
-      <a href="javascript:void(0)" onclick="closeTrainingDetail()" style="color:var(--pri);text-decoration:none">Training Calendar</a>
+      <a href="javascript:void(0)" onclick="guardedLeave(closeTrainingDetail)" style="color:var(--pri);text-decoration:none">Training Calendar</a>
       &nbsp;›&nbsp; ${Utils.esc(s.code||s.id||'')}
     </div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
@@ -14432,6 +14506,7 @@ const EVAL_COLS=[
   {id:'date',      label:'Session Date',     sort:'date'},
   {id:'evaldate',  label:'Evaluation Date',  sort:'evaldate'},
   {id:'submitted', label:'Eval Submitted',   sort:'submitted'},
+  {id:'acked',     label:'Acknowledged',     sort:'acked'},
   {id:'score',     label:'Score',            sort:'score'},
   {id:'status',    label:'Status',           sort:null},
   {id:'actions',   label:'Actions',          sort:null},
@@ -14683,6 +14758,8 @@ function openEvalView(id){
   document.getElementById('ef-evaluation-mode').value=ev.evaluationMode||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
+  _updateEvalSubmittedDisplay(ev.finalizedAt||null);
+  _updateEvalAcknowledgedDisplay(ev.acknowledgedAt||null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
   document.getElementById('ef-batch').value=ev.batchNo||'';
   const dateEl=document.getElementById('ef-date');
@@ -14901,6 +14978,7 @@ function renderEvaluations(){
     else if(col==='code'){va=a.code||'';vb=b.code||'';}
     else if(col==='sessioncode'){va=(TrSessionDB.byId(a.sessionId)||{}).code||'';vb=(TrSessionDB.byId(b.sessionId)||{}).code||'';}
     else if(col==='submitted'){va=a.finalizedAt||'';vb=b.finalizedAt||'';}
+    else if(col==='acked'){va=a.acknowledgedAt||'';vb=b.acknowledgedAt||'';}
     else{va='';vb='';}
     if(va<vb) return dir==='asc'?-1:1;
     if(va>vb) return dir==='asc'?1:-1;
@@ -14931,6 +15009,7 @@ function renderEvaluations(){
     if(col==='date')      return `<td style="white-space:nowrap">${Utils.formatDate(ev.trainingDate)}</td>`;
     if(col==='evaldate')  return `<td style="white-space:nowrap">${ev.evaluationDate?Utils.formatDate(ev.evaluationDate):'<span class="txt-muted">—</span>'}</td>`;
     if(col==='submitted') return `<td style="white-space:nowrap">${submitted}</td>`;
+    if(col==='acked')     return `<td style="white-space:nowrap">${ev.acknowledgedAt?Utils.formatDate(ev.acknowledgedAt.split('T')[0]):'<span class="txt-muted">—</span>'}</td>`;
     if(col==='score')     return `<td>${score}</td>`;
     if(col==='status')    return `<td>${_evalStatusBadge(ev.status)}</td>`;
     if(col==='actions'){
@@ -15016,6 +15095,25 @@ function _updateEvalSessionCodeDisplay(code){
   const el=document.getElementById('ef-session-code');
   if(!wrap||!el) return;
   if(code){ el.textContent=code; wrap.classList.remove('hidden'); }
+  else { wrap.classList.add('hidden'); }
+}
+// Evaluation Submitted / Acknowledged date displays (2026-08-28, per Sandra): only meaningful once
+// an evaluation has actually been finalized (sent for acknowledgement) or acknowledged -- a draft
+// has neither timestamp yet, so both stay hidden there (see openNewEval/openEvalForm, which call
+// these with null to reset). Only wired into openEvalView -- the read-only view/PDF path -- since
+// these are system-set timestamps, not user-editable form inputs.
+function _updateEvalSubmittedDisplay(finalizedAt){
+  const wrap=document.getElementById('ef-submitted-wrap');
+  const el=document.getElementById('ef-submitted-display');
+  if(!wrap||!el) return;
+  if(finalizedAt){ el.textContent=Utils.formatDate(finalizedAt.split('T')[0]); wrap.classList.remove('hidden'); }
+  else { wrap.classList.add('hidden'); }
+}
+function _updateEvalAcknowledgedDisplay(acknowledgedAt){
+  const wrap=document.getElementById('ef-acknowledged-wrap');
+  const el=document.getElementById('ef-acknowledged-display');
+  if(!wrap||!el) return;
+  if(acknowledgedAt){ el.textContent=Utils.formatDate(acknowledgedAt.split('T')[0]); wrap.classList.remove('hidden'); }
   else { wrap.classList.add('hidden'); }
 }
 
@@ -15210,6 +15308,8 @@ function openNewEval(){
   document.getElementById('ef-evaluation-mode').value='';
   _updateEvalRecordingDisplay(null);
   _updateEvalSessionCodeDisplay(null);
+  _updateEvalSubmittedDisplay(null);
+  _updateEvalAcknowledgedDisplay(null);
   document.getElementById('ef-program').value='';
   const dateEl=document.getElementById('ef-date');
   dateEl.value='';
@@ -15247,6 +15347,8 @@ function openEvalForm(id){
   document.getElementById('ef-evaluation-mode').value=ev.evaluationMode||'';
   _updateEvalRecordingDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.recordingLink:null);
   _updateEvalSessionCodeDisplay(ev.sessionId?TrSessionDB.byId(ev.sessionId)?.code:null);
+  _updateEvalSubmittedDisplay(ev.finalizedAt||null);
+  _updateEvalAcknowledgedDisplay(ev.acknowledgedAt||null);
   document.getElementById('ef-program').value=ev.trainingProgram||'';
   document.getElementById('ef-batch').value=ev.batchNo||'';
   const dateEl=document.getElementById('ef-date');
