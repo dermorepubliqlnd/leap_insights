@@ -3614,6 +3614,19 @@ function showScreen(id){
   else{ const el=document.getElementById(id); el.style.display='flex'; el.classList.add('show'); }
 }
 
+function showChgPassScreen(reason){
+  document.getElementById('cp-alert').classList.remove('show');
+  document.getElementById('cp-new').value='';
+  document.getElementById('cp-confirm').value='';
+  const info=document.getElementById('cp-info');
+  if(info){
+    info.textContent=reason==='first-login'
+      ? "You've been given a temporary password. Please set a new password to continue \u2014 use at least 8 characters, and for a stronger password, mix in numbers and symbols."
+      : "Choose a new password to secure your account. Use at least 8 characters \u2014 for a stronger password, mix in numbers and symbols.";
+  }
+  showScreen('chg-pass-screen');
+  }
+
 /* ── COLLAPSIBLE SIDEBAR (2026-08-20, per Sandra) ──────────────────────────────────────────────
    Click the small chevron button pinned to the sidebar's right edge to collapse it down to just
    icons (main content's margin-left/the sidebar's own width both react to one shared class --
@@ -18800,8 +18813,9 @@ function bootApp(){
 }
 
 function afterLogin(user){
+  if(user&&user.mustChangePassword){ showChgPassScreen('first-login'); return; }
   bootApp();
-}
+  }
 
 let _bootHandled=false;
 function init(){
@@ -18838,10 +18852,7 @@ function init(){
           Auth._u=u; _bootHandled=true;
           document.getElementById('fs-loading').style.display='none';
           if(event==='PASSWORD_RECOVERY'){
-            document.getElementById('cp-alert').classList.remove('show');
-            document.getElementById('cp-new').value='';
-            document.getElementById('cp-confirm').value='';
-            showScreen('chg-pass-screen');
+            showChgPassScreen('recovery');
           } else {
             afterLogin(u);
           }
