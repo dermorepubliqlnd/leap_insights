@@ -899,7 +899,7 @@
     </div>
     <h2 class="auth-heading">Set Your Password</h2>
     <p class="auth-sub">For your security, please set a new password before continuing.</p>
-    <div class="auth-info" id="cp-info">Choose a new password to secure your account. Use at least 8 characters — for a stronger password, mix in numbers and symbols.</div>
+    <div class="auth-info">You were assigned a temporary password. This is a one-time step — you won't be asked again after this.</div>
     <div id="cp-alert" class="alert alert-error"></div>
     <form id="chg-pass-form">
       <div class="form-group">
@@ -3004,6 +3004,12 @@ const _FIELD_MAPS = {
     deliveryType:'delivery_type', coFacilitatorId:'co_facilitator_id', audience:'audience',
     expectedParticipants:'expected_participants', assessmentType:'assessment_type',
     passingScore:'passing_score', reportStatus:'report_status', ownerId:'owner_id', endDate:'end_date', description:'description',
+    // Multiple named assessments per session (2026-09-14, per Sandra): a session used to assume
+    // exactly one Pre-Test/Post-Test pair. assessmentNames is a jsonb array of labels (e.g.
+    // ["Module 1","Module 2"]); null/empty = legacy single-assessment behavior (untouched,
+    // existing sessions keep using the plain pre_test_score/post_test_score columns below).
+    // Only sessions where this array has 2+ entries switch to the multi-assessment UI/columns.
+    assessmentNames:'assessment_names',
     // Overview redesign (2026-07-30): duration in decimal hours (distinct from the legacy
     // free-text "duration" HH:MM column above, which the original Training Sessions module
     // still owns -- kept separate to avoid format collisions), and a training category.
@@ -3072,6 +3078,10 @@ const _FIELD_MAPS = {
     // Attendance & Performance tab (2026-07-30): real attendance status + pre/post test score fields.
     attendanceStatus:'attendance_status', preTestScore:'pre_test_score', postTestScore:'post_test_score',
     remarks:'remarks',
+    // Multiple named assessments (2026-09-14): jsonb objects keyed by assessment name, e.g.
+    // {"Module 1":80,"Module 2":95} -- only read/written when the session's assessmentNames has
+    // 2+ entries. Single-assessment sessions keep using the plain columns above, untouched.
+    preTestScores:'pre_test_scores', postTestScores:'post_test_scores',
     // Manual-entry participant fields (2026-07-30) -- Add Participant / CSV are fully manual (no
     // system-user picker); role & supervisor are free text tied to the participant, not a profile lookup.
     // externalSupervisor kept for historical data (2026-08-05, Phase38 item 4) -- no longer
@@ -3613,19 +3623,6 @@ function showScreen(id){
   if(id==='app'){ document.getElementById('app').style.display='block'; _applySidebarCollapse(); }
   else{ const el=document.getElementById(id); el.style.display='flex'; el.classList.add('show'); }
 }
-
-function showChgPassScreen(reason){
-  document.getElementById('cp-alert').classList.remove('show');
-  document.getElementById('cp-new').value='';
-  document.getElementById('cp-confirm').value='';
-  const info=document.getElementById('cp-info');
-  if(info){
-    info.textContent=reason==='first-login'
-      ? "You've been given a temporary password. Please set a new password to continue \u2014 use at least 8 characters, and for a stronger password, mix in numbers and symbols."
-      : "Choose a new password to secure your account. Use at least 8 characters \u2014 for a stronger password, mix in numbers and symbols.";
-  }
-  showScreen('chg-pass-screen');
-  }
 
 /* ── COLLAPSIBLE SIDEBAR (2026-08-20, per Sandra) ──────────────────────────────────────────────
    Click the small chevron button pinned to the sidebar's right edge to collapse it down to just
@@ -10039,6 +10036,14 @@ async function tdDetailSave(){
     // regardless of what the (now-hidden) dropdown/field still hold in the DOM.
     assessmentType:grp==='external'?'None':(document.getElementById('tdd-assessment')?.value||'None'),
     passingScore:grp==='external'?null:(passingRaw?parseInt(passingRaw,10):null),
+    // Multiple named assessments (2026-09-14): same comma-separated-list parsing as the edit
+    // form; cleared for External same as assessmentType above (Assessment doesn't apply there).
+    assessmentNames:grp==='external'?null:(()=>{
+      const el=document.getElementById('tdd-assessment-names');
+      if(!el) return null;
+      const parsed=el.value.split(',').map(x=>x.trim()).filter(Boolean);
+      return parsed.length?parsed:null;
+    })(),
     modalityId:_tdShowsModality(deliveryType)?(document.getElementById('tdd-modalityid')?.value||null):null,
     status:document.getElementById('tdd-status')?.value||'scheduled',
     // Mandatory tag (2026-08-06, Phase62): Self-led-only field -- only rendered in the DOM at all
@@ -10919,7 +10924,50 @@ function _tdaPersonInfo(r){
   return {name:r.externalName||'Unnamed Participant', email:'', department, supervisor:r.externalSupervisor||'—', employeeId:r.employeeId||'—', initials:Utils.initials(r.externalName||'?'), avaStyle:Utils.avatarBg(false), inactive:false};
 }
 
-function _tdaGain(r){
+// Multiple named assessments (2026-09-14, per Sandra): a session used to assume exactly one
+// Pre-Test/Post-Test pair per participant. Sessions can now optionally define 2+ named
+// assessments (e.g. "Module 1", "Module 2"), each with its own pre/post score, stored in the
+// session_participants.pre_test_scores/post_test_scores jsonb objects (keyed by name).
+// _tdaAssessNames returns null for every existing/legacy session (assessmentNames unset or a
+// single entry) so ALL downstream code below falls through to the original scalar
+// preTestScore/postTestScore behavior, completely untouched, unless a session is deliberately
+// switched to multi-assessment mode via the Session Information form.
+function _tdaAssessNames(s){
+  const names=s&&s.assessmentNames;
+  return (Array.isArray(names)&&names.length>=2)?names:null;
+}
+function _tdaIsMultiAssess(s){ return !!_tdaAssessNames(s); }
+function _tdaGetNamedScore(r,kind,name){
+  const bag=kind==='pre'?r.preTestScores:r.postTestScores;
+  const v=bag&&bag[name];
+  return (v===undefined||v===null||v==='')?null:v;
+}
+function _tdaSetNamedScore(r,kind,name,value){
+  const field=kind==='pre'?'preTestScores':'postTestScores';
+  r[field]=r[field]?{...r[field]}:{};
+  r[field][name]=(value===''||value===null||value===undefined)?null:Number(value);
+}
+// Average of whichever named scores are actually entered; null when none are (never divides by
+// the full name count, so a partially-filled multi-assessment session still yields a sensible
+// average instead of appearing to fail everyone).
+function _tdaAvgNamedScore(r,kind,names){
+  const vals=names.map(n=>_tdaGetNamedScore(r,kind,n)).filter(v=>v!=null).map(Number);
+  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+}
+// Whether EVERY configured assessment name has a score entered for this participant+kind --
+// used by _tdaIsAssessed/Tag Complete so multi-assessment sessions require all of them, not
+// just one, before counting someone as fully assessed.
+function _tdaAllNamedScored(r,kind,names){
+  return names.every(n=>_tdaGetNamedScore(r,kind,n)!=null);
+}
+
+function _tdaGain(r,s){
+  const names=_tdaAssessNames(s);
+  if(names){
+    const avgPre=_tdaAvgNamedScore(r,'pre',names), avgPost=_tdaAvgNamedScore(r,'post',names);
+    if(avgPre==null||avgPost==null) return null;
+    return Math.round((avgPost-avgPre)*10)/10;
+  }
   const pre=r.preTestScore, post=r.postTestScore;
   if(pre===null||pre===undefined||pre===''||post===null||post===undefined||post==='') return null;
   return Number(post)-Number(pre);
@@ -10931,8 +10979,12 @@ function _tdaGain(r){
 // None/unset sessions have nothing to assess (2026-07-31, fixes TS-2026-008 "assessed
 // progress un-tagged" report where a Post-test-only session with real post-test scores was
 // showing 0 Assessed because the old logic always required BOTH scores regardless of type).
-function _tdaIsAssessed(r,assessmentType){
-  const hasPre=r.preTestScore!=null, hasPost=r.postTestScore!=null;
+// 2026-09-14: when the session has 2+ named assessments, "has a pre/post score" now means
+// EVERY named assessment has that kind of score, not just one.
+function _tdaIsAssessed(r,assessmentType,s){
+  const names=_tdaAssessNames(s);
+  const hasPre=names?_tdaAllNamedScored(r,'pre',names):r.preTestScore!=null;
+  const hasPost=names?_tdaAllNamedScored(r,'post',names):r.postTestScore!=null;
   if(assessmentType==='Pre-test only') return hasPre;
   if(assessmentType==='Post-test only') return hasPost;
   if(assessmentType==='Pre & Post') return hasPre&&hasPost;
@@ -10994,8 +11046,12 @@ function _tdaClearAssessmentIfAbsent(r,s){
   if(!s) return false;
   const dayList=_tdaDayList(s), isMultiDay=dayList.length>1;
   if(!_tdaIsFullyAbsent(r,dayList,isMultiDay)) return false;
-  const hadScore=r.preTestScore!=null||r.postTestScore!=null;
+  const names=_tdaAssessNames(s);
+  const hadScore=names
+    ?(Object.values(r.preTestScores||{}).some(v=>v!=null)||Object.values(r.postTestScores||{}).some(v=>v!=null))
+    :(r.preTestScore!=null||r.postTestScore!=null);
   r.preTestScore=null; r.postTestScore=null;
+  if(names){ r.preTestScores={}; r.postTestScores={}; }
   return hadScore;
 }
 // Point value for one day's status -- Present=1, Absent/Pending=0, Late/Left Early get the
@@ -11091,14 +11147,21 @@ function _tdaKpiColumnsHtml(s,forExport){
   const pending=countStatus('pending');
   const rate=unitTotal>0?Math.round(((present+late+leftEarly)/unitTotal)*100):0;
 
-  const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType));
-  const preRows=all.filter(r=>r.preTestScore!=null), postRows=all.filter(r=>r.postTestScore!=null);
-  const avgPre=preRows.length?Math.round(preRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/preRows.length):null;
-  const avgPost=postRows.length?Math.round(postRows.reduce((sum,r)=>sum+Number(r.postTestScore),0)/postRows.length):null;
+  const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType,s));
+  // 2026-09-14: multi-assessment sessions score each participant as the average of their own
+  // named-assessment scores first, THEN average those per-participant averages across the
+  // roster -- keeps a partially-absent roster from skewing the session-level KPI the way a flat
+  // pool-all-scores average would.
+  const _tdaNames=_tdaAssessNames(s);
+  const _tdaParticipantPre=(r)=>_tdaNames?_tdaAvgNamedScore(r,'pre',_tdaNames):(r.preTestScore!=null?Number(r.preTestScore):null);
+  const _tdaParticipantPost=(r)=>_tdaNames?_tdaAvgNamedScore(r,'post',_tdaNames):(r.postTestScore!=null?Number(r.postTestScore):null);
+  const preRows=all.filter(r=>_tdaParticipantPre(r)!=null), postRows=all.filter(r=>_tdaParticipantPost(r)!=null);
+  const avgPre=preRows.length?Math.round(preRows.reduce((sum,r)=>sum+_tdaParticipantPre(r),0)/preRows.length):null;
+  const avgPost=postRows.length?Math.round(postRows.reduce((sum,r)=>sum+_tdaParticipantPost(r),0)/postRows.length):null;
   const avgGain=(avgPre!=null&&avgPost!=null&&s.assessmentType==='Pre & Post')?avgPost-avgPre:null;
   const passingScore=s.passingScore;
   const passApplicable=s.assessmentType!=='Pre-test only';
-  const passedCount=(passingScore!=null&&passApplicable)?assessedRows.filter(r=>r.postTestScore!=null&&Number(r.postTestScore)>=passingScore).length:null;
+  const passedCount=(passingScore!=null&&passApplicable)?assessedRows.filter(r=>_tdaParticipantPost(r)!=null&&_tdaParticipantPost(r)>=passingScore).length:null;
   const passRate=(passedCount!=null&&assessedRows.length)?Math.round((passedCount/assessedRows.length)*100):null;
   const pct=(n,d)=>d>0?Math.round((n/d)*100)+'%':'';
 
@@ -11211,16 +11274,21 @@ function _tdaRenderTab(s){
   // External Sessions build (2026-08-13, per Sandra): External sessions replace the
   // Pre-Test/Post-Test/Gain columns with 4 checkboxes (Training Bond Signed, Proof of Completion,
   // Post Training Survey, Proof of Knowledge Transfer) -- ILT/VILT keep the test-score columns.
+  // Multiple named assessments (2026-09-14): when the session defines 2+ assessment names, the
+  // single Pre-Test/Post-Test/Gain column triple becomes one triple PER name instead. Legacy/
+  // single-assessment sessions (the vast majority) get the exact same 3 columns as before.
+  const _tdaNames=_tdaAssessNames(s);
+  const scoreHeaders=_tdaNames?_tdaNames.flatMap(n=>[`${n} Pre-Test`,`${n} Post-Test`,`${n} Gain`]):['Pre-Test','Post-Test','Gain'];
   const theadCols=['<input type="checkbox" onclick="_tdaToggleSelectAll(this.checked)" '+(rows.length&&rows.every(r=>_tdPartSelected.has(r.id))?'checked':'')+'>','#','Employee ID','Participant','Department',...dayHeaders,...((!isExternal&&isMultiDay)?['Attendance Score']:[]),
-    ...(isExternal?['Training Bond Signed','Proof of Completion','Post Training Survey','Proof of Knowledge Transfer']:['Pre-Test','Post-Test','Gain']),'Remarks',''];
+    ...(isExternal?['Training Bond Signed','Proof of Completion','Post Training Survey','Proof of Knowledge Transfer']:scoreHeaders),'Remarks',''];
   // Checkbox column centered (2026-08-11, per Sandra): the select-all header checkbox and every
   // row's checkbox were left-aligned inside a column wide enough for the "#" header text next to
   // it, so they visually sat off-center relative to each other -- centering both the <th> and each
   // row's <td> (see _tdaRowHtml/_tdaAddPickerRowHtml) lines them up in a single tight column.
   const thead=`<tr>${theadCols.map((c,i)=>i===0?`<th style="text-align:center;width:36px">${c}</th>`:`<th>${c}</th>`).join('')}</tr>`;
 
-  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType,dayList,isExternal):'';
-  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType,dayList,isExternal)).join('');
+  const addRow=(!locked&&_tdPartAddPickerOpen)?_tdaAddPickerRowHtml(s.assessmentType,dayList,isExternal,_tdaNames):'';
+  const bodyRows=rows.map((r,i)=>_tdaRowHtml(r,i,locked,s.assessmentType,dayList,isExternal,_tdaNames)).join('');
   const emptyRow=`<tr><td colspan="${theadCols.length}" style="text-align:center;padding:36px 10px;color:var(--text3);font-size:13px">No participants added yet. Use "+ Add Participant" or "Add Multiple (CSV)" above.</td></tr>`;
   const tbody=addRow+(bodyRows||(addRow?'':emptyRow));
 
@@ -11273,11 +11341,25 @@ function _tdaStatusSelectHtml(value,onchange,dis){
   </select>`;
 }
 
-function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal){
+// namedScoreCellsHtml builds one Pre-Test/Post-Test/Gain <td> triple PER assessment name
+// (2026-09-14) -- used instead of the single triple below whenever the session has 2+ named
+// assessments. Each input writes into r.preTestScores/postTestScores[name] via _tdaSetNamedField.
+function _tdaNamedScoreCellsHtml(r,names,preApplicable,postApplicable,preDis,postDis,fullyAbsent){
+  return names.map(name=>{
+    const preVal=_tdaGetNamedScore(r,'pre',name), postVal=_tdaGetNamedScore(r,'post',name);
+    const gain=(preApplicable&&postApplicable&&preVal!=null&&postVal!=null)?Math.round((Number(postVal)-Number(preVal))*10)/10:null;
+    const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
+    const preCell=preApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${preVal??''}" placeholder="—" min="0" max="100" onblur="_tdaSetNamedField('${r.id}','pre','${Utils.esc(name)}',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">';
+    const postCell=postApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${postVal??''}" placeholder="—" min="0" max="100" onblur="_tdaSetNamedField('${r.id}','post','${Utils.esc(name)}',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">';
+    return `<td>${preCell}</td><td>${postCell}</td><td>${gainHtml}</td>`;
+  }).join('');
+}
+
+function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal,names){
   const p=_tdaPersonInfo(r);
   const isMultiDay=(dayList||[]).length>1;
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
-  const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
+  const gain=(preApplicable&&postApplicable)?_tdaGain(r,names?{assessmentNames:names}:null):null;
   const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
   const dis=locked?'disabled':'';
   const fullyAbsent=_tdaIsFullyAbsent(r,dayList,isMultiDay);
@@ -11291,6 +11373,13 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal){
     ?dayList.map(d=>`<td>${_tdaStatusSelectHtml(_tdaGetDayStatus(r,d),`_tdaSetDayField('${r.id}','${d}',this.value)`,dis)}</td>`).join('')
     :`<td>${_tdaStatusSelectHtml(r.attendanceStatus||'pending',`_tdaSetField('${r.id}','attendanceStatus',this.value)`,dis)}</td>`);
   const scoreCell=(!isExternal&&isMultiDay)?`<td style="font-weight:600">${_tdaAttendanceScore(r,dayList).label}</td>`:'';
+  // Multiple named assessments (2026-09-14): swap in one Pre/Post/Gain triple per name; every
+  // other cell/column above is completely unaffected.
+  const scoreCells=names
+    ?_tdaNamedScoreCellsHtml(r,names,preApplicable,postApplicable,preDis,postDis,fullyAbsent)
+    :`<td>${preApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    <td>${postApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    <td>${gainHtml}</td>`;
   return `<tr data-row-id="${r.id}">
     <td style="text-align:center"><input type="checkbox" ${dis} onclick="_tdaToggleSelectRow('${r.id}',this.checked)" ${_tdPartSelected.has(r.id)?'checked':''}></td>
     <td style="color:var(--text3)">${i+1}</td>
@@ -11299,15 +11388,13 @@ function _tdaRowHtml(r,i,locked,assessmentType,dayList,isExternal){
     <td>${_tdaDeptSelectHtml(r,dis)}</td>
     ${statusCells}
     ${scoreCell}
-    ${isExternal?extCells:`<td>${preApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${preDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.preTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','preTestScore',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
-    <td>${postApplicable?(fullyAbsent?'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">':`<input type="number" class="form-control" ${postDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${r.postTestScore??''}" placeholder="—" min="0" max="100" onblur="_tdaSetField('${r.id}','postTestScore',this.value)">`):'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
-    <td>${gainHtml}</td>`}
+    ${isExternal?extCells:scoreCells}
     <td><input type="text" class="form-control" ${dis} style="width:120px;padding:5px 8px;font-size:12.5px" value="${Utils.esc(r.remarks||'')}" placeholder="—" onblur="_tdaSetField('${r.id}','remarks',this.value)"></td>
     <td>${locked?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="_tdaRemoveRow('${r.id}')" title="Remove participant">✕</button>`}</td>
   </tr>`;
 }
 
-function _tdaAddPickerRowHtml(assessmentType,dayList,isExternal){
+function _tdaAddPickerRowHtml(assessmentType,dayList,isExternal,names){
   const preApplicable=_tdaPreApplicable(assessmentType), postApplicable=_tdaPostApplicable(assessmentType);
   const isMultiDay=(dayList||[]).length>1;
   // At add-time, a single status dropdown sets the SAME initial status for every day of a
@@ -11316,6 +11403,11 @@ function _tdaAddPickerRowHtml(assessmentType,dayList,isExternal){
   const statusCell=`<td><select id="tda-add-status" class="form-control" style="font-size:12.5px">
       ${Object.keys(_TDA_STATUS_STYLE).map(k=>`<option value="${k}" ${k==='pending'?'selected':''}>${_TDA_STATUS_STYLE[k].label}</option>`).join('')}
     </select></td>`;
+  // Multiple named assessments (2026-09-14): one Pre/Post input pair per name at add-time too,
+  // indexed (tda-add-pre-0, tda-add-post-0, ...) so _tdaConfirmAdd can read them back by position.
+  const namedAddCells=names?names.map((n,idx)=>`<td>${preApplicable?`<input type="number" id="tda-add-pre-${idx}" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    <td>${postApplicable?`<input type="number" id="tda-add-post-${idx}" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">`:'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    <td style="color:var(--text3)">—</td>`).join(''):'';
   return `<tr style="background:#f8fafc">
     <td></td>
     <td style="color:var(--text3)">•</td>
@@ -11324,9 +11416,9 @@ function _tdaAddPickerRowHtml(assessmentType,dayList,isExternal){
     <td><select id="tda-add-dept" class="form-control" style="font-size:12.5px;min-width:110px"><option value="">— Select —</option>${Sel.active(Store.DEPARTMENTS).map(d=>`<option value="${d.id}">${Utils.esc(d.name)}</option>`).join('')}</select></td>
     ${isExternal?'':(isMultiDay?dayList.map(()=>'<td style="color:var(--text3)">—</td>').join(''):statusCell)}
     ${(!isExternal&&isMultiDay)?'<td style="color:var(--text3)">—</td>':''}
-    ${isExternal?'<td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td>':`<td>${preApplicable?'<input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
+    ${isExternal?'<td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td><td style="color:var(--text3);text-align:center">—</td>':(names?namedAddCells:`<td>${preApplicable?'<input type="number" id="tda-add-pre" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
     <td>${postApplicable?'<input type="number" id="tda-add-post" class="form-control" style="width:70px;padding:5px 8px;font-size:12.5px" placeholder="—" min="0" max="100">':'<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="—">'}</td>
-    <td style="color:var(--text3)">—</td>`}
+    <td style="color:var(--text3)">—</td>`)}
     <td><input type="text" id="tda-add-remarks" class="form-control" style="width:120px;padding:5px 8px;font-size:12.5px" placeholder="—"></td>
     <td><div style="display:flex;gap:6px"><button class="btn btn-sm btn-primary" onclick="_tdaConfirmAdd()">Add</button><button class="btn btn-sm btn-ghost" onclick="_tdaToggleAddPicker()">Cancel</button></div></td>
   </tr>`;
@@ -11344,14 +11436,27 @@ function _tdaConfirmAdd(){
   const departmentId=document.getElementById('tda-add-dept')?.value||null;
   const statusEl=document.getElementById('tda-add-status');
   const status=statusEl?statusEl.value:'pending';
-  const preRaw=document.getElementById('tda-add-pre')?.value;
-  const postRaw=document.getElementById('tda-add-post')?.value;
   const remarks=(document.getElementById('tda-add-remarks')?.value||'').trim();
   const s=TrSessionDB.byId(_tdDetailId);
   const dayList=s?_tdaDayList(s):[];
   const attendanceByDay=dayList.length>1?Object.fromEntries(dayList.map(d=>[d,status])):{};
+  const _tdaNames=s?_tdaAssessNames(s):null;
+  let preTestScore=null, postTestScore=null, preTestScores=undefined, postTestScores=undefined;
+  if(_tdaNames){
+    preTestScores={}; postTestScores={};
+    _tdaNames.forEach((n,idx)=>{
+      const preRaw=document.getElementById(`tda-add-pre-${idx}`)?.value;
+      const postRaw=document.getElementById(`tda-add-post-${idx}`)?.value;
+      preTestScores[n]=preRaw?Number(preRaw):null;
+      postTestScores[n]=postRaw?Number(postRaw):null;
+    });
+  } else {
+    const preRaw=document.getElementById('tda-add-pre')?.value;
+    const postRaw=document.getElementById('tda-add-post')?.value;
+    preTestScore=preRaw?Number(preRaw):null; postTestScore=postRaw?Number(postRaw):null;
+  }
   const newRow={id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, departmentId,
-    attended:false, attendanceStatus:status, attendanceByDay, preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
+    attended:false, attendanceStatus:status, attendanceByDay, preTestScore, postTestScore, preTestScores, postTestScores,
     remarks, notes:'', _isNew:true};
   const scoreCleared=_tdaClearAssessmentIfAbsent(newRow,s);
   _tdPartRows.push(newRow);
@@ -11371,6 +11476,14 @@ function _tdaSetField(rowId,field,value){
       if(_tdaClearAssessmentIfAbsent(r,s)) toast('Pre/Post-test score cleared — participant marked Absent.','info');
     }
   }
+  renderTrainingDetail();
+}
+
+// Multiple named assessments (2026-09-14): writes into the pre/post scores JSON object for one
+// assessment name, mirroring _tdaSetDayField's per-day pattern below.
+function _tdaSetNamedField(rowId,kind,name,value){
+  const r=_tdPartRows.find(x=>x.id===rowId); if(!r) return;
+  _tdaSetNamedScore(r,kind,name,value);
   renderTrainingDetail();
 }
 
@@ -11466,7 +11579,13 @@ function _tdaDownloadCSVTemplate(){
   // matched against the Departments Settings list on import, auto-creating one if it doesn't
   // already exist (same pattern as the "Other" venue auto-create). Pre-Test/Post-Test columns
   // added (2026-08-06, per Sandra) so scores can be bulk-imported instead of typed in one by one.
-  const csv = 'Employee ID,Name,Department,Pre-Test,Post-Test\nEMP-1234,Juan Dela Cruz,Sales,80,95\n';
+  // Multiple named assessments (2026-09-14): template gets a Pre-Test (Name)/Post-Test (Name)
+  // column pair per configured assessment name instead of the plain Pre-Test/Post-Test pair.
+  const _tdaTplSess=TrSessionDB.byId(_tdDetailId);
+  const _tdaTplNames=_tdaTplSess?_tdaAssessNames(_tdaTplSess):null;
+  const csv=_tdaTplNames
+    ?`Employee ID,Name,Department,${_tdaTplNames.map(n=>`Pre-Test (${n}),Post-Test (${n})`).join(',')}\nEMP-1234,Juan Dela Cruz,Sales,${_tdaTplNames.map(()=>'80,95').join(',')}\n`
+    :'Employee ID,Name,Department,Pre-Test,Post-Test\nEMP-1234,Juan Dela Cruz,Sales,80,95\n';
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -11499,8 +11618,19 @@ function _tdaHandleCSVFile(file){
     const {header,rows}=_tdaParseCSV(String(reader.result||''));
     const nameIdx=header.findIndex(h=>h.includes('name'));
     const deptIdx=header.findIndex(h=>h.includes('department'));
-    const preIdx=header.findIndex(h=>h.includes('pre'));
-    const postIdx=header.findIndex(h=>h.includes('post'));
+    // Multiple named assessments (2026-09-14): match "Pre-Test (Module 1)" style columns per
+    // configured name instead of the single generic Pre/Post column pair. Legacy single-
+    // assessment sessions are completely untouched (preIdx/postIdx path below).
+    const _tdaCsvSess=TrSessionDB.byId(_tdDetailId);
+    const _tdaCsvNames=_tdaCsvSess?_tdaAssessNames(_tdaCsvSess):null;
+    const preIdx=_tdaCsvNames?-1:header.findIndex(h=>h.includes('pre'));
+    const postIdx=_tdaCsvNames?-1:header.findIndex(h=>h.includes('post'));
+    const namedIdx=_tdaCsvNames?_tdaCsvNames.map(n=>{
+      const nl=n.trim().toLowerCase();
+      return {name:n,
+        preIdx:header.findIndex(h=>h.includes('pre')&&h.includes(nl)),
+        postIdx:header.findIndex(h=>h.includes('post')&&h.includes(nl))};
+    }):null;
     // Phase38 item 4: Employee ID replaces Supervisor in the expected CSV columns.
     const empIdIdx=header.findIndex(h=>h.includes('employee'));
     if(nameIdx===-1){
@@ -11521,10 +11651,22 @@ function _tdaHandleCSVFile(file){
       if(employeeId && existingEmpIds.has(employeeId.toLowerCase())){ skippedDup++; continue; }
       const deptName=deptIdx>=0?(cols[deptIdx]||'').trim():'';
       const departmentId=deptName?await _tdaResolveDepartmentId(deptName,deptCache):null;
-      const preRaw=preIdx>=0?(cols[preIdx]||'').trim():'';
-      const postRaw=postIdx>=0?(cols[postIdx]||'').trim():'';
+      let preTestScore=null, postTestScore=null, preTestScores=undefined, postTestScores=undefined;
+      if(namedIdx){
+        preTestScores={}; postTestScores={};
+        namedIdx.forEach(({name:n,preIdx:pi,postIdx:poi})=>{
+          const preRaw=pi>=0?(cols[pi]||'').trim():'';
+          const postRaw=poi>=0?(cols[poi]||'').trim():'';
+          preTestScores[n]=preRaw?Number(preRaw):null;
+          postTestScores[n]=postRaw?Number(postRaw):null;
+        });
+      } else {
+        const preRaw=preIdx>=0?(cols[preIdx]||'').trim():'';
+        const postRaw=postIdx>=0?(cols[postIdx]||'').trim():'';
+        preTestScore=preRaw?Number(preRaw):null; postTestScore=postRaw?Number(postRaw):null;
+      }
       _tdPartRows.push({id:Utils.uid(), sessionId:_tdDetailId, profileId:null, externalName:name, employeeId, departmentId,
-        attended:false, attendanceStatus:'pending', preTestScore:preRaw?Number(preRaw):null, postTestScore:postRaw?Number(postRaw):null,
+        attended:false, attendanceStatus:'pending', preTestScore, postTestScore, preTestScores, postTestScores,
         remarks:'', notes:'', _isNew:true});
       if(employeeId) existingEmpIds.add(employeeId.toLowerCase());
       added++;
@@ -11547,6 +11689,10 @@ async function _tdaPersistRows(){
     const patch={sessionId:r.sessionId, profileId:r.profileId||null, externalName:r.externalName||null,
       departmentId:r.departmentId||null, externalSupervisor:r.externalSupervisor||null, employeeId:r.employeeId||null,
       attendanceStatus:r.attendanceStatus||'pending', attendanceByDay:r.attendanceByDay||{}, preTestScore:r.preTestScore??null, postTestScore:r.postTestScore??null,
+      // Multiple named assessments (2026-09-14): persisted alongside the legacy scalar columns
+      // above -- both are written every time, but only one side is ever populated for a given
+      // participant depending on whether their session is in multi-assessment mode.
+      preTestScores:r.preTestScores||{}, postTestScores:r.postTestScores||{},
       remarks:r.remarks||'', attended, notes:r.notes||'',
       // External Sessions build (2026-08-13): Training Bond Signed / Proof of Completion / Post
       // Training Survey / Proof of Knowledge Transfer checkboxes (replace Pre/Post/Gain for
@@ -11605,7 +11751,16 @@ async function _tdaMarkCompleted(){
   // and can never have one -- don't count them as "missing" a score they were never expected to
   // sit, or Tag Complete would be permanently blocked by the very fix meant to keep their data
   // clean. Only participants who DID attend but still have no score block completion.
-  const missingScores=_tdPartRows.filter(r=>!_tdaIsFullyAbsent(r,_tdaDaysForComplete,_tdaMultiForComplete)&&((_tdaPreApp&&r.preTestScore==null)||(_tdaPostApp&&r.postTestScore==null))).length;
+  // Multiple named assessments (2026-09-14): every configured name must have a score, not just
+  // one, before a participant counts as fully assessed for Tag Complete purposes.
+  const _tdaCompleteNames=_tdaAssessNames(_tdaSess);
+  const missingScores=_tdPartRows.filter(r=>{
+    if(_tdaIsFullyAbsent(r,_tdaDaysForComplete,_tdaMultiForComplete)) return false;
+    if(_tdaCompleteNames){
+      return (_tdaPreApp&&!_tdaAllNamedScored(r,'pre',_tdaCompleteNames))||(_tdaPostApp&&!_tdaAllNamedScored(r,'post',_tdaCompleteNames));
+    }
+    return (_tdaPreApp&&r.preTestScore==null)||(_tdaPostApp&&r.postTestScore==null);
+  }).length;
   if(missingScores>0){
     toast(`Cannot tag session complete — ${missingScores} participant(s) missing a required Pre-Test/Post-Test score.`,'error');
     return;
@@ -12953,14 +13108,21 @@ function _tdOverviewAttendanceAssessmentBlock(s){
   const absent=countStatus('absent');
   const pending=countStatus('pending');
   const rate=unitTotal>0?Math.round(((present+late+leftEarly)/unitTotal)*100):0;
-  const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType));
-  const preRows=all.filter(r=>r.preTestScore!=null), postRows=all.filter(r=>r.postTestScore!=null);
-  const avgPre=preRows.length?Math.round(preRows.reduce((sum,r)=>sum+Number(r.preTestScore),0)/preRows.length):null;
-  const avgPost=postRows.length?Math.round(postRows.reduce((sum,r)=>sum+Number(r.postTestScore),0)/postRows.length):null;
+  const assessedRows=all.filter(r=>_tdaIsAssessed(r,s.assessmentType,s));
+  // 2026-09-14: multi-assessment sessions score each participant as the average of their own
+  // named-assessment scores first, THEN average those per-participant averages across the
+  // roster -- keeps a partially-absent roster from skewing the session-level KPI the way a flat
+  // pool-all-scores average would.
+  const _tdaNames=_tdaAssessNames(s);
+  const _tdaParticipantPre=(r)=>_tdaNames?_tdaAvgNamedScore(r,'pre',_tdaNames):(r.preTestScore!=null?Number(r.preTestScore):null);
+  const _tdaParticipantPost=(r)=>_tdaNames?_tdaAvgNamedScore(r,'post',_tdaNames):(r.postTestScore!=null?Number(r.postTestScore):null);
+  const preRows=all.filter(r=>_tdaParticipantPre(r)!=null), postRows=all.filter(r=>_tdaParticipantPost(r)!=null);
+  const avgPre=preRows.length?Math.round(preRows.reduce((sum,r)=>sum+_tdaParticipantPre(r),0)/preRows.length):null;
+  const avgPost=postRows.length?Math.round(postRows.reduce((sum,r)=>sum+_tdaParticipantPost(r),0)/postRows.length):null;
   const avgGain=(avgPre!=null&&avgPost!=null&&s.assessmentType==='Pre & Post')?avgPost-avgPre:null;
   const passingScore=s.passingScore;
   const passApplicable=s.assessmentType!=='Pre-test only';
-  const passedCount=(passingScore!=null&&passApplicable)?assessedRows.filter(r=>r.postTestScore!=null&&Number(r.postTestScore)>=passingScore).length:null;
+  const passedCount=(passingScore!=null&&passApplicable)?assessedRows.filter(r=>_tdaParticipantPost(r)!=null&&_tdaParticipantPost(r)>=passingScore).length:null;
   const passRate=(passedCount!=null&&assessedRows.length)?Math.round((passedCount/assessedRows.length)*100):null;
   const pct=(n,d)=>d>0?Math.round((n/d)*100)+'%':'';
   const attendanceCards=`
@@ -13392,7 +13554,7 @@ function _tdOverviewJourneySteps(s,ownerType){
   steps.push({label:'Attendance Recorded',state:attState,sub:attSub});
 
   if(s.assessmentType && s.assessmentType!=='None'){
-    const assessedRows=partRows.filter(r=>_tdaIsAssessed(r,s.assessmentType));
+    const assessedRows=partRows.filter(r=>_tdaIsAssessed(r,s.assessmentType,s));
     let assessState='pending';
     if(totalP>0 && assessedRows.length===totalP) assessState='done';
     else if(assessedRows.length>0) assessState='in_progress';
@@ -13646,28 +13808,43 @@ function _tdaAttendanceListExportHtml(s){
   const preApplicable=_tdaPreApplicable(s.assessmentType), postApplicable=_tdaPostApplicable(s.assessmentType);
   const dayList=_tdaDayList(s), isMultiDay=dayList.length>1;
   const th=(t)=>`<th style="text-align:left;padding:6px 8px;border-bottom:2px solid #cbd5e1;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.03em">${Utils.esc(t)}</th>`;
+  // Multiple named assessments (2026-09-14): one Pre/Post/Gain column TRIPLE per name in the
+  // exported snapshot too, so it matches whatever's live on the Attendance & Performance tab.
+  const _tdaExpNames=_tdaAssessNames(s);
+  const scoreHeadCells=_tdaExpNames?_tdaExpNames.map(n=>th(`${n} Pre`)+th(`${n} Post`)+th(`${n} Gain`)).join(''):th('Pre-Test')+th('Post-Test')+th('Gain');
   const trs=rows.map(r=>{
     const p=_tdaPersonInfo(r);
-    const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
-    const gainTxt=gain===null?'—':`${gain>0?'+':''}${gain}`;
-    const preTxt=preApplicable?(r.preTestScore??'—'):'—';
-    const postTxt=postApplicable?(r.postTestScore??'—'):'—';
     const attendanceCell=isMultiDay
       ?`<span style="font-weight:600">${_tdaAttendanceScore(r,dayList).label}</span>`
       :(()=>{ const st=_TDA_STATUS_STYLE[r.attendanceStatus]||_TDA_STATUS_STYLE.pending; return `<span style="background:${st.bg};color:${st.fg};font-weight:600;border-radius:5px;padding:2px 8px;font-size:12px">${st.label}</span>`; })();
+    let scoreCells;
+    if(_tdaExpNames){
+      scoreCells=_tdaExpNames.map(n=>{
+        const preVal=preApplicable?(_tdaGetNamedScore(r,'pre',n)??'—'):'—';
+        const postVal=postApplicable?(_tdaGetNamedScore(r,'post',n)??'—'):'—';
+        const preNum=_tdaGetNamedScore(r,'pre',n), postNum=_tdaGetNamedScore(r,'post',n);
+        const g=(preApplicable&&postApplicable&&preNum!=null&&postNum!=null)?Math.round((Number(postNum)-Number(preNum))*10)/10:null;
+        const gTxt=g===null?'—':`${g>0?'+':''}${g}`;
+        return `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${preVal}</td><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${postVal}</td><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${gTxt}</td>`;
+      }).join('');
+    } else {
+      const gain=(preApplicable&&postApplicable)?_tdaGain(r):null;
+      const gainTxt=gain===null?'—':`${gain>0?'+':''}${gain}`;
+      const preTxt=preApplicable?(r.preTestScore??'—'):'—';
+      const postTxt=postApplicable?(r.postTestScore??'—'):'—';
+      scoreCells=`<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${preTxt}</td><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${postTxt}</td><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${gainTxt}</td>`;
+    }
     return `<tr>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.employeeId)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.name)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${Utils.esc(p.department)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${attendanceCell}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${preTxt}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${postTxt}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${gainTxt}</td>
+      ${scoreCells}
     </tr>`;
   }).join('');
   // Phase38 item 4: Employee ID added as the first column (matching the live roster table order).
   return `<table style="width:100%;border-collapse:collapse;font-size:13px">
-    <tr>${th('Employee ID')}${th('Participant')}${th('Department')}${th(isMultiDay?'Attendance Score':'Attendance Status')}${th('Pre-Test')}${th('Post-Test')}${th('Gain')}</tr>
+    <tr>${th('Employee ID')}${th('Participant')}${th('Department')}${th(isMultiDay?'Attendance Score':'Attendance Status')}${scoreHeadCells}</tr>
     ${trs}
   </table>`;
 }
@@ -14023,6 +14200,7 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
       </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
+      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment Names <span style=\'font-weight:400;color:var(--text3)\'>(optional)</span>',`<input type="text" id="tdd-assessment-names" class="form-control" ${smallInput} placeholder="Leave blank for one Pre/Post pair, or list e.g. Module 1, Module 2" value="${Utils.esc((s.assessmentNames||[]).join(', '))}">`)}
       ${_tddInfoBlockEdit('edit3','#64748b','Report Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
     </div>`)+footer;
   }
@@ -14137,6 +14315,7 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="Post-test only" ${s.assessmentType==='Post-test only'?'selected':''}>Post-test only</option>
         <option value="Pre & Post" ${s.assessmentType==='Pre & Post'?'selected':''}>Pre &amp; Post</option>
       </select><div style="font-size:9.5px;color:var(--text3);margin-top:2px">Assessment Type</div></div><div style="width:66px;flex-shrink:0"><input type="number" id="tdd-passing" class="form-control" style="width:100%;font-size:13px;padding:5px 6px" min="0" max="100" step="1" placeholder="e.g. 80" value="${s.passingScore??''}"><div style="font-size:9.5px;color:var(--text3);margin-top:2px;white-space:nowrap">Passing %</div></div></div>`)}
+      ${_tddInfoBlockEdit('clipboard','var(--sky)','Assessment Names <span style=\'font-weight:400;color:var(--text3)\'>(optional)</span>',`<input type="text" id="tdd-assessment-names" class="form-control" ${smallInput} placeholder="Leave blank for one Pre/Post pair, or list e.g. Module 1, Module 2" value="${Utils.esc((s.assessmentNames||[]).join(', '))}">`)}
       ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">Recording Link</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
       ${s.deliveryType==='ILT'?_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`):''}
     </div>`)+footer;
@@ -14437,6 +14616,14 @@ function _tddToggleTypeFields(){
     status:document.getElementById('tdd-status')?.value||original.status,
     assessmentType:document.getElementById('tdd-assessment')?.value||original.assessmentType,
     passingScore:passingRaw?parseInt(passingRaw,10):(passingRaw===''?null:original.passingScore),
+    // Multiple named assessments (2026-09-14): comma-separated free-text list -> array; blank or
+    // a single name both mean "legacy single-assessment" (_tdaAssessNames requires 2+ entries).
+    assessmentNames:(()=>{
+      const el=document.getElementById('tdd-assessment-names');
+      if(!el) return original.assessmentNames;
+      const parsed=el.value.split(',').map(x=>x.trim()).filter(Boolean);
+      return parsed.length?parsed:null;
+    })(),
     modalityId:document.getElementById('tdd-modalityid')?.value||original.modalityId,
     checklistTemplateId:document.getElementById('tdd-checklisttpl')?.value||original.checklistTemplateId,
     description:document.getElementById('tdd-description')?.value??original.description,
@@ -18721,7 +18908,7 @@ async function sendForgotPassword(){
     return;
   }
   try{
-    const {error}=await sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://dermorepubliqlnd.github.io/leap_insights' });
+    const {error}=await sb.auth.resetPasswordForEmail(email);
     if(error) throw error;
     al.style.cssText='display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px';
     al.textContent='Password reset email sent to '+email+'. Check your inbox (and spam folder).';
@@ -18813,9 +19000,8 @@ function bootApp(){
 }
 
 function afterLogin(user){
-  if(user&&user.mustChangePassword){ showChgPassScreen('first-login'); return; }
   bootApp();
-  }
+}
 
 let _bootHandled=false;
 function init(){
@@ -18852,7 +19038,10 @@ function init(){
           Auth._u=u; _bootHandled=true;
           document.getElementById('fs-loading').style.display='none';
           if(event==='PASSWORD_RECOVERY'){
-            showChgPassScreen('recovery');
+            document.getElementById('cp-alert').classList.remove('show');
+            document.getElementById('cp-new').value='';
+            document.getElementById('cp-confirm').value='';
+            showScreen('chg-pass-screen');
           } else {
             afterLogin(u);
           }
