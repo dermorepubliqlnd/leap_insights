@@ -7300,6 +7300,9 @@ const _TD_COL_DEFS=[
   {id:'eval', label:'Trainer Evaluation', width:140,
     sortVal:s=>_tdEvalStatusText(s),
     cell:s=>_tdEvalStatus(s)},
+  {id:'l3', label:'L3 Evaluation', width:130,
+    sortVal:s=>_tdl3ListSortVal(s),
+    cell:s=>_tdl3ListCell(s)},
   // Created / Created By split into two columns (2026-08-11, per Sandra): the combined cell
   // stacked date-on-top-of-name in two lines, which forced every row in the list to that same
   // two-line height even in Compact Rows mode. Splitting them into separate single-line columns
@@ -7640,6 +7643,18 @@ function renderTrainingDashboardKpis(){
   // there's no Type/Trainer concept that meaningfully narrows "bonds" further than "External").
   const activeBondSessions=_tdashActiveBondSessions();
 
+  // L3 Evaluations Due (2026-09-14, per Sandra: a KPI card "to show if anything is due in the
+  // next 30 days relative to today's date"). Deliberately NOT scoped to the Period filter above --
+  // same reasoning as the "Attention" widget's L3 row (a session completed months ago can still
+  // have an L3 due this week) and NOT scoped to allImplementations/rows either, since this needs
+  // to catch every outstanding L3 org-wide regardless of what's currently filtered. Counts
+  // anything due within the next 30 days OR already overdue (a 31-day-old overdue item is more
+  // urgent than one due tomorrow, not less, so it belongs in this count too) -- excludes sessions
+  // not requiring L3 and ones already marked complete.
+  const l3Due30=TrSessionDB.all().filter(s=>s.status!=='cancelled'&&s.l3Required&&!s.l3CompletedAt&&s.l3DueDate)
+    .filter(s=>s.l3DueDate<=_tdl3AddDays(_todayStr(),30));
+  const l3Due30Overdue=l3Due30.filter(s=>_tdl3Status(s)==='overdue').length;
+
   document.getElementById('tdash-kpis').innerHTML=`
     ${_tdaKpiCard('calendar','#2563eb','Upcoming Trainings',upcoming,'Next 30 days')}
     ${_tdaKpiCard('clipboard','#0369a1','All Implementations',allImplementations,range.label)}
@@ -7648,6 +7663,7 @@ function renderTrainingDashboardKpis(){
     ${_tdaKpiCard('filecheck','#0f766e','Completed Hours',completedHrs.forecastedHrs.toFixed(1)+' hrs',(completionPct!=null?completionPct+'% of scheduled':range.label))}
     ${_tdaKpiCard('user','#c2410c','Learners Reached',learners.size,'ILT/VILT · '+range.label)}
     ${_tdaKpiCard('clock','#0369a1','Active External Training Bonds',activeBondSessions.length,'End date today or later')}
+    ${_tdaKpiCard('flag','#dc2626','L3 Evaluations Due',l3Due30.length,'Next 30 days'+(l3Due30Overdue?` · ${l3Due30Overdue} overdue`:''),l3Due30.length>0?'var(--red)':undefined,l3Due30.length>0?'var(--red)':undefined)}
   `;
 
   // Passes the SAME rows/hrs/completedHrs already computed above so the By Delivery Type table's
@@ -11089,6 +11105,41 @@ function _tdl3Badge(s,compact){
   const style=_TDL3_STATUS_STYLE[st];
   const showDue=(st==='pending'||st==='due_soon'||st==='overdue')&&s.l3DueDate;
   return `<span class="badge" style="background:${style.bg};color:${style.fg};font-weight:600">${style.label}${showDue&&!compact?` · Due ${s.l3DueDate}`:''}</span>`;
+}
+// Days between today and the L3 due date -- positive = days remaining, negative = days overdue.
+// Null when there's nothing to count from (not required, or no due date yet).
+function _tdl3DaysUntil(s){
+  if(!s.l3Required||!s.l3DueDate) return null;
+  const due=new Date(s.l3DueDate+'T00:00:00'), today=new Date(_todayStr()+'T00:00:00');
+  return Math.round((due-today)/86400000);
+}
+// Training Calendar List view column (2026-09-14, per Sandra: "show if there is L3 data pending
+// or N/A or days countdown"). Text/sort value kept separate from the badge markup, same split as
+// _tdReportSLA/_tdReportSLADays and _tdEvalStatus/_tdEvalStatusText above.
+function _tdl3ListCellText(s){
+  if(!s.l3Required) return 'N/A';
+  if(s.l3CompletedAt) return 'Completed';
+  const d=_tdl3DaysUntil(s);
+  if(d==null) return 'Pending';
+  return d<0?`Overdue ${Math.abs(d)}d`:`Due in ${d}d`;
+}
+function _tdl3ListCell(s){
+  if(!s.l3Required) return '<span style="color:var(--text3)">N/A</span>';
+  if(s.l3CompletedAt) return '<span class="badge" style="background:#f0fdf4;color:#16a34a">Completed</span>';
+  const d=_tdl3DaysUntil(s);
+  if(d==null) return '<span class="txt-muted">—</span>';
+  if(d<0) return `<span class="badge" style="background:#fef2f2;color:#dc2626">Overdue ${Math.abs(d)}d</span>`;
+  if(d<=14) return `<span class="badge" style="background:#fffbeb;color:#d97706">Due in ${d}d</span>`;
+  return `<span class="badge" style="background:#f0f9ff;color:#0284c7">Due in ${d}d</span>`;
+}
+// Sort order (2026-09-14): overdue sorts first (most negative days first = most urgent), then
+// pending soonest-due-first, then Completed, then N/A last -- so a compliance-minded sort-by-L3
+// surfaces exactly what needs attention at the top.
+function _tdl3ListSortVal(s){
+  if(!s.l3Required) return 999999;
+  if(s.l3CompletedAt) return 99999;
+  const d=_tdl3DaysUntil(s);
+  return d==null?99998:d;
 }
 const _TDL3_METHOD_LABELS={manager:'Manager Observation',trainer:'Trainer Follow-up',self:'Self-Assessment'};
 function _tdl3MethodsDisplay(s){
