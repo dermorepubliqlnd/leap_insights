@@ -3065,7 +3065,19 @@ const _FIELD_MAPS = {
     // date in sessionDates (so every existing "start date" assumption elsewhere in the app keeps
     // working); endDate is left null for 'specific' mode (see _tdSessionEndDate for the mode-aware
     // replacement anchor used by SLA/Manual Override/Bond-date calculations).
-    dateMode:'date_mode', sessionDates:'session_dates'
+    dateMode:'date_mode', sessionDates:'session_dates',
+    // L3 (Kirkpatrick Behavior) Evaluation tracking (2026-09-14, per Sandra): opt-in per session --
+    // most sessions (compliance/technical refreshers) never need a post-training behavior check,
+    // but leadership/skills programs do, and without something established at Day-1 session
+    // creation it quietly never happens (the check-in is 30-90 days out, long after the session
+    // itself is "done"). l3Required flags it in; l3Methods (jsonb array, any combination of
+    // 'manager'/'trainer'/'self') records who's expected to complete it -- purely descriptive,
+    // doesn't gate anything. l3DueDate is computed once at save time (session end date + the
+    // org-wide 60-day window, see L3_WINDOW_DAYS) and stored rather than recalculated live, so it
+    // stays stable even if the window default changes later. l3CompletedAt/By/Rating/Notes are
+    // null until someone actually records the result (see _tdl3* helpers).
+    l3Required:'l3_required', l3Methods:'l3_methods', l3DueDate:'l3_due_date',
+    l3CompletedAt:'l3_completed_at', l3CompletedBy:'l3_completed_by', l3Rating:'l3_rating', l3Notes:'l3_notes'
   },
   // Per-session Checklist progress (Phase D2, 2026-08-07): a SNAPSHOT of the template's items at
   // the time the checklist tab was first opened for this session, plus status/completedOn per
@@ -8097,11 +8109,22 @@ function _tdaAttentionItems(){
 
   const pendingRequests=_tdaPendingRequestsCount();
 
+  // L3 Evaluations due/overdue (2026-09-14, per Sandra): the whole point of this row is to catch
+  // an L3 that's about to slip -- deliberately NOT scoped to tdashFilteredRows()/liveRows like the
+  // rows above (a session completed 3 months ago with an L3 due THIS week must still show up here
+  // even if the dashboard's period selector is set to "This Month"). Only counts sessions that are
+  // actually Due Soon or Overdue (see _tdl3Status) -- a session flagged as requiring L3 but not due
+  // for another 45 days isn't yet something anyone needs to act on.
+  const l3DueIds=TrSessionDB.all().filter(s=>s.status!=='cancelled'&&s.l3Required&&!s.l3CompletedAt)
+    .filter(s=>{ const st=_tdl3Status(s); return st==='due_soon'||st==='overdue'; })
+    .map(s=>s.id);
+
   return [
     {icon:'filetext',color:'#d97706',label:'Training reports pending',count:reportsPendingIds.length,ids:reportsPendingIds},
     {icon:'clipboard',color:'#dc2626',label:'Attendance records incomplete',count:attendanceIncompleteIds.length,ids:attendanceIncompleteIds},
     {icon:'alert-triangle',color:'#c2410c',label:'Recordings not uploaded',count:recordingsMissingIds.length,ids:recordingsMissingIds},
     {icon:'award',color:'#7c3aed',label:'Trainer evaluations ready',count:evalsReadyIds.length,ids:evalsReadyIds},
+    {icon:'flag',color:'#dc2626',label:'L3 Evaluations due / overdue',count:l3DueIds.length,ids:l3DueIds},
     {icon:'flag',color:'#2563eb',label:'Pending requests (reopens / approvals)',count:pendingRequests,ids:null,goPending:true}
   ];
 }
@@ -9380,6 +9403,18 @@ function renderTDCalendar(rows){
     (s.sessionDates||[]).forEach(d=>{ (byDate[d]=byDate[d]||[]).push(s); });
   });
 
+  // L3 Evaluation due-date reminders (2026-09-14, per Sandra: "I want this plotted in the
+  // calendar as reminder too"). Deliberately a SEPARATE small marker layer, not folded into the
+  // session chips/bars above -- a due-date reminder isn't a training day, and _tdCalChipHtml
+  // expects a real session-shaped chip (program/person/venue), not a reminder. Only plotted for
+  // sessions still outstanding (l3Required && not yet completed) and scoped to the same `rows` the
+  // rest of this calendar view is already filtered to, so a Type/Status filter narrows this too.
+  const l3ByDate={};
+  rows.forEach(s=>{
+    if(!s.l3Required||s.l3CompletedAt||!s.l3DueDate) return;
+    (l3ByDate[s.l3DueDate]=l3ByDate[s.l3DueDate]||[]).push(s);
+  });
+
   const CHIP_CAP=2;
   const BAR_H=32; // px per stacked bar lane (room for program title + person/venue line)
   let bodyCellsHtml='';
@@ -9454,10 +9489,17 @@ function renderTDCalendar(rows){
       // wrapping the whole bar in opacity:.55 made that in-month portion nearly invisible against
       // a white cell background, which looked like the bar had stopped instead of continued.
       const dimStyle=isOutOfMonth?'opacity:.55;':'';
+      // L3 due-date reminder chip(s) for this cell (2026-09-14) -- rendered as its own small red
+      // flag row, visually distinct from the program chips below so it reads as "reminder" rather
+      // than "this is a training happening today." Clicking jumps straight to that session's L3
+      // Evaluation tab via _tdOpenL3.
+      const l3Here=l3ByDate[dateStr]||[];
+      const l3Html=l3Here.length?`<div style="${dimStyle}display:flex;flex-direction:column;gap:2px;margin-bottom:2px">${l3Here.map(s=>`<div onclick="event.stopPropagation();_tdOpenL3('${s.id}')" title="L3 Behavior Evaluation due — ${Utils.esc(s.trainingProgram||s.code||'')}" style="cursor:pointer;display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:600;color:#dc2626;background:#fef2f2;border-radius:4px;padding:1px 5px;white-space:normal;word-break:break-word">${_tdIconSvg('flag','#dc2626',9)}<span>L3 Due: ${Utils.esc(s.trainingProgram||s.code||'')}</span></div>`).join('')}</div>`:'';
       bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isOutOfMonth?'#f8fafc':'var(--white)'};border:1px solid var(--border);padding:5px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
         <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${cellDate.getDate()}</div>
         <div style="height:${barBand}px"></div>
         ${barsHereHtml}
+        ${l3Html}
         <div style="${dimStyle}">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
       </div>`;
     }
@@ -9824,6 +9866,7 @@ const TD_DETAIL_TABS=[
   {id:'checklist',label:'Checklist'},
   {id:'attendance',label:'Attendance'},
   {id:'assessments',label:'Assessments'},
+  {id:'l3eval',label:'L3 Evaluation'},
   {id:'report',label:'Training Report'},
   {id:'trainer-eval',label:'Trainer Evaluation'},
   {id:'audit',label:'Audit History'}
@@ -9900,6 +9943,15 @@ function openTrainingDetail(id){
   _pushAppHash(_computeTrainingDeliveryHash());
 }
 
+// Jumps straight to a session's L3 Evaluation tab (2026-09-14) -- used by the Training Calendar's
+// L3-due reminder chip and the Training Dashboard's "L3 Evaluations due/overdue" row, so clicking
+// either one lands directly on the tab that needs action instead of the generic Overview tab
+// openTrainingDetail() always opens to.
+function _tdOpenL3(id){
+  openTrainingDetail(id);
+  _tdDetailTab='l3eval';
+  renderTrainingDetail();
+}
 function closeTrainingDetail(){
   disarmLeaveGuard();
   _tdDetailId=null; _tdDetailEditing=false;
@@ -10063,7 +10115,12 @@ async function tdDetailSave(){
     // Period + auto-computed End Date (anchored to endDate||trainingDate, see _tdBondEndDate).
     trainingClassification:grp==='external'?(document.getElementById('tdd-classification')?.value||null):null,
     ricaTicket:grp==='external'?(document.getElementById('tdd-ricaticket')?.value.trim()||''):null,
-    trainingBondMonths:grp==='external'?(document.getElementById('tdd-bondmonths')?.value?parseInt(document.getElementById('tdd-bondmonths').value,10):null):null
+    trainingBondMonths:grp==='external'?(document.getElementById('tdd-bondmonths')?.value?parseInt(document.getElementById('tdd-bondmonths').value,10):null):null,
+    // L3 (Kirkpatrick Behavior) Evaluation (2026-09-14, per Sandra): only offered where Assessments
+    // is (Self-led/ILT/VILT) -- always off/empty for External and Ad-hoc. Methods can be any
+    // combination (or just one) of manager/trainer/self-report.
+    l3Required:(grp==='owner'||grp==='trainer')?(document.getElementById('tdd-l3-required')?.checked||false):false,
+    l3Methods:(grp==='owner'||grp==='trainer')?Array.from(document.querySelectorAll('.tdd-l3-method:checked')).map(el=>el.value):[]
   };
   if(grp==='external'){
     const anchor=_tdSessionEndDate(d);
@@ -10071,6 +10128,10 @@ async function tdDetailSave(){
   } else {
     d.trainingBondEndDate=null;
   }
+  // L3 due date: recomputed off THIS save's own dates whenever required and not yet completed, so
+  // editing End Date later keeps it in sync; frozen once l3CompletedAt is set (a completed
+  // evaluation shouldn't silently reschedule itself) -- see _tdl3ComputeDueDate.
+  d.l3DueDate=d.l3Required?(s.l3CompletedAt?(s.l3DueDate||null):_tdl3ComputeDueDate(d)):null;
   const errs=[];
   // Pencil-book / Tentative (2026-08-19, per Sandra): a session staying Tentative only needs a
   // Title + Duration -- trainer, venue, audience, etc. aren't required yet since the booking isn't
@@ -10986,6 +11047,72 @@ function _tdaIsAssessed(r,s){
   return assessments.every(a=>(!a.pre||_tdaGetNamedScore(r,'pre',a.name)!=null)&&(!a.post||_tdaGetNamedScore(r,'post',a.name)!=null));
 }
 
+// L3 (Kirkpatrick Behavior) Evaluation helpers (2026-09-14, per Sandra): opt-in per session --
+// established at Day-1 session creation (not an afterthought) so a post-training behavior check
+// due weeks later doesn't quietly get forgotten. Org-wide window: due date = the session's real
+// end date (see _tdSessionEndDate, mode-aware for Specific Dates sessions) + L3_WINDOW_DAYS
+// ("let's do 60 days for now" -- kept as one constant so it's trivial to promote to a
+// Settings-configurable value later without touching any call site below).
+const L3_WINDOW_DAYS=60;
+function _tdl3AddDays(dateStr,days){
+  if(!dateStr) return null;
+  const d=new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// Recomputed at save time (see tdDetailSave) whenever L3 is required and NOT yet completed, so
+// editing a session's dates later keeps the due date in sync. Once l3CompletedAt is set the
+// stored due date is left alone -- a completed evaluation shouldn't silently reschedule itself.
+function _tdl3ComputeDueDate(s){
+  const anchor=_tdSessionEndDate(s);
+  return anchor?_tdl3AddDays(anchor,L3_WINDOW_DAYS):null;
+}
+// 'not_required' | 'pending' | 'due_soon' (within 14 days) | 'overdue' | 'completed'
+function _tdl3Status(s){
+  if(!s||!s.l3Required) return 'not_required';
+  if(s.l3CompletedAt) return 'completed';
+  if(!s.l3DueDate) return 'pending';
+  const today=_todayStr();
+  if(s.l3DueDate<today) return 'overdue';
+  if(s.l3DueDate<=_tdl3AddDays(today,14)) return 'due_soon';
+  return 'pending';
+}
+const _TDL3_STATUS_STYLE={
+  not_required:{bg:'#f1f5f9',fg:'#94a3b8',label:'Not Required'},
+  pending:{bg:'#f0f9ff',fg:'#0284c7',label:'Pending'},
+  due_soon:{bg:'#fffbeb',fg:'#d97706',label:'Due Soon'},
+  overdue:{bg:'#fef2f2',fg:'#dc2626',label:'Overdue'},
+  completed:{bg:'#f0fdf4',fg:'#16a34a',label:'Completed'}
+};
+function _tdl3Badge(s,compact){
+  const st=_tdl3Status(s);
+  const style=_TDL3_STATUS_STYLE[st];
+  const showDue=(st==='pending'||st==='due_soon'||st==='overdue')&&s.l3DueDate;
+  return `<span class="badge" style="background:${style.bg};color:${style.fg};font-weight:600">${style.label}${showDue&&!compact?` · Due ${s.l3DueDate}`:''}</span>`;
+}
+const _TDL3_METHOD_LABELS={manager:'Manager Observation',trainer:'Trainer Follow-up',self:'Self-Assessment'};
+function _tdl3MethodsDisplay(s){
+  const methods=Array.isArray(s.l3Methods)?s.l3Methods:[];
+  return methods.length?methods.map(m=>_TDL3_METHOD_LABELS[m]||m).join(', '):'—';
+}
+// End-to-end session closure rollup (2026-09-14, per Sandra: "there should be an overall status
+// showing end to end"). Purely a DISPLAY label combining three things that together mean a
+// session is truly, fully done -- Attendance/Assessments tagged Complete, the Training Report
+// submitted/approved, and (only if this session requires one) the L3 Evaluation completed. Does
+// NOT replace or write to the existing s.status/report status columns or any validation gating
+// them -- it's a read-only rollup for Overview/Calendar/Dashboard display only.
+function _tdClosureStatus(s,report){
+  const attendanceDone=s.status==='completed';
+  const reportDone=!!report&&(report.status==='approved'||report.status==='submitted');
+  const l3st=_tdl3Status(s);
+  const l3Done=l3st==='not_required'||l3st==='completed';
+  if(attendanceDone&&reportDone&&l3Done) return {key:'closed',label:'Fully Closed',bg:'#f0fdf4',fg:'#16a34a'};
+  if(attendanceDone&&reportDone) return l3st==='overdue'
+    ?{key:'awaiting_l3',label:'Awaiting L3 (Overdue)',bg:'#fef2f2',fg:'#dc2626'}
+    :{key:'awaiting_l3',label:'Awaiting L3 Evaluation',bg:'#fffbeb',fg:'#d97706'};
+  return {key:'in_progress',label:'In Progress',bg:'#f1f5f9',fg:'#64748b'};
+}
+
 const _TDA_STATUS_STYLE={
   present:{bg:'var(--green-lt)',fg:'var(--green)',label:'Present'},
   late:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Late'},
@@ -11418,6 +11545,91 @@ function _tdaRenderAssessmentsTab(s){
     </div>
     ${actionBar}
   `;
+}
+
+// L3 (Kirkpatrick Behavior) Evaluation tab (2026-09-14, per Sandra): a single session-level
+// record (NOT per-participant like Assessments -- a behavior/workplace-observation check is
+// normally one evaluation per training, not one per attendee), only shown at all when the
+// session was flagged "Requires L3 Evaluation" in Session Information. Deliberately simple v1:
+// due-date/status badge, the method(s) chosen at setup (editable here too, in case plans change),
+// a free-text overall rating and observation notes, and a Mark Complete/Reopen action -- same
+// direct-patch-and-toast pattern as _tdaSaveDraft, not the Session Info draft-then-Save flow.
+function _tdl3RenderTab(s){
+  const completed=!!s.l3CompletedAt;
+  const statusBadge=_tdl3Badge(s);
+  const methods=Array.isArray(s.l3Methods)?s.l3Methods:[];
+  const _tdl3CompletedByProfile=s.l3CompletedBy?DB.byId(s.l3CompletedBy):null;
+  const completedByName=_tdl3CompletedByProfile?`${_tdl3CompletedByProfile.firstName} ${_tdl3CompletedByProfile.lastName}`:'';
+  const methodChecks=Object.keys(_TDL3_METHOD_LABELS).map(m=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;${completed?'color:var(--text3)':''}">
+      <input type="checkbox" id="tdl3-method-${m}" ${methods.includes(m)?'checked':''} ${completed?'disabled':''} style="width:15px;height:15px">
+      ${_TDL3_METHOD_LABELS[m]}
+    </label>`).join('');
+  return `
+    ${_tdManualOverrideBanner(s)}
+    <div class="card" style="padding:18px 20px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div>
+          <div style="font-weight:700;font-size:14.5px">L3 Behavior Evaluation</div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:2px">Kirkpatrick Level 3 — has training changed on-the-job behavior?</div>
+        </div>
+        ${statusBadge}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px 24px;margin-bottom:16px">
+        <div>
+          <div class="form-label" style="font-size:11px;color:var(--text3);margin-bottom:6px">Evaluation Method(s)</div>
+          <div style="display:flex;flex-direction:column;gap:6px">${methodChecks}</div>
+        </div>
+        <div>
+          <div class="form-label" style="font-size:11px;color:var(--text3);margin-bottom:6px">Overall Behavior Rating</div>
+          <select id="tdl3-rating" class="form-control" style="font-size:13px;padding:6px 8px" ${completed?'disabled':''}>
+            <option value="">— Select —</option>
+            ${['Significantly Improved','Improved','No Change','Declined'].map(v=>`<option value="${v}" ${s.l3Rating===v?'selected':''}>${v}</option>`).join('')}
+          </select>
+          ${s.l3DueDate?`<div style="font-size:11px;color:var(--text3);margin-top:8px">Due: ${s.l3DueDate}</div>`:''}
+          ${completed?`<div style="font-size:11px;color:var(--text3);margin-top:4px">Completed ${Utils.esc((s.l3CompletedAt||'').slice(0,10))}${completedByName?` by ${Utils.esc(completedByName)}`:''}</div>`:''}
+        </div>
+      </div>
+      <div class="form-label" style="font-size:11px;color:var(--text3);margin-bottom:6px">Observations / Evidence</div>
+      <textarea id="tdl3-notes" class="form-control" rows="4" style="font-size:13px" placeholder="What behavior change was observed, by whom, and how..." ${completed?'disabled':''}>${Utils.esc(s.l3Notes||'')}</textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        ${completed
+          ?`<button class="btn btn-secondary" onclick="_tdl3Reopen()">Reopen</button>`
+          :`<button class="btn btn-secondary" onclick="_tdl3SaveDraft()">Save Draft</button>
+            <button class="btn btn-primary" onclick="_tdl3MarkComplete()">Mark L3 Complete</button>`}
+      </div>
+    </div>`;
+}
+function _tdl3ReadDraft(){
+  return {
+    l3Methods:Object.keys(_TDL3_METHOD_LABELS).filter(m=>document.getElementById(`tdl3-method-${m}`)?.checked),
+    l3Rating:document.getElementById('tdl3-rating')?.value||null,
+    l3Notes:document.getElementById('tdl3-notes')?.value.trim()||''
+  };
+}
+async function _tdl3SaveDraft(){
+  try{
+    await TrSessionDB.update(_tdDetailId,_tdl3ReadDraft());
+    renderTrainingDetail();
+    toast('Draft saved.','success');
+  }catch(e){ /* error already surfaced */ }
+}
+function _tdl3MarkComplete(){
+  confirm$('Mark L3 Complete','This will mark the L3 Behavior Evaluation as complete and lock the method/rating/notes fields. You can reopen it later if needed. Continue?','Mark Complete',async()=>{
+    try{
+      await TrSessionDB.update(_tdDetailId,{..._tdl3ReadDraft(), l3CompletedAt:new Date().toISOString(), l3CompletedBy:Auth.user?.id||null});
+      renderTrainingDetail();
+      toast('L3 Evaluation marked complete.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
+}
+function _tdl3Reopen(){
+  confirm$('Reopen L3 Evaluation','This will unlock the L3 Behavior Evaluation for editing. Continue?','Reopen',async()=>{
+    try{
+      await TrSessionDB.update(_tdDetailId,{l3CompletedAt:null, l3CompletedBy:null});
+      renderTrainingDetail();
+      toast('L3 Evaluation reopened.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
 }
 
 function _tdaDeptSelectHtml(r,dis){
@@ -13000,6 +13212,10 @@ function renderTrainingDetail(){
     // entirely), so the Assessments tab never shows for External, unlike Attendance which stays
     // (just relabeled "Checklist" below).
     .filter(t=>t.id!=='assessments'||s.deliveryType!=='External'))
+    // L3 Evaluation (2026-09-14): a session-level record, independent of the Attendance/
+    // Assessments roster split -- only ever shown when the session was flagged as requiring one
+    // in Session Information (which itself only offers the toggle for Self-led/ILT/VILT).
+    .filter(t=>t.id!=='l3eval'||s.l3Required)
     .filter(t=>!_tdMoActive||!(t.id==='checklist'||t.id==='attendance'||t.id==='assessments'||t.id==='report'))
     // Ad-hoc Task (2026-08-13, per Sandra): "no attendance/checklist/report requirement" -- leaves
     // only Overview and Audit History, same minimal set as a non-mandatory Self-led session.
@@ -13026,6 +13242,8 @@ function renderTrainingDetail(){
     tabBody=_tdaRenderAttendanceTab(s);
   } else if(_tdDetailTab==='assessments'){
     tabBody=_tdaRenderAssessmentsTab(s);
+  } else if(_tdDetailTab==='l3eval'){
+    tabBody=_tdl3RenderTab(s);
   } else if(_tdDetailTab==='report'){
     tabBody=_tdrRenderTab(s);
   } else if(_tdDetailTab==='trainer-eval'){
@@ -13046,6 +13264,10 @@ function renderTrainingDetail(){
           ${_tdTypeBadge(s.deliveryType)}
         </div>
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${summaryLine}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        ${(()=>{ const _tdClosure=_tdClosureStatus(s,TrainingReportsDB.all().find(r=>r.sessionId===s.id)); return `<span class="badge" style="background:${_tdClosure.bg};color:${_tdClosure.fg};font-weight:700;font-size:11.5px" title="End-to-end status: Attendance, Report, and (if required) L3 Evaluation">${_tdClosure.label}</span>`; })()}
+        ${s.l3Required?_tdl3Badge(s,true):''}
       </div>
     </div>
     <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
@@ -13139,6 +13361,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
         ${_tddInfoBlock('users','var(--sky)','Required Participants',s.expectedParticipants??'<span style="color:var(--text3);font-weight:400">— not set —</span>')}
         ${_tddInfoBlock('clipboard','var(--sky)','Assessment',_tddAssessmentDisplay(s))}
         ${_tddInfoBlock('edit3','#64748b','Report Link',reportLinkVal)}
+        ${s.l3Required?`<div style="grid-column:span 2">${_tddInfoBlock('flag','#dc2626','L3 Behavior Evaluation',`${_tdl3Badge(s)}<div style="font-weight:400;font-size:12px;color:var(--text2);margin-top:4px">${Utils.esc(_tdl3MethodsDisplay(s))}</div>`)}</div>`:''}
       </div>`)+
       `${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
     `;
@@ -13223,6 +13446,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
       <div style="grid-column:span 2">${_tddInfoBlock('clipboard','var(--sky)','Assessment',_tddAssessmentDisplay(s))}</div>
       ${ownerType?'':_tddInfoBlock('edit3','#64748b','Recording Link',s.recordingLink?`<a href="${s.recordingLink}" target="_blank" rel="noopener" style="font-size:13.5px">▶ View</a>`:'<span style="color:var(--text3);font-weight:400">— none —</span>')}
       ${s.deliveryType==='ILT'?_tddInfoBlock('clipboard','#0369a1','Trainer Checklist',_tdChecklistTemplateDisplay(s)):''}
+      ${s.l3Required?`<div style="grid-column:span 2">${_tddInfoBlock('flag','#dc2626','L3 Behavior Evaluation',`${_tdl3Badge(s)}<div style="font-weight:400;font-size:12px;color:var(--text2);margin-top:4px">${Utils.esc(_tdl3MethodsDisplay(s))}</div>`)}</div>`:''}
     </div>`)+
     `${s.description?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-lt);font-size:13px;color:var(--text2);line-height:1.6;word-break:break-word;overflow-wrap:anywhere;max-width:100%">${Utils.esc(s.description).replace(/\n/g,'<br>')}</div>`:''}
   `;
@@ -14278,6 +14502,23 @@ function _tddSessionInfoEditContent(s,ownerType){
   const durationLabelInitial=(showsDateRange&&dateModeInitial==='specific')?'Hours per Day':'Duration (in Hours)';
   const durationField=_tddInfoBlockEdit('clock','var(--amber)',`<span id="tdd-duration-label">${durationLabelInitial}</span>`,`<input type="number" id="tdd-duration" class="form-control" ${smallInput} min="0" step="0.5" value="${s.durationHours??''}" oninput="_tddUpdateHoursTotal()"><div id="tdd-hours-total" style="font-size:9.5px;color:var(--text3);margin-top:2px">${Utils.esc(_tddHoursTotalText(s.durationHours,_tddSpecificDates.length,showsDateRange&&dateModeInitial==='specific'))}</div>`);
   const audienceField=_tddInfoBlockEdit('users','var(--sky)','Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],smallInputStyle));
+  // L3 (Kirkpatrick Behavior) Evaluation (2026-09-14, per Sandra): established at Day-1 session
+  // creation, same section as Assessments -- opt-in checkbox + which method(s) will be used
+  // (any combination, or just one; see _TDL3_METHOD_LABELS). Only offered where Assessments is
+  // (Self-led/ILT/VILT) -- External has no Assessment & Compliance section at all, and Ad-hoc
+  // tasks are too lightweight for a behavior-change check. The due-date preview here is informal
+  // (computed off the session's currently-SAVED dates, not unsaved in-progress date edits) --
+  // the real, authoritative due date is (re)computed at save time in tdDetailSave.
+  const l3Field=(grp==='owner'||grp==='trainer')?`<div style="grid-column:span 2">${_tddInfoBlockEdit('flag','#dc2626','L3 Behavior Evaluation',`
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px">
+      <input type="checkbox" id="tdd-l3-required" ${s.l3Required?'checked':''} onchange="_tddL3Toggle()" style="width:16px;height:16px">
+      <span style="font-size:13px">Requires L3 Evaluation</span>
+    </label>
+    <div id="tdd-l3-methods-wrap" class="${s.l3Required?'':'hidden'}">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px">${Object.keys(_TDL3_METHOD_LABELS).map(m=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap"><input type="checkbox" class="tdd-l3-method" value="${m}" ${(s.l3Methods||[]).includes(m)?'checked':''}> ${_TDL3_METHOD_LABELS[m]}</label>`).join('')}</div>
+      <div style="font-size:10.5px;color:var(--text3)">Due ${L3_WINDOW_DAYS} days after End Date${s.l3DueDate?` (currently ${s.l3DueDate})`:''}</div>
+    </div>
+  `)}</div>`:'';
   // Ad-hoc (2026-08-13, per Sandra: Status is a direct Completed/Not Completed toggle, not gated
   // by an Attendance workflow like ILT/VILT/External) -- treated the same as ownerType (Self-led)
   // for purposes of "can this type set Completed directly from this dropdown".
@@ -14336,6 +14577,7 @@ function _tddSessionInfoEditContent(s,ownerType){
       ${_tddInfoBlockEdit('users','var(--sky)','Required Participants',`<input type="number" id="tdd-expected" class="form-control" ${smallInput} min="1" step="1" value="${s.expectedParticipants??''}">`)}
       <div style="grid-column:span 2">${_tddInfoBlockEdit('clipboard','var(--sky)','Assessments',`<div id="tdd-assess-list">${_tddAssessTableHtml()}</div><button type="button" class="btn btn-sm btn-secondary" onclick="_tddAddAssessRow()">+ Add Assessment</button>`)}</div>
       ${_tddInfoBlockEdit('edit3','#64748b','Report Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
+      ${l3Field}
     </div>`)+footer;
   }
 
@@ -14446,6 +14688,7 @@ function _tddSessionInfoEditContent(s,ownerType){
       <div style="grid-column:span 2">${_tddInfoBlockEdit('clipboard','var(--sky)','Assessments',`<div id="tdd-assess-list">${_tddAssessTableHtml()}</div><button type="button" class="btn btn-sm btn-secondary" onclick="_tddAddAssessRow()">+ Add Assessment</button>`)}</div>
       ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">Recording Link</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
       ${s.deliveryType==='ILT'?_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`):''}
+      ${l3Field}
     </div>`)+footer;
 }
 
@@ -14534,6 +14777,13 @@ function _tddAddAssessRow(){
 function _tddRemoveAssessRow(i){
   _tddAssessRows.splice(i,1);
   _tddRenderAssessTable();
+}
+// L3 Behavior Evaluation checkbox (2026-09-14): just shows/hides the method checklist -- no draft
+// state of its own (tdDetailSave reads #tdd-l3-required / .tdd-l3-method directly at save time,
+// same as every other plain field on this form).
+function _tddL3Toggle(){
+  const wrap=document.getElementById('tdd-l3-methods-wrap');
+  if(wrap) wrap.classList.toggle('hidden',!document.getElementById('tdd-l3-required')?.checked);
 }
 // Normalizes the draft rows at SAVE time only (2026-09-14): drops rows with neither Pre nor Post
 // checked (nothing to collect), defaults a blank name to "Assessment N", and de-duplicates names
@@ -14811,7 +15061,12 @@ function _tddToggleTypeFields(){
     checklistTemplateId:document.getElementById('tdd-checklisttpl')?.value||original.checklistTemplateId,
     description:document.getElementById('tdd-description')?.value??original.description,
     venueId:document.getElementById('tdd-venue')?.value||original.venueId,
-    venueOtherName:document.getElementById('tdd-venue-other')?.value??original.venueOtherName
+    venueOtherName:document.getElementById('tdd-venue-other')?.value??original.venueOtherName,
+    // L3 Behavior Evaluation (2026-09-14): same DOM-read-direct pattern as the rest of this
+    // snapshot -- only present in the DOM for Self-led/ILT/VILT, so falls back to the underlying
+    // record's value when switching to a type (External/Ad-hoc) that doesn't render it.
+    l3Required:document.getElementById('tdd-l3-required')?document.getElementById('tdd-l3-required').checked:original.l3Required,
+    l3Methods:document.getElementById('tdd-l3-required')?Array.from(document.querySelectorAll('.tdd-l3-method:checked')).map(el=>el.value):original.l3Methods
   };
   const ownerType=_tdIsOwnerType(dt);
   const card=document.getElementById('tdd-session-info-card');
