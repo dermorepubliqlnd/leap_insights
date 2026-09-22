@@ -2356,9 +2356,16 @@
                 <select id="mu-supervisor" class="form-control"><option value="">— None —</option></select>
               </div>
             </div>
-            <div class="form-group" style="margin-top:12px">
-              <label class="form-label">Hire Date</label>
-              <input type="date" id="mu-hiredate" class="form-control">
+            <div class="form-row" style="margin-top:12px">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Hire Date</label>
+                <input type="date" id="mu-hiredate" class="form-control">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Role Effective Date</label>
+                <input type="date" id="mu-role-eff-date" class="form-control">
+                <p class="form-hint" style="margin-top:4px">Date this person became eligible in their CURRENT Trainer/ID/CD position — only if different from Hire Date (e.g. an internal transfer). Defaults to Hire Date. Drives monthly Supervisor KPI eligibility.</p>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Delivery Allocation %</label>
@@ -2936,7 +2943,13 @@ const _FIELD_MAPS = {
     // canManageFacilitationRates implies view access to both restricted pages; canViewTrainingCosts
     // alone grants Cost Analysis only, not Cost Settings. Structured as two flags now so a future
     // real permissions system can slot in without a schema change.
-    canViewTrainingCosts:'can_view_training_costs', canManageFacilitationRates:'can_manage_facilitation_rates'
+    canViewTrainingCosts:'can_view_training_costs', canManageFacilitationRates:'can_manage_facilitation_rates',
+    // Role Effective Date (Supervisor KPI Phase 1, 2026-09-22, per Sandra): the date this person
+    // became eligible in their CURRENT Trainer/ID/CD position -- may differ from hireDate if they
+    // transferred into the role later. Defaults to hireDate on creation (see openAddUser/saveUser),
+    // admin-editable on transfer. Used by the monthly KPI eligibility snapshot: eligible if this
+    // date <= the 15th of the target month (see kpi_settings.eligibilityCutoffDay).
+    roleEffectiveDate:'role_effective_date'
   },
   positions:{ id:'id', name:'name', isActive:'is_active' },
   venues:{ id:'id', name:'name', isActive:'is_active', type:'type' },
@@ -3154,7 +3167,21 @@ const _FIELD_MAPS = {
     cdNotes:'cd_notes', finalizedAt:'finalized_at', acknowledgedAt:'acknowledged_at',
     createdAt:'created_at', updatedAt:'updated_at'
   },
-  audit_log:{ id:'id', ts:'ts', actorId:'actor_id', action:'action', module:'module', entityId:'entity_id', summary:'summary' }
+  audit_log:{ id:'id', ts:'ts', actorId:'actor_id', action:'action', module:'module', entityId:'entity_id', summary:'summary' },
+  // KPI Settings (Supervisor KPI Phase 1, 2026-09-22, per Sandra): single-row ('default') config,
+  // same pattern as attendance_settings/workload_settings -- monthly targets + the eligibility
+  // cutoff day are configurable rather than hard-coded since these may change later.
+  kpi_settings:{
+    id:'id', trainerEvalTarget:'trainer_eval_target', idAssuranceTarget:'id_assurance_target',
+    cdqaTarget:'cdqa_target', eligibilityCutoffDay:'eligibility_cutoff_day', updatedAt:'updated_at'
+  },
+  // KPI Monthly Snapshots (Supervisor KPI Phase 1, 2026-09-22, per Sandra): one row per locked
+  // calendar month ('YYYY-MM'), so a closed month's official KPI figures don't silently change if
+  // underlying evaluation/QA records are edited later. `data` is a jsonb blob holding the full
+  // per-supervisor coverage + CD QA volume breakdown -- shape can evolve without a migration.
+  kpi_monthly_snapshots:{
+    id:'id', month:'month', data:'data', lockedAt:'locked_at', lockedBy:'locked_by', createdAt:'created_at'
+  }
 };
 function rowToCamel(table,row){
   const out=_mapRow(row,_FIELD_MAPS[table]);
@@ -3195,7 +3222,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -3258,6 +3285,7 @@ const Store = {
   CATEGORIES:'categories', AUDIENCES:'audiences', AGENDA_TEMPLATES:'agenda_templates',
   CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
   DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings', PH_HOLIDAYS:'ph_holidays', WORKLOAD_PCT_HISTORY:'workload_pct_history',
+  KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -3467,13 +3495,16 @@ const DB = {
       employeeId:p.employeeId, positionId:p.positionId||null, supervisorId:p.supervisorId||null,
       hireDate:p.hireDate||null, isAdmin:!!p.isAdmin, isReportsViewer:!!p.isReportsViewer,
       formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA,
-      // NOTE (Phase Q, 2026-08-13): the admin-user-actions Edge Function (server-side, not in this
-      // file) does not yet whitelist/insert these two on create -- they're included here for
-      // forward-compat but will currently be ignored by that function on brand-new users. Existing
-      // users get them fine via DB.update below (a direct client-side Supabase write). Until the
-      // Edge Function is updated, set a new user's Facilitation Cost Access via Edit User right
-      // after creating them.
+      // NOTE (Phase Q, 2026-08-13; extended Supervisor KPI Phase 1, 2026-09-22): the
+      // admin-user-actions Edge Function (server-side, not in this file) does not yet whitelist/
+      // insert these fields on create -- they're included here for forward-compat but will
+      // currently be ignored by that function on brand-new users. Existing users get them fine via
+      // DB.update below (a direct client-side Supabase write). Until the Edge Function is updated,
+      // set a new user's Facilitation Cost Access AND Role Effective Date via Edit User right after
+      // creating them (Role Effective Date matters immediately for anyone hired straight into a
+      // Trainer/ID/CD position -- don't rely on this create call alone for KPI-eligible new hires).
       canViewTrainingCosts:!!p.canViewTrainingCosts, canManageFacilitationRates:!!p.canManageFacilitationRates,
+      roleEffectiveDate:p.roleEffectiveDate||null,
       dashScope:p.dashScope};
     const {data,error}=await sb.functions.invoke('admin-user-actions',{body});
     if(error){ _surfaceDbError(error,'Create user'); throw error; }
@@ -3484,6 +3515,7 @@ const DB = {
       hireDate:p.hireDate||'', isAdmin:!!p.isAdmin, isReportsViewer:!!p.isReportsViewer,
       formTrainer:!!p.formTrainer, formIDQA:!!p.formIDQA, formCQA:!!p.formCQA,
       canViewTrainingCosts:!!p.canViewTrainingCosts, canManageFacilitationRates:!!p.canManageFacilitationRates,
+      roleEffectiveDate:p.roleEffectiveDate||'',
       dashScope:p.dashScope,
       isActive:true, mustChangePassword:true, createdAt:now, updatedAt:now };
     Cache.data.profiles.push(profile);
@@ -5106,7 +5138,7 @@ function updateEmpStat(h){
 
 function openAddUser(){
   document.getElementById('mu-id').value='';
-  ['mu-empid','mu-fname','mu-lname','mu-email','mu-hiredate'].forEach(id=>document.getElementById(id).value='');
+  ['mu-empid','mu-fname','mu-lname','mu-email','mu-hiredate','mu-role-eff-date'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mu-workload-pct').value='60';
   document.getElementById('mu-active').checked=true; document.getElementById('mu-admin').checked=false; document.getElementById('mu-reports-viewer').checked=false; document.getElementById('mu-form-trainer').checked=false; document.getElementById('mu-form-idqa').checked=false; document.getElementById('mu-form-cqa').checked=false; document.getElementById('mu-cost-view').checked=false; document.getElementById('mu-cost-manage').checked=false; setDashScopeUI('team');
   document.getElementById('mu-title').textContent='Add New User';
@@ -5126,6 +5158,7 @@ function openEditUser(id){
   document.getElementById('mu-id').value=u.id; document.getElementById('mu-empid').value=u.employeeId||'';
   document.getElementById('mu-fname').value=u.firstName; document.getElementById('mu-lname').value=u.lastName;
   document.getElementById('mu-email').value=u.email; document.getElementById('mu-hiredate').value=u.hireDate||'';
+  document.getElementById('mu-role-eff-date').value=u.roleEffectiveDate||'';
   document.getElementById('mu-workload-pct').value=u.workloadAllocationPct??60;
   document.getElementById('mu-active').checked=u.isActive; document.getElementById('mu-admin').checked=u.isAdmin; document.getElementById('mu-reports-viewer').checked=u.isReportsViewer||false;
   document.getElementById('mu-title').textContent='Edit User';
@@ -5205,6 +5238,10 @@ async function saveUser(){
   // type uuid: """. Coerce empty selection to null, same pattern used for positionId etc. below.
   const supId=document.getElementById('mu-supervisor').value||null;
   const hireDate=document.getElementById('mu-hiredate').value;
+  // Role Effective Date (Supervisor KPI Phase 1, per Sandra): defaults to Hire Date when left
+  // blank, so this is opt-in-to-override rather than a second required date on every user.
+  const roleEffDateRaw=document.getElementById('mu-role-eff-date').value;
+  const roleEffectiveDate=roleEffDateRaw||hireDate||null;
   const workloadPctRaw=document.getElementById('mu-workload-pct').value;
   const workloadAllocationPct=workloadPctRaw===''?60:parseFloat(workloadPctRaw);
   const isActive=document.getElementById('mu-active').checked;
@@ -5229,7 +5266,7 @@ async function saveUser(){
     if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
     let result;
     try{
-      result=await DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,canViewTrainingCosts,canManageFacilitationRates,dashScope});
+      result=await DB.create({employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,roleEffectiveDate,workloadAllocationPct,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,canViewTrainingCosts,canManageFacilitationRates,dashScope});
     }catch(e){ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} return; }
     if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;}
     closeModal('user'); renderUsers();
@@ -5246,7 +5283,7 @@ async function saveUser(){
     if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
     try{
       const oldPct=ex.workloadAllocationPct!=null?Number(ex.workloadAllocationPct):60;
-      await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,workloadAllocationPct,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,canViewTrainingCosts,canManageFacilitationRates,dashScope});
+      await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,roleEffectiveDate,workloadAllocationPct,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,canViewTrainingCosts,canManageFacilitationRates,dashScope});
       // Phase P (2026-08-13, per Sandra): log a dated history row on actual change, rather than
       // just silently overwriting the old % -- otherwise past Trainer Workload periods would
       // retroactively show whatever % this person happens to have TODAY, which is wrong for trend
@@ -5518,7 +5555,7 @@ let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
 let _settingsShowInactive={};  // per-key: true=show inactive, false=hide
 
 function renderSettings(){
-  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Delivery'},{id:'backup',label:'Data & Backup'}];
+  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Delivery'},{id:'kpi',label:'Supervisor KPIs'},{id:'backup',label:'Data & Backup'}];
   document.getElementById('stabs').innerHTML=sections.map(t=>`<div class="stab${t.id===activeSettingsSection?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
   document.querySelectorAll('#stabs .stab').forEach(el=>el.addEventListener('click',()=>{activeSettingsSection=el.dataset.stab;renderSettings();}));
   document.getElementById('stab-panes').innerHTML=
@@ -5527,12 +5564,14 @@ function renderSettings(){
     `<div class="stab-pane${activeSettingsSection==='checklisttpl'?' active':''}" id="spane-checklisttpl"></div>`+
     `<div class="stab-pane${activeSettingsSection==='attendance'?' active':''}" id="spane-attendance"></div>`+
     `<div class="stab-pane${activeSettingsSection==='workload'?' active':''}" id="spane-workload"></div>`+
+    `<div class="stab-pane${activeSettingsSection==='kpi'?' active':''}" id="spane-kpi"></div>`+
     `<div class="stab-pane${activeSettingsSection==='backup'?' active':''}" id="spane-backup"></div>`;
   if(activeSettingsSection==='lists') renderListsOverview();
   else if(activeSettingsSection==='templates') renderAgendaTemplatesOverview();
   else if(activeSettingsSection==='checklisttpl') renderChecklistTemplatesOverview();
   else if(activeSettingsSection==='attendance') renderAttendanceSettingsPane();
   else if(activeSettingsSection==='workload') renderWorkloadSettingsPane();
+  else if(activeSettingsSection==='kpi') renderKpiSettingsPane();
   else renderBackupPane();
   renderListManageDrawer();
 }
@@ -5581,6 +5620,72 @@ async function saveAttendanceSettings(){
   const i=arr.findIndex(x=>x.id==='default');
   if(i>=0) arr[i]=saved; else arr.push(saved);
   toast('Attendance scoring settings saved.','success');
+}
+
+// Supervisor KPI Settings (Phase 1, 2026-09-22, per Sandra): monthly targets for Trainer
+// Evaluation coverage, Instructional Design Assurance coverage, and Content Development QA
+// volume, plus the eligibility cutoff day (a person becoming eligible ON or BEFORE this day of
+// the month counts for that month; after it, they count from next month). Config, not
+// hard-coded, since these numbers may change. Same single-row ('default') pattern as
+// _attendanceSettings()/_workloadSettings() above.
+function _kpiSettings(){
+  const row=Cache.data[Store.KPI_SETTINGS]&&Cache.data[Store.KPI_SETTINGS][0];
+  return {
+    trainerEvalTarget: row&&row.trainerEvalTarget!=null?Number(row.trainerEvalTarget):1,
+    idAssuranceTarget: row&&row.idAssuranceTarget!=null?Number(row.idAssuranceTarget):1,
+    cdqaTarget: row&&row.cdqaTarget!=null?Number(row.cdqaTarget):3,
+    eligibilityCutoffDay: row&&row.eligibilityCutoffDay!=null?Number(row.eligibilityCutoffDay):15
+  };
+}
+function renderKpiSettingsPane(){
+  const pane=document.getElementById('spane-kpi'); if(!pane) return;
+  const cfg=_kpiSettings();
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Supervisor KPI Targets</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Monthly targets LEAP Insights uses to compute Trainer Evaluation and Instructional Design Assurance coverage, and Content Development QA volume, on the Dashboard's Supervisor KPI snapshot. These do not calculate or display a final KPI rating — they drive the underlying coverage/volume figures only.</div></div></div>
+    <div class="card" style="padding:18px 20px;max-width:480px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label class="form-label">Trainer Evaluation — required per eligible Trainer / month</label>
+          <input type="number" id="kstg-trainer" class="form-control" style="width:120px" min="1" step="1" value="${cfg.trainerEvalTarget}">
+        </div>
+        <div>
+          <label class="form-label">ID Assurance — required per eligible Instructional Designer / month</label>
+          <input type="number" id="kstg-idqa" class="form-control" style="width:120px" min="1" step="1" value="${cfg.idAssuranceTarget}">
+        </div>
+        <div>
+          <label class="form-label">Content Development QA — total reviews required / month</label>
+          <input type="number" id="kstg-cdqa" class="form-control" style="width:120px" min="1" step="1" value="${cfg.cdqaTarget}">
+        </div>
+        <div>
+          <label class="form-label">Eligibility cutoff day of month</label>
+          <input type="number" id="kstg-cutoff" class="form-control" style="width:120px" min="1" max="28" step="1" value="${cfg.eligibilityCutoffDay}">
+          <p class="form-hint" style="margin-top:4px">A person whose Role Effective Date falls on or before this day of the month is included in that month's eligible population. On or after the following day, their requirement starts the next month.</p>
+        </div>
+      </div>
+      <div class="modal-err hidden" id="kstg-error" style="margin-top:12px"></div>
+      <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="saveKpiSettings()">Save</button>
+    </div>`;
+}
+async function saveKpiSettings(){
+  const trainerEvalTarget=parseInt(document.getElementById('kstg-trainer').value,10);
+  const idAssuranceTarget=parseInt(document.getElementById('kstg-idqa').value,10);
+  const cdqaTarget=parseInt(document.getElementById('kstg-cdqa').value,10);
+  const eligibilityCutoffDay=parseInt(document.getElementById('kstg-cutoff').value,10);
+  const errEl=document.getElementById('kstg-error');
+  const bad=v=>isNaN(v)||v<1;
+  if(bad(trainerEvalTarget)||bad(idAssuranceTarget)||bad(cdqaTarget)||isNaN(eligibilityCutoffDay)||eligibilityCutoffDay<1||eligibilityCutoffDay>28){
+    errEl.textContent='All targets must be at least 1, and the cutoff day must be between 1 and 28.'; errEl.classList.remove('hidden'); return;
+  }
+  errEl.classList.add('hidden');
+  const patch={trainerEvalTarget, idAssuranceTarget, cdqaTarget, eligibilityCutoffDay};
+  const row=patchToSnake(Store.KPI_SETTINGS,patch);
+  const {data,error}=await sb.from(Store.KPI_SETTINGS).update(row).eq('id','default').select().single();
+  if(error){ _surfaceDbError(error,'Save'); return; }
+  const saved=rowToCamel(Store.KPI_SETTINGS,data);
+  const arr=Cache.data[Store.KPI_SETTINGS];
+  const i=arr.findIndex(x=>x.id==='default');
+  if(i>=0) arr[i]=saved; else arr.push(saved);
+  if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','Settings','default','Updated Supervisor KPI targets');
+  toast('Supervisor KPI targets saved.','success');
 }
 
 // Trainer Workload Settings (Phase N, 2026-08-12, per Sandra's Trainer Workload spec): the
@@ -6424,7 +6529,7 @@ const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
   'departments','attendance_settings','workload_settings','ph_holidays','workload_pct_history','checklist_templates','session_checklists',
-  'training_sessions','audit_log','session_participants','training_reports'
+  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots'
 ];
 
 function _buildBackupPayload(){
