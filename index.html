@@ -3620,6 +3620,105 @@ function _dashScopeCQA(){
   if(me.isAdmin||me.isReportsViewer||me.dashScope==='full') return all;
   return all.filter(r=>r.authorId===me.id||r.reviewerId===me.id);
 }
+// Single "+ New Evaluation" dropdown (2026-09-22, per Sandra's mockup) -- replaces the old
+// 3-button "Quick Actions" strip below (_dashQAHtml, left in the file unused rather than removed,
+// same low-risk convention used elsewhere in this app for retired UI paths). Lives in the shared
+// topbar-acts slot, wired in showView(). Reuses the exact same nav+click actions the old buttons
+// used (Trainer Evaluation still routes through new-eval-btn's existing "start from a session"
+// toast, per the phase33 change -- not reimplemented here).
+function _dashNewEvalBtnHtml(){
+  const me=Auth.user; if(!me) return '';
+  const _fa=Auth.formAccess(me);
+  const items=[
+    {label:'Trainer Evaluation', ok:me.isAdmin||_fa.trainerEval, onclick:"showView('evaluations');setTimeout(()=>document.getElementById('new-eval-btn')?.click(),80)"},
+    {label:'ID QA Review', ok:me.isAdmin||_fa.idqa, onclick:"showView('id-qa');setTimeout(()=>document.getElementById('new-idqa-btn')?.click(),80)"},
+    {label:'Content Dev QA', ok:me.isAdmin||_fa.cqa, onclick:"showView('content-qa');setTimeout(()=>document.getElementById('new-cqa-btn')?.click(),80)"}
+  ].filter(i=>i.ok);
+  if(!items.length) return '';
+  return `<div class="td-viewmenu-wrap" id="dash-neweval-wrap">
+    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();document.getElementById('dash-neweval-wrap').classList.toggle('open')">+ New Evaluation ▾</button>
+    <div class="td-viewmenu" id="dash-neweval-menu" style="right:0;left:auto;min-width:190px">
+      ${items.map(i=>`<div class="td-viewmenu-item" onclick="document.getElementById('dash-neweval-wrap').classList.remove('open');${i.onclick}">${i.label}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* ── SUPERVISOR PERFORMANCE SNAPSHOT (Phase 3, 2026-09-22, per Sandra's mockup) ───────────────
+   Reads Phase 2's kpiDataFor(month, supervisorId). Scoped to the viewer's own direct reports by
+   default (same dashScope convention as _dashScopeEvals/_dashScopeIDQA/_dashScopeCQA); admins,
+   Reports Viewers, and dashScope==='full' see the org-wide figures instead. Uses the app's
+   existing icon/color convention (◉ green Trainer, ◈ purple ID QA, ✦ blue CD QA -- same glyphs
+   used on the Dashboard Overview cards) rather than introducing new icons or emoji, per
+   [[feedback-leap-insights-ui-conventions]]. ───────────────────────────────────────────────── */
+let _dashKpiSel=new Date().toISOString().slice(0,7);
+function _dashKpiMonthOptionsHtml(){
+  const now=new Date(); const opts=[];
+  for(let i=0;i<12;i++){
+    const dt=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const val=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+    opts.push(`<option value="${val}" ${val===_dashKpiSel?'selected':''}>${dt.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</option>`);
+  }
+  return opts.join('');
+}
+function _dashKpiScopeSupervisorId(){
+  const me=Auth.user; const tier=Perms.dashTier(me);
+  if(tier==='admin'||me.isReportsViewer||me.dashScope==='full') return null;
+  return me.id;
+}
+function _dashKpiPersonRow(r,unitLabel){
+  const initials=(r.name||'—').trim().split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+    <span style="width:24px;height:24px;border-radius:50%;background:#eef2ff;color:#4338ca;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${Utils.esc(initials)}</span>
+    <span style="font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Utils.esc(r.name)}</span>
+    <span style="font-size:11px;color:var(--text3);flex-shrink:0">${r.coveredCount} ${unitLabel}${r.coveredCount===1?'':'s'}</span>
+  </div>`;
+}
+function _dashKpiCard(o){
+  return `<div class="card" style="padding:16px 18px;flex:1;min-width:240px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="width:28px;height:28px;border-radius:8px;background:${o.bg};color:${o.color};font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${o.icon}</span>
+      <div style="min-width:0"><div style="font-size:13px;font-weight:700">${o.title}</div><div style="font-size:11px;color:var(--text3)">${o.subtitle}</div></div>
+    </div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <div style="font-size:19px;font-weight:800">${o.mainStat}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text3)">${o.subStat}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:11px;color:var(--text3)">${o.mainLabel}</div>
+      <div style="font-size:11px;color:var(--text3)">${o.subLabel}</div>
+    </div>
+    <div style="height:6px;background:#f1f5f9;border-radius:4px;overflow:hidden;margin-bottom:12px"><div style="height:100%;width:${o.pct}%;background:${o.color};border-radius:4px"></div></div>
+    <div style="font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">${o.listTitle}</div>
+    <div>${o.listHtml||'<div style="font-size:12px;color:var(--text3);padding:4px 0">None yet this month.</div>'}</div>
+  </div>`;
+}
+function _dashRenderKpiSnapshot(){
+  const el=document.getElementById('dash-kpi-snapshot'); if(!el) return;
+  const me=Auth.user; if(!me){ el.innerHTML=''; return; }
+  const _fa=Auth.formAccess(me);
+  const canSee=me.isAdmin||me.isReportsViewer||_fa.trainerEval||_fa.idqa||_fa.cqa;
+  if(!canSee){ el.innerHTML=''; return; }
+  const month=_dashKpiSel;
+  const scopeId=_dashKpiScopeSupervisorId();
+  const d=kpiDataFor(month,scopeId);
+  const trainerRows=d.trainer.rows.filter(r=>r.covered).map(r=>_dashKpiPersonRow(r,'evaluation')).join('');
+  const idRows=d.id.rows.filter(r=>r.covered).map(r=>_dashKpiPersonRow(r,'review')).join('');
+  const cdqaRows=d.cdqa.rows.slice().sort((a,b)=>(b.finalizedAt||'').localeCompare(a.finalizedAt||'')).slice(0,6)
+    .map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0"><span style="font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Utils.esc(r.projectTitle||r.code||'—')}</span><span style="font-size:11px;color:var(--text3);flex-shrink:0">${r.finalizedAt?Utils.formatDate(r.finalizedAt.slice(0,10)):'—'}</span></div>`).join('');
+  const pct=(a,b)=>b?Math.min(100,Math.round(a/b*100)):0;
+  el.innerHTML=`<div class="card" style="padding:20px 22px;margin-bottom:20px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-size:15px;font-weight:800">Supervisor Performance Snapshot${d.locked?' <span class="badge b-completed" style="vertical-align:middle">Locked</span>':''}</div><div style="font-size:12px;color:var(--text3);margin-top:2px">A quick look at evaluation coverage and quality assurance this month.</div></div>
+      <select class="dash-date-sel" id="dash-kpi-month-sel" style="width:170px" onchange="_dashKpiSel=this.value;_dashRenderKpiSnapshot()">${_dashKpiMonthOptionsHtml()}</select>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      ${_dashKpiCard({icon:'◉',color:'#16a34a',bg:'#f0fdf4',title:'Trainer Observation & Evaluation',subtitle:'Trainer coverage and evaluation completion',mainStat:`${d.trainer.coveredCount}/${d.trainer.eligibleCount}`,mainLabel:'Trainers Covered',subStat:d.trainer.totalQualifying,subLabel:'Total Evaluations',pct:pct(d.trainer.coveredCount,d.trainer.eligibleCount),listTitle:'Trainers covered this month',listHtml:trainerRows})}
+      ${_dashKpiCard({icon:'◈',color:'#7c3aed',bg:'#f5f3ff',title:'Instructional Design Assurance',subtitle:'ID coverage and review completion',mainStat:`${d.id.coveredCount}/${d.id.eligibleCount}`,mainLabel:'IDs Covered',subStat:d.id.totalQualifying,subLabel:'Total Reviews',pct:pct(d.id.coveredCount,d.id.eligibleCount),listTitle:'IDs reviewed this month',listHtml:idRows})}
+      ${_dashKpiCard({icon:'✦',color:'var(--pri)',bg:'#eff6ff',title:'Content Development QA',subtitle:'Content reviews and quality assurance',mainStat:`${d.cdqa.completed}/${d.cdqa.target}`,mainLabel:'Reviews Completed',subStat:d.cdqa.remaining,subLabel:'Remaining',pct:pct(d.cdqa.completed,d.cdqa.target),listTitle:'Recent reviews this month',listHtml:cdqaRows})}
+    </div>
+  </div>`;
+}
+
 function _dashQAHtml(tier){
   const me=Auth.user;
   const _fa=Auth.formAccess(me);
@@ -3746,6 +3845,10 @@ function showView(id){
   }
   document.getElementById('page-title').textContent=PAGE_TITLES[id]||'';
   document.getElementById('page-subtitle').textContent=PAGE_SUBTITLES[id]||'';
+  // Dashboard's single "+ New Evaluation" dropdown (2026-09-22, per Sandra: replaces the old
+  // 3-button "Quick Actions" strip in dash-body) lives in the shared topbar-acts slot -- cleared
+  // for every other view so it doesn't linger when navigating away.
+  document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?_dashNewEvalBtnHtml():'';
   if(id==='dashboard')   renderDashboard();
   if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
   if(id==='evaluations') renderEvaluations();
@@ -3981,10 +4084,10 @@ function _dashDpBadge(days){
 
 function renderDashboard(){
   _dashDestroy();
-  const bannerEl=document.getElementById('dash-banner');
-  if(!Store.get(Store.FIRSTRUN)){
-    bannerEl.innerHTML=`<div class="frb"><span style="font-size:20px;flex-shrink:0;margin-top:1px">🎉</span><div><div class="frb-title">LEAP Insights is ready</div><div class="frb-body">All accounts are ready. Users will receive a password setup email to set their own password. Log in with your admin account.</div></div><button class="frb-close" onclick="Store.set(Store.FIRSTRUN,true);this.closest('.frb').remove()">✕</button></div>`;
-  } else { bannerEl.innerHTML=''; }
+  // First-run "ready" banner removed (2026-09-22, per Sandra) -- Store.FIRSTRUN is left in place
+  // (harmless if unused) in case anything else ever keys off it, but the dashboard no longer
+  // renders anything into #dash-banner.
+  document.getElementById('dash-banner').innerHTML='';
   const tier=Perms.dashTier(Auth.user);
   const _dfa=Auth.formAccess(Auth.user);
   const me2=Auth.user; const _showAllTabs=(tier==='admin'||me2.isReportsViewer);
@@ -4008,7 +4111,7 @@ function renderDashboard(){
         <button class="dash-refresh-btn" title="Refresh" onclick="_dashUpdate()">↺</button>
       </div>
     </div>
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:0 0 8px">Quick Actions</div><div class="dash-qa-strip">${_dashQAHtml(tier)}</div>
+    <div id="dash-kpi-snapshot"></div>
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:16px 0 20px">
       <button id="dtab-overview" class="eval-tab active" onclick="setDashTab('overview')">📊 Overview</button>
       ${(_showAllTabs||_dfa.idqa)?`<button id="dtab-idqa" class="eval-tab" onclick="setDashTab('idqa')">◈ ID QA</button>`:''}
@@ -4019,6 +4122,7 @@ function renderDashboard(){
   `;
   _dashTab='overview';
   _dashUpdate();
+  _dashRenderKpiSnapshot();
 }
 
 function setDashTab(tab){
@@ -5663,7 +5767,8 @@ function renderKpiSettingsPane(){
       </div>
       <div class="modal-err hidden" id="kstg-error" style="margin-top:12px"></div>
       <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="saveKpiSettings()">Save</button>
-    </div>`;
+    </div>
+    ${_kpiMonthlyLockCardHtml()}`;
 }
 async function saveKpiSettings(){
   const trainerEvalTarget=parseInt(document.getElementById('kstg-trainer').value,10);
@@ -5686,6 +5791,161 @@ async function saveKpiSettings(){
   if(i>=0) arr[i]=saved; else arr.push(saved);
   if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','Settings','default','Updated Supervisor KPI targets');
   toast('Supervisor KPI targets saved.','success');
+}
+
+/* ── SUPERVISOR KPI COMPUTE (Phase 2, 2026-09-22, per Sandra) ────────────────────────────────
+   Pure read functions -- no UI beyond the small Monthly Lock card in the KPI Settings pane below.
+   Business rules confirmed with Sandra:
+   - Eligible for month M ('YYYY-MM') = active + Role Effective Date <= the Nth of M (N = kpi_
+     settings.eligibilityCutoffDay). No exit-date field needed: once a month is locked its figures
+     are frozen, so a later transfer/deactivation can only affect a FUTURE month's live numbers.
+   - "Coverage" (Trainer Eval / ID Assurance) requires the qualifying record's evaluator/reviewer
+     to be the evaluatee's OWN immediate supervisor (profiles.supervisorId) -- an evaluation by
+     anyone else is still visible in the app but does not satisfy THAT supervisor's coverage.
+   - "Qualifying" = the record reached pending_ack or later (i.e. status !== 'draft') -- counts once
+     the supervisor finalizes, trainee acknowledgement not required -- keyed by the month of
+     finalizedAt. Reopening (reopenEval/reopenIDQA/reopenCQA) resets status to 'draft' and
+     finalizedAt to null, so a reopened record automatically stops qualifying until re-finalized,
+     at which point finalizedAt is set fresh -- this naturally implements "counts toward the LATEST
+     finalization month," no extra history tracking needed.
+   - Content Development QA is volume-only, org-wide -- no eligible-population/coverage concept.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+function _kpiCutoffDate(month){
+  const day=_kpiSettings().eligibilityCutoffDay;
+  const [y,m]=month.split('-').map(Number);
+  return `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+function _kpiMonthEligible(profile,month){
+  if(!profile||!profile.isActive||!profile.roleEffectiveDate) return false;
+  return profile.roleEffectiveDate<=_kpiCutoffDate(month);
+}
+function _kpiEligibleByPosition(posId,month){
+  return DB.all().filter(u=>u.positionId===posId&&_kpiMonthEligible(u,month));
+}
+function _kpiRecordQualifiesForMonth(rec,month){
+  if(!rec||!rec.finalizedAt||rec.status==='draft') return false;
+  return rec.finalizedAt.slice(0,7)===month;
+}
+function _kpiTrainerCoverageRows(month){
+  const eligible=_kpiEligibleByPosition('pos_6',month);
+  const evals=EvalDB.all().filter(e=>_kpiRecordQualifiesForMonth(e,month));
+  return eligible.map(t=>{
+    const bySupervisor=evals.filter(e=>e.trainerId===t.id&&e.evaluatorId===t.supervisorId);
+    const anyEvaluator=evals.filter(e=>e.trainerId===t.id);
+    return {profileId:t.id,name:`${t.firstName} ${t.lastName}`,supervisorId:t.supervisorId||null,
+      covered:bySupervisor.length>0,coveredCount:bySupervisor.length,totalAnyEvaluator:anyEvaluator.length};
+  });
+}
+function _kpiIDCoverageRows(month){
+  const eligible=_kpiEligibleByPosition('pos_4',month);
+  const reviews=IDQADB.all().filter(r=>_kpiRecordQualifiesForMonth(r,month));
+  return eligible.map(d=>{
+    const bySupervisor=reviews.filter(r=>r.designerId===d.id&&r.reviewerId===d.supervisorId);
+    const anyReviewer=reviews.filter(r=>r.designerId===d.id);
+    return {profileId:d.id,name:`${d.firstName} ${d.lastName}`,supervisorId:d.supervisorId||null,
+      covered:bySupervisor.length>0,coveredCount:bySupervisor.length,totalAnyReviewer:anyReviewer.length};
+  });
+}
+function _kpiSummarize(rows){
+  return {eligibleCount:rows.length,coveredCount:rows.filter(r=>r.covered).length,
+    totalQualifying:rows.reduce((s,r)=>s+r.coveredCount,0),rows};
+}
+function _kpiTrainerCoverage(month,supervisorId){
+  let rows=_kpiTrainerCoverageRows(month);
+  if(supervisorId) rows=rows.filter(r=>r.supervisorId===supervisorId);
+  return {month, ..._kpiSummarize(rows)};
+}
+function _kpiIDCoverage(month,supervisorId){
+  let rows=_kpiIDCoverageRows(month);
+  if(supervisorId) rows=rows.filter(r=>r.supervisorId===supervisorId);
+  return {month, ..._kpiSummarize(rows)};
+}
+function _kpiCdqaVolume(month){
+  const rows=ContentQADB.all().filter(r=>_kpiRecordQualifiesForMonth(r,month));
+  const target=_kpiSettings().cdqaTarget;
+  return {month,target,completed:rows.length,remaining:Math.max(0,target-rows.length),rows};
+}
+// Union of every supervisorId with >=1 eligible Trainer or ID report that month -- the set of
+// Training Supervisors a locked snapshot needs a per-supervisor breakdown for.
+function _kpiAllSupervisorIds(month){
+  const ids=new Set();
+  _kpiEligibleByPosition('pos_6',month).concat(_kpiEligibleByPosition('pos_4',month))
+    .forEach(p=>{ if(p.supervisorId) ids.add(p.supervisorId); });
+  return [...ids];
+}
+function _kpiBuildSnapshotData(month){
+  const supervisors=_kpiAllSupervisorIds(month).map(sid=>{
+    const sup=DB.byId(sid);
+    return {supervisorId:sid, supervisorName:sup?`${sup.firstName} ${sup.lastName}`:'—',
+      trainer:_kpiTrainerCoverage(month,sid), id:_kpiIDCoverage(month,sid)};
+  });
+  return {month, supervisors, orgTrainer:_kpiTrainerCoverage(month), orgId:_kpiIDCoverage(month), cdqa:_kpiCdqaVolume(month)};
+}
+function kpiSnapshotFor(month){ return (Cache.data[Store.KPI_SNAPSHOTS]||[]).find(s=>s.month===month)||null; }
+function kpiIsLocked(month){ return !!kpiSnapshotFor(month); }
+// Single entry point Phase 3's Dashboard UI should call -- transparently reads a locked month's
+// frozen snapshot, or computes the current/future month live. supervisorId is optional (omit for
+// the org-wide/admin view).
+function kpiDataFor(month,supervisorId){
+  const snap=kpiSnapshotFor(month);
+  if(snap){
+    const d=snap.data;
+    const sRec=supervisorId?d.supervisors.find(x=>x.supervisorId===supervisorId):null;
+    return {locked:true, lockedAt:snap.lockedAt, lockedBy:snap.lockedBy,
+      trainer:supervisorId?(sRec?sRec.trainer:{month,eligibleCount:0,coveredCount:0,totalQualifying:0,rows:[]}):d.orgTrainer,
+      id:supervisorId?(sRec?sRec.id:{month,eligibleCount:0,coveredCount:0,totalQualifying:0,rows:[]}):d.orgId,
+      cdqa:d.cdqa};
+  }
+  return {locked:false,
+    trainer:_kpiTrainerCoverage(month,supervisorId), id:_kpiIDCoverage(month,supervisorId), cdqa:_kpiCdqaVolume(month)};
+}
+async function kpiLockMonth(month){
+  const me=Auth.user; if(!me||!me.isAdmin){ toast('Only an admin can lock a month.','error'); return; }
+  if(kpiIsLocked(month)){ toast(`${month} is already locked.`,'warning'); return; }
+  const data=_kpiBuildSnapshotData(month);
+  const row=patchToSnake(Store.KPI_SNAPSHOTS,{month,data,lockedBy:me.id});
+  const {data:saved,error}=await sb.from(Store.KPI_SNAPSHOTS).insert(row).select().single();
+  if(error){ _surfaceDbError(error,'Lock month'); return; }
+  Cache.data[Store.KPI_SNAPSHOTS].push(rowToCamel(Store.KPI_SNAPSHOTS,saved));
+  if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','Settings',month,`Locked Supervisor KPI figures for ${month}`);
+  toast(`${month} KPI figures locked.`,'success');
+  renderKpiSettingsPane();
+}
+async function kpiUnlockMonth(month){
+  const me=Auth.user; if(!me||!me.isAdmin) return;
+  const snap=kpiSnapshotFor(month); if(!snap) return;
+  confirm$('Unlock Month',`Unlock <strong>${month}</strong>? Its KPI figures will go back to computing live from current records, and the frozen snapshot will be deleted.`,'Unlock',async()=>{
+    const {error}=await sb.from(Store.KPI_SNAPSHOTS).delete().eq('id',snap.id);
+    if(error){ _surfaceDbError(error,'Unlock month'); return; }
+    const arr=Cache.data[Store.KPI_SNAPSHOTS]; const i=arr.findIndex(x=>x.id===snap.id); if(i>=0) arr.splice(i,1);
+    if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','Settings',month,`Unlocked Supervisor KPI figures for ${month}`);
+    toast(`${month} unlocked.`,'success');
+    renderKpiSettingsPane();
+  });
+}
+
+// Monthly Lock card (Phase 2): a minimal admin-facing way to preview live figures and lock/unlock
+// a month, ahead of the full Dashboard snapshot UI (Phase 3). Lives in the same KPI Settings pane.
+let _kpiLockMonthSel=new Date().toISOString().slice(0,7);
+function _kpiMonthlyLockCardHtml(){
+  const month=_kpiLockMonthSel;
+  const d=kpiDataFor(month);
+  const locked=d.locked;
+  const lockedMonths=(Cache.data[Store.KPI_SNAPSHOTS]||[]).slice().sort((a,b)=>b.month.localeCompare(a.month));
+  return `<div class="sec-hdr" style="margin-top:28px"><div><strong style="font-size:14px">Monthly Snapshot</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Preview this month's coverage/volume figures and lock a closed month so its numbers stop changing if records are edited later. Locking is admin-only and applies org-wide (not per-supervisor).</div></div></div>
+    <div class="card" style="padding:18px 20px;max-width:560px">
+      <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:14px">
+        <div><label class="form-label">Month</label><input type="month" id="kmon-sel" class="form-control" style="width:160px" value="${month}" onchange="_kpiLockMonthSel=this.value;renderKpiSettingsPane()"></div>
+        <span class="badge ${locked?'b-completed':'b-draft'}" style="margin-bottom:9px">${locked?'Locked':'Live (unlocked)'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="padding:10px 12px;background:#f0fdf4;border-radius:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#16a34a">Trainer Eval</div><div style="font-size:15px;font-weight:700;margin-top:2px">${d.trainer.coveredCount}/${d.trainer.eligibleCount} Covered</div><div style="font-size:11px;color:var(--text3)">${d.trainer.totalQualifying} total evaluations</div></div>
+        <div style="padding:10px 12px;background:#f5f3ff;border-radius:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#7c3aed">ID Assurance</div><div style="font-size:15px;font-weight:700;margin-top:2px">${d.id.coveredCount}/${d.id.eligibleCount} Covered</div><div style="font-size:11px;color:var(--text3)">${d.id.totalQualifying} total reviews</div></div>
+        <div style="padding:10px 12px;background:#eff6ff;border-radius:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--pri)">CD QA</div><div style="font-size:15px;font-weight:700;margin-top:2px">${d.cdqa.completed}/${d.cdqa.target} Completed</div><div style="font-size:11px;color:var(--text3)">${d.cdqa.remaining} remaining</div></div>
+      </div>
+      ${locked?`<button class="btn btn-secondary btn-sm" onclick="kpiUnlockMonth('${month}')">Unlock Month</button>`:`<button class="btn btn-primary btn-sm" onclick="kpiLockMonth('${month}')">Lock Month</button>`}
+      ${lockedMonths.length?`<div style="margin-top:16px"><div class="form-label" style="margin-bottom:6px">Locked months</div><div style="display:flex;flex-wrap:wrap;gap:6px">${lockedMonths.map(s=>`<span class="badge b-completed" style="cursor:pointer" onclick="_kpiLockMonthSel='${s.month}';renderKpiSettingsPane()">${s.month}</span>`).join('')}</div></div>`:''}
+    </div>`;
 }
 
 // Trainer Workload Settings (Phase N, 2026-08-12, per Sandra's Trainer Workload spec): the
