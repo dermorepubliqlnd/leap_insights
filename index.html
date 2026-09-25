@@ -3175,6 +3175,8 @@ const _FIELD_MAPS = {
   deliverables:{ id:'id', name:'name', isID:'is_id', isCD:'is_cd', isDefault:'is_default', isActive:'is_active' },
   categories:{ id:'id', name:'name', isActive:'is_active' },
   audiences:{ id:'id', name:'name', isActive:'is_active' },
+  // Program Types (2026-09-25, per Sandra): editable list of Learning Program delivery types.
+  program_types:{ id:'id', name:'name', isActive:'is_active' },
   // Departments (2026-08-06): tags session attendees, independent of the employee's Position --
   // replaces the free-text Role field in the Attendance & Performance roster.
   departments:{ id:'id', name:'name', isActive:'is_active' },
@@ -3452,7 +3454,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -3515,7 +3517,7 @@ const Store = {
   CATEGORIES:'categories', AUDIENCES:'audiences', AGENDA_TEMPLATES:'agenda_templates',
   CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
   DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings', PH_HOLIDAYS:'ph_holidays', WORKLOAD_PCT_HISTORY:'workload_pct_history',
-  KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots', KPI_TARGETS:'kpi_targets', LEARNING_PROGRAMS:'learning_programs',
+  KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots', KPI_TARGETS:'kpi_targets', LEARNING_PROGRAMS:'learning_programs', PROGRAM_TYPES:'program_types',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -4900,7 +4902,13 @@ function _ovRender(){
    L3 flag. Deliberately NOT linked to Training Sessions yet (Sandra: "keep the existing
    functionality, do not link anything yet") -- Quick Stats / Recent Implementations are
    placeholders until that link is designed. Only the Overview tab is built this round. */
-const LP_TYPES=['ILT','VILT','ILT/VILT','SLT','Blended'];
+const LP_TYPES=['ILT','VILT','ILT/VILT','SLT','Blended']; // fallback only -- the live list is Settings > Lists > Program Types
+function _lpTypes(includeAll){
+  const list=includeAll?Sel.all(Store.PROGRAM_TYPES):Sel.active(Store.PROGRAM_TYPES);
+  const names=list.map(t=>t.name);
+  if(includeAll) LearningProgramDB.all().forEach(p=>{ if(p.deliveryType&&!names.includes(p.deliveryType)) names.push(p.deliveryType); });
+  return names.length?names:LP_TYPES.slice();
+}
 const LP_ASSESS=['None','Pre-test','Post-test','Pre & Post'];
 const LP_TABS=[['overview','Overview'],['content','Content & Assessments'],['impl','Implementations'],['perf','Performance'],['files','Files & Resources'],['history','History']];
 const LP_TILE_COLORS=[['#eef2ff','#4f46e5'],['#fff7ed','#ea580c'],['#fef2f2','#dc2626'],['#f5f3ff','#7c3aed'],['#ecfeff','#0891b2'],['#f0fdf4','#16a34a'],['#fffbeb','#d97706'],['#fdf2f8','#db2777']];
@@ -5011,7 +5019,7 @@ function _lpListHtml(){
   const toolbar=`<div class="card lp-toolbar">
       <div class="lp-search">${_lpIc(LP_IC.search)}<input type="text" id="lp-q" placeholder="Search program title, category, or owner..." value="${Utils.esc(lpF.q)}" oninput="lpF.q=this.value;_lpRenderResults()"></div>
       <select onchange="lpF.cat=this.value;_lpRenderResults()">${opt('all','All Categories',lpF.cat)}${cats.map(c=>opt(c.id,c.name,lpF.cat)).join('')}</select>
-      <select onchange="lpF.type=this.value;_lpRenderResults()">${opt('all','All Types',lpF.type)}${LP_TYPES.map(t=>opt(t,t,lpF.type)).join('')}</select>
+      <select onchange="lpF.type=this.value;_lpRenderResults()">${opt('all','All Types',lpF.type)}${_lpTypes(true).map(t=>opt(t,t,lpF.type)).join('')}</select>
       <select onchange="lpF.status=this.value;_lpRenderResults()">${opt('active','Active',lpF.status)}${opt('inactive','Inactive',lpF.status)}${opt('all','All Statuses',lpF.status)}</select>
       <button class="btn btn-secondary btn-sm" onclick="lpReset()">Reset</button>
     </div>`;
@@ -5221,7 +5229,8 @@ function lpOpenForm(id,inactivate){
   const curCat=p&&p.categoryId&&!cats.some(c=>c.id===p.categoryId)?Sel.byId(Store.CATEGORIES,p.categoryId):null;
   document.getElementById('lpm-f-cat').innerHTML='<option value="">— Select —</option>'+[...cats,...(curCat?[curCat]:[])].map(c=>`<option value="${c.id}">${Utils.esc(c.name)}</option>`).join('');
   document.getElementById('lpm-f-cat').value=p?(p.categoryId||''):'';
-  document.getElementById('lpm-f-type').innerHTML='<option value="">— Select —</option>'+LP_TYPES.map(t=>`<option>${t}</option>`).join('');
+  const types=_lpTypes(false); if(p&&p.deliveryType&&!types.includes(p.deliveryType)) types.push(p.deliveryType);
+  document.getElementById('lpm-f-type').innerHTML='<option value="">— Select —</option>'+types.map(t=>`<option value="${Utils.esc(t)}">${Utils.esc(t)}</option>`).join('');
   document.getElementById('lpm-f-type').value=p?(p.deliveryType||''):'';
   document.getElementById('lpm-f-ver').value=p?(p.version||'v1'):'v1';
   document.getElementById('lpm-f-status').value=inactivate?'inactive':(p?(p.status||'active'):'active');
@@ -6796,7 +6805,8 @@ const STABS=[
   {id:'modalities',  label:'Delivery Method',     key:Store.MODALS, desc:'Delivery Method options for ILT/Self-led/External sessions and evaluations.', sing:'Delivery Method'},
   {id:'categories',  label:'Categories',          key:Store.CATEGORIES, desc:'Training categories used on ILT sessions.', sing:'Category'},
   {id:'audiences',   label:'Audiences',           key:Store.AUDIENCES, desc:'Audience tags — sessions can have more than one.', sing:'Audience'},
-  {id:'departments', label:'Departments',         key:Store.DEPARTMENTS, desc:'Departments assignable to session attendees in the Attendance & Performance roster.', sing:'Department'}
+  {id:'departments', label:'Departments',         key:Store.DEPARTMENTS, desc:'Departments assignable to session attendees in the Attendance & Performance roster.', sing:'Department'},
+  {id:'programtypes',label:'Program Types',       key:Store.PROGRAM_TYPES, desc:'Delivery types available when adding or editing a Learning Program.', sing:'Program Type'}
 ];
 let activeSettingsSection='lists'; // 'lists' | 'backup'
 let _settingsDrawerTabId=null;     // which STABS.id is currently open in the drawer, or null
@@ -7817,6 +7827,8 @@ function _selRefCount(key, id){
   // Deliverables already work — so ref-count by NAME match, not id.
   if(key===Store.CATEGORIES){ const item=Sel.byId(key,id); return item?TrSessionDB.all().filter(s=>s.category===item.name).length:0; }
   if(key===Store.AUDIENCES){ const item=Sel.byId(key,id); return item?TrSessionDB.all().filter(s=>(s.audience||[]).includes(item.name)).length:0; }
+  // Program Types are stored on learning_programs by NAME (delivery_type), same as Category on sessions.
+  if(key===Store.PROGRAM_TYPES){ const item=Sel.byId(key,id); return item?LearningProgramDB.all().filter(p=>p.deliveryType===item.name).length:0; }
   return 0; // deliverables stored as strings — safe to delete
 }
 function _selIsRefSafe(key){ return key===Store.DELIVERABLES; }
@@ -8022,7 +8034,7 @@ const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
   'departments','attendance_settings','workload_settings','ph_holidays','workload_pct_history','checklist_templates','session_checklists',
-  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets','learning_programs'
+  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets','learning_programs','program_types'
 ];
 
 function _buildBackupPayload(){
@@ -16764,7 +16776,7 @@ const AuditLog={
   }
 };
 function _selModuleLabel(k){
-  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience',[Store.DEPARTMENTS]:'Department'};
+  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience',[Store.DEPARTMENTS]:'Department',[Store.PROGRAM_TYPES]:'Program Type'};
   return map[k]||'Selection List';
 }
 
