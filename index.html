@@ -859,14 +859,17 @@
     /* ── LEARNING PROGRAMS (2026-09-25) ── */
     .modal-err.show,#kt-error:not(.hidden),#kstg-error:not(.hidden){display:block}
     .lp-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;margin-bottom:12px}
-    .lp-toolbar select{padding:8px 10px;border:1.5px solid var(--border);background:var(--white);font-size:12.5px;font-family:var(--font);color:var(--text2);min-width:140px}
-    .lp-search{flex:1;min-width:240px;display:flex;align-items:center;gap:8px;border:1.5px solid var(--border);border-radius:10px;padding:0 10px;color:var(--text3);background:var(--white)}
+    .lp-toolbar select{padding:8px 10px;border:1.5px solid var(--border);background:var(--white);font-size:12.5px;font-family:var(--font);color:var(--text2);min-width:120px}
+    .lp-search{flex:0 1 260px;min-width:180px;display:flex;align-items:center;gap:8px;border:1.5px solid var(--border);border-radius:10px;padding:0 10px;color:var(--text3);background:var(--white)}
     .lp-search input{border:none!important;outline:none;flex:1;padding:8px 0;font-size:13px;font-family:var(--font);background:transparent}
+    .lp-toolbar-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .lp-toolbar .ov-filter select{min-width:0;border:none}
     .lp-listhdr{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
     .lp-count{font-size:12.5px;color:var(--text3);font-weight:500}
     .lp-tblcard{padding:0;overflow:visible}
     .lp-tbl td{padding:12px 10px}
     .lp-tile{width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .lp-code{font-family:'DM Mono','Courier New',monospace;font-size:12px;font-weight:600;color:var(--pri);white-space:nowrap}
     .lp-ptitle{font-weight:600;color:var(--text);font-size:13px}
     .lp-person{display:flex;align-items:center;gap:8px;margin:2px 0}
     .lp-person-n{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -3410,7 +3413,7 @@ const _FIELD_MAPS = {
   },
   // Learning Programs (2026-09-25, per Sandra): program library. contributors/components are jsonb.
   learning_programs:{
-    id:'id', title:'title', categoryId:'category_id', deliveryType:'delivery_type', version:'version', status:'status',
+    id:'id', code:'code', title:'title', categoryId:'category_id', deliveryType:'delivery_type', version:'version', status:'status',
     effectiveFrom:'effective_from', effectiveTo:'effective_to', description:'description', contributors:'contributors',
     components:'components', agenda:'agenda', assessments:'assessments', l3Required:'l3_required', l3Notes:'l3_notes', createdBy:'created_by', updatedBy:'updated_by',
     createdAt:'created_at', updatedAt:'updated_at'
@@ -4946,6 +4949,13 @@ function _lpCandidates(){
   return DB.all().filter(u=>u.isActive&&(u.positionId==='pos_4'||u.positionId==='pos_5'||isSupervisorEligible(u)||Perms.isSupervisor(u)))
     .sort((a,b)=>`${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
 }
+// Program ID (2026-09-25, per Sandra): LP-YYYY-NNN, same scheme as session codes (TS-YYYY-NNN) --
+// highest existing suffix for the year + 1, so a gap can't collide with the unique constraint.
+function _lpNextCode(){
+  const prefix=`LP-${new Date().getFullYear()}-`;
+  const max=LearningProgramDB.all().reduce((m,p)=>{ if(!p.code||!p.code.startsWith(prefix)) return m; const n=parseInt(p.code.slice(prefix.length),10); return isNaN(n)?m:Math.max(m,n); },0);
+  return `${prefix}${String(max+1).padStart(3,'0')}`;
+}
 function _lpName(id){ const u=DB.byId(id); return u?`${u.firstName} ${u.lastName}`:'Unknown user'; }
 function _lpTile(p){
   const cats=Sel.all(Store.CATEGORIES); const i=Math.max(0,cats.findIndex(c=>c.id===p.categoryId));
@@ -4981,7 +4991,7 @@ function _lpFiltered(){
     if(lpF.cat!=='all'&&p.categoryId!==lpF.cat) return false;
     if(lpF.type!=='all'&&p.deliveryType!==lpF.type) return false;
     if(q){
-      const hay=[p.title,Sel.nameOf(Store.CATEGORIES,p.categoryId),...(p.contributors||[]).map(c=>_lpName(c.profileId))].join(' ').toLowerCase();
+      const hay=[p.code,p.title,Sel.nameOf(Store.CATEGORIES,p.categoryId),...(p.contributors||[]).map(c=>_lpName(c.profileId))].join(' ').toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -5019,22 +5029,20 @@ function _lpListHtml(){
   const cats=Sel.active(Store.CATEGORIES);
   const opt=(v,l,cur)=>`<option value="${v}"${v===cur?' selected':''}>${Utils.esc(l)}</option>`;
   const toolbar=`<div class="card lp-toolbar">
-      <div class="lp-search">${_lpIc(LP_IC.search)}<input type="text" id="lp-q" placeholder="Search program title, category, or owner..." value="${Utils.esc(lpF.q)}" oninput="lpF.q=this.value;_lpRenderResults()"></div>
+      <div class="lp-search">${_lpIc(LP_IC.search)}<input type="text" id="lp-q" placeholder="Search program ID, title, category, or owner..." value="${Utils.esc(lpF.q)}" oninput="lpF.q=this.value;_lpRenderResults()"></div>
       <select onchange="lpF.cat=this.value;_lpRenderResults()">${opt('all','All Categories',lpF.cat)}${cats.map(c=>opt(c.id,c.name,lpF.cat)).join('')}</select>
       <select onchange="lpF.type=this.value;_lpRenderResults()">${opt('all','All Types',lpF.type)}${_lpTypes(true).map(t=>opt(t,t,lpF.type)).join('')}</select>
       <select onchange="lpF.status=this.value;_lpRenderResults()">${opt('active','Active',lpF.status)}${opt('inactive','Inactive',lpF.status)}${opt('all','All Statuses',lpF.status)}</select>
       <button class="btn btn-secondary btn-sm" onclick="lpReset()">Reset</button>
+      <div class="lp-toolbar-right">
+        <label class="ov-filter"><span class="ov-filter-l">Sort by</span><select onchange="lpF.sort=this.value;_lpRenderResults()"><option value="updated"${lpF.sort==='updated'?' selected':''}>Recently Updated</option><option value="title"${lpF.sort==='title'?' selected':''}>Title A–Z</option></select></label>
+        <div class="ov-seg"><button type="button" class="${lpF.view==='list'?'on':''}" title="List view" onclick="lpF.view='list';renderLearningPrograms()">${_lpIc(LP_IC.list)}</button><button type="button" class="${lpF.view==='grid'?'on':''}" title="Grid view" onclick="lpF.view='grid';renderLearningPrograms()">${_lpIc(LP_IC.grid)}</button></div>
+      </div>
     </div>`;
   return toolbar+`<div id="lp-results">${_lpResultsHtml(rows)}</div>`;
 }
 function _lpResultsHtml(rows){
-  const hdr=`<div class="lp-listhdr">
-      <span class="lp-count">${rows.length} program${rows.length!==1?'s':''}</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <label class="ov-filter"><span class="ov-filter-l">Sort by</span><select onchange="lpF.sort=this.value;_lpRenderResults()"><option value="updated"${lpF.sort==='updated'?' selected':''}>Recently Updated</option><option value="title"${lpF.sort==='title'?' selected':''}>Title A–Z</option></select></label>
-        <div class="ov-seg"><button type="button" class="${lpF.view==='list'?'on':''}" title="List view" onclick="lpF.view='list';_lpRenderResults()">${_lpIc(LP_IC.list)}</button><button type="button" class="${lpF.view==='grid'?'on':''}" title="Grid view" onclick="lpF.view='grid';_lpRenderResults()">${_lpIc(LP_IC.grid)}</button></div>
-      </div>
-    </div>`;
+  const hdr=`<div class="lp-listhdr"><span class="lp-count">${rows.length} program${rows.length!==1?'s':''}</span></div>`;
   if(!rows.length){
     const none=!LearningProgramDB.all().length;
     return hdr+`<div class="card"><div class="empty-state"><div style="color:var(--text3);margin-bottom:10px">${_lpIc(LP_IC.layers)}</div><div class="empty-title">${none?'No programs yet':'No programs match these filters'}</div><div style="font-size:13px;color:var(--text3);margin-top:4px">${none?(lpCanEdit()?'Click "+ Add Program" to create the first one.':'Programs will appear here once they are added.'):'Try adjusting the search or filters.'}</div></div></div>`;
@@ -5042,13 +5050,15 @@ function _lpResultsHtml(rows){
   if(lpF.view==='grid'){
     return hdr+`<div class="lp-grid">${rows.map(p=>`<div class="card lp-gcard" onclick="lpOpen('${p.id}')">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">${_lpTile(p)}${_lpRowMenu(p)}</div>
-        <div class="lp-gtitle">${Utils.esc(p.title)}</div>
+        <div class="lp-code" style="margin-top:10px">${Utils.esc(p.code||'')}</div>
+        <div class="lp-gtitle" style="margin-top:2px">${Utils.esc(p.title)}</div>
         <div class="lp-gmeta">${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${Utils.esc(p.deliveryType||'—')} · ${Utils.esc(p.version||'v1')}</div>
         <div style="margin:10px 0">${_lpContribCell(p)}</div>
         <div style="display:flex;justify-content:space-between;align-items:center">${_lpStatusBadge(p)}<span class="lp-muted" style="font-size:11.5px">Implementations: —</span></div>
       </div>`).join('')}</div>`;
   }
-  return hdr+`<div class="card lp-tblcard"><table class="dash-tbl lp-tbl"><thead><tr><th>Program Title</th><th>Category</th><th>Type</th><th>Version</th><th>Owners / Contributors</th><th>Status</th><th>Implementations</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr onclick="lpOpen('${p.id}')">
+  return hdr+`<div class="card lp-tblcard"><table class="dash-tbl lp-tbl"><thead><tr><th>Program ID</th><th>Program Title</th><th>Category</th><th>Type</th><th>Version</th><th>Owners / Contributors</th><th>Status</th><th>Implementations</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr onclick="lpOpen('${p.id}')">
+      <td class="lp-code">${Utils.esc(p.code||'—')}</td>
       <td><div style="display:flex;align-items:center;gap:10px">${_lpTile(p)}<span class="lp-ptitle">${Utils.esc(p.title)}</span></div></td>
       <td>${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')}</td>
       <td>${_lpTypeBadge(p.deliveryType)}</td>
@@ -5073,6 +5083,7 @@ function _lpDetailHtml(p){
   const head=`<button type="button" class="ov-link" style="padding-left:0" onclick="lpBack()">${_lpIc(LP_IC.back)} Back to Learning Programs</button>
     <div class="lp-dhead">
       <div style="min-width:0">
+        ${p.code?`<div class="lp-code" style="font-size:12px;margin-bottom:2px">${esc(p.code)}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${esc(p.title)}</h2>${_lpStatusBadge(p)}</div>
         <div class="lp-dmeta">${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(p.deliveryType||'—')} · Version ${esc((p.version||'v1').replace(/^v/i,''))}</div>
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
@@ -5088,6 +5099,7 @@ function _lpDetailHtml(p){
     return head+`<div class="card"><div class="empty-state"><div style="margin-bottom:12px;color:var(--text3)"><svg viewBox="0 0 24 24" fill="none" style="width:40px;height:40px"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3.5 17.5a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.2-.3-.3-2.2 2.4-2.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="empty-title">${esc(l)} is under development</div><div style="font-size:13px;color:var(--text3);margin-top:4px">This tab is being built. Check back soon.</div></div></div>`;
   }
   const info=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Information</span></div>
+    ${_lpInfoRow(LP_IC.tag,'Program ID',esc(p.code||'—'))}
     ${_lpInfoRow(LP_IC.title,'Program Title',esc(p.title))}
     ${_lpInfoRow(LP_IC.tag,'Category',esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—'))}
     ${_lpInfoRow(LP_IC.screen,'Delivery Type',esc(p.deliveryType||'—'))}
@@ -5303,7 +5315,7 @@ async function lpSaveForm(){
   const dup=LearningProgramDB.all().find(x=>x.id!==_lpEditId&&(x.title||'').trim().toLowerCase()===title.toLowerCase());
   if(dup) return fail(`A program named "${dup.title}" already exists.`);
   const patch={title,categoryId,deliveryType,version,status,effectiveFrom,effectiveTo};
-  if(!_lpEditId){ patch.description=document.getElementById('lpm-f-desc').value.trim(); patch.contributors=[]; patch.agenda=[]; patch.assessments=[]; patch.l3Required=false; }
+  if(!_lpEditId){ patch.code=_lpNextCode(); patch.description=document.getElementById('lpm-f-desc').value.trim(); patch.contributors=[]; patch.agenda=[]; patch.assessments=[]; patch.l3Required=false; }
   const btn=document.getElementById('lpm-save'); btn.disabled=true;
   const saved=await _lpPersist(_lpEditId,patch);
   btn.disabled=false;
