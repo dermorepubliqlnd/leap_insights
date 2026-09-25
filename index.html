@@ -508,6 +508,14 @@
     .frb-close:hover{color:#1e40af}
 
     /* ── DASHBOARD PAGE ── */
+    /* L&D Performance main tabs (2026-09-25, per Sandra's mockup) -- primary row reuses .eval-tab;
+       the pre-existing Overview/ID QA/CD QA/Trainer row inside the Overview tab becomes a pill sub-row */
+    .dmain-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin:0 0 18px;overflow-x:auto;scrollbar-width:none}
+    .dmain-tabs .eval-tab{white-space:nowrap;flex-shrink:0}
+    .dmain-tabs .eval-tab svg{width:15px;height:15px;flex-shrink:0}
+    .dash-subtabs{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 20px}
+    .dash-subtabs .eval-tab{border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;margin-bottom:0;background:var(--white)}
+    .dash-subtabs .eval-tab.active{background:var(--pri);border-color:var(--pri);color:#fff}
     .dash-topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
     .dash-page-title{font-family:var(--font-heading);font-size:17px;font-weight:600;color:var(--text)}
     .dash-page-sub{font-size:12px;color:var(--text3);margin-top:3px}
@@ -4120,6 +4128,8 @@ function renderDashboard(){
   const _dfa=Auth.formAccess(Auth.user);
   const me2=Auth.user; const _showAllTabs=(tier==='admin'||me2.isReportsViewer);
   document.getElementById('dash-body').innerHTML=`
+    <div class="dmain-tabs">${DASH_MAIN_TABS.map(t=>`<button id="dmtab-${t.id}" class="eval-tab${t.id===_dashMainTab?' active':''}" onclick="setDashMainTab('${t.id}')">${t.icon}${t.label}</button>`).join('')}</div>
+    <div id="dash-main-overview"${_dashMainTab==='overview'?'':' class="hidden"'}>
     <div class="dash-topbar">
       <div></div>
       <div class="dash-controls">
@@ -4140,19 +4150,49 @@ function renderDashboard(){
       </div>
     </div>
     <div id="dash-kpi-snapshot"></div>
-    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:16px 0 20px">
+    <div class="dash-subtabs">
       <button id="dtab-overview" class="eval-tab active" onclick="setDashTab('overview')">📊 Overview</button>
       ${(_showAllTabs||_dfa.idqa)?`<button id="dtab-idqa" class="eval-tab" onclick="setDashTab('idqa')">◈ ID QA</button>`:''}
       ${(_showAllTabs||_dfa.cqa)?`<button id="dtab-cqa" class="eval-tab" onclick="setDashTab('cqa')">✦ Content Dev QA</button>`:''}
       ${(_showAllTabs||_dfa.trainerEval)?`<button id="dtab-trainer" class="eval-tab" onclick="setDashTab('trainer')">◉ Trainer Eval</button>`:''}
     </div>
     <div id="dash-tab-content"></div>
+    </div>
+    <div id="dash-main-placeholder"${_dashMainTab==='overview'?' class="hidden"':''}>${_dashMainPlaceholderHtml(_dashMainTab)}</div>
   `;
   _dashTab='overview';
   _dashUpdate();
   _dashRenderKpiSnapshot();
 }
 
+// L&D Performance main tabs (2026-09-25, per Sandra's mockup). Only Overview is built -- it holds
+// the full pre-existing dashboard. The other five show an "in development" placeholder for now.
+const _DMI=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const DASH_MAIN_TABS=[
+  {id:'overview',label:'Overview',icon:_DMI('<rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/>')},
+  {id:'team',label:'Team Performance',icon:_DMI('<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5v-.8a4.2 4.2 0 0 1 4.2-4.2h2.6a4.2 4.2 0 0 1 4.2 4.2v.8"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M17.5 14.6a3.6 3.6 0 0 1 3 3.5v.9"/>')},
+  {id:'ops',label:'Training Operations',icon:_DMI('<rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>')},
+  {id:'quality',label:'Quality & Learner Experience',icon:_DMI('<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>')},
+  {id:'effectiveness',label:'Learning Effectiveness',icon:_DMI('<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5"/>')},
+  {id:'attention',label:'Attention Required',icon:_DMI('<path d="M10.3 4.2 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5M12 17.2v.1"/>')}
+];
+let _dashMainTab='overview';
+function _dashMainPlaceholderHtml(id){
+  const t=DASH_MAIN_TABS.find(x=>x.id===id)||DASH_MAIN_TABS[0];
+  return `<div class="card"><div class="empty-state">
+    <div style="margin-bottom:12px;color:var(--text3)"><svg viewBox="0 0 24 24" fill="none" style="width:40px;height:40px"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3.5 17.5a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.2-.3-.3-2.2 2.4-2.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+    <div class="empty-title">${t.label} is under development</div>
+    <div style="font-size:13px;color:var(--text3);margin-top:4px">This tab is being built. Check back soon.</div>
+  </div></div>`;
+}
+function setDashMainTab(id){
+  _dashMainTab=id;
+  DASH_MAIN_TABS.forEach(t=>document.getElementById(`dmtab-${t.id}`)?.classList.toggle('active',t.id===id));
+  const ov=document.getElementById('dash-main-overview'), ph=document.getElementById('dash-main-placeholder');
+  ov?.classList.toggle('hidden',id!=='overview');
+  ph?.classList.toggle('hidden',id==='overview');
+  if(ph&&id!=='overview') ph.innerHTML=_dashMainPlaceholderHtml(id);
+}
 function setDashTab(tab){
   _dashTab=tab;
   ['overview','idqa','cqa','trainer'].forEach(t=>{
