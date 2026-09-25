@@ -854,6 +854,109 @@
     .cqa-signoff-panel{background:var(--white);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;display:flex;flex-direction:column;gap:12px}
     .cqa-signoff-panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)}
     .b-pend{background:#f5f3ff;color:#7c3aed}
+
+    /* ── L&D PERFORMANCE — EXECUTIVE OVERVIEW (2026-09-25) ── */
+    .kt-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;padding:12px;margin-bottom:12px}
+    .kt-tbl td,.kt-tbl th{font-size:12.5px}
+    .ov-legacy-note{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:9px 14px;margin-bottom:14px}
+    .ov-period-note{font-size:12px;color:var(--text3);margin:-6px 0 14px}
+    .ov-period-note b{color:var(--text2);font-weight:600}
+    .ov-sec-title{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text3);margin:0 0 10px}
+    .ov-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:18px 20px;box-shadow:var(--sh-sm);min-width:0}
+    .ov-card-hd{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    .ov-card-hd-row{justify-content:space-between;flex-wrap:wrap;gap:10px}
+    .ov-ic{width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .ov-card-title{font-family:var(--font-heading);font-size:14.5px;font-weight:600;color:var(--text);line-height:1.3}
+    .ov-card-sub{font-size:11.5px;color:var(--text3);margin-top:2px}
+    .ov-link{background:none;border:none;color:var(--pri);font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px;padding:4px 2px;font-family:var(--font);white-space:nowrap}
+    .ov-link:hover{text-decoration:underline}
+    .ov-grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px}
+    .ov-row-2-1{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+    .ov-row-1-1{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+    .ov-row-1{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:16px}
+    @media (max-width:1100px){ .ov-row-2-1,.ov-row-1-1{grid-template-columns:minmax(0,1fr)} }
+    /* KPI health table */
+    .ov-kpi-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+    .ov-kpi-tbl th{font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:left;padding:0 6px 8px;border-bottom:1px solid var(--border-lt)}
+    .ov-kpi-tbl td{padding:10px 6px;border-bottom:1px solid var(--border-lt);vertical-align:middle}
+    .ov-kpi-tbl tr:last-child td{border-bottom:none}
+    .ov-kpi-tbl th:first-child,.ov-kpi-tbl td:first-child{padding-left:0}
+    .ov-kpi-tbl th:last-child,.ov-kpi-tbl td:last-child{padding-right:0}
+    .ov-kpi-name{font-weight:500;color:var(--text);margin-bottom:6px}
+    .ov-kpi-note{font-size:10.5px;color:var(--text3);margin-top:4px}
+    .ov-bar{height:6px;background:#eef2f7;border-radius:99px;overflow:hidden;min-width:70px}
+    .ov-bar i{display:block;height:100%;border-radius:99px}
+    .ov-num{font-weight:700;color:var(--text);white-space:nowrap;font-size:13.5px}
+    .ov-tgt{color:var(--text3);white-space:nowrap;font-size:11.5px}
+    .ov-delta{display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:600;white-space:nowrap}
+    .ov-delta-up{color:#16a34a}.ov-delta-down{color:#dc2626}.ov-delta-flat{color:var(--text3);font-weight:500}
+    .ov-pill{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+    .ov-pill-ok{background:#dcfce7;color:#15803d}
+    .ov-pill-watch{background:#fef3c7;color:#b45309}
+    .ov-pill-below{background:#fee2e2;color:#b91c1c}
+    .ov-pill-none{background:#f1f5f9;color:#94a3b8}
+    /* delivery health */
+    .ov-stats6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}
+    @media (max-width:1300px){ .ov-stats6{grid-template-columns:repeat(3,minmax(0,1fr))} }
+    .ov-stat{background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;padding:12px}
+    .ov-stat-v{font-family:var(--font-heading);font-size:20px;font-weight:700;color:var(--text);line-height:1.2}
+    .ov-stat-l{font-size:11px;color:var(--text3);margin-top:3px}
+    .ov-chart-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+    .ov-chart-title{font-size:12.5px;font-weight:600;color:var(--text2)}
+    .ov-chart{position:relative;width:100%}
+    /* attention */
+    .ov-att-list{display:flex;flex-direction:column;gap:6px}
+    .ov-att-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;padding:10px 12px;cursor:pointer;font-family:var(--font);transition:all .15s}
+    .ov-att-item:hover{background:var(--white);border-color:var(--border);box-shadow:var(--sh-sm)}
+    .ov-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .ov-dot-red{background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+    .ov-dot-amber{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+    .ov-att-n{font-weight:700;font-size:14px;color:var(--text);min-width:18px}
+    .ov-att-l{flex:1;font-size:12.5px;color:var(--text2)}
+    .ov-att-chev{color:var(--text3);display:inline-flex}
+    .ov-att-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:26px 10px;font-size:12.5px;color:var(--text3);text-align:center}
+    /* quality */
+    .ov-qgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--border-lt);border-radius:12px;overflow:hidden}
+    .ov-q{padding:14px 12px;border-right:1px solid var(--border-lt);border-bottom:1px solid var(--border-lt);margin:0 -1px -1px 0}
+    .ov-q-v{font-family:var(--font-heading);font-size:18px;font-weight:700;line-height:1.2}
+    .ov-q-l{font-size:11px;color:var(--text3);margin-top:3px}
+    /* effectiveness */
+    .ov-steps{display:flex;align-items:stretch;gap:6px}
+    .ov-step{flex:1;background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;padding:12px;min-width:0}
+    .ov-step-tag{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--pri);margin-bottom:8px}
+    .ov-step-v{font-family:var(--font-heading);font-size:18px;font-weight:700;color:var(--text);line-height:1.2}
+    .ov-step-l{font-size:11px;color:var(--text3);margin:2px 0 8px}
+    .ov-step-l:last-child{margin-bottom:0}
+    .ov-step-arrow{display:flex;align-items:center;color:var(--text3)}
+    /* iOS-style segmented control (used on the Overview; also available app-wide) */
+    .ov-seg{display:inline-flex;background:#eef1f5;border-radius:10px;padding:2px;gap:2px}
+    .ov-seg button{border:none;background:transparent;padding:5px 11px;font-size:11.5px;font-weight:600;color:var(--text2);border-radius:8px;cursor:pointer;font-family:var(--font);transition:all .15s;white-space:nowrap}
+    .ov-seg button.on{background:var(--white);color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.14),0 1px 1px rgba(15,23,42,.06)}
+    /* topbar filters */
+    .ov-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .ov-filter{display:inline-flex;align-items:center;gap:6px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:0 4px 0 10px;height:34px}
+    .ov-filter-l{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+    .ov-filter select{border:none!important;background:transparent;font-size:12.5px;font-weight:600;color:var(--text);font-family:var(--font);cursor:pointer;outline:none;padding:6px 4px;box-shadow:none!important}
+    .ov-filter:focus-within{border-color:var(--pri)}
+
+    /* ── APP-WIDE CONTROL STYLE (2026-09-25, per Sandra) ──
+       Buttons: iOS-style rounded capsules. Filter/input boxes: soft rectangles, 10px radius.
+       Dropdown panels: 12px. Segmented toggles: iOS track + raised white thumb. Placed last in the
+       stylesheet so it wins over the older per-component radii without touching each rule. */
+    .btn,.btn-xs,.btn-sm,.btn-lg,.btn-sb,.dash-refresh-btn,.eval-toggle-btn,.qa-soon-badge{border-radius:999px}
+    .form-control,.search-input,.dash-date-sel,.eval-select,.status-display,.eval-readonly,
+    select,textarea,
+    input[type=text],input[type=date],input[type=number],input[type=search],input[type=email],input[type=password],input[type=tel],input[type=time],input[type=month],input[type=url],input:not([type]){border-radius:10px}
+    .td-viewmenu,.th-dd,.col-picker-dd,.msdd-panel,.td-col-panel{border-radius:12px}
+    .seg-ctrl{background:#eef1f5;border:none;border-radius:10px;padding:2px;gap:2px;overflow:visible}
+    .seg-btn{background:transparent;border-radius:8px;color:var(--text2)}
+    .seg-btn.active{background:var(--white);color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.14),0 1px 1px rgba(15,23,42,.06)}
+    .seg-btn:not(.active):hover{background:rgba(255,255,255,.55)}
+    .gran-toggle{background:#eef1f5;border-radius:10px;padding:2px;gap:2px;display:inline-flex}
+    .gran-toggle button{border:none;border-radius:8px;background:transparent;color:var(--text2)}
+    .gran-toggle button.on{background:var(--white);color:var(--text);border-color:transparent;box-shadow:0 1px 3px rgba(15,23,42,.14)}
+    .seg-btn-group{background:#eef1f5;border:none!important;border-radius:10px!important;padding:2px;gap:2px}
+    .seg-btn-group .btn{border-radius:8px!important;border:none!important}
   </style>
 </head>
 <body>
@@ -3210,6 +3313,11 @@ const _FIELD_MAPS = {
   // per-supervisor coverage + CD QA volume breakdown -- shape can evolve without a migration.
   kpi_monthly_snapshots:{
     id:'id', month:'month', data:'data', lockedAt:'locked_at', lockedBy:'locked_by', createdAt:'created_at'
+  },
+  // Dashboard KPI Targets (2026-09-25, per Sandra): one row per role + KPI + effectivity window,
+  // so a target change applies from its Effective From date without rewriting history.
+  kpi_targets:{
+    id:'id', role:'role', kpiKey:'kpi_key', target:'target', effectiveFrom:'effective_from', effectiveTo:'effective_to', createdAt:'created_at', updatedAt:'updated_at'
   }
 };
 function rowToCamel(table,row){
@@ -3251,7 +3359,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -3314,7 +3422,7 @@ const Store = {
   CATEGORIES:'categories', AUDIENCES:'audiences', AGENDA_TEMPLATES:'agenda_templates',
   CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
   DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings', PH_HOLIDAYS:'ph_holidays', WORKLOAD_PCT_HISTORY:'workload_pct_history',
-  KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots',
+  KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots', KPI_TARGETS:'kpi_targets',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -3844,10 +3952,10 @@ _sbInitNavTooltips();
 _applySidebarCollapse();
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'L&D Performance','my-performance':'My Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={dashboard:'L&D Performance Dashboard','my-performance':'My Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
-  dashboard:'Live performance overview across Trainer Evaluation, Instructional Design QA, and Content Development QA',
+  dashboard:'Overall performance, quality, effectiveness, and operational health across L&D',
   'my-performance':'Your personal performance view — under development',
   evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
@@ -3881,7 +3989,7 @@ function showView(id){
   // Dashboard's single "+ New Evaluation" dropdown (2026-09-22, per Sandra: replaces the old
   // 3-button "Quick Actions" strip in dash-body) lives in the shared topbar-acts slot -- cleared
   // for every other view so it doesn't linger when navigating away.
-  document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?_dashNewEvalBtnHtml():'';
+  document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_ovFiltersHtml()+_dashNewEvalBtnHtml()):'';
   if(id==='dashboard')   renderDashboard();
   if(id==='my-performance') renderMyPerformance();
   if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
@@ -4129,7 +4237,9 @@ function renderDashboard(){
   const me2=Auth.user; const _showAllTabs=(tier==='admin'||me2.isReportsViewer);
   document.getElementById('dash-body').innerHTML=`
     <div class="dmain-tabs">${DASH_MAIN_TABS.map(t=>`<button id="dmtab-${t.id}" class="eval-tab${t.id===_dashMainTab?' active':''}" onclick="setDashMainTab('${t.id}')">${t.icon}${t.label}</button>`).join('')}</div>
-    <div id="dash-main-overview"${_dashMainTab==='overview'?'':' class="hidden"'}>
+    <div id="dash-main-overview"${_dashMainTab==='overview'?'':' class="hidden"'}><div id="ov-root"></div></div>
+    <div id="dash-main-legacy"${_dashMainTab==='team'?'':' class="hidden"'}>
+    <div class="ov-legacy-note">Interim view: the previous dashboard (Supervisor Performance Snapshot and the ID QA, Content Dev QA and Trainer Eval breakdowns) sits here until Team Performance is built. It keeps its own date range for now.</div>
     <div class="dash-topbar">
       <div></div>
       <div class="dash-controls">
@@ -4158,15 +4268,17 @@ function renderDashboard(){
     </div>
     <div id="dash-tab-content"></div>
     </div>
-    <div id="dash-main-placeholder"${_dashMainTab==='overview'?' class="hidden"':''}>${_dashMainPlaceholderHtml(_dashMainTab)}</div>
+    <div id="dash-main-placeholder"${(_dashMainTab==='overview'||_dashMainTab==='team')?' class="hidden"':''}>${_dashMainPlaceholderHtml(_dashMainTab)}</div>
   `;
   _dashTab='overview';
   _dashUpdate();
   _dashRenderKpiSnapshot();
+  _ovRender();
 }
 
-// L&D Performance main tabs (2026-09-25, per Sandra's mockup). Only Overview is built -- it holds
-// the full pre-existing dashboard. The other five show an "in development" placeholder for now.
+// L&D Performance main tabs (2026-09-25, per Sandra's mockup). Overview = the executive overview
+// (_ovRender). Team Performance temporarily hosts the previous dashboard (#dash-main-legacy) until
+// its real build. The other four show an "in development" placeholder for now.
 const _DMI=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const DASH_MAIN_TABS=[
   {id:'overview',label:'Overview',icon:_DMI('<rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/>')},
@@ -4188,10 +4300,15 @@ function _dashMainPlaceholderHtml(id){
 function setDashMainTab(id){
   _dashMainTab=id;
   DASH_MAIN_TABS.forEach(t=>document.getElementById(`dmtab-${t.id}`)?.classList.toggle('active',t.id===id));
-  const ov=document.getElementById('dash-main-overview'), ph=document.getElementById('dash-main-placeholder');
+  const ov=document.getElementById('dash-main-overview'), lg=document.getElementById('dash-main-legacy'), ph=document.getElementById('dash-main-placeholder');
+  const isPh=id!=='overview'&&id!=='team';
   ov?.classList.toggle('hidden',id!=='overview');
-  ph?.classList.toggle('hidden',id==='overview');
-  if(ph&&id!=='overview') ph.innerHTML=_dashMainPlaceholderHtml(id);
+  lg?.classList.toggle('hidden',id!=='team');
+  ph?.classList.toggle('hidden',!isPh);
+  if(ph&&isPh) ph.innerHTML=_dashMainPlaceholderHtml(id);
+  // Charts can't size themselves while hidden -- redraw whichever pane just became visible.
+  if(id==='overview') _ovRender();
+  if(id==='team') _dashUpdate();
 }
 function setDashTab(tab){
   _dashTab=tab;
@@ -4199,6 +4316,482 @@ function setDashTab(tab){
     document.getElementById(`dtab-${t}`)?.classList.toggle('active',t===tab);
   });
   _dashUpdate();
+}
+
+/* ── L&D PERFORMANCE — EXECUTIVE OVERVIEW (2026-09-25, per Sandra's spec + mockup) ──────────
+   Answers: are we performing well, are we delivering what we committed to, what needs attention.
+   Signal only -- no individual names, no record lists (those live in the other tabs / pages).
+   Sections: KPI Health (ID / CD / Training Delivery) -> Training Delivery Health -> Quality &
+   Learner Experience -> Learning Effectiveness -> Performance Trend -> Attention Required.
+   Global filters (Period, Team/Role) live in the topbar and are kept in _ovF so the other
+   dashboard tabs can read the same selection once they're built. Charts use their own _ovCharts
+   map so the legacy dashboard's _dashDestroy() never tears them down (and vice versa). */
+// Default targets -- used only when no row in Settings > Dashboard KPI Targets covers the date.
+const OV_TARGETS={idqa:85,idContent:4.5,idTime:90,cdqa:85,cdMaterial:4.5,cdTime:90,facil:4.5,pass:85,obs:4.5,report:95,csat:4.5};
+// KPI catalog per role (drives both the Overview and the Settings pane). pending:true = shown as a
+// placeholder until its data source exists (Sandra, 2026-09-25: Learning Content / Material Rating).
+const OV_KPI_CATALOG=[
+  {role:'id',key:'idqa',label:'ID QA Score',kind:'pct'},
+  {role:'id',key:'idContent',label:'Learning Content Rating',kind:'r5',pending:true},
+  {role:'id',key:'idTime',label:'Timeliness',kind:'pct'},
+  {role:'cd',key:'cdqa',label:'CD QA Score',kind:'pct'},
+  {role:'cd',key:'cdMaterial',label:'Learning Material Rating',kind:'r5',pending:true},
+  {role:'cd',key:'cdTime',label:'Timeliness',kind:'pct'},
+  {role:'delivery',key:'facil',label:'Facilitator Effectiveness',kind:'r5'},
+  {role:'delivery',key:'pass',label:'Assessment Pass Rate',kind:'pct'},
+  {role:'delivery',key:'obs',label:'Trainer Observation',kind:'r5'},
+  {role:'delivery',key:'report',label:'Report Timeliness',kind:'pct'},
+  {role:'delivery',key:'csat',label:'Learner Satisfaction (CSAT)',kind:'r5'}
+];
+const OV_ROLES=[['id','Instructional Design'],['cd','Content Development'],['delivery','Training Delivery']];
+// Target in effect on a date: the row for that KPI whose window covers the date (latest Effective
+// From wins if several do); falls back to the built-in default.
+function _ovTgt(key,asOf){
+  const d=asOf||_todayStr();
+  const rows=(Cache.data[Store.KPI_TARGETS]||[]).filter(r=>r.kpiKey===key&&r.effectiveFrom&&r.effectiveFrom<=d&&(!r.effectiveTo||r.effectiveTo>=d));
+  if(!rows.length) return OV_TARGETS[key];
+  rows.sort((a,b)=>b.effectiveFrom.localeCompare(a.effectiveFrom));
+  return Number(rows[0].target);
+}
+let _ovAsOf=null; // set per render: the selected period's end date, capped at today
+const _ovT=key=>_ovTgt(key,_ovAsOf);
+const _OV_PERIODS=[['thismonth','This Month'],['lastmonth','Last Month'],['last3','Last 3 Months'],['last6','Last 6 Months'],['ytd','Year to Date'],['last12','Last 12 Months'],['all','All Time']];
+const _OV_TEAMS=[['all','All Teams'],['id','Instructional Design'],['cd','Content Development'],['delivery','Training Delivery']];
+const _OV_COLORS={id:'#7c3aed',idLt:'#f5f3ff',cd:'#2563eb',cdLt:'#eff6ff',tr:'#16a34a',trLt:'#f0fdf4'};
+let _ovF={period:'thismonth',team:'all'};
+try{ const _s=JSON.parse(localStorage.getItem('leap_ov_filters')||'null'); if(_s&&typeof _s==='object') _ovF={..._ovF,..._s}; }catch(e){}
+let _ovCharts={}, _ovHoursSpan=6, _ovTrendSpan=6, _ovTrendMetric='idqa';
+
+const _ovSvg=(d,sz)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:${sz||18}px;height:${sz||18}px">${d}</svg>`;
+const _OV_IC={
+  pen:'<path d="M12 20.5h9"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z"/>',
+  doc:'<path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8L14 3.5Z"/><path d="M14 3.5V8h4.5M9 13h6M9 16.5h4"/>',
+  screen:'<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+  star:'<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>',
+  trend:'<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5"/>',
+  alert:'<path d="M10.3 4.2 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5M12 17.2v.1"/>',
+  chev:'<path d="M9 6l6 6-6 6"/>',
+  up:'<path d="M12 19V5M6 11l6-6 6 6"/>',
+  down:'<path d="M12 5v14M6 13l6 6 6-6"/>',
+  check:'<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.3 2.3 4.7-5"/>'
+};
+
+function _ovIso(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function _ovMonthRange(offsetBack,count){
+  // months [m-offsetBack-count+1 .. m-offsetBack] relative to the current month
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const s=new Date(y,m-offsetBack-count+1,1), e=new Date(y,m-offsetBack+1,0);
+  const fmtM=d=>d.toLocaleDateString('en-US',{month:'short'});
+  const label=count===1?s.toLocaleDateString('en-US',{month:'long',year:'numeric'}):`${fmtM(s)} ${s.getFullYear()!==e.getFullYear()?s.getFullYear()+' ':''}– ${fmtM(e)} ${e.getFullYear()}`;
+  return {start:_ovIso(s),end:_ovIso(e),label};
+}
+// prev=true returns the immediately preceding period of equal length (null for All Time).
+function _ovPeriod(key,prev){
+  const spec={thismonth:[0,1],lastmonth:[1,1],last3:[0,3],last6:[0,6],last12:[0,12]}[key];
+  if(spec){ const [a,n]=spec; return _ovMonthRange(prev?a+n:a,n); }
+  if(key==='ytd'){
+    const now=new Date(), y=now.getFullYear()-(prev?1:0);
+    const end=prev?new Date(y,now.getMonth(),now.getDate()):now;
+    return {start:`${y}-01-01`,end:_ovIso(end),label:`Year to date ${y}`};
+  }
+  return prev?null:{start:'0000-01-01',end:'9999-12-31',label:'All time'};
+}
+const _ovIn=(d,r)=>{ if(!d||!r) return false; const x=String(d).slice(0,10); return x>=r.start&&x<=r.end; };
+const _ovSubmitted=x=>x.status==='completed'||x.status==='pending_ack';
+const _ovAvg=a=>{ const v=a.filter(x=>x!=null&&!isNaN(x)); return v.length?v.reduce((p,c)=>p+Number(c),0)/v.length:null; };
+const _ovOnTimePct=(recs,fn)=>{ const t=recs.map(fn).filter(v=>v&&v!=='—'); return t.length?t.filter(v=>v!=='Late').length/t.length*100:null; };
+
+// Sessions that count toward delivery in a range: not cancelled, not pencil-booked (Tentative),
+// with at least one real training day inside the range.
+function _ovDeliverySessions(r){
+  return TrSessionDB.all().filter(s=>s.status!=='cancelled'&&s.status!=='tentative'&&s.trainingDate&&_tdSessionDayList(s).some(d=>d>=r.start&&d<=r.end));
+}
+// Completed sessions whose END date falls in the range -- the anchor for results (L1, L2, SLA).
+function _ovCompletedByEnd(r){
+  return TrSessionDB.all().filter(s=>_tdStatus(s)==='Completed'&&_ovIn(_tdSessionEndDate(s),r));
+}
+
+function _ovMetrics(r){
+  const m={};
+  // Instructional Design
+  const idRecs=_dashScopeIDQA().filter(x=>_ovSubmitted(x)&&_ovIn(x.reviewDate,r));
+  m.idqa=_ovAvg(idRecs.map(x=>_idqaScore(x.ratings||{}).pct));
+  m.idTime=_ovOnTimePct(idRecs,_idqaTimeliness);
+  m.idCount=idRecs.length;
+  // Content Development
+  const cdRecs=_dashScopeCQA().filter(x=>_ovSubmitted(x)&&_ovIn(x.reviewDate,r));
+  m.cdqa=_ovAvg(cdRecs.map(x=>_cqaScore(x.ratings||{},x.contentType).pct));
+  m.cdTime=_ovOnTimePct(cdRecs,_cqaTimeliness);
+  m.cdCount=cdRecs.length;
+  // Learner (L1) survey results from submitted/approved training reports on completed sessions
+  const done=_ovCompletedByEnd(r);
+  const reps=done.map(s=>({s,rep:TrainingReportsDB.all().find(x=>x.sessionId===s.id&&(x.status==='submitted'||x.status==='approved'))})).filter(x=>x.rep);
+  const ilt=reps.filter(x=>x.s.deliveryType==='ILT'||x.s.deliveryType==='VILT').map(x=>x.rep.content||{});
+  const slt=reps.filter(x=>x.s.deliveryType==='Self-led').map(x=>x.rep.content||{});
+  const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
+  // Learning Content / Material Rating: placeholders until their data source is created (Sandra,
+  // 2026-09-25) -- intentionally NOT derived from learner L1 ratings.
+  m.idContent=null;
+  m.cdMaterial=null;
+  m.facil=_ovAvg(ilt.map(c=>num(c.facilitationRating)));
+  m.csat=_ovAvg([...ilt.map(c=>num(c.csat)),...slt.map(c=>num(c.learnerSatisfaction))]);
+  m.nps=_ovAvg([...ilt,...slt].map(c=>num(c.nps)));
+  m.surveyCount=reps.length;
+  // Trainer observation (Trainer Evaluation overall score, 1-5)
+  const evs=_dashScopeEvals().filter(e=>_ovSubmitted(e)&&e.overallScore!=null&&_ovIn(e.trainingDate,r));
+  m.obs=_ovAvg(evs.map(e=>e.overallScore));
+  // Assessment pass rate + knowledge gain (same per-participant rules as the session KPI cards)
+  let assessed=0, passed=0; const gains=[];
+  done.forEach(s=>{
+    const asmts=_tdaGetAssessments(s); if(!asmts.length) return;
+    const rows=SessionParticipantsDB.all().filter(x=>x.sessionId===s.id);
+    const names=asmts.map(a=>a.name);
+    const graded=asmts.filter(a=>a.post&&a.passingScore!=null);
+    const ar=rows.filter(x=>_tdaIsAssessed(x,s));
+    if(graded.length&&ar.length){
+      assessed+=ar.length;
+      passed+=ar.filter(x=>graded.every(a=>{ const v=_tdaGetNamedScore(x,'post',a.name); return v!=null&&Number(v)>=a.passingScore; })).length;
+    }
+    const pre=rows.map(x=>_tdaAvgNamedScore(x,'pre',names)).filter(v=>v!=null);
+    const post=rows.map(x=>_tdaAvgNamedScore(x,'post',names)).filter(v=>v!=null);
+    if(pre.length&&post.length) gains.push(_ovAvg(post)-_ovAvg(pre));
+  });
+  m.pass=assessed?passed/assessed*100:null;
+  m.gain=_ovAvg(gains);
+  // Report submission timeliness: SLA = 2 business days after the session's end date. A report
+  // still missing once the SLA window has closed counts as late; one still inside it is skipped.
+  const today=_todayStr();
+  let slaTotal=0, slaOk=0;
+  TrSessionDB.all().forEach(s=>{
+    if(s.status==='cancelled'||s.status==='tentative'||_tdHasNoReportRequirement(s)||!s.trainingDate) return;
+    const end=_tdSessionEndDate(s); if(!end||end>=today||!_ovIn(end,r)) return;
+    const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+    if(rep&&rep.submittedAt){ slaTotal++; if((_tdBusinessDaysBetween(end,rep.submittedAt)||0)<=2) slaOk++; }
+    else if((_tdBusinessDaysBetween(end,today)||0)>2){ slaTotal++; }
+  });
+  m.report=slaTotal?slaOk/slaTotal*100:null;
+  // L3 application: share of L3 checks completed in the period rated Improved / Significantly Improved
+  const l3Done=TrSessionDB.all().filter(s=>s.l3Required&&s.l3CompletedAt&&_ovIn(s.l3CompletedAt,r));
+  m.l3App=l3Done.length?l3Done.filter(s=>s.l3Rating==='Improved'||s.l3Rating==='Significantly Improved').length/l3Done.length*100:null;
+  return m;
+}
+
+function _ovDelivery(r){
+  const sess=_ovDeliverySessions(r);
+  const comp=sess.filter(s=>_tdStatus(s)==='Completed');
+  const sched=_tdashComputeHoursRange(sess,r.start,r.end).forecastedHrs||0;
+  const deliv=_tdashComputeHoursRange(comp,r.start,r.end).forecastedHrs||0;
+  const iltIds=new Set(sess.filter(s=>s.deliveryType==='ILT'||s.deliveryType==='VILT').map(s=>s.id));
+  const learners=new Set();
+  SessionParticipantsDB.all().forEach(x=>{ if(iltIds.has(x.sessionId)) learners.add(x.profileId||('ext:'+x.id)); });
+  return {impl:sess.length,completed:comp.length,pct:sess.length?comp.length/sess.length*100:null,sched,deliv,learners:learners.size};
+}
+
+// Live attention items (current state, not period-bound -- except observations below target,
+// which reads the selected period). Each item is tagged with the team(s) it belongs to so the
+// Team/Role filter can narrow the list.
+function _ovAttention(r){
+  const today=_todayStr(), items=[];
+  const reportsLate=TrSessionDB.all().filter(s=>{
+    if(s.status==='cancelled'||s.status==='tentative'||_tdHasNoReportRequirement(s)||!s.trainingDate) return false;
+    const end=_tdSessionEndDate(s); if(!end||end>=today) return false;
+    const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+    if(rep&&rep.submittedAt) return false;
+    return (_tdBusinessDaysBetween(end,today)||0)>2;
+  }).length;
+  items.push({sev:'red',n:reportsLate,label:`Training report${reportsLate!==1?'s':''} beyond SLA`,teams:['delivery'],go:"showView('training-delivery')"});
+  // ID/CD deliverables overdue -- held back for now (Sandra, 2026-09-25) until its data source is
+  // set up. Planned source: the Timeliness data on ID QA / CD QA reviews (targetDate vs actualDate).
+  // QA acknowledgements overdue -- finalized, waiting on the evaluatee for more than 2 business days
+  const ackOd=x=>x.status==='pending_ack'&&x.finalizedAt&&(_tdBusinessDaysBetween(x.finalizedAt,today)||0)>2;
+  const ackEv=_dashScopeEvals().filter(ackOd).length, ackId=_dashScopeIDQA().filter(ackOd).length, ackCd=_dashScopeCQA().filter(ackOd).length;
+  const ackGo=(ackEv>=ackId&&ackEv>=ackCd)?"showView('evaluations')":(ackId>=ackCd?"showView('id-qa')":"showView('content-qa')");
+  items.push({sev:'amber',n:{delivery:ackEv,id:ackId,cd:ackCd},label:'QA acknowledgements overdue',teams:['delivery','id','cd'],go:ackGo});
+  const l3=TrSessionDB.all().filter(s=>s.l3Required&&!s.l3CompletedAt&&s.status!=='cancelled');
+  const l3Over=l3.filter(s=>_tdl3Status(s)==='overdue').length;
+  const l3Soon=l3.filter(s=>{ const d=_tdl3DaysUntil(s); return d!=null&&d>=0&&d<=7; }).length;
+  items.push({sev:'red',n:l3Over,label:`L3 validation${l3Over!==1?'s':''} overdue`,teams:['delivery'],go:"showView('training-delivery')"});
+  items.push({sev:'amber',n:l3Soon,label:`L3 validation${l3Soon!==1?'s':''} due within 7 days`,teams:['delivery'],go:"showView('training-delivery')"});
+  const obsLow=_dashScopeEvals().filter(e=>_ovSubmitted(e)&&e.overallScore!=null&&e.overallScore<_ovT('obs')&&_ovIn(e.trainingDate,r)).length;
+  items.push({sev:'red',n:obsLow,label:`Trainer observation${obsLow!==1?'s':''} below target`,teams:['delivery'],go:"showView('evaluations')"});
+  const ckl=TrSessionDB.all().filter(s=>{
+    if(s.status==='cancelled'||s.status==='tentative') return false;
+    const st=_tcSessionChecklistStats(s);
+    return st.applicable&&st.post&&st.post.overdue>0;
+  }).length;
+  items.push({sev:'amber',n:ckl,label:`Incomplete post-training checklist${ckl!==1?'s':''}`,teams:['delivery'],go:"showView('trainer-checklist')"});
+  const team=_ovF.team;
+  return items.filter(it=>team==='all'||it.teams.includes(team)).map(it=>{
+    const n=typeof it.n==='number'?it.n:(team==='all'?Object.values(it.n).reduce((a,b)=>a+b,0):(it.n[team]||0));
+    return {...it,n};
+  }).filter(it=>it.n>0).sort((a,b)=>(a.sev===b.sev?b.n-a.n:(a.sev==='red'?-1:1)));
+}
+
+/* ── formatting ── */
+function _ovFmt(v,kind){
+  if(v==null) return '—';
+  if(kind==='pct') return v.toFixed(v>=99.95?0:1)+'%';
+  if(kind==='r5') return v.toFixed(1)+' / 5';
+  if(kind==='pts') return (v>0?'+':'')+v.toFixed(1)+' pts';
+  if(kind==='nps') return (v>0?'+':'')+Math.round(v);
+  if(kind==='hrs') return (Math.round(v*10)/10).toLocaleString()+'h';
+  return String(v);
+}
+function _ovStatus(v,t,kind){
+  if(v==null) return 'nodata';
+  v=Math.round(v*10)/10; // judge the same 1-decimal value that's displayed (4.45 shows as 4.5)
+  if(v>=t) return 'ok';
+  return v>=t-(kind==='pct'?5:0.2)?'watch':'below';
+}
+const _OV_STATUS={ok:['On Track','ov-pill-ok'],watch:['Watch','ov-pill-watch'],below:['Below Target','ov-pill-below'],nodata:['No Data','ov-pill-none'],pending:['Data Pending','ov-pill-none']};
+function _ovPill(st){ const [l,c]=_OV_STATUS[st]; return `<span class="ov-pill ${c}">${l}</span>`; }
+function _ovDelta(v,p,kind){
+  if(v==null||p==null) return '<span class="ov-delta ov-delta-flat">—</span>';
+  const d=v-p;
+  if(Math.abs(d)<0.05) return '<span class="ov-delta ov-delta-flat">no change</span>';
+  const txt=kind==='pct'?`${Math.abs(d).toFixed(1)} pts`:Math.abs(d).toFixed(1);
+  return `<span class="ov-delta ${d>0?'ov-delta-up':'ov-delta-down'}">${_ovSvg(d>0?_OV_IC.up:_OV_IC.down,12)}${txt}</span>`;
+}
+function _ovTarget(t,kind){ return '≥ '+(kind==='pct'?t+'%':t.toFixed(1)); }
+
+/* ── sections ── */
+function _ovKpiCard(title,color,lt,icon,rows,m,pm){
+  const sts=rows.map(k=>k.pending?'pending':_ovStatus(m[k.key],_ovT(k.key),k.kind));
+  const withData=sts.filter(s=>s!=='nodata'&&s!=='pending');
+  const onTrack=sts.filter(s=>s==='ok').length;
+  const sub=withData.length?`${onTrack} of ${rows.length} KPIs on track`:'No data for this period';
+  const body=rows.map((k,i)=>{
+    const v=m[k.key], w=v==null?0:Math.max(0,Math.min(100,k.kind==='pct'?v:v/5*100));
+    return `<tr>
+      <td><div class="ov-kpi-name">${k.label}</div><div class="ov-bar"><i style="width:${w}%;background:${color}"></i></div>${k.note?`<div class="ov-kpi-note">${k.note}</div>`:''}</td>
+      <td class="ov-num">${_ovFmt(v,k.kind)}</td>
+      <td class="ov-tgt">${_ovTarget(_ovT(k.key),k.kind)}</td>
+      <td>${_ovDelta(v,pm?pm[k.key]:null,k.kind)}</td>
+      <td style="text-align:right">${_ovPill(sts[i])}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="ov-card">
+    <div class="ov-card-hd">
+      <span class="ov-ic" style="background:${lt};color:${color}">${_ovSvg(icon)}</span>
+      <div style="min-width:0"><div class="ov-card-title" style="color:${color}">${title}</div><div class="ov-card-sub">${sub}</div></div>
+    </div>
+    <table class="ov-kpi-tbl"><thead><tr><th>KPI</th><th>Actual</th><th>Target</th><th>Trend</th><th style="text-align:right">Status</th></tr></thead><tbody>${body}</tbody></table>
+  </div>`;
+}
+function _ovKpiHealthHtml(m,pm){
+  const t=_ovF.team, cards=[];
+  if(t==='all'||t==='id') cards.push(_ovKpiCard('Instructional Design',_OV_COLORS.id,_OV_COLORS.idLt,_OV_IC.pen,[
+    {key:'idqa',label:'ID QA Score',kind:'pct'},
+    {key:'idContent',label:'Learning Content Rating',kind:'r5',pending:true,note:'Data source to be set up'},
+    {key:'idTime',label:'Timeliness',kind:'pct'}],m,pm));
+  if(t==='all'||t==='cd') cards.push(_ovKpiCard('Content Development',_OV_COLORS.cd,_OV_COLORS.cdLt,_OV_IC.doc,[
+    {key:'cdqa',label:'CD QA Score',kind:'pct'},
+    {key:'cdMaterial',label:'Learning Material Rating',kind:'r5',pending:true,note:'Data source to be set up'},
+    {key:'cdTime',label:'Timeliness',kind:'pct'}],m,pm));
+  if(t==='all'||t==='delivery') cards.push(_ovKpiCard('Training Delivery',_OV_COLORS.tr,_OV_COLORS.trLt,_OV_IC.screen,[
+    {key:'facil',label:'Facilitator Effectiveness',kind:'r5'},
+    {key:'pass',label:'Assessment Pass Rate',kind:'pct'},
+    {key:'obs',label:'Trainer Observation',kind:'r5'},
+    {key:'report',label:'Report Timeliness',kind:'pct'}],m,pm));
+  return `<div class="ov-sec-title">KPI Health</div><div class="ov-grid-auto">${cards.join('')}</div>`;
+}
+function _ovSpanSeg(id,cur,fn){
+  return `<div class="ov-seg" id="${id}">${[3,6,12].map(n=>`<button type="button" class="${n===cur?'on':''}" onclick="${fn}(${n})">${n}M</button>`).join('')}</div>`;
+}
+function _ovDeliveryHtml(d){
+  const tile=(v,l)=>`<div class="ov-stat"><div class="ov-stat-v">${v}</div><div class="ov-stat-l">${l}</div></div>`;
+  return `<div class="ov-card">
+    <div class="ov-card-hd ov-card-hd-row">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <span class="ov-ic" style="background:${_OV_COLORS.trLt};color:${_OV_COLORS.tr}">${_ovSvg(_OV_IC.cal)}</span>
+        <div><div class="ov-card-title">Training Delivery Health</div><div class="ov-card-sub">Are we executing the learning plan?</div></div>
+      </div>
+      <button type="button" class="ov-link" onclick="setDashMainTab('ops')">View Training Operations ${_ovSvg(_OV_IC.chev,13)}</button>
+    </div>
+    <div class="ov-stats6">
+      ${tile(d.impl.toLocaleString(),'Implementations')}
+      ${tile(d.completed.toLocaleString(),'Completed')}
+      ${tile(_ovFmt(d.pct,'pct'),'Delivery Completion')}
+      ${tile(_ovFmt(d.sched,'hrs'),'Scheduled')}
+      ${tile(_ovFmt(d.deliv,'hrs'),'Delivered')}
+      ${tile(d.learners.toLocaleString(),'Learners Reached')}
+    </div>
+    <div class="ov-chart-hd"><span class="ov-chart-title">Scheduled vs Completed Hours</span>${_ovSpanSeg('ov-hrs-seg',_ovHoursSpan,'_ovSetHoursSpan')}</div>
+    <div class="ov-chart" style="height:210px"><canvas id="ov-hours-chart"></canvas></div>
+  </div>`;
+}
+function _ovAttentionHtml(items){
+  const list=items.length?items.map(it=>`<button type="button" class="ov-att-item" onclick="${it.go}">
+      <span class="ov-dot ov-dot-${it.sev}"></span>
+      <span class="ov-att-n">${it.n}</span>
+      <span class="ov-att-l">${it.label}</span>
+      <span class="ov-att-chev">${_ovSvg(_OV_IC.chev,14)}</span>
+    </button>`).join('')
+    :`<div class="ov-att-empty"><span style="color:var(--green)">${_ovSvg(_OV_IC.check,28)}</span><div>Nothing needs attention right now.</div></div>`;
+  const red=items.filter(i=>i.sev==='red').length;
+  return `<div class="ov-card ov-att">
+    <div class="ov-card-hd">
+      <span class="ov-ic" style="background:#fef2f2;color:#dc2626">${_ovSvg(_OV_IC.alert)}</span>
+      <div><div class="ov-card-title">Attention Required</div><div class="ov-card-sub">${items.length?`${items.length} item${items.length!==1?'s':''}${red?` · ${red} critical`:''}`:'All clear'}</div></div>
+    </div>
+    <div class="ov-att-list">${list}</div>
+  </div>`;
+}
+function _ovQualityHtml(m){
+  const t=_ovF.team;
+  const npsColor=v=>v==null?'var(--text3)':(v<0?'#dc2626':(v<50?'#d97706':'#16a34a'));
+  const stColor=st=>({ok:'#16a34a',watch:'#d97706',below:'#dc2626',nodata:'var(--text3)'})[st];
+  const all=[
+    {k:'idqa',l:'ID QA',kind:'pct',teams:['id']},
+    {k:'cdqa',l:'CD QA',kind:'pct',teams:['cd']},
+    {k:'obs',l:'Trainer Observation',kind:'r5',teams:['delivery']},
+    {k:'idContent',l:'Content Rating',kind:'r5',teams:['id'],pending:true},
+    {k:'cdMaterial',l:'Material Rating',kind:'r5',teams:['cd'],pending:true},
+    {k:'facil',l:'Facilitator Rating',kind:'r5',teams:['delivery']},
+    {k:'csat',l:'CSAT',kind:'r5',teams:['delivery']},
+    {k:'nps',l:'NPS',kind:'nps',teams:['delivery']}
+  ].filter(x=>t==='all'||x.teams.includes(t));
+  const cells=all.map(x=>{
+    const v=m[x.k];
+    const c=x.k==='nps'?npsColor(v):stColor(x.pending?'nodata':_ovStatus(v,_ovT(x.k),x.kind));
+    return `<div class="ov-q"><div class="ov-q-v" style="color:${c}">${_ovFmt(v,x.kind)}</div><div class="ov-q-l">${x.l}${x.pending?' · <i>data pending</i>':''}</div></div>`;
+  }).join('');
+  return `<div class="ov-card">
+    <div class="ov-card-hd ov-card-hd-row">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <span class="ov-ic" style="background:#fffbeb;color:#d97706">${_ovSvg(_OV_IC.star)}</span>
+        <div><div class="ov-card-title">Quality &amp; Learner Experience</div><div class="ov-card-sub">QA results and learner (L1) feedback${m.surveyCount?` · ${m.surveyCount} survey report${m.surveyCount!==1?'s':''}`:''}</div></div>
+      </div>
+      <button type="button" class="ov-link" onclick="setDashMainTab('quality')">View Quality &amp; Learner Experience ${_ovSvg(_OV_IC.chev,13)}</button>
+    </div>
+    <div class="ov-qgrid">${cells}</div>
+  </div>`;
+}
+function _ovEffectHtml(m){
+  const l3=TrSessionDB.all().filter(s=>s.l3Required&&!s.l3CompletedAt&&s.status!=='cancelled');
+  const due=l3.filter(s=>_tdl3Status(s)==='due_soon').length, over=l3.filter(s=>_tdl3Status(s)==='overdue').length;
+  const step=(tag,items)=>`<div class="ov-step"><div class="ov-step-tag">${tag}</div>${items.map(([v,l,c])=>`<div class="ov-step-v"${c?` style="color:${c}"`:''}>${v}</div><div class="ov-step-l">${l}</div>`).join('')}</div>`;
+  const arrow=`<div class="ov-step-arrow">${_ovSvg(_OV_IC.chev,18)}</div>`;
+  return `<div class="ov-card">
+    <div class="ov-card-hd ov-card-hd-row">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <span class="ov-ic" style="background:#eff6ff;color:#2563eb">${_ovSvg(_OV_IC.trend)}</span>
+        <div><div class="ov-card-title">Learning Effectiveness</div><div class="ov-card-sub">Reaction → Learning → Application</div></div>
+      </div>
+      <button type="button" class="ov-link" onclick="setDashMainTab('effectiveness')">View Learning Effectiveness ${_ovSvg(_OV_IC.chev,13)}</button>
+    </div>
+    <div class="ov-steps">
+      ${step('Reaction',[[_ovFmt(m.csat,'r5'),'Learner Satisfaction (CSAT)']])}
+      ${arrow}
+      ${step('Learning',[[_ovFmt(m.pass,'pct'),'Assessment Pass Rate'],[_ovFmt(m.gain,'pts'),'Avg Knowledge Gain']])}
+      ${arrow}
+      ${step('Application',[[_ovFmt(m.l3App,'pct'),'L3 Application Rate'],[`${due} / ${over}`,'L3 Due Soon / Overdue',over?'#dc2626':(due?'#d97706':null)]])}
+    </div>
+  </div>`;
+}
+const _OV_TREND_METRICS=[
+  {k:'idqa',l:'ID QA',kind:'pct',teams:['id'],color:_OV_COLORS.id},
+  {k:'cdqa',l:'CD QA',kind:'pct',teams:['cd'],color:_OV_COLORS.cd},
+  {k:'facil',l:'Facilitator',kind:'r5',teams:['delivery'],color:_OV_COLORS.tr},
+  {k:'pass',l:'Pass Rate',kind:'pct',teams:['delivery'],color:'#0891b2'},
+  {k:'report',l:'Timeliness',kind:'pct',teams:['delivery'],color:'#ea580c'}
+];
+function _ovTrendMetricsForTeam(){ const t=_ovF.team; return _OV_TREND_METRICS.filter(x=>t==='all'||x.teams.includes(t)); }
+function _ovTrendHtml(){
+  const opts=_ovTrendMetricsForTeam();
+  if(!opts.some(o=>o.k===_ovTrendMetric)) _ovTrendMetric=opts[0].k;
+  return `<div class="ov-card">
+    <div class="ov-card-hd ov-card-hd-row">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <span class="ov-ic" style="background:#f5f3ff;color:#7c3aed">${_ovSvg(_OV_IC.trend)}</span>
+        <div><div class="ov-card-title">L&amp;D Performance Trend</div><div class="ov-card-sub">Improving, stable, or declining? Dashed line = target</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <div class="ov-seg">${opts.map(o=>`<button type="button" class="${o.k===_ovTrendMetric?'on':''}" onclick="_ovSetTrendMetric('${o.k}')">${o.l}</button>`).join('')}</div>
+        ${_ovSpanSeg('ov-trend-seg',_ovTrendSpan,'_ovSetTrendSpan')}
+      </div>
+    </div>
+    <div class="ov-chart" style="height:240px"><canvas id="ov-trend-chart"></canvas></div>
+  </div>`;
+}
+
+/* ── charts ── */
+function _ovMonths(n){ const out=[]; for(let i=n-1;i>=0;i--) out.push(_ovMonthRange(i,1)); return out; }
+function _ovMonthLbl(r){ const d=new Date(r.start+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short'})+(d.getMonth()===0?` '${String(d.getFullYear()).slice(2)}`:''); }
+function _ovDestroyCharts(){ Object.values(_ovCharts).forEach(c=>{try{c.destroy()}catch(e){}}); _ovCharts={}; }
+const _ovChartBase=()=>({responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+  plugins:{legend:{position:'top',align:'start',labels:{usePointStyle:true,boxWidth:7,boxHeight:7,font:{size:11.5}}}},
+  scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{beginAtZero:true,grid:{color:'rgba(148,163,184,.18)'},ticks:{font:{size:11}}}}});
+function _ovDrawHours(){
+  const el=document.getElementById('ov-hours-chart'); if(!el||typeof Chart==='undefined') return;
+  if(_ovCharts.hours){ try{_ovCharts.hours.destroy()}catch(e){} }
+  const months=_ovMonths(_ovHoursSpan);
+  const all=TrSessionDB.all().filter(s=>s.status!=='cancelled'&&s.status!=='tentative'&&s.trainingDate);
+  const comp=all.filter(s=>_tdStatus(s)==='Completed');
+  const sched=months.map(r=>Math.round((_tdashComputeHoursRange(all,r.start,r.end).forecastedHrs||0)*10)/10);
+  const done=months.map(r=>Math.round((_tdashComputeHoursRange(comp,r.start,r.end).forecastedHrs||0)*10)/10);
+  _ovCharts.hours=new Chart(el,{type:'line',data:{labels:months.map(_ovMonthLbl),datasets:[
+    {label:'Scheduled Hours',data:sched,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',borderDash:[5,4],fill:true,tension:.35,pointRadius:3},
+    {label:'Completed Hours',data:done,borderColor:'#16a34a',backgroundColor:'#16a34a',fill:false,tension:.35,pointRadius:3}
+  ]},options:_ovChartBase()});
+}
+function _ovDrawTrend(){
+  const el=document.getElementById('ov-trend-chart'); if(!el||typeof Chart==='undefined') return;
+  if(_ovCharts.trend){ try{_ovCharts.trend.destroy()}catch(e){} }
+  const def=_OV_TREND_METRICS.find(x=>x.k===_ovTrendMetric)||_OV_TREND_METRICS[0];
+  const months=_ovMonths(_ovTrendSpan);
+  const vals=months.map(r=>{ const v=_ovMetrics(r)[def.k]; return v==null?null:Math.round(v*10)/10; });
+  const opts=_ovChartBase();
+  opts.scales.y.beginAtZero=false;
+  if(def.kind==='pct'){ opts.scales.y.suggestedMin=50; opts.scales.y.max=100; opts.scales.y.ticks.callback=v=>v+'%'; }
+  else { opts.scales.y.suggestedMin=3; opts.scales.y.max=5; }
+  _ovCharts.trend=new Chart(el,{type:'line',data:{labels:months.map(_ovMonthLbl),datasets:[
+    {label:def.l,data:vals,borderColor:def.color,backgroundColor:def.color,tension:.35,pointRadius:4,spanGaps:true},
+    {label:'Target',data:months.map(r=>_ovTgt(def.k,r.end<_todayStr()?r.end:_todayStr())),borderColor:'#94a3b8',borderDash:[6,5],borderWidth:1.5,pointRadius:0,fill:false}
+  ]},options:opts});
+}
+function _ovSetHoursSpan(n){ _ovHoursSpan=n; document.querySelectorAll('#ov-hrs-seg button').forEach(b=>b.classList.toggle('on',b.textContent===n+'M')); _ovDrawHours(); }
+function _ovSetTrendSpan(n){ _ovTrendSpan=n; document.querySelectorAll('#ov-trend-seg button').forEach(b=>b.classList.toggle('on',b.textContent===n+'M')); _ovDrawTrend(); }
+function _ovSetTrendMetric(k){ _ovTrendMetric=k; _ovRender(); }
+
+/* ── filters (topbar) ── */
+function _ovFiltersHtml(){
+  const sel=(id,key,opts,cur,label)=>`<label class="ov-filter"><span class="ov-filter-l">${label}</span><select id="${id}" onchange="_ovSetFilter('${key}',this.value)">${opts.map(([v,l])=>`<option value="${v}"${v===cur?' selected':''}>${l}</option>`).join('')}</select></label>`;
+  return `<div class="ov-filters">${sel('ov-f-period','period',_OV_PERIODS,_ovF.period,'Period')}${sel('ov-f-team','team',_OV_TEAMS,_ovF.team,'Team')}</div>`;
+}
+function _ovSetFilter(k,v){
+  _ovF[k]=v;
+  try{ localStorage.setItem('leap_ov_filters',JSON.stringify(_ovF)); }catch(e){}
+  if(_dashMainTab==='overview') _ovRender();
+}
+
+/* ── main render ── */
+function _ovRender(){
+  const root=document.getElementById('ov-root'); if(!root) return;
+  _ovDestroyCharts();
+  let r=_ovPeriod(_ovF.period); if(!r){ _ovF.period='thismonth'; r=_ovPeriod('thismonth'); }
+  const pr=_ovPeriod(_ovF.period,true);
+  _ovAsOf=r.end<_todayStr()?r.end:_todayStr();
+  const m=_ovMetrics(r), pm=pr?_ovMetrics(pr):null;
+  const team=_ovF.team, showDelivery=(team==='all'||team==='delivery');
+  const att=_ovAttention(r);
+  const teamLbl=(_OV_TEAMS.find(x=>x[0]===team)||[])[1]||'';
+  root.innerHTML=`
+    <div class="ov-period-note">Showing <b>${r.label}</b>${pr?` · trends vs ${pr.label}`:''}${team!=='all'?` · ${teamLbl}`:''}</div>
+    ${_ovKpiHealthHtml(m,pm)}
+    <div class="${showDelivery?'ov-row-2-1':'ov-row-1'}">
+      ${showDelivery?_ovDeliveryHtml(_ovDelivery(r)):''}
+      ${_ovAttentionHtml(att)}
+    </div>
+    <div class="${showDelivery?'ov-row-1-1':'ov-row-1'}">
+      ${_ovQualityHtml(m)}
+      ${showDelivery?_ovEffectHtml(m):''}
+    </div>
+    ${_ovTrendHtml()}
+  `;
+  if(showDelivery) _ovDrawHours();
+  _ovDrawTrend();
 }
 
 function onDashRangeChange(){
@@ -5727,7 +6320,7 @@ let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
 let _settingsShowInactive={};  // per-key: true=show inactive, false=hide
 
 function renderSettings(){
-  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Delivery'},{id:'kpi',label:'Supervisor KPIs'},{id:'backup',label:'Data & Backup'}];
+  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Delivery'},{id:'kpi',label:'Supervisor KPIs'},{id:'kpitargets',label:'Dashboard KPI Targets'},{id:'backup',label:'Data & Backup'}];
   document.getElementById('stabs').innerHTML=sections.map(t=>`<div class="stab${t.id===activeSettingsSection?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
   document.querySelectorAll('#stabs .stab').forEach(el=>el.addEventListener('click',()=>{activeSettingsSection=el.dataset.stab;renderSettings();}));
   document.getElementById('stab-panes').innerHTML=
@@ -5737,6 +6330,7 @@ function renderSettings(){
     `<div class="stab-pane${activeSettingsSection==='attendance'?' active':''}" id="spane-attendance"></div>`+
     `<div class="stab-pane${activeSettingsSection==='workload'?' active':''}" id="spane-workload"></div>`+
     `<div class="stab-pane${activeSettingsSection==='kpi'?' active':''}" id="spane-kpi"></div>`+
+    `<div class="stab-pane${activeSettingsSection==='kpitargets'?' active':''}" id="spane-kpitargets"></div>`+
     `<div class="stab-pane${activeSettingsSection==='backup'?' active':''}" id="spane-backup"></div>`;
   if(activeSettingsSection==='lists') renderListsOverview();
   else if(activeSettingsSection==='templates') renderAgendaTemplatesOverview();
@@ -5744,6 +6338,7 @@ function renderSettings(){
   else if(activeSettingsSection==='attendance') renderAttendanceSettingsPane();
   else if(activeSettingsSection==='workload') renderWorkloadSettingsPane();
   else if(activeSettingsSection==='kpi') renderKpiSettingsPane();
+  else if(activeSettingsSection==='kpitargets') renderKpiTargetsPane();
   else renderBackupPane();
   renderListManageDrawer();
 }
@@ -5837,6 +6432,92 @@ function renderKpiSettingsPane(){
       <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="saveKpiSettings()">Save</button>
     </div>
     ${_kpiMonthlyLockCardHtml()}`;
+}
+/* ── DASHBOARD KPI TARGETS (Settings, 2026-09-25, per Sandra) ──
+   Targets per role with an effectivity window (Effective From required, Effective To optional =
+   open-ended). The Overview resolves the target in effect at the selected period's end date via
+   _ovTgt(); with no covering row it falls back to OV_TARGETS. Windows for the same KPI may not
+   overlap, so there's never ambiguity about which target applied on a given day. */
+let _ktEdit=null; // {role, id|null}
+function _ktRows(key){ return (Cache.data[Store.KPI_TARGETS]||[]).filter(r=>r.kpiKey===key).sort((a,b)=>(b.effectiveFrom||'').localeCompare(a.effectiveFrom||'')); }
+function _ktState(r){ const t=_todayStr(); if(r.effectiveFrom>t) return ['Scheduled','#1d4ed8','#dbeafe']; if(r.effectiveTo&&r.effectiveTo<t) return ['Ended','#64748b','#f1f5f9']; return ['Current','#15803d','#dcfce7']; }
+function _ktFmtTarget(v,kind){ return kind==='pct'?Number(v)+'%':Number(v).toFixed(1)+' / 5'; }
+function renderKpiTargetsPane(){
+  const pane=document.getElementById('spane-kpitargets'); if(!pane) return;
+  const esc=Utils.esc;
+  const card=([role,roleLabel])=>{
+    const kpis=OV_KPI_CATALOG.filter(k=>k.role===role);
+    const ed=_ktEdit&&_ktEdit.role===role?_ktEdit:null;
+    const edRow=ed&&ed.id?(Cache.data[Store.KPI_TARGETS]||[]).find(x=>x.id===ed.id):null;
+    const rows=kpis.map(k=>{
+      const hist=_ktRows(k.key);
+      const cur=_ovTgt(k.key,_todayStr());
+      const histHtml=hist.length?hist.map(r=>{ const [lbl,fg,bg]=_ktState(r); return `<tr>
+          <td style="padding-left:18px;color:var(--text2)">${_ktFmtTarget(r.target,k.kind)}</td>
+          <td>${Utils.formatDate(r.effectiveFrom)}</td><td>${r.effectiveTo?Utils.formatDate(r.effectiveTo):'<span style="color:var(--text3)">Open-ended</span>'}</td>
+          <td><span class="badge" style="background:${bg};color:${fg}">${lbl}</span></td>
+          <td style="text-align:right;white-space:nowrap"><button class="btn btn-ghost btn-xs" onclick="ktStartEdit('${role}','${r.id}')">Edit</button><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="ktDelete('${r.id}')">Delete</button></td></tr>`; }).join('')
+        :`<tr><td colspan="5" style="padding-left:18px;color:var(--text3);font-size:12px">No targets set. Using default ${_ktFmtTarget(OV_TARGETS[k.key],k.kind)}.</td></tr>`;
+      return `<tr style="background:#f8fafc"><td colspan="5" style="font-weight:600">${esc(k.label)}${k.pending?' <span class="badge" style="background:#f1f5f9;color:#64748b">Data pending</span>':''}<span style="float:right;font-weight:500;color:var(--text2);font-size:12px">In effect today: <b>${_ktFmtTarget(cur,k.kind)}</b></span></td></tr>${histHtml}`;
+    }).join('');
+    const form=ed?`<div class="kt-form">
+        <div class="form-group" style="margin:0;min-width:210px"><label class="form-label">KPI</label><select id="kt-kpi" class="form-control"${edRow?' disabled':''}>${kpis.map(k=>`<option value="${k.key}"${edRow&&edRow.kpiKey===k.key?' selected':''}>${esc(k.label)} (${k.kind==='pct'?'%':'/ 5'})</option>`).join('')}</select></div>
+        <div class="form-group" style="margin:0;width:110px"><label class="form-label">Target</label><input type="number" id="kt-target" class="form-control" step="0.1" min="0" value="${edRow?edRow.target:''}"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Effective From</label><input type="date" id="kt-from" class="form-control" value="${edRow?edRow.effectiveFrom:_todayStr()}"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Effective To <span style="font-weight:400;color:var(--text3)">(optional)</span></label><input type="date" id="kt-to" class="form-control" value="${edRow&&edRow.effectiveTo?edRow.effectiveTo:''}"></div>
+        <div style="display:flex;gap:6px;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="ktSave()">${edRow?'Save':'Add'}</button><button class="btn btn-secondary btn-sm" onclick="ktCancel()">Cancel</button></div>
+        <div class="modal-err hidden" id="kt-error" style="flex-basis:100%;margin-top:4px"></div>
+      </div>`:'';
+    return `<div class="card" style="padding:16px 18px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+        <strong style="font-size:13.5px">${roleLabel}</strong>
+        ${ed?'':`<button class="btn btn-secondary btn-sm" onclick="ktStartEdit('${role}',null)">+ Add Target</button>`}
+      </div>
+      ${form}
+      <table class="dash-tbl kt-tbl" style="width:100%"><thead><tr><th>Target</th><th>Effective From</th><th>Effective To</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+  };
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Dashboard KPI Targets</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Targets the L&amp;D Performance Dashboard measures against, per role. A target applies from its Effective From date until its Effective To date (leave blank for open-ended). For any period, the dashboard uses the target in effect on the period's last day (or today, if the period hasn't ended).</div></div></div>
+    ${OV_ROLES.map(card).join('')}`;
+}
+function ktStartEdit(role,id){ _ktEdit={role,id}; renderKpiTargetsPane(); }
+function ktCancel(){ _ktEdit=null; renderKpiTargetsPane(); }
+async function ktSave(){
+  const errEl=document.getElementById('kt-error');
+  const fail=m=>{ errEl.textContent=m; errEl.classList.remove('hidden'); };
+  const editing=_ktEdit&&_ktEdit.id?(Cache.data[Store.KPI_TARGETS]||[]).find(x=>x.id===_ktEdit.id):null;
+  const kpiKey=editing?editing.kpiKey:document.getElementById('kt-kpi').value;
+  const def=OV_KPI_CATALOG.find(k=>k.key===kpiKey); if(!def) return fail('Pick a KPI.');
+  const target=parseFloat(document.getElementById('kt-target').value);
+  const from=document.getElementById('kt-from').value, to=document.getElementById('kt-to').value||null;
+  if(isNaN(target)) return fail('Enter a target value.');
+  if(def.kind==='pct'&&(target<0||target>100)) return fail('Percentage targets must be between 0 and 100.');
+  if(def.kind==='r5'&&(target<0||target>5)) return fail('Rating targets must be between 0 and 5.');
+  if(!from) return fail('Effective From is required.');
+  if(to&&to<from) return fail('Effective To cannot be earlier than Effective From.');
+  const clash=(Cache.data[Store.KPI_TARGETS]||[]).find(r=>r.kpiKey===kpiKey&&(!editing||r.id!==editing.id)&&r.effectiveFrom<=(to||'9999-12-31')&&(r.effectiveTo||'9999-12-31')>=from);
+  if(clash) return fail(`Overlaps an existing ${def.label} target (${Utils.formatDate(clash.effectiveFrom)} – ${clash.effectiveTo?Utils.formatDate(clash.effectiveTo):'open-ended'}). Set an Effective To on that one first, or adjust these dates.`);
+  const patch={role:def.role,kpiKey,target,effectiveFrom:from,effectiveTo:to,updatedAt:new Date().toISOString()};
+  const row=patchToSnake(Store.KPI_TARGETS,patch);
+  const q=editing?sb.from(Store.KPI_TARGETS).update(row).eq('id',editing.id):sb.from(Store.KPI_TARGETS).insert(row);
+  const {data,error}=await q.select().single();
+  if(error){ _surfaceDbError(error,'Save'); return; }
+  const saved=rowToCamel(Store.KPI_TARGETS,data);
+  const arr=Cache.data[Store.KPI_TARGETS]; const i=arr.findIndex(x=>x.id===saved.id);
+  if(i>=0) arr[i]=saved; else arr.push(saved);
+  if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','Settings',saved.id,`${editing?'Updated':'Added'} dashboard KPI target: ${def.label} = ${_ktFmtTarget(target,def.kind)} from ${from}${to?' to '+to:''}`);
+  _ktEdit=null; renderKpiTargetsPane(); toast('KPI target saved.','success');
+}
+function ktDelete(id){
+  const r=(Cache.data[Store.KPI_TARGETS]||[]).find(x=>x.id===id); if(!r) return;
+  const def=OV_KPI_CATALOG.find(k=>k.key===r.kpiKey)||{label:r.kpiKey,kind:'pct'};
+  confirm$('Delete KPI target',`Delete the ${Utils.esc(def.label)} target of <b>${_ktFmtTarget(r.target,def.kind)}</b> (from ${Utils.formatDate(r.effectiveFrom)})? Periods it covered will fall back to another target or the default.`,'Delete',async()=>{
+    const {error}=await sb.from(Store.KPI_TARGETS).delete().eq('id',id);
+    if(error){ _surfaceDbError(error,'Delete'); return; }
+    const arr=Cache.data[Store.KPI_TARGETS]; const i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1);
+    if(typeof AuditLog!=='undefined') await AuditLog.record('admin_change','Settings',id,`Deleted dashboard KPI target: ${def.label}`);
+    renderKpiTargetsPane(); toast('KPI target deleted.','success');
+  });
 }
 async function saveKpiSettings(){
   const trainerEvalTarget=parseInt(document.getElementById('kstg-trainer').value,10);
@@ -6857,7 +7538,7 @@ const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
   'departments','attendance_settings','workload_settings','ph_holidays','workload_pct_history','checklist_templates','session_checklists',
-  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots'
+  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets'
 ];
 
 function _buildBackupPayload(){
