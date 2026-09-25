@@ -856,6 +856,62 @@
     .b-pend{background:#f5f3ff;color:#7c3aed}
 
     /* ── L&D PERFORMANCE — EXECUTIVE OVERVIEW (2026-09-25) ── */
+    /* ── LEARNING PROGRAMS (2026-09-25) ── */
+    .modal-err.show,#kt-error:not(.hidden),#kstg-error:not(.hidden){display:block}
+    .lp-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;margin-bottom:12px}
+    .lp-toolbar select{padding:8px 10px;border:1.5px solid var(--border);background:var(--white);font-size:12.5px;font-family:var(--font);color:var(--text2);min-width:140px}
+    .lp-search{flex:1;min-width:240px;display:flex;align-items:center;gap:8px;border:1.5px solid var(--border);border-radius:10px;padding:0 10px;color:var(--text3);background:var(--white)}
+    .lp-search input{border:none!important;outline:none;flex:1;padding:8px 0;font-size:13px;font-family:var(--font);background:transparent}
+    .lp-listhdr{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+    .lp-count{font-size:12.5px;color:var(--text3);font-weight:500}
+    .lp-tblcard{padding:0;overflow:visible}
+    .lp-tbl td{padding:12px 10px}
+    .lp-tile{width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .lp-ptitle{font-weight:600;color:var(--text);font-size:13px}
+    .lp-person{display:flex;align-items:center;gap:8px;margin:2px 0}
+    .lp-person-n{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .lp-person-r{font-size:10.5px;color:var(--text3)}
+    .lp-person-more{font-size:11px;color:var(--text3);margin-left:32px}
+    .lp-ava{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700;flex-shrink:0}
+    .lp-muted{color:var(--text3)}
+    .lp-icon-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:8px;display:inline-flex}
+    .lp-icon-btn:hover{background:var(--bg);color:var(--text)}
+    .lp-menu{right:0;left:auto;min-width:150px;z-index:40}
+    .lp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+    .lp-gcard{padding:16px;cursor:pointer;transition:box-shadow .15s}
+    .lp-gcard:hover{box-shadow:var(--sh-lg)}
+    .lp-gtitle{font-weight:700;font-size:14px;color:var(--text);margin-top:10px}
+    .lp-gmeta{font-size:11.5px;color:var(--text3);margin-top:2px}
+    .lp-dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:6px;flex-wrap:wrap}
+    .lp-dtitle{font-family:var(--font-heading);font-size:22px;font-weight:700;color:var(--text);margin:0}
+    .lp-dmeta{font-size:12.5px;color:var(--text3);margin-top:3px}
+    .lp-dgrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+    .lp-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+    @media (max-width:1100px){ .lp-dgrid{grid-template-columns:minmax(0,1fr)} }
+    .lp-card{padding:16px 18px;border-radius:16px}
+    .lp-card-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+    .lp-card-t{font-family:var(--font-heading);font-size:14.5px;font-weight:600;color:var(--text)}
+    .lp-info-row{display:grid;grid-template-columns:24px 150px 1fr;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-lt);font-size:13px}
+    .lp-info-row:last-child{border-bottom:none}
+    .lp-info-ic{color:var(--text3);display:inline-flex}
+    .lp-info-l{color:var(--text3)}
+    .lp-info-v{color:var(--text);font-weight:500}
+    .lp-crow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-lt)}
+    .lp-crow .lp-ava{width:36px;height:36px;font-size:12.5px}
+    .lp-crole{font-size:12px;color:var(--pri)}
+    .lp-prim{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);white-space:nowrap}
+    .lp-addrow{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+    .lp-addrow select{flex:1;min-width:200px;padding:8px 10px;border:1.5px solid var(--border);font-size:12.5px;font-family:var(--font)}
+    .lp-desc{font-size:13px;color:var(--text2);line-height:1.6}
+    .lp-comp-edit td{background:#f8fafc}
+    .lp-comp-edit .form-control{padding:6px 8px;font-size:12.5px}
+    .lp-l3{margin-top:14px;padding-top:12px;border-top:1px solid var(--border-lt)}
+    .lp-l3-lbl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer}
+    .lp-qs-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .lp-qs{background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;padding:12px;text-align:center}
+    .lp-qs-ic{width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+    .lp-qs-v{font-family:var(--font-heading);font-size:20px;font-weight:700;color:var(--text3);margin-top:6px}
+    .lp-qs-l{font-size:11px;color:var(--text3)}
     .kt-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;padding:12px;margin-bottom:12px}
     .kt-tbl td,.kt-tbl th{font-size:12.5px}
     .ov-legacy-note{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:9px 14px;margin-bottom:14px}
@@ -1066,6 +1122,7 @@
         <div class="nav-item js-reports hidden" data-view="reports"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><line x1="6" y1="20" x2="6" y2="12" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="6" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="18" y1="20" x2="18" y2="9.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg></span> QA Reports</div>
         <div class="nav-sec">Training Operations</div>
         <div class="nav-item" data-view="training-dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Training Dashboard</div>
+        <div class="nav-item" data-view="learning-programs"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Learning Programs</div>
         <div class="nav-item" data-view="training-delivery"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Training Calendar</div>
         <div class="nav-item" data-view="trainer-checklist"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7l1.4 1.4L8 5.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="7" x2="20.5" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M4 13l1.4 1.4L8 11.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="13" x2="20.5" y2="13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M4 19l1.4 1.4L8 17.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="19" x2="20.5" y2="19" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Trainer Checklist</div>
         <div class="nav-sec js-admin hidden">Manage</div>
@@ -2051,6 +2108,9 @@
 
         <!-- ══ TRAINER CHECKLIST (2026-08-13, per Sandra) — checklist progress/reminders rollup
              across ILT sessions, nested under the Training Calendar sub-nav ══ -->
+        <!-- ══ LEARNING PROGRAMS (2026-09-25, per Sandra) — program library, not yet linked to sessions ══ -->
+        <div id="view-learning-programs" class="hidden"><div id="lp-root"></div></div>
+
         <div id="view-trainer-checklist" class="hidden">
           <div class="kpi-strip" id="tc-kpis" style="margin-bottom:16px;grid-template-columns:repeat(4,1fr)"></div>
           <div class="card" style="margin-bottom:14px">
@@ -2670,6 +2730,32 @@
       <button class="btn btn-secondary" onclick="closeModal('chg-pass')">Cancel</button>
       <button class="btn btn-primary" onclick="saveChangePassword()">Change Password</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: LEARNING PROGRAM (add / edit) ══ -->
+<div id="modal-lp" class="modal-overlay" onclick="if(event.target===this)closeModal('lp')">
+  <div class="modal modal-lg">
+    <div class="modal-hdr"><span class="modal-title" id="lpm-title">Add Program</span><button class="modal-close" onclick="closeModal('lp')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Program Title <span class="req">*</span></label><input type="text" id="lpm-f-title" class="form-control" placeholder="e.g. CSR Role Specific Onboarding"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Category <span class="req">*</span></label><select id="lpm-f-cat" class="form-control"></select></div>
+        <div class="form-group"><label class="form-label">Type <span class="req">*</span></label><select id="lpm-f-type" class="form-control"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Version</label><input type="text" id="lpm-f-ver" class="form-control" placeholder="v1"></div>
+        <div class="form-group"><label class="form-label">Status</label><select id="lpm-f-status" class="form-control" onchange="lpFormStatusChange()"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Effective From <span class="req">*</span></label><input type="date" id="lpm-f-from" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Effective To <span class="req" id="lpm-to-req">*</span></label><input type="date" id="lpm-f-to" class="form-control"><div class="form-hint" id="lpm-to-hint" style="font-size:11.5px;color:var(--text3);margin-top:4px"></div></div>
+      </div>
+      <div class="form-group" id="lpm-desc-wrap" style="margin-bottom:0"><label class="form-label">Program Description</label><textarea id="lpm-f-desc" class="form-control" rows="3" placeholder="What the program is for, who it's for, and the outcomes it targets."></textarea></div>
+      <div class="lp-muted" style="font-size:11.5px;margin-top:10px">Owners &amp; contributors, learning components and the L3 tag are set on the program's page after it's created.</div>
+      <div class="modal-err" id="lpm-error"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="closeModal('lp')">Cancel</button><button class="btn btn-primary" id="lpm-save" onclick="lpSaveForm()">Create Program</button></div>
   </div>
 </div>
 
@@ -3318,6 +3404,13 @@ const _FIELD_MAPS = {
   // so a target change applies from its Effective From date without rewriting history.
   kpi_targets:{
     id:'id', role:'role', kpiKey:'kpi_key', target:'target', effectiveFrom:'effective_from', effectiveTo:'effective_to', createdAt:'created_at', updatedAt:'updated_at'
+  },
+  // Learning Programs (2026-09-25, per Sandra): program library. contributors/components are jsonb.
+  learning_programs:{
+    id:'id', title:'title', categoryId:'category_id', deliveryType:'delivery_type', version:'version', status:'status',
+    effectiveFrom:'effective_from', effectiveTo:'effective_to', description:'description', contributors:'contributors',
+    components:'components', l3Required:'l3_required', l3Notes:'l3_notes', createdBy:'created_by', updatedBy:'updated_by',
+    createdAt:'created_at', updatedAt:'updated_at'
   }
 };
 function rowToCamel(table,row){
@@ -3359,7 +3452,7 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[] },
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -3422,7 +3515,7 @@ const Store = {
   CATEGORIES:'categories', AUDIENCES:'audiences', AGENDA_TEMPLATES:'agenda_templates',
   CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
   DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings', PH_HOLIDAYS:'ph_holidays', WORKLOAD_PCT_HISTORY:'workload_pct_history',
-  KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots', KPI_TARGETS:'kpi_targets',
+  KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots', KPI_TARGETS:'kpi_targets', LEARNING_PROGRAMS:'learning_programs',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -3952,7 +4045,7 @@ _sbInitNavTooltips();
 _applySidebarCollapse();
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'L&D Performance Dashboard','my-performance':'My Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={dashboard:'L&D Performance Dashboard','my-performance':'My Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   dashboard:'Overall performance, quality, effectiveness, and operational health across L&D',
@@ -3961,6 +4054,7 @@ const PAGE_SUBTITLES={
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
   'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment',
   'training-dashboard':'Rolled-up view of training delivery health across the organization',
+  'learning-programs':'Central registry of L&D programs, ownership, content, and implementation history',
   'training-delivery':'Centralized list and calendar view of all training delivery — ILT, VILT, self-led, and external — reading the same sessions as Training Sessions with no duplicate data entry',
   'trainer-checklist':'Trainer Checklist progress and reminders across ILT sessions — pre- and post-training task status at a glance',
   'cost-settings':'Manage facilitation labor cost rates for facilitators. Rates are effective-dated and applied based on the training date.',
@@ -3989,7 +4083,7 @@ function showView(id){
   // Dashboard's single "+ New Evaluation" dropdown (2026-09-22, per Sandra: replaces the old
   // 3-button "Quick Actions" strip in dash-body) lives in the shared topbar-acts slot -- cleared
   // for every other view so it doesn't linger when navigating away.
-  document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_ovFiltersHtml()+_dashNewEvalBtnHtml()):'';
+  document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_ovFiltersHtml()+_dashNewEvalBtnHtml()):(id==='learning-programs'?_lpTopbarHtml():'');
   if(id==='dashboard')   renderDashboard();
   if(id==='my-performance') renderMyPerformance();
   if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
@@ -4001,6 +4095,7 @@ function showView(id){
   if(id==='training-dashboard') renderTrainingDashboard();
   if(id==='training-delivery') renderTrainingDelivery();
   if(id==='trainer-checklist') renderTrainerChecklist();
+  if(id==='learning-programs') renderLearningPrograms();
   if(id==='cost-settings') renderCostSettings();
   if(id==='cost-analysis') renderCostAnalysis();
   _syncHashForCurrentView();
@@ -4045,6 +4140,7 @@ function _hashForView(id){
   if(id==='id-qa')       return _computeIDQAHash();
   if(id==='content-qa')  return _computeCQAHash();
   if(id==='training-delivery') return _computeTrainingDeliveryHash();
+  if(id==='learning-programs') return '#learning-programs'+(_lpDetailId?'/'+_lpDetailId:'');
   return '#'+id;
 }
 function _pushAppHash(hash){
@@ -4079,7 +4175,7 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['dashboard','my-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+    const validViews=['dashboard','my-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     showView(view);
     if(view==='evaluations'){
@@ -4091,6 +4187,9 @@ function _restoreFromHash(hash){
     } else if(view==='content-qa'){
       if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewCQA(); else { const rec=ContentQADB.byId(rid); if(rec) openCQA(rid); else showCQASubview('list'); } }
       else showCQASubview('list');
+    } else if(view==='learning-programs'){
+      _lpDetailId=(parts[1]&&LearningProgramDB.byId(parts[1]))?parts[1]:null; _lpTab='overview';
+      renderLearningPrograms();
     } else if(view==='training-delivery'){
       const rid=parts[1];
       if(rid){ const rec=TrSessionDB.byId(rid); if(rec) openTrainingDetail(rid); else renderTrainingDelivery(); }
@@ -4793,6 +4892,391 @@ function _ovRender(){
   if(showDelivery) _ovDrawHours();
   _ovDrawTrend();
 }
+
+/* ── LEARNING PROGRAMS (2026-09-25, per Sandra) ──────────────────────────────────────────
+   Program library: the layer above individual sessions. Each program holds its info, owners /
+   contributors (IDs, CDs, supervisors from the roster), description, learning components /
+   topics (the future replacement for Agenda Templates, incl. assessment + passing rate), and the
+   L3 flag. Deliberately NOT linked to Training Sessions yet (Sandra: "keep the existing
+   functionality, do not link anything yet") -- Quick Stats / Recent Implementations are
+   placeholders until that link is designed. Only the Overview tab is built this round. */
+const LP_TYPES=['ILT','VILT','ILT/VILT','SLT','Blended'];
+const LP_ASSESS=['None','Pre-test','Post-test','Pre & Post'];
+const LP_TABS=[['overview','Overview'],['content','Content & Assessments'],['impl','Implementations'],['perf','Performance'],['files','Files & Resources'],['history','History']];
+const LP_TILE_COLORS=[['#eef2ff','#4f46e5'],['#fff7ed','#ea580c'],['#fef2f2','#dc2626'],['#f5f3ff','#7c3aed'],['#ecfeff','#0891b2'],['#f0fdf4','#16a34a'],['#fffbeb','#d97706'],['#fdf2f8','#db2777']];
+const LearningProgramDB={
+  all(){ return (Cache.data[Store.LEARNING_PROGRAMS]||[]).slice(); },
+  byId(id){ return this.all().find(p=>p.id===id)||null; }
+};
+let lpF={q:'',cat:'all',type:'all',status:'active',sort:'updated',view:'list'};
+let _lpDetailId=null, _lpTab='overview', _lpContribEdit=false, _lpDescEdit=false, _lpCompEdit=null, _lpEditId=null;
+
+const _lpIc=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px">${d}</svg>`;
+const LP_IC={
+  layers:'<path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z"/><path d="M3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/>',
+  title:'<path d="M4 6h16M4 12h10M4 18h7"/>', tag:'<path d="M3 12V4h8l9 9-8 8-9-9Z"/><circle cx="7.5" cy="8" r="1.2"/>',
+  screen:'<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>', user:'<circle cx="12" cy="8.2" r="3.7"/><path d="M5.3 20.5v-1.1a4.6 4.6 0 0 1 4.6-4.6h4.2a4.6 4.6 0 0 1 4.6 4.6v1.1"/>',
+  ver:'<path d="M6 3v12M18 9v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/>', cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+  status:'<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.3 2.3 4.7-5"/>', dots:'<circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/>',
+  back:'<path d="M15 5l-7 7 7 7"/>', edit:'<path d="M12 20.5h9"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>', grid:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  total:'<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>', done:'<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.3 2.3 4.7-5"/>',
+  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', users:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5v-.8a4.2 4.2 0 0 1 4.2-4.2h2.6a4.2 4.2 0 0 1 4.2 4.2v.8"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M17.5 14.6a3.6 3.6 0 0 1 3 3.5v.9"/>'
+};
+
+function lpCanEdit(u){ u=u||Auth.user; if(!u) return false; return !!(u.isAdmin||u.positionId==='pos_4'||u.positionId==='pos_5'||isSupervisorEligible(u)||Perms.isSupervisor(u)); }
+function _lpRoleOf(u){
+  if(!u) return '';
+  if(u.positionId==='pos_4') return 'Instructional Designer';
+  if(u.positionId==='pos_5') return 'Content Developer';
+  return Sel.nameOf(Store.POS,u.positionId)||'Supervisor';
+}
+function _lpCandidates(){
+  return DB.all().filter(u=>u.isActive&&(u.positionId==='pos_4'||u.positionId==='pos_5'||isSupervisorEligible(u)||Perms.isSupervisor(u)))
+    .sort((a,b)=>`${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+}
+function _lpName(id){ const u=DB.byId(id); return u?`${u.firstName} ${u.lastName}`:'Unknown user'; }
+function _lpTile(p){
+  const cats=Sel.all(Store.CATEGORIES); const i=Math.max(0,cats.findIndex(c=>c.id===p.categoryId));
+  const [bg,fg]=LP_TILE_COLORS[i%LP_TILE_COLORS.length];
+  return `<span class="lp-tile" style="background:${bg};color:${fg}">${_lpIc(LP_IC.layers)}</span>`;
+}
+function _lpAva(id,role){
+  const n=_lpName(id); const bg=role==='Content Developer'?'#16a34a':(role==='Instructional Designer'?'#7c3aed':'#2563eb');
+  return `<span class="lp-ava" style="background:${bg}">${Utils.initials(n)}</span>`;
+}
+function _lpStatusBadge(p){ return p.status==='inactive'?'<span class="badge" style="background:#f1f5f9;color:#64748b">Inactive</span>':'<span class="badge" style="background:#dcfce7;color:#15803d">Active</span>'; }
+function _lpTypeBadge(t){ return `<span class="badge" style="background:#eff6ff;color:#1d4ed8">${Utils.esc(t||'—')}</span>`; }
+
+async function _lpPersist(id,patch){
+  const me=Auth.user;
+  const full={...patch,updatedAt:new Date().toISOString(),updatedBy:me?me.id:null};
+  if(!id&&me) full.createdBy=me.id;
+  const row=patchToSnake(Store.LEARNING_PROGRAMS,full);
+  const q=id?sb.from(Store.LEARNING_PROGRAMS).update(row).eq('id',id):sb.from(Store.LEARNING_PROGRAMS).insert(row);
+  const {data,error}=await q.select().single();
+  if(error){ _surfaceDbError(error,'Save'); return null; }
+  const saved=rowToCamel(Store.LEARNING_PROGRAMS,data);
+  const arr=Cache.data[Store.LEARNING_PROGRAMS]; const i=arr.findIndex(x=>x.id===saved.id);
+  if(i>=0) arr[i]=saved; else arr.push(saved);
+  return saved;
+}
+
+/* ── list page ── */
+function _lpFiltered(){
+  const q=lpF.q.trim().toLowerCase();
+  let rows=LearningProgramDB.all().filter(p=>{
+    if(lpF.status!=='all'&&(p.status||'active')!==lpF.status) return false;
+    if(lpF.cat!=='all'&&p.categoryId!==lpF.cat) return false;
+    if(lpF.type!=='all'&&p.deliveryType!==lpF.type) return false;
+    if(q){
+      const hay=[p.title,Sel.nameOf(Store.CATEGORIES,p.categoryId),...(p.contributors||[]).map(c=>_lpName(c.profileId))].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  if(lpF.sort==='title') rows.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+  else rows.sort((a,b)=>(b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||''));
+  return rows;
+}
+function _lpContribCell(p){
+  const cs=(p.contributors||[]).slice().sort((a,b)=>(b.primary?1:0)-(a.primary?1:0));
+  if(!cs.length) return '<span style="color:var(--text3)">None yet</span>';
+  const shown=cs.slice(0,2).map(c=>`<div class="lp-person">${_lpAva(c.profileId,c.role)}<div style="min-width:0"><div class="lp-person-n">${Utils.esc(_lpName(c.profileId))}</div><div class="lp-person-r">${Utils.esc(c.role||'')}</div></div></div>`).join('');
+  return shown+(cs.length>2?`<div class="lp-person-more">+${cs.length-2} more</div>`:'');
+}
+function _lpRowMenu(p){
+  const can=lpCanEdit();
+  return `<div class="td-viewmenu-wrap lp-menu-wrap" onclick="event.stopPropagation()">
+    <button type="button" class="lp-icon-btn" title="More" onclick="lpToggleMenu(this)">${_lpIc(LP_IC.dots)}</button>
+    <div class="td-viewmenu lp-menu">
+      <div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>
+      ${can?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')">Edit</div>`:''}
+      ${can?`<div class="td-viewmenu-item" onclick="lpToggleStatus('${p.id}')">${p.status==='inactive'?'Reactivate':'Mark Inactive'}</div>`:''}
+      ${Auth.isAdmin?`<div class="td-viewmenu-item" style="color:var(--red)" onclick="lpDelete('${p.id}')">Delete</div>`:''}
+    </div>
+  </div>`;
+}
+function lpToggleMenu(btn){
+  const w=btn.closest('.td-viewmenu-wrap'); const was=w.classList.contains('open');
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  if(!was) w.classList.add('open');
+}
+function _lpImplCell(){ return '<span class="lp-muted" title="Available once sessions are linked to programs">—</span>'; }
+function _lpListHtml(){
+  const rows=_lpFiltered();
+  const cats=Sel.active(Store.CATEGORIES);
+  const opt=(v,l,cur)=>`<option value="${v}"${v===cur?' selected':''}>${Utils.esc(l)}</option>`;
+  const toolbar=`<div class="card lp-toolbar">
+      <div class="lp-search">${_lpIc(LP_IC.search)}<input type="text" id="lp-q" placeholder="Search program title, category, or owner..." value="${Utils.esc(lpF.q)}" oninput="lpF.q=this.value;_lpRenderResults()"></div>
+      <select onchange="lpF.cat=this.value;_lpRenderResults()">${opt('all','All Categories',lpF.cat)}${cats.map(c=>opt(c.id,c.name,lpF.cat)).join('')}</select>
+      <select onchange="lpF.type=this.value;_lpRenderResults()">${opt('all','All Types',lpF.type)}${LP_TYPES.map(t=>opt(t,t,lpF.type)).join('')}</select>
+      <select onchange="lpF.status=this.value;_lpRenderResults()">${opt('active','Active',lpF.status)}${opt('inactive','Inactive',lpF.status)}${opt('all','All Statuses',lpF.status)}</select>
+      <button class="btn btn-secondary btn-sm" onclick="lpReset()">Reset</button>
+    </div>`;
+  return toolbar+`<div id="lp-results">${_lpResultsHtml(rows)}</div>`;
+}
+function _lpResultsHtml(rows){
+  const hdr=`<div class="lp-listhdr">
+      <span class="lp-count">${rows.length} program${rows.length!==1?'s':''}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="ov-filter"><span class="ov-filter-l">Sort by</span><select onchange="lpF.sort=this.value;_lpRenderResults()"><option value="updated"${lpF.sort==='updated'?' selected':''}>Recently Updated</option><option value="title"${lpF.sort==='title'?' selected':''}>Title A–Z</option></select></label>
+        <div class="ov-seg"><button type="button" class="${lpF.view==='list'?'on':''}" title="List view" onclick="lpF.view='list';_lpRenderResults()">${_lpIc(LP_IC.list)}</button><button type="button" class="${lpF.view==='grid'?'on':''}" title="Grid view" onclick="lpF.view='grid';_lpRenderResults()">${_lpIc(LP_IC.grid)}</button></div>
+      </div>
+    </div>`;
+  if(!rows.length){
+    const none=!LearningProgramDB.all().length;
+    return hdr+`<div class="card"><div class="empty-state"><div style="color:var(--text3);margin-bottom:10px">${_lpIc(LP_IC.layers)}</div><div class="empty-title">${none?'No programs yet':'No programs match these filters'}</div><div style="font-size:13px;color:var(--text3);margin-top:4px">${none?(lpCanEdit()?'Click "+ Add Program" to create the first one.':'Programs will appear here once they are added.'):'Try adjusting the search or filters.'}</div></div></div>`;
+  }
+  if(lpF.view==='grid'){
+    return hdr+`<div class="lp-grid">${rows.map(p=>`<div class="card lp-gcard" onclick="lpOpen('${p.id}')">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">${_lpTile(p)}${_lpRowMenu(p)}</div>
+        <div class="lp-gtitle">${Utils.esc(p.title)}</div>
+        <div class="lp-gmeta">${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${Utils.esc(p.deliveryType||'—')} · ${Utils.esc(p.version||'v1')}</div>
+        <div style="margin:10px 0">${_lpContribCell(p)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">${_lpStatusBadge(p)}<span class="lp-muted" style="font-size:11.5px">Implementations: —</span></div>
+      </div>`).join('')}</div>`;
+  }
+  return hdr+`<div class="card lp-tblcard"><table class="dash-tbl lp-tbl"><thead><tr><th>Program Title</th><th>Category</th><th>Type</th><th>Version</th><th>Owners / Contributors</th><th>Status</th><th>Implementations</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr onclick="lpOpen('${p.id}')">
+      <td><div style="display:flex;align-items:center;gap:10px">${_lpTile(p)}<span class="lp-ptitle">${Utils.esc(p.title)}</span></div></td>
+      <td>${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')}</td>
+      <td>${_lpTypeBadge(p.deliveryType)}</td>
+      <td>${Utils.esc(p.version||'v1')}</td>
+      <td>${_lpContribCell(p)}</td>
+      <td>${_lpStatusBadge(p)}</td>
+      <td>${_lpImplCell(p)}</td>
+      <td style="text-align:right">${_lpRowMenu(p)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+function _lpRenderResults(){ const el=document.getElementById('lp-results'); if(el) el.innerHTML=_lpResultsHtml(_lpFiltered()); }
+function lpReset(){ lpF={...lpF,q:'',cat:'all',type:'all',status:'active'}; renderLearningPrograms(); }
+
+/* ── detail page ── */
+function lpOpen(id){ _lpDetailId=id; _lpTab='overview'; _lpContribEdit=false; _lpDescEdit=false; _lpCompEdit=null; renderLearningPrograms(); _syncHashForCurrentView(); }
+function lpBack(){ _lpDetailId=null; renderLearningPrograms(); _syncHashForCurrentView(); }
+function lpSetTab(t){ _lpTab=t; renderLearningPrograms(); }
+function _lpInfoRow(icon,label,val){ return `<div class="lp-info-row"><span class="lp-info-ic">${_lpIc(icon)}</span><span class="lp-info-l">${label}</span><span class="lp-info-v">${val}</span></div>`; }
+function _lpDetailHtml(p){
+  const can=lpCanEdit(), esc=Utils.esc;
+  const upd=p.updatedAt?`Last updated: ${Utils.formatDate(p.updatedAt.slice(0,10))}${p.updatedBy?` by ${esc(_lpName(p.updatedBy))}`:''}`:'';
+  const head=`<button type="button" class="ov-link" style="padding-left:0" onclick="lpBack()">${_lpIc(LP_IC.back)} Back to Learning Programs</button>
+    <div class="lp-dhead">
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${esc(p.title)}</h2>${_lpStatusBadge(p)}</div>
+        <div class="lp-dmeta">${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(p.deliveryType||'—')} · Version ${esc((p.version||'v1').replace(/^v/i,''))}</div>
+        <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${can?`<button class="btn btn-primary btn-sm" onclick="lpOpenForm('${p.id}')">${_lpIc(LP_IC.edit)} Edit Program</button>`:''}
+        ${(can||Auth.isAdmin)?_lpRowMenu(p).replace(`<div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>`,''):''}
+      </div>
+    </div>
+    <div class="dmain-tabs" style="margin-top:14px">${LP_TABS.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>`;
+  if(_lpTab!=='overview'){
+    const l=(LP_TABS.find(t=>t[0]===_lpTab)||[])[1];
+    return head+`<div class="card"><div class="empty-state"><div style="margin-bottom:12px;color:var(--text3)"><svg viewBox="0 0 24 24" fill="none" style="width:40px;height:40px"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3.5 17.5a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.2-.3-.3-2.2 2.4-2.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="empty-title">${esc(l)} is under development</div><div style="font-size:13px;color:var(--text3);margin-top:4px">This tab is being built. Check back soon.</div></div></div>`;
+  }
+  const info=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Information</span></div>
+    ${_lpInfoRow(LP_IC.title,'Program Title',esc(p.title))}
+    ${_lpInfoRow(LP_IC.tag,'Category',esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—'))}
+    ${_lpInfoRow(LP_IC.screen,'Delivery Type',esc(p.deliveryType||'—'))}
+    ${_lpInfoRow(LP_IC.user,'Program Owner','L&amp;D')}
+    ${_lpInfoRow(LP_IC.ver,'Current Version',esc(p.version||'v1'))}
+    ${_lpInfoRow(LP_IC.cal,'Effective From',p.effectiveFrom?Utils.formatDate(p.effectiveFrom):'—')}
+    ${_lpInfoRow(LP_IC.cal,'Effective To',p.effectiveTo?Utils.formatDate(p.effectiveTo):'—')}
+    ${_lpInfoRow(LP_IC.status,'Status',_lpStatusBadge(p))}
+  </div>`;
+  const cs=p.contributors||[];
+  const cands=_lpCandidates().filter(u=>!cs.some(c=>c.profileId===u.id));
+  const contrib=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Owners &amp; Contributors</span>${can?`<button class="ov-link" onclick="_lpContribEdit=!_lpContribEdit;renderLearningPrograms()">${_lpContribEdit?'Done':_lpIc(LP_IC.edit)+' Edit'}</button>`:''}</div>
+    ${cs.length?cs.map((c,i)=>`<div class="lp-crow">${_lpAva(c.profileId,c.role)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(_lpName(c.profileId))}</div><div class="lp-crole">${esc(c.role||'')}</div></div>
+        ${_lpContribEdit?`<label class="lp-prim"><input type="checkbox" ${c.primary?'checked':''} onchange="lpContribPrimary(${i},this.checked)"> Primary</label><button class="lp-icon-btn" title="Remove" onclick="lpContribRemove(${i})">${_lpIc(LP_IC.x)}</button>`:(c.primary?'<span class="badge" style="background:#dcfce7;color:#15803d">Primary</span>':'')}
+      </div>`).join(''):'<div class="lp-muted" style="padding:6px 0 10px;font-size:12.5px">No owners or contributors tagged yet.</div>'}
+    ${_lpContribEdit?`<div class="lp-addrow"><select id="lp-add-person"><option value="">Select from roster…</option>${cands.map(u=>`<option value="${u.id}">${esc(u.firstName+' '+u.lastName)} — ${esc(_lpRoleOf(u))}</option>`).join('')}</select><label class="lp-prim"><input type="checkbox" id="lp-add-primary"> Primary</label><button class="btn btn-primary btn-sm" onclick="lpContribAdd()">Add</button></div><div class="lp-muted" style="font-size:11px;margin-top:6px">Roster shows active Instructional Designers, Content Developers and supervisors.</div>`
+      :(can?`<div style="text-align:center;margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="_lpContribEdit=true;renderLearningPrograms()">+ Add Contributor</button></div>`:'')}
+  </div>`;
+  const desc=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Description</span>${can&&!_lpDescEdit?`<button class="ov-link" onclick="_lpDescEdit=true;renderLearningPrograms()">${_lpIc(LP_IC.edit)} Edit</button>`:''}</div>
+    ${_lpDescEdit?`<textarea id="lp-desc" class="form-control" rows="5" placeholder="What the program is for, who it's for, and the outcomes it targets.">${esc(p.description||'')}</textarea><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="_lpDescEdit=false;renderLearningPrograms()">Cancel</button><button class="btn btn-primary btn-sm" onclick="lpSaveDesc()">Save</button></div>`
+      :`<div class="lp-desc">${p.description?esc(p.description).replace(/\n/g,'<br>'):'<span class="lp-muted">No description yet.</span>'}</div>`}
+  </div>`;
+  const comps=p.components||[];
+  const compRowEdit=(c,i)=>`<tr class="lp-comp-edit"><td>${i==='new'?comps.length+1:i+1}</td>
+      <td><input type="text" id="lp-c-title" class="form-control" value="${esc(c.title||'')}" placeholder="Component / topic title"></td>
+      <td><select id="lp-c-assess" class="form-control" onchange="document.getElementById('lp-c-pass').disabled=(this.value==='None'||this.value==='Pre-test')">${LP_ASSESS.map(a=>`<option${(c.assessment||'None')===a?' selected':''}>${a}</option>`).join('')}</select></td>
+      <td><input type="number" id="lp-c-pass" class="form-control" min="0" max="100" step="1" value="${c.passingRate!=null?c.passingRate:''}" placeholder="%" ${(c.assessment||'None')==='None'||c.assessment==='Pre-test'?'disabled':''}></td>
+      <td style="white-space:nowrap;text-align:right"><button class="btn btn-primary btn-xs" onclick="lpCompSave(${i==='new'?"'new'":i})">Save</button> <button class="btn btn-ghost btn-xs" onclick="_lpCompEdit=null;renderLearningPrograms()">Cancel</button></td></tr>`;
+  const compRows=comps.map((c,i)=>_lpCompEdit===i?compRowEdit(c,i):`<tr style="cursor:default"><td>${i+1}</td><td style="color:var(--text)">${esc(c.title)}</td><td>${esc(c.assessment||'None')}</td><td>${c.passingRate!=null&&c.assessment!=='None'&&c.assessment!=='Pre-test'?c.passingRate+'%':'—'}</td>
+      <td style="white-space:nowrap;text-align:right">${can&&_lpCompEdit===null?`<button class="btn btn-ghost btn-xs" onclick="_lpCompEdit=${i};renderLearningPrograms()">Edit</button><button class="btn btn-ghost btn-xs" onclick="lpCompMove(${i},-1)" ${i===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpCompMove(${i},1)" ${i===comps.length-1?'disabled':''} title="Move down">↓</button><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpCompRemove(${i})">Remove</button>`:''}</td></tr>`).join('');
+  const components=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Learning Components / Topics</span>${can&&_lpCompEdit===null?`<button class="btn btn-secondary btn-sm" onclick="_lpCompEdit='new';renderLearningPrograms()">+ Add Component</button>`:''}</div>
+    <table class="dash-tbl"><thead><tr><th style="width:34px">#</th><th>Component Title</th><th style="width:150px">Assessment</th><th style="width:110px">Passing Rate</th><th></th></tr></thead>
+    <tbody>${compRows}${_lpCompEdit==='new'?compRowEdit({},'new'):''}${!comps.length&&_lpCompEdit!=='new'?'<tr style="cursor:default"><td colspan="5" class="lp-muted" style="text-align:center;padding:16px">No components yet.</td></tr>':''}</tbody></table>
+    <div class="lp-l3">
+      <label class="lp-l3-lbl"><input type="checkbox" ${p.l3Required?'checked':''} ${can?'':'disabled'} onchange="lpSetL3(this.checked)"> <b>Level 3 (Behavior) evaluation required</b></label>
+      <div class="lp-muted" style="font-size:11.5px;margin:2px 0 0 22px">Tag programs whose learners should get a post-training behavior check. Not yet applied to sessions automatically.</div>
+      ${p.l3Required?`<div style="margin:8px 0 0 22px"><input type="text" id="lp-l3-notes" class="form-control" placeholder="L3 notes, e.g. method or who validates (optional)" value="${esc(p.l3Notes||'')}" ${can?'':'disabled'} onchange="lpSetL3Notes(this.value)"></div>`:''}
+    </div>
+  </div>`;
+  const tile=(ic,bg,fg,l)=>`<div class="lp-qs"><span class="lp-qs-ic" style="background:${bg};color:${fg}">${_lpIc(ic)}</span><div class="lp-qs-v">—</div><div class="lp-qs-l">${l}</div></div>`;
+  const stats=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Quick Stats</span></div>
+    <div class="lp-qs-grid">${tile(LP_IC.total,'#f5f3ff','#7c3aed','Total Implementations')}${tile(LP_IC.done,'#f0fdf4','#16a34a','Completed')}${tile(LP_IC.clock,'#fffbeb','#d97706','Upcoming')}${tile(LP_IC.users,'#eff6ff','#2563eb','Total Learners')}</div>
+    <div class="lp-muted" style="font-size:11.5px;margin-top:10px">Stats will populate once training sessions are linked to programs.</div>
+  </div>`;
+  const recent=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Recent Implementations</span></div>
+    <div class="empty-state" style="padding:26px 12px"><div class="empty-title">No implementations linked yet</div><div style="font-size:12.5px;color:var(--text3);margin-top:4px">Sessions delivered under this program will be listed here once sessions are linked to programs.</div></div>
+  </div>`;
+  return head+`<div class="lp-dgrid">
+      <div class="lp-col">${info}</div>
+      <div class="lp-col">${contrib}${desc}</div>
+      <div class="lp-col">${components}</div>
+      <div class="lp-col">${stats}</div>
+    </div>${recent}`;
+}
+
+/* ── detail actions ── */
+function _lpCur(){ return _lpDetailId?LearningProgramDB.byId(_lpDetailId):null; }
+async function lpContribAdd(){
+  const p=_lpCur(); if(!p) return;
+  const id=document.getElementById('lp-add-person').value; if(!id){ toast('Select someone from the roster first.','error'); return; }
+  const prim=document.getElementById('lp-add-primary').checked;
+  const u=DB.byId(id);
+  const list=[...(p.contributors||[]),{profileId:id,role:_lpRoleOf(u),primary:prim}];
+  if(await _lpPersist(p.id,{contributors:list})){ AuditLog.record('update','Learning Program',p.id,`Added contributor ${_lpName(id)} to "${p.title}"`); renderLearningPrograms(); }
+}
+async function lpContribRemove(i){
+  const p=_lpCur(); if(!p) return;
+  const list=(p.contributors||[]).slice(); const [gone]=list.splice(i,1);
+  if(await _lpPersist(p.id,{contributors:list})){ AuditLog.record('update','Learning Program',p.id,`Removed contributor ${_lpName(gone&&gone.profileId)} from "${p.title}"`); renderLearningPrograms(); }
+}
+async function lpContribPrimary(i,val){
+  const p=_lpCur(); if(!p) return;
+  const list=(p.contributors||[]).map((c,j)=>j===i?{...c,primary:val}:c);
+  if(await _lpPersist(p.id,{contributors:list})) renderLearningPrograms();
+}
+async function lpSaveDesc(){
+  const p=_lpCur(); if(!p) return;
+  const v=document.getElementById('lp-desc').value.trim();
+  if(await _lpPersist(p.id,{description:v})){ _lpDescEdit=false; AuditLog.record('update','Learning Program',p.id,`Updated description of "${p.title}"`); renderLearningPrograms(); }
+}
+async function lpCompSave(i){
+  const p=_lpCur(); if(!p) return;
+  const title=document.getElementById('lp-c-title').value.trim();
+  const assessment=document.getElementById('lp-c-assess').value;
+  const pr=document.getElementById('lp-c-pass').value;
+  if(!title){ toast('Component title is required.','error'); return; }
+  const graded=assessment==='Post-test'||assessment==='Pre & Post';
+  let passingRate=null;
+  if(graded&&pr!==''){ passingRate=Number(pr); if(isNaN(passingRate)||passingRate<0||passingRate>100){ toast('Passing rate must be between 0 and 100.','error'); return; } }
+  const list=(p.components||[]).slice(); const item={title,assessment,passingRate};
+  if(i==='new') list.push(item); else list[i]=item;
+  if(await _lpPersist(p.id,{components:list})){ _lpCompEdit=null; AuditLog.record('update','Learning Program',p.id,`${i==='new'?'Added':'Updated'} component "${title}" on "${p.title}"`); renderLearningPrograms(); }
+}
+async function lpCompMove(i,d){
+  const p=_lpCur(); if(!p) return;
+  const list=(p.components||[]).slice(); const j=i+d; if(j<0||j>=list.length) return;
+  [list[i],list[j]]=[list[j],list[i]];
+  if(await _lpPersist(p.id,{components:list})) renderLearningPrograms();
+}
+function lpCompRemove(i){
+  const p=_lpCur(); if(!p) return; const c=(p.components||[])[i]; if(!c) return;
+  confirm$('Remove component',`Remove <b>${Utils.esc(c.title)}</b> from this program?`,'Remove',async()=>{
+    const list=(p.components||[]).slice(); list.splice(i,1);
+    if(await _lpPersist(p.id,{components:list})){ AuditLog.record('update','Learning Program',p.id,`Removed component "${c.title}" from "${p.title}"`); renderLearningPrograms(); }
+  });
+}
+async function lpSetL3(v){ const p=_lpCur(); if(!p) return; if(await _lpPersist(p.id,{l3Required:v})){ AuditLog.record('update','Learning Program',p.id,`${v?'Tagged':'Untagged'} L3 evaluation on "${p.title}"`); renderLearningPrograms(); } }
+async function lpSetL3Notes(v){ const p=_lpCur(); if(!p) return; await _lpPersist(p.id,{l3Notes:v.trim()}); }
+function lpToggleStatus(id){
+  const p=LearningProgramDB.byId(id); if(!p) return;
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  if(p.status==='inactive'){
+    confirm$('Reactivate program',`Reactivate <b>${Utils.esc(p.title)}</b>? Its Effective To date will be cleared.`,'Reactivate',async()=>{
+      if(await _lpPersist(id,{status:'active',effectiveTo:null})){ AuditLog.record('update','Learning Program',id,`Reactivated "${p.title}"`); renderLearningPrograms(); toast('Program reactivated.','success'); }
+    },false);
+    document.getElementById('mc-ok').className='btn btn-primary';
+  } else lpOpenForm(id,true);
+}
+function lpDelete(id){
+  const p=LearningProgramDB.byId(id); if(!p) return;
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  confirm$('Delete program',`Permanently delete <b>${Utils.esc(p.title)}</b>? Consider marking it Inactive instead to keep its history.`,'Delete',async()=>{
+    const {error}=await sb.from(Store.LEARNING_PROGRAMS).delete().eq('id',id);
+    if(error){ _surfaceDbError(error,'Delete'); return; }
+    const arr=Cache.data[Store.LEARNING_PROGRAMS]; const i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1);
+    AuditLog.record('delete','Learning Program',id,`Deleted program "${p.title}"`);
+    if(_lpDetailId===id) _lpDetailId=null;
+    renderLearningPrograms(); _syncHashForCurrentView(); toast('Program deleted.','success');
+  });
+}
+
+/* ── add / edit modal ── */
+function lpOpenForm(id,inactivate){
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  _lpEditId=id||null;
+  const p=id?LearningProgramDB.byId(id):null;
+  document.getElementById('lpm-title').textContent=p?'Edit Program':'Add Program';
+  document.getElementById('lpm-save').textContent=p?'Save Changes':'Create Program';
+  document.getElementById('lpm-f-title').value=p?p.title:'';
+  const cats=Sel.active(Store.CATEGORIES);
+  const curCat=p&&p.categoryId&&!cats.some(c=>c.id===p.categoryId)?Sel.byId(Store.CATEGORIES,p.categoryId):null;
+  document.getElementById('lpm-f-cat').innerHTML='<option value="">— Select —</option>'+[...cats,...(curCat?[curCat]:[])].map(c=>`<option value="${c.id}">${Utils.esc(c.name)}</option>`).join('');
+  document.getElementById('lpm-f-cat').value=p?(p.categoryId||''):'';
+  document.getElementById('lpm-f-type').innerHTML='<option value="">— Select —</option>'+LP_TYPES.map(t=>`<option>${t}</option>`).join('');
+  document.getElementById('lpm-f-type').value=p?(p.deliveryType||''):'';
+  document.getElementById('lpm-f-ver').value=p?(p.version||'v1'):'v1';
+  document.getElementById('lpm-f-status').value=inactivate?'inactive':(p?(p.status||'active'):'active');
+  document.getElementById('lpm-f-from').value=p?(p.effectiveFrom||''):_todayStr();
+  document.getElementById('lpm-f-to').value=p?(p.effectiveTo||''):'';
+  document.getElementById('lpm-f-desc').value=p?(p.description||''):'';
+  document.getElementById('lpm-desc-wrap').style.display=p?'none':'';
+  document.getElementById('lpm-error').classList.remove('show');
+  lpFormStatusChange();
+  openModal('lp');
+  if(inactivate) setTimeout(()=>document.getElementById('lpm-f-to').focus(),50);
+}
+function lpFormStatusChange(){
+  const inact=document.getElementById('lpm-f-status').value==='inactive';
+  document.getElementById('lpm-to-req').style.display=inact?'':'none';
+  document.getElementById('lpm-to-hint').textContent=inact?'Required when a program is Inactive — the last date it was in use.':'Optional. Leave blank while the program is open-ended.';
+}
+async function lpSaveForm(){
+  const err=document.getElementById('lpm-error');
+  const fail=m=>{ err.textContent=m; err.classList.add('show'); };
+  const title=document.getElementById('lpm-f-title').value.trim();
+  const categoryId=document.getElementById('lpm-f-cat').value;
+  const deliveryType=document.getElementById('lpm-f-type').value;
+  const version=document.getElementById('lpm-f-ver').value.trim()||'v1';
+  const status=document.getElementById('lpm-f-status').value;
+  const effectiveFrom=document.getElementById('lpm-f-from').value;
+  const effectiveTo=document.getElementById('lpm-f-to').value||null;
+  if(!title) return fail('Program Title is required.');
+  if(!categoryId) return fail('Category is required.');
+  if(!deliveryType) return fail('Type is required.');
+  if(!effectiveFrom) return fail('Effective From is required.');
+  if(status==='inactive'&&!effectiveTo) return fail('Effective To (end date) is required when the program is Inactive.');
+  if(effectiveTo&&effectiveTo<effectiveFrom) return fail('Effective To cannot be earlier than Effective From.');
+  const dup=LearningProgramDB.all().find(x=>x.id!==_lpEditId&&(x.title||'').trim().toLowerCase()===title.toLowerCase());
+  if(dup) return fail(`A program named "${dup.title}" already exists.`);
+  const patch={title,categoryId,deliveryType,version,status,effectiveFrom,effectiveTo};
+  if(!_lpEditId){ patch.description=document.getElementById('lpm-f-desc').value.trim(); patch.contributors=[]; patch.components=[]; patch.l3Required=false; }
+  const btn=document.getElementById('lpm-save'); btn.disabled=true;
+  const saved=await _lpPersist(_lpEditId,patch);
+  btn.disabled=false;
+  if(!saved) return;
+  AuditLog.record(_lpEditId?'update':'create','Learning Program',saved.id,`${_lpEditId?'Updated':'Created'} program "${saved.title}"`);
+  closeModal('lp');
+  toast(_lpEditId?'Program updated.':'Program created.','success');
+  if(!_lpEditId){ lpOpen(saved.id); } else renderLearningPrograms();
+}
+
+/* ── entry point ── */
+function renderLearningPrograms(){
+  const root=document.getElementById('lp-root'); if(!root) return;
+  const p=_lpDetailId?LearningProgramDB.byId(_lpDetailId):null;
+  if(_lpDetailId&&!p) _lpDetailId=null;
+  root.innerHTML=p?_lpDetailHtml(p):_lpListHtml();
+}
+function _lpTopbarHtml(){ return lpCanEdit()?`<button class="btn btn-primary" onclick="lpOpenForm(null)">+ Add Program</button>`:''; }
 
 function onDashRangeChange(){
   const v=document.getElementById('dash-range')?.value;
@@ -7538,7 +8022,7 @@ const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
   'departments','attendance_settings','workload_settings','ph_holidays','workload_pct_history','checklist_templates','session_checklists',
-  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets'
+  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets','learning_programs'
 ];
 
 function _buildBackupPayload(){
@@ -20540,6 +21024,7 @@ function wireEvents(){
   // re-renders like filter changes) and NOT inside the List/Calendar toggle buttons themselves
   // (which must keep respecting the user's current choice).
   document.querySelectorAll('.nav-item[data-view],.nav-sub-item[data-view]').forEach(el=>el.addEventListener('click',()=>guardedLeave(()=>{
+    if(el.dataset.view==='learning-programs'){ _lpDetailId=null; }
     if(el.dataset.view==='training-delivery'){
       tdViewMode='list';
       // 2026-08-06 fix: a nav click into Training Calendar must also back out of the Detail page
@@ -20594,7 +21079,7 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const validViews=['dashboard','my-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+  const validViews=['dashboard','my-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
   if(location.hash && location.hash.length>1){
     _restoreFromHash(location.hash);
   } else {
