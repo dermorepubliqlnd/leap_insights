@@ -905,6 +905,7 @@
     .lp-desc{font-size:13px;color:var(--text2);line-height:1.6}
     .lp-comp-edit td{background:#f8fafc}
     .lp-comp-edit .form-control{padding:6px 8px;font-size:12.5px}
+    .lp-editbar{display:flex;align-items:center;gap:8px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:12px;padding:9px 14px;font-size:12.5px;margin-bottom:14px}
     .lp-l3{margin-top:14px;padding-top:12px;border-top:1px solid var(--border-lt)}
     .lp-l3-lbl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer}
     .lp-qs-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
@@ -2752,7 +2753,7 @@
         <div class="form-group"><label class="form-label">Effective To <span class="req" id="lpm-to-req">*</span></label><input type="date" id="lpm-f-to" class="form-control"><div class="form-hint" id="lpm-to-hint" style="font-size:11.5px;color:var(--text3);margin-top:4px"></div></div>
       </div>
       <div class="form-group" id="lpm-desc-wrap" style="margin-bottom:0"><label class="form-label">Program Description</label><textarea id="lpm-f-desc" class="form-control" rows="3" placeholder="What the program is for, who it's for, and the outcomes it targets."></textarea></div>
-      <div class="lp-muted" style="font-size:11.5px;margin-top:10px">Owners &amp; contributors, learning components and the L3 tag are set on the program's page after it's created.</div>
+      <div class="lp-muted" style="font-size:11.5px;margin-top:10px">Owners &amp; contributors, agenda, assessments and the L3 tag are set on the program's page (click Edit) after it's created.</div>
       <div class="modal-err" id="lpm-error"></div>
     </div>
     <div class="modal-foot"><button class="btn btn-secondary" onclick="closeModal('lp')">Cancel</button><button class="btn btn-primary" id="lpm-save" onclick="lpSaveForm()">Create Program</button></div>
@@ -3411,7 +3412,7 @@ const _FIELD_MAPS = {
   learning_programs:{
     id:'id', title:'title', categoryId:'category_id', deliveryType:'delivery_type', version:'version', status:'status',
     effectiveFrom:'effective_from', effectiveTo:'effective_to', description:'description', contributors:'contributors',
-    components:'components', l3Required:'l3_required', l3Notes:'l3_notes', createdBy:'created_by', updatedBy:'updated_by',
+    components:'components', agenda:'agenda', assessments:'assessments', l3Required:'l3_required', l3Notes:'l3_notes', createdBy:'created_by', updatedBy:'updated_by',
     createdAt:'created_at', updatedAt:'updated_at'
   }
 };
@@ -4898,7 +4899,8 @@ function _ovRender(){
 /* ── LEARNING PROGRAMS (2026-09-25, per Sandra) ──────────────────────────────────────────
    Program library: the layer above individual sessions. Each program holds its info, owners /
    contributors (IDs, CDs, supervisors from the roster), description, learning components /
-   topics (the future replacement for Agenda Templates, incl. assessment + passing rate), and the
+   topics -- split 2026-09-25 into an Agenda (topic + duration, future replacement for Agenda
+   Templates) and a separate Assessments list (name, pre/post, passing %) -- and the
    L3 flag. Deliberately NOT linked to Training Sessions yet (Sandra: "keep the existing
    functionality, do not link anything yet") -- Quick Stats / Recent Implementations are
    placeholders until that link is designed. Only the Overview tab is built this round. */
@@ -4917,7 +4919,7 @@ const LearningProgramDB={
   byId(id){ return this.all().find(p=>p.id===id)||null; }
 };
 let lpF={q:'',cat:'all',type:'all',status:'active',sort:'updated',view:'list'};
-let _lpDetailId=null, _lpTab='overview', _lpContribEdit=false, _lpDescEdit=false, _lpCompEdit=null, _lpEditId=null;
+let _lpDetailId=null, _lpTab='overview', _lpEditMode=false, _lpAgendaEdit=null, _lpAsmtEdit=null, _lpEditId=null;
 
 const _lpIc=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px">${d}</svg>`;
 const LP_IC={
@@ -5061,7 +5063,7 @@ function _lpRenderResults(){ const el=document.getElementById('lp-results'); if(
 function lpReset(){ lpF={...lpF,q:'',cat:'all',type:'all',status:'active'}; renderLearningPrograms(); }
 
 /* ── detail page ── */
-function lpOpen(id){ _lpDetailId=id; _lpTab='overview'; _lpContribEdit=false; _lpDescEdit=false; _lpCompEdit=null; renderLearningPrograms(); _syncHashForCurrentView(); }
+function lpOpen(id){ _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpAgendaEdit=null; _lpAsmtEdit=null; renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpBack(){ _lpDetailId=null; renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpSetTab(t){ _lpTab=t; renderLearningPrograms(); }
 function _lpInfoRow(icon,label,val){ return `<div class="lp-info-row"><span class="lp-info-ic">${_lpIc(icon)}</span><span class="lp-info-l">${label}</span><span class="lp-info-v">${val}</span></div>`; }
@@ -5076,7 +5078,7 @@ function _lpDetailHtml(p){
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        ${can?`<button class="btn btn-primary btn-sm" onclick="lpOpenForm('${p.id}')">${_lpIc(LP_IC.edit)} Edit Program</button>`:''}
+        ${can?(_lpEditMode?`<button class="btn btn-secondary btn-sm" onclick="lpOpenForm('${p.id}')">Edit Details</button><button class="btn btn-primary btn-sm" onclick="lpToggleEdit(false)">Done</button>`:`<button class="btn btn-primary btn-sm" onclick="lpToggleEdit(true)">${_lpIc(LP_IC.edit)} Edit</button>`):''}
         ${(can||Auth.isAdmin)?_lpRowMenu(p).replace(`<div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>`,''):''}
       </div>
     </div>
@@ -5097,32 +5099,48 @@ function _lpDetailHtml(p){
   </div>`;
   const cs=p.contributors||[];
   const cands=_lpCandidates().filter(u=>!cs.some(c=>c.profileId===u.id));
-  const contrib=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Owners &amp; Contributors</span>${can?`<button class="ov-link" onclick="_lpContribEdit=!_lpContribEdit;renderLearningPrograms()">${_lpContribEdit?'Done':_lpIc(LP_IC.edit)+' Edit'}</button>`:''}</div>
+  const ed=can&&_lpEditMode;
+  const contrib=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Owners &amp; Contributors</span></div>
     ${cs.length?cs.map((c,i)=>`<div class="lp-crow">${_lpAva(c.profileId,c.role)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(_lpName(c.profileId))}</div><div class="lp-crole">${esc(c.role||'')}</div></div>
-        ${_lpContribEdit?`<label class="lp-prim"><input type="checkbox" ${c.primary?'checked':''} onchange="lpContribPrimary(${i},this.checked)"> Primary</label><button class="lp-icon-btn" title="Remove" onclick="lpContribRemove(${i})">${_lpIc(LP_IC.x)}</button>`:(c.primary?'<span class="badge" style="background:#dcfce7;color:#15803d">Primary</span>':'')}
+        ${ed?`<label class="lp-prim"><input type="checkbox" ${c.primary?'checked':''} onchange="lpContribPrimary(${i},this.checked)"> Primary</label><button class="lp-icon-btn" title="Remove" onclick="lpContribRemove(${i})">${_lpIc(LP_IC.x)}</button>`:(c.primary?'<span class="badge" style="background:#dcfce7;color:#15803d">Primary</span>':'')}
       </div>`).join(''):'<div class="lp-muted" style="padding:6px 0 10px;font-size:12.5px">No owners or contributors tagged yet.</div>'}
-    ${_lpContribEdit?`<div class="lp-addrow"><select id="lp-add-person"><option value="">Select from roster…</option>${cands.map(u=>`<option value="${u.id}">${esc(u.firstName+' '+u.lastName)} — ${esc(_lpRoleOf(u))}</option>`).join('')}</select><label class="lp-prim"><input type="checkbox" id="lp-add-primary"> Primary</label><button class="btn btn-primary btn-sm" onclick="lpContribAdd()">Add</button></div><div class="lp-muted" style="font-size:11px;margin-top:6px">Roster shows active Instructional Designers, Content Developers and supervisors.</div>`
-      :(can?`<div style="text-align:center;margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="_lpContribEdit=true;renderLearningPrograms()">+ Add Contributor</button></div>`:'')}
+    ${ed?`<div class="lp-addrow"><select id="lp-add-person"><option value="">Select from roster…</option>${cands.map(u=>`<option value="${u.id}">${esc(u.firstName+' '+u.lastName)} — ${esc(_lpRoleOf(u))}</option>`).join('')}</select><label class="lp-prim"><input type="checkbox" id="lp-add-primary"> Primary</label><button class="btn btn-primary btn-sm" onclick="lpContribAdd()">+ Add Contributor</button></div><div class="lp-muted" style="font-size:11px;margin-top:6px">Roster shows active Instructional Designers, Content Developers and supervisors.</div>`:''}
   </div>`;
-  const desc=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Description</span>${can&&!_lpDescEdit?`<button class="ov-link" onclick="_lpDescEdit=true;renderLearningPrograms()">${_lpIc(LP_IC.edit)} Edit</button>`:''}</div>
-    ${_lpDescEdit?`<textarea id="lp-desc" class="form-control" rows="5" placeholder="What the program is for, who it's for, and the outcomes it targets.">${esc(p.description||'')}</textarea><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="_lpDescEdit=false;renderLearningPrograms()">Cancel</button><button class="btn btn-primary btn-sm" onclick="lpSaveDesc()">Save</button></div>`
+  const desc=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Description</span></div>
+    ${ed?`<textarea id="lp-desc" class="form-control" rows="5" placeholder="What the program is for, who it's for, and the outcomes it targets." onchange="lpSaveDesc()">${esc(p.description||'')}</textarea><div class="lp-muted" style="font-size:11px;margin-top:4px">Saves when you click outside the box.</div>`
       :`<div class="lp-desc">${p.description?esc(p.description).replace(/\n/g,'<br>'):'<span class="lp-muted">No description yet.</span>'}</div>`}
   </div>`;
-  const comps=p.components||[];
-  const compRowEdit=(c,i)=>`<tr class="lp-comp-edit"><td>${i==='new'?comps.length+1:i+1}</td>
-      <td><input type="text" id="lp-c-title" class="form-control" value="${esc(c.title||'')}" placeholder="Component / topic title"></td>
-      <td><select id="lp-c-assess" class="form-control" onchange="document.getElementById('lp-c-pass').disabled=(this.value==='None'||this.value==='Pre-test')">${LP_ASSESS.map(a=>`<option${(c.assessment||'None')===a?' selected':''}>${a}</option>`).join('')}</select></td>
-      <td><input type="number" id="lp-c-pass" class="form-control" min="0" max="100" step="1" value="${c.passingRate!=null?c.passingRate:''}" placeholder="%" ${(c.assessment||'None')==='None'||c.assessment==='Pre-test'?'disabled':''}></td>
-      <td style="white-space:nowrap;text-align:right"><button class="btn btn-primary btn-xs" onclick="lpCompSave(${i==='new'?"'new'":i})">Save</button> <button class="btn btn-ghost btn-xs" onclick="_lpCompEdit=null;renderLearningPrograms()">Cancel</button></td></tr>`;
-  const compRows=comps.map((c,i)=>_lpCompEdit===i?compRowEdit(c,i):`<tr style="cursor:default"><td>${i+1}</td><td style="color:var(--text)">${esc(c.title)}</td><td>${esc(c.assessment||'None')}</td><td>${c.passingRate!=null&&c.assessment!=='None'&&c.assessment!=='Pre-test'?c.passingRate+'%':'—'}</td>
-      <td style="white-space:nowrap;text-align:right">${can&&_lpCompEdit===null?`<button class="btn btn-ghost btn-xs" onclick="_lpCompEdit=${i};renderLearningPrograms()">Edit</button><button class="btn btn-ghost btn-xs" onclick="lpCompMove(${i},-1)" ${i===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpCompMove(${i},1)" ${i===comps.length-1?'disabled':''} title="Move down">↓</button><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpCompRemove(${i})">Remove</button>`:''}</td></tr>`).join('');
-  const components=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Learning Components / Topics</span>${can&&_lpCompEdit===null?`<button class="btn btn-secondary btn-sm" onclick="_lpCompEdit='new';renderLearningPrograms()">+ Add Component</button>`:''}</div>
-    <table class="dash-tbl"><thead><tr><th style="width:34px">#</th><th>Component Title</th><th style="width:150px">Assessment</th><th style="width:110px">Passing Rate</th><th></th></tr></thead>
-    <tbody>${compRows}${_lpCompEdit==='new'?compRowEdit({},'new'):''}${!comps.length&&_lpCompEdit!=='new'?'<tr style="cursor:default"><td colspan="5" class="lp-muted" style="text-align:center;padding:16px">No components yet.</td></tr>':''}</tbody></table>
+  // Agenda: {topic, duration} -- same item shape as Agenda Templates, so the two can be merged later.
+  const ag=p.agenda||[];
+  const agEditRow=(a,i)=>`<tr class="lp-comp-edit"><td>${i==='new'?ag.length+1:i+1}</td>
+      <td><input type="text" id="lp-a-topic" class="form-control" value="${esc(a.topic||'')}" placeholder="Topic"></td>
+      <td><input type="text" id="lp-a-dur" class="form-control" value="${esc(a.duration||'')}" placeholder="e.g. 45 mins"></td>
+      <td style="white-space:nowrap;text-align:right"><button class="btn btn-primary btn-xs" onclick="lpAgendaSave(${i==='new'?"'new'":i})">Save</button> <button class="btn btn-ghost btn-xs" onclick="_lpAgendaEdit=null;renderLearningPrograms()">Cancel</button></td></tr>`;
+  const agRows=ag.map((a,i)=>_lpAgendaEdit===i?agEditRow(a,i):`<tr style="cursor:default"><td>${i+1}</td><td style="color:var(--text)">${esc(a.topic)}</td><td>${esc(a.duration||'—')}</td>
+      <td style="white-space:nowrap;text-align:right">${ed&&_lpAgendaEdit===null?`<button class="btn btn-ghost btn-xs" onclick="_lpAgendaEdit=${i};renderLearningPrograms()">Edit</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${i===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${i===ag.length-1?'disabled':''} title="Move down">↓</button><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaRemove(${i})">Remove</button>`:''}</td></tr>`).join('');
+  const agenda=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Agenda</span>${ed&&_lpAgendaEdit===null?`<button class="btn btn-secondary btn-sm" onclick="_lpAgendaEdit='new';renderLearningPrograms()">+ Add Agenda</button>`:''}</div>
+    <table class="dash-tbl"><thead><tr><th style="width:34px">#</th><th>Topic</th><th style="width:140px">Duration</th><th></th></tr></thead>
+    <tbody>${agRows}${_lpAgendaEdit==='new'?agEditRow({},'new'):''}${!ag.length&&_lpAgendaEdit!=='new'?'<tr style="cursor:default"><td colspan="4" class="lp-muted" style="text-align:center;padding:16px">No agenda items yet.</td></tr>':''}</tbody></table>
+  </div>`;
+  // Assessments: {name, pre, post, passingScore} -- same shape as a session's assessments list,
+  // so a program's assessments can pre-fill a session later without conversion.
+  const as=p.assessments||[];
+  const asEditRow=(a,i)=>`<tr class="lp-comp-edit">
+      <td><input type="text" id="lp-s-name" class="form-control" value="${esc(a.name||'')}" placeholder="e.g. Product Knowledge Test"></td>
+      <td style="text-align:center"><input type="checkbox" id="lp-s-pre" ${a.pre?'checked':''}></td>
+      <td style="text-align:center"><input type="checkbox" id="lp-s-post" ${a.post||i==='new'?'checked':''} onchange="document.getElementById('lp-s-pass').disabled=!this.checked"></td>
+      <td><input type="number" id="lp-s-pass" class="form-control" min="0" max="100" step="1" value="${a.passingScore!=null?a.passingScore:''}" placeholder="%" ${a.post||i==='new'?'':'disabled'}></td>
+      <td style="white-space:nowrap;text-align:right"><button class="btn btn-primary btn-xs" onclick="lpAsmtSave(${i==='new'?"'new'":i})">Save</button> <button class="btn btn-ghost btn-xs" onclick="_lpAsmtEdit=null;renderLearningPrograms()">Cancel</button></td></tr>`;
+  const yes='<span style="color:var(--green);font-weight:700">✓</span>', no='<span class="lp-muted">—</span>';
+  const asRows=as.map((a,i)=>_lpAsmtEdit===i?asEditRow(a,i):`<tr style="cursor:default"><td style="color:var(--text)">${esc(a.name)}</td><td style="text-align:center">${a.pre?yes:no}</td><td style="text-align:center">${a.post?yes:no}</td><td>${a.post&&a.passingScore!=null?a.passingScore+'%':'—'}</td>
+      <td style="white-space:nowrap;text-align:right">${ed&&_lpAsmtEdit===null?`<button class="btn btn-ghost btn-xs" onclick="_lpAsmtEdit=${i};renderLearningPrograms()">Edit</button><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAsmtRemove(${i})">Remove</button>`:''}</td></tr>`).join('');
+  const assessments=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Assessments</span>${ed&&_lpAsmtEdit===null?`<button class="btn btn-secondary btn-sm" onclick="_lpAsmtEdit='new';renderLearningPrograms()">+ Add Assessment</button>`:''}</div>
+    <table class="dash-tbl"><thead><tr><th>Assessment</th><th style="width:60px;text-align:center">Pre</th><th style="width:60px;text-align:center">Post</th><th style="width:110px">Passing %</th><th></th></tr></thead>
+    <tbody>${asRows}${_lpAsmtEdit==='new'?asEditRow({},'new'):''}${!as.length&&_lpAsmtEdit!=='new'?'<tr style="cursor:default"><td colspan="5" class="lp-muted" style="text-align:center;padding:16px">No assessments yet.</td></tr>':''}</tbody></table>
     <div class="lp-l3">
-      <label class="lp-l3-lbl"><input type="checkbox" ${p.l3Required?'checked':''} ${can?'':'disabled'} onchange="lpSetL3(this.checked)"> <b>Level 3 (Behavior) evaluation required</b></label>
+      <label class="lp-l3-lbl"><input type="checkbox" ${p.l3Required?'checked':''} ${ed?'':'disabled'} onchange="lpSetL3(this.checked)"> <b>Level 3 (Behavior) evaluation required</b></label>
       <div class="lp-muted" style="font-size:11.5px;margin:2px 0 0 22px">Tag programs whose learners should get a post-training behavior check. Not yet applied to sessions automatically.</div>
-      ${p.l3Required?`<div style="margin:8px 0 0 22px"><input type="text" id="lp-l3-notes" class="form-control" placeholder="L3 notes, e.g. method or who validates (optional)" value="${esc(p.l3Notes||'')}" ${can?'':'disabled'} onchange="lpSetL3Notes(this.value)"></div>`:''}
+      ${p.l3Required?(ed?`<div style="margin:8px 0 0 22px"><input type="text" id="lp-l3-notes" class="form-control" placeholder="L3 notes, e.g. method or who validates (optional)" value="${esc(p.l3Notes||'')}" onchange="lpSetL3Notes(this.value)"></div>`:(p.l3Notes?`<div class="lp-desc" style="margin:6px 0 0 22px;font-size:12.5px">${esc(p.l3Notes)}</div>`:'')):''}
     </div>
   </div>`;
   const tile=(ic,bg,fg,l)=>`<div class="lp-qs"><span class="lp-qs-ic" style="background:${bg};color:${fg}">${_lpIc(ic)}</span><div class="lp-qs-v">—</div><div class="lp-qs-l">${l}</div></div>`;
@@ -5133,16 +5151,15 @@ function _lpDetailHtml(p){
   const recent=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Recent Implementations</span></div>
     <div class="empty-state" style="padding:26px 12px"><div class="empty-title">No implementations linked yet</div><div style="font-size:12.5px;color:var(--text3);margin-top:4px">Sessions delivered under this program will be listed here once sessions are linked to programs.</div></div>
   </div>`;
-  return head+`<div class="lp-dgrid">
-      <div class="lp-col">${info}</div>
-      <div class="lp-col">${contrib}${desc}</div>
-      <div class="lp-col">${components}</div>
-      <div class="lp-col">${stats}</div>
+  return head+(ed?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} Edit mode: add or remove contributors, edit the description, agenda and assessments. Click <b>Done</b> when finished.</div>`:'')+`<div class="lp-dgrid">
+      <div class="lp-col">${info}${agenda}</div>
+      <div class="lp-col">${contrib}${desc}${assessments}${stats}</div>
     </div>${recent}`;
 }
 
 /* ── detail actions ── */
 function _lpCur(){ return _lpDetailId?LearningProgramDB.byId(_lpDetailId):null; }
+function lpToggleEdit(on){ _lpEditMode=on; _lpAgendaEdit=null; _lpAsmtEdit=null; renderLearningPrograms(); }
 async function lpContribAdd(){
   const p=_lpCur(); if(!p) return;
   const id=document.getElementById('lp-add-person').value; if(!id){ toast('Select someone from the roster first.','error'); return; }
@@ -5164,32 +5181,51 @@ async function lpContribPrimary(i,val){
 async function lpSaveDesc(){
   const p=_lpCur(); if(!p) return;
   const v=document.getElementById('lp-desc').value.trim();
-  if(await _lpPersist(p.id,{description:v})){ _lpDescEdit=false; AuditLog.record('update','Learning Program',p.id,`Updated description of "${p.title}"`); renderLearningPrograms(); }
+  if(v===(p.description||'')) return;
+  if(await _lpPersist(p.id,{description:v})){ AuditLog.record('update','Learning Program',p.id,`Updated description of "${p.title}"`); toast('Description saved.','success'); }
 }
-async function lpCompSave(i){
+async function lpAgendaSave(i){
   const p=_lpCur(); if(!p) return;
-  const title=document.getElementById('lp-c-title').value.trim();
-  const assessment=document.getElementById('lp-c-assess').value;
-  const pr=document.getElementById('lp-c-pass').value;
-  if(!title){ toast('Component title is required.','error'); return; }
-  const graded=assessment==='Post-test'||assessment==='Pre & Post';
-  let passingRate=null;
-  if(graded&&pr!==''){ passingRate=Number(pr); if(isNaN(passingRate)||passingRate<0||passingRate>100){ toast('Passing rate must be between 0 and 100.','error'); return; } }
-  const list=(p.components||[]).slice(); const item={title,assessment,passingRate};
+  const topic=document.getElementById('lp-a-topic').value.trim();
+  const duration=document.getElementById('lp-a-dur').value.trim();
+  if(!topic){ toast('Topic is required.','error'); return; }
+  const list=(p.agenda||[]).slice(); const item={topic,duration};
   if(i==='new') list.push(item); else list[i]=item;
-  if(await _lpPersist(p.id,{components:list})){ _lpCompEdit=null; AuditLog.record('update','Learning Program',p.id,`${i==='new'?'Added':'Updated'} component "${title}" on "${p.title}"`); renderLearningPrograms(); }
+  if(await _lpPersist(p.id,{agenda:list})){ _lpAgendaEdit=null; AuditLog.record('update','Learning Program',p.id,`${i==='new'?'Added':'Updated'} agenda item "${topic}" on "${p.title}"`); renderLearningPrograms(); }
 }
-async function lpCompMove(i,d){
+async function lpAgendaMove(i,d){
   const p=_lpCur(); if(!p) return;
-  const list=(p.components||[]).slice(); const j=i+d; if(j<0||j>=list.length) return;
+  const list=(p.agenda||[]).slice(); const j=i+d; if(j<0||j>=list.length) return;
   [list[i],list[j]]=[list[j],list[i]];
-  if(await _lpPersist(p.id,{components:list})) renderLearningPrograms();
+  if(await _lpPersist(p.id,{agenda:list})) renderLearningPrograms();
 }
-function lpCompRemove(i){
-  const p=_lpCur(); if(!p) return; const c=(p.components||[])[i]; if(!c) return;
-  confirm$('Remove component',`Remove <b>${Utils.esc(c.title)}</b> from this program?`,'Remove',async()=>{
-    const list=(p.components||[]).slice(); list.splice(i,1);
-    if(await _lpPersist(p.id,{components:list})){ AuditLog.record('update','Learning Program',p.id,`Removed component "${c.title}" from "${p.title}"`); renderLearningPrograms(); }
+function lpAgendaRemove(i){
+  const p=_lpCur(); if(!p) return; const a=(p.agenda||[])[i]; if(!a) return;
+  confirm$('Remove agenda item',`Remove <b>${Utils.esc(a.topic)}</b> from the agenda?`,'Remove',async()=>{
+    const list=(p.agenda||[]).slice(); list.splice(i,1);
+    if(await _lpPersist(p.id,{agenda:list})){ AuditLog.record('update','Learning Program',p.id,`Removed agenda item "${a.topic}" from "${p.title}"`); renderLearningPrograms(); }
+  });
+}
+async function lpAsmtSave(i){
+  const p=_lpCur(); if(!p) return;
+  const name=document.getElementById('lp-s-name').value.trim();
+  const pre=document.getElementById('lp-s-pre').checked, post=document.getElementById('lp-s-post').checked;
+  const ps=document.getElementById('lp-s-pass').value;
+  if(!name){ toast('Assessment name is required.','error'); return; }
+  if(!pre&&!post){ toast('Tick Pre, Post, or both.','error'); return; }
+  const list=(p.assessments||[]).slice();
+  if(list.some((a,j)=>j!==i&&(a.name||'').trim().toLowerCase()===name.toLowerCase())){ toast('An assessment with that name already exists on this program.','error'); return; }
+  let passingScore=null;
+  if(post&&ps!==''){ passingScore=Number(ps); if(isNaN(passingScore)||passingScore<0||passingScore>100){ toast('Passing % must be between 0 and 100.','error'); return; } }
+  const item={name,pre,post,passingScore};
+  if(i==='new') list.push(item); else list[i]=item;
+  if(await _lpPersist(p.id,{assessments:list})){ _lpAsmtEdit=null; AuditLog.record('update','Learning Program',p.id,`${i==='new'?'Added':'Updated'} assessment "${name}" on "${p.title}"`); renderLearningPrograms(); }
+}
+function lpAsmtRemove(i){
+  const p=_lpCur(); if(!p) return; const a=(p.assessments||[])[i]; if(!a) return;
+  confirm$('Remove assessment',`Remove <b>${Utils.esc(a.name)}</b> from this program?`,'Remove',async()=>{
+    const list=(p.assessments||[]).slice(); list.splice(i,1);
+    if(await _lpPersist(p.id,{assessments:list})){ AuditLog.record('update','Learning Program',p.id,`Removed assessment "${a.name}" from "${p.title}"`); renderLearningPrograms(); }
   });
 }
 async function lpSetL3(v){ const p=_lpCur(); if(!p) return; if(await _lpPersist(p.id,{l3Required:v})){ AuditLog.record('update','Learning Program',p.id,`${v?'Tagged':'Untagged'} L3 evaluation on "${p.title}"`); renderLearningPrograms(); } }
@@ -5267,7 +5303,7 @@ async function lpSaveForm(){
   const dup=LearningProgramDB.all().find(x=>x.id!==_lpEditId&&(x.title||'').trim().toLowerCase()===title.toLowerCase());
   if(dup) return fail(`A program named "${dup.title}" already exists.`);
   const patch={title,categoryId,deliveryType,version,status,effectiveFrom,effectiveTo};
-  if(!_lpEditId){ patch.description=document.getElementById('lpm-f-desc').value.trim(); patch.contributors=[]; patch.components=[]; patch.l3Required=false; }
+  if(!_lpEditId){ patch.description=document.getElementById('lpm-f-desc').value.trim(); patch.contributors=[]; patch.agenda=[]; patch.assessments=[]; patch.l3Required=false; }
   const btn=document.getElementById('lpm-save'); btn.disabled=true;
   const saved=await _lpPersist(_lpEditId,patch);
   btn.disabled=false;
