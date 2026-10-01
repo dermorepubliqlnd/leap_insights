@@ -5416,7 +5416,8 @@ const LP_IC={
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', users:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5v-.8a4.2 4.2 0 0 1 4.2-4.2h2.6a4.2 4.2 0 0 1 4.2 4.2v.8"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M17.5 14.6a3.6 3.6 0 0 1 3 3.5v.9"/>'
 };
 
-function lpCanEdit(u){ u=u||Auth.user; if(!u) return false; return !!(u.isAdmin||u.positionId==='pos_4'||u.positionId==='pos_5'||isSupervisorEligible(u)||Perms.isSupervisor(u)); }
+/* v4.99: any logged-in user can create/edit programs; delete stays admin-only (RLS) */
+function lpCanEdit(u){ u=u||Auth.user; return !!u; }
 function _lpRoleOf(u){
   if(!u) return '';
   if(u.positionId==='pos_4') return 'Instructional Designer';
