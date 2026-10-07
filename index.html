@@ -3686,7 +3686,7 @@ const _FIELD_MAPS = {
     id:'id', code:'code', title:'title', categoryId:'category_id', deliveryType:'delivery_type', version:'version', durationHours:'duration_hours', durationMinutes:'duration_minutes', status:'status',
     effectiveFrom:'effective_from', effectiveTo:'effective_to', description:'description', resourceUrl:'resource_url', checklistTemplateId:'checklist_template_id', contributors:'contributors',
     components:'components', agenda:'agenda', deliveryParts:'delivery_parts', allowedModalities:'allowed_modalities', assessments:'assessments', evaluationConfig:'evaluation_config', l3Required:'l3_required', l3Notes:'l3_notes', createdBy:'created_by', updatedBy:'updated_by',
-    programFamilyId:'program_family_id', supersedesProgramId:'supersedes_program_id', retirementReason:'retirement_reason', createdAt:'created_at', updatedAt:'updated_at'
+    programFamilyId:'program_family_id', supersedesProgramId:'supersedes_program_id', retirementReason:'retirement_reason', revision:'revision', revisionHistory:'revision_history', createdAt:'created_at', updatedAt:'updated_at'
   }
 };
 function rowToCamel(table,row){
@@ -5502,6 +5502,39 @@ function _lpDefaultModalities(){ return []; }
 function _lpAllowedModalities(){ return []; }
 function _lpHasUsedSessions(p){ return _lpMappedSessions(p.id).some(s=>['scheduled','completed'].includes(s.status)); }
 
+/* v5.00 (2026-10-07, per Sandra): edit rules once a version has implementations.
+   - Edit Details (no version change): resource link, description, category, default checklist.
+   - Log Minor Revision (v1 -> v1.1, same record, reports roll up): title + agenda wording/timing/order;
+     topic count, total duration and delivery parts must stay the same; change note required.
+   - New Version (v2): anything else (delivery type, parts, topics added/removed, duration, evaluations).
+   - Contributors are dated assignments; ending keeps history so KPI credit follows the session date. */
+let _lpEditScope='full', _lpShowPastContrib=false;
+// Manila calendar date (matches the DB triggers); _todayStr() is UTC-based.
+function _lpToday(){ return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'}); }
+function _lpVerLabel(p){ const v=p?.version||'v1', r=Number(p?.revision||0); return r>0?`${v}.${r}`:v; }
+function _lpRevisionAt(p,date){ if(!p) return 0; if(!date) return Number(p.revision||0); return (p.revisionHistory||[]).filter(h=>(h.date||'')<=date).length; }
+function _lpSessionDate(s){ return (typeof _tdSessionEndDate==='function'&&_tdSessionEndDate(s))||s?.trainingDate||''; }
+// Revision in effect on the session's (last) delivery date.
+function _lpSessionVerLabel(s,p){ if(!p) return ''; const r=_lpRevisionAt(p,_lpSessionDate(s)); return r>0?`${p.version||'v1'}.${r}`:(p.version||'v1'); }
+function _lpContribCurrent(c,today){ today=today||_lpToday(); return !c.endDate||c.endDate>=today; }
+function _lpContribActiveOn(c,date){ return (!c.startDate||c.startDate<=date)&&(!c.endDate||c.endDate>=date); }
+// KPI credit: contributors whose assignment covers the session's delivery date.
+function _lpCreditedContributors(s){
+  const p=s?.programId?LearningProgramDB.byId(s.programId):null, d=_lpSessionDate(s);
+  return p&&d?(p.contributors||[]).filter(c=>_lpContribActiveOn(c,d)):[];
+}
+function _lpNewAssignment(u,startDate,primary){
+  const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
+  return {id,profileId:u.id,role:_lpRoleOf(u),primary:!!primary,startDate,endDate:null,addedAt:new Date().toISOString()};
+}
+function _lpAddedToday(c){ if(!c?.addedAt) return false; const d=new Date(c.addedAt); return !isNaN(d)&&d.toLocaleDateString('en-CA',{timeZone:'Asia/Manila'})===new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'}); }
+function _lpAssignmentDates(c){
+  const f=d=>Utils.formatDate(d);
+  if(c.endDate) return `${c.startDate?f(c.startDate):'—'} – ${f(c.endDate)}`;
+  if(c.startDate&&c.startDate>_lpToday()) return `Starts ${f(c.startDate)}`;
+  return c.startDate?`Since ${f(c.startDate)}`:'';
+}
+
 async function _lpPersist(id,patch){
   if(id && LearningProgramDB.byId(id)?.status==='inactive') { toast('Archived versions are read only.','error'); return null; }
   if(id==='__draft__') { Object.assign(_lpDraft,patch); return _lpDraft; }
@@ -5546,7 +5579,7 @@ function _lpFiltered(){
   return rows;
 }
 function _lpContribCell(p){
-  const cs=(p.contributors||[]).slice().sort((a,b)=>(b.primary?1:0)-(a.primary?1:0));
+  const cs=(p.contributors||[]).filter(c=>_lpContribCurrent(c)).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0));
   if(!cs.length) return '<span style="color:var(--text3)">None yet</span>';
   const shown=cs.slice(0,2).map(c=>`<div class="lp-person">${_lpAva(c.profileId,c.role)}<div style="min-width:0"><div class="lp-person-n">${Utils.esc(_lpName(c.profileId))}</div><div class="lp-person-r">${Utils.esc(c.role||'')}</div></div></div>`).join('');
   return shown+(cs.length>2?`<div class="lp-person-more">+${cs.length-2} more</div>`:'');
@@ -5559,6 +5592,7 @@ function _lpRowMenu(p,detail=false){
     <div class="td-viewmenu lp-menu">
       ${detail?'':`<div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>`}
       ${can&&!_lpHasUsedSessions(p)?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')" title="Active programs can be corrected until their first Scheduled or Completed implementation.">${p.status==='active'?'Edit Program Setup':'Edit Draft'}</div>`:''}
+      ${can&&p.status==='active'&&_lpHasUsedSessions(p)?`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div><div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
       ${can?`<div class="td-viewmenu-item" onclick="lpToggleStatus('${p.id}')">${p.status==='draft'?'Activate Version':p.status==='inactive'?'Reactivate':'Deactivate / New Version'}</div>`:''}
       ${Auth.isAdmin?`<div class="td-viewmenu-item" style="color:var(--red)" onclick="lpDelete('${p.id}')">Delete</div>`:''}
     </div>
@@ -5606,7 +5640,7 @@ function _lpResultsHtml(rows){
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">${_lpTile(p)}${_lpRowMenu(p)}</div>
         <div class="lp-code" style="margin-top:10px">${Utils.esc(p.code||'')}</div>
         <div class="lp-gtitle" style="margin-top:2px">${Utils.esc(p.title)}</div>
-        <div class="lp-gmeta">${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${Utils.esc(p.deliveryType||'—')} · ${Utils.esc(p.version||'v1')}</div>
+        <div class="lp-gmeta">${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${Utils.esc(p.deliveryType||'—')} · ${Utils.esc(_lpVerLabel(p))}</div>
         <div style="margin:10px 0">${_lpContribCell(p)}</div>
         <div style="display:flex;justify-content:space-between;align-items:center">${_lpStatusBadge(p)}<span class="lp-muted" style="font-size:11.5px">Implementations: —</span></div>
       </div>`).join('')}</div>`;
@@ -5616,7 +5650,7 @@ function _lpResultsHtml(rows){
       <td><div style="display:flex;align-items:center;gap:10px">${_lpTile(p)}<span class="lp-ptitle">${Utils.esc(p.title)}</span></div></td>
       <td>${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')}</td>
       <td>${_lpTypeBadge(p.deliveryType)}</td>
-      <td>${Utils.esc(p.version||'v1')}</td>
+      <td>${Utils.esc(_lpVerLabel(p))}</td>
       <td>${_lpContribCell(p)}</td>
       <td>${_lpStatusBadge(p)}</td>
       <td>${_lpImplCell(p)}</td>
@@ -5627,7 +5661,7 @@ function _lpRenderResults(){ const el=document.getElementById('lp-results'); if(
 function lpReset(){ lpF={...lpF,q:'',cat:'all',type:'all',status:'all'}; renderLearningPrograms(); }
 
 /* ── detail page ── */
-function lpOpen(id){ _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
+function lpOpen(id){ _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpEditScope='full'; _lpShowPastContrib=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpBack(){ if(_lpDraft||_lpWorking) return lpCancelDraft(); _lpDetailId=null; renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpSetTab(t){
   _lpTab=t; renderLearningPrograms();
@@ -5675,8 +5709,8 @@ function _lpImplementationsHtml(p){
   const count=groups.reduce((n,g)=>n+g.sessions.length,0), canMap=Auth.isAdmin&&p.status!=='draft', canUnmap=Auth.isAdmin&&p.status==='active';
   return `<div class="card lp-card" style="margin-top:16px"><div class="lp-card-hd"><span class="lp-card-t">Implementations by Version (${count})</span></div>
     <div class="lp-muted" style="font-size:12.5px;margin-bottom:12px">Sessions stay linked to the exact version selected or mapped. Their saved details and reports remain unchanged when a new version is created.</div>
-    ${groups.map(({version:v,sessions})=>`<div style="margin:14px 0 8px;font-weight:650">${esc(v.code||p.code||'Program')} · ${esc(v.version||'v1')} <span class="lp-muted" style="font-weight:400">(${sessions.length} session${sessions.length===1?'':'s'}; ${v.status==='inactive'?'Archived':esc(v.status||'Active')})</span></div>
-      ${sessions.length?`<div style="max-height:420px;overflow:auto">${sessions.map(s=>`<div class="lp-map-row"><span style="flex:1;min-width:0"><strong>${esc(s.code||s.id)}</strong> · ${esc(s.trainingProgram||'Untitled')}<small>Linked to ${esc(v.version||'v1')} · ${esc([s.deliveryType,s.batchNo?'Batch '+s.batchNo:null,s.trainingDate,s.status].filter(Boolean).join(' · '))} · ${s.programLinkOrigin==='catalog_mapping'?'Catalogue mapping':'Program-selected'}</small></span><button class="btn btn-ghost btn-xs" onclick="openTrainingDetail('${esc(s.id)}')">Open</button>${canUnmap&&v.id===p.id&&s.programLinkOrigin==='catalog_mapping'?`<button class="btn btn-ghost btn-xs" onclick="lpUnmapSession('${esc(s.id)}')">Unlink</button>`:''}</div>`).join('')}</div>`:'<div class="lp-muted" style="padding:4px 0 10px">No sessions linked to this version.</div>'}`).join('')}
+    ${groups.map(({version:v,sessions})=>`<div style="margin:14px 0 8px;font-weight:650">${esc(v.code||p.code||'Program')} · ${esc(_lpVerLabel(v))} <span class="lp-muted" style="font-weight:400">(${sessions.length} session${sessions.length===1?'':'s'}; ${v.status==='inactive'?'Archived':esc(v.status||'Active')})</span></div>
+      ${sessions.length?`<div style="max-height:420px;overflow:auto">${sessions.map(s=>`<div class="lp-map-row"><span style="flex:1;min-width:0"><strong>${esc(s.code||s.id)}</strong> · ${esc(s.trainingProgram||'Untitled')}<small>Linked to ${esc(_lpSessionVerLabel(s,v))}${(()=>{const cr=_lpCreditedContributors(s);return cr.length?' · Credited: '+esc(cr.map(c=>_lpName(c.profileId)).join(', ')):'';})()} ·${esc([s.deliveryType,s.batchNo?'Batch '+s.batchNo:null,s.trainingDate,s.status].filter(Boolean).join(' · '))} · ${s.programLinkOrigin==='catalog_mapping'?'Catalogue mapping':'Program-selected'}</small></span><button class="btn btn-ghost btn-xs" onclick="openTrainingDetail('${esc(s.id)}')">Open</button>${canUnmap&&v.id===p.id&&s.programLinkOrigin==='catalog_mapping'?`<button class="btn btn-ghost btn-xs" onclick="lpUnmapSession('${esc(s.id)}')">Unlink</button>`:''}</div>`).join('')}</div>`:'<div class="lp-muted" style="padding:4px 0 10px">No sessions linked to this version.</div>'}`).join('')}
   </div>${canMap?`<div class="card lp-card" style="margin-top:16px"><div class="lp-card-hd"><span class="lp-card-t">Map Historical Sessions to ${esc(p.version||'v1')}</span></div>
     <div class="lp-muted" style="font-size:12.5px;margin-bottom:12px">Admin-only backfill of session links; archived program details stay read only. Only Completed sessions or sessions whose last training date has passed appear. Future, tentative, cancelled, and already linked sessions are excluded. Create October sessions through Add Training → Internal.</div>
     <input id="lp-map-search" class="form-control" type="search" value="${esc(_lpMapQuery)}" placeholder="Search session ID, title, or batch" oninput="lpMapSearch(this.value)" style="width:100%;margin-bottom:10px">
@@ -5717,21 +5751,25 @@ function _lpDetailHtml(p){
   const can=lpCanEdit(), esc=Utils.esc;
   const draft=p.id==='__draft__';
   const archived=p.status==='inactive', ed=can&&!archived&&_lpEditMode;
+  const scope=ed?_lpEditScope:'', edFull=ed&&scope==='full', edDetails=ed&&(scope==='full'||scope==='details'), edRev=ed&&(scope==='full'||scope==='revision');
+  const used=!draft&&_lpHasUsedSessions(p);
+  const dis=on=>on?'':' disabled';
   const upd=p.updatedAt?`Last updated: ${Utils.formatDate(p.updatedAt.slice(0,10))}${p.updatedBy?` by ${esc(_lpName(p.updatedBy))}`:''}`:'';
   const head=`<button type="button" class="ov-link" style="padding-left:0" onclick="lpBack()">${_lpIc(LP_IC.back)} ${draft?'Cancel and return':'Back to Learning Programs'}</button>
     <div class="lp-dhead">
       <div style="min-width:0">
         ${!draft&&p.code?`<div class="lp-code" style="margin-bottom:2px">${esc(p.code)}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${draft?'New Learning Program':esc(p.title)}</h2></div>
-        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, agenda, and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc((p.version||'v1').replace(/^v/i,''))}`}</div>
+        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, agenda, and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))}`}</div>
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        ${ed?`<div class="lp-edit-actions"><button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${draft||p.status==='draft'?'Save Draft':'Save Program'}</button></div>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700">READ ONLY</span>':_lpHasUsedSessions(p)?'<span class="badge" style="background:#eef2ff;color:#4338ca">VERSION LOCKED · Create a new version for content changes</span>':can?_lpRowMenu(p,true):'')}
+        ${ed?`<div class="lp-edit-actions"><button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${scope==='details'?'Save Details':scope==='revision'?'Save Revision…':draft||p.status==='draft'?'Save Draft':'Save Program'}</button></div>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700">READ ONLY</span>':can?_lpRowMenu(p,true):used?'<span class="badge" style="background:#eef2ff;color:#4338ca">IN USE · content changes need a revision or new version</span>':'')}
       </div>
     </div>
     ${archived?'<div role="status" style="padding:10px 14px;margin-top:12px;border-radius:8px;background:#f1f5f9;color:#334155;font-weight:600">READ ONLY · Archived program details cannot be edited. Administrators may link past sessions on Implementations for migration.</div>':''}
-    ${!archived&&!ed&&p.status==='active'&&!_lpHasUsedSessions(p)?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px"><b>Active · still editable.</b> Use <b>Actions → Edit Program Setup</b> for corrections before the first Scheduled or Completed implementation. After first use, content changes require a new version.</div>':''}
+    ${!archived&&!ed&&p.status==='active'&&!_lpHasUsedSessions(p)?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px"><b>Active · still editable.</b> Use <b>Actions → Edit Program Setup</b> for corrections before the first Scheduled or Completed implementation. After first use, content changes require a minor revision or a new version.</div>':''}
+    ${!archived&&!ed&&p.status==='active'&&used&&can?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:12px;line-height:1.55"><b>In use · '+esc(_lpVerLabel(p))+'.</b> Use <b>Actions</b> to choose the right change: <b>Edit Details</b> for the resource link, description, category or checklist (no version change). <b>Log Minor Revision</b> for title or agenda wording, timing or order with the same topics and total duration. <b>Deactivate / New Version</b> for anything else. Contributors can be added or ended any time below.</div>':''}
     ${ed?'':`<div class="dmain-tabs" style="margin-top:14px">${LP_TABS.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>`}`;
   if(_lpTab!=='overview'){
     if(_lpTab==='impl'&&!draft) return head+_lpImplementationsHtml(p);
@@ -5755,23 +5793,23 @@ function _lpDetailHtml(p){
   const info=`<div class="card lp-card lp-program-info"><div class="lp-card-hd lp-info-header"><span class="lp-card-t">Program Information</span>${_lpStatusBadge(p)}</div><div class="lp-program-info-body">
     <div class="lp-program-info-sub">Provide the basic details about this learning program.</div>
     ${ed?`<div class="lp-pi-grid">
-      <div class="lp-pi-field lp-pi-span-12"><label for="lp-d-title">Program Title *</label><input id="lp-d-title" class="form-control" type="text" value="${esc(p.title||'')}"></div>
-      <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-cat','Category'+(p.status==='draft'?'':' *'),[...cats,...(currentCat?[currentCat]:[])].map(c=>[c.id,c.name]),p.categoryId)}</div>
-      <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-type','Delivery Type'+(p.status==='draft'?'':' *'),types.map(t=>[t,_lpProgramTypeLabel(t)]),programType,'onchange="lpProgramTypeChanged(this.value)"')}</div>
-      <div id="lp-checklist-row" class="lp-pi-field lp-pi-span-6">${selfLedType?`<div class="lp-pi-label">Default Trainer Checklist ${help('Trainer checklists apply only to instructor-led programs.')}</div><input class="form-control" type="text" value="Not applicable" readonly aria-label="Default Trainer Checklist, not applicable for self-led programs" style="background:#f1f5f9;color:#64748b">`:draftSelect('lp-d-checklist','Default Trainer Checklist',checklistOptions.map(t=>[t.id,t.title+(t.isActive?'':' (inactive)')]),p.checklistTemplateId)}</div>
+      <div class="lp-pi-field lp-pi-span-12"><label for="lp-d-title">Program Title *</label><input id="lp-d-title" class="form-control" type="text" value="${esc(p.title||'')}"${dis(edRev)}></div>
+      <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-cat','Category'+(p.status==='draft'?'':' *'),[...cats,...(currentCat?[currentCat]:[])].map(c=>[c.id,c.name]),p.categoryId,dis(edDetails))}</div>
+      <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-type','Delivery Type'+(p.status==='draft'?'':' *'),types.map(t=>[t,_lpProgramTypeLabel(t)]),programType,'onchange="lpProgramTypeChanged(this.value)"'+dis(edFull))}</div>
+      <div id="lp-checklist-row" class="lp-pi-field lp-pi-span-6">${selfLedType?`<div class="lp-pi-label">Default Trainer Checklist ${help('Trainer checklists apply only to instructor-led programs.')}</div><input class="form-control" type="text" value="Not applicable" readonly aria-label="Default Trainer Checklist, not applicable for self-led programs" style="background:#f1f5f9;color:#64748b">`:draftSelect('lp-d-checklist','Default Trainer Checklist',checklistOptions.map(t=>[t.id,t.title+(t.isActive?'':' (inactive)')]),p.checklistTemplateId,dis(edDetails))}</div>
 
       <div class="lp-pi-divider"><div class="lp-pi-section-title">Program Details</div><div class="lp-pi-section-sub">System-generated and additional information for this program.</div></div>
 
       <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Program ID ${help('Generated automatically when the program is first saved.')}</div><input class="form-control" type="text" value="${esc(draft?'Assigned when saved':p.code||'—')}" readonly aria-label="Program ID, read only"></div>
-      <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Version ${help('This identifies the current program version. Used implementations are version locked; content changes then require a new version.')}</div><input class="form-control" type="text" value="${esc(p.version||'v1')}" readonly aria-label="Version, read only"></div>
+      <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Version ${help('This identifies the current program version. Used implementations are version locked; content changes then require a new version.')}</div><input class="form-control" type="text" value="${esc(_lpVerLabel(p))}" readonly aria-label="Version, read only"></div>
       <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Duration ${help('Calculated automatically from the total duration of agenda topics. Enter each agenda topic duration in minutes; LEAP calculates the total.')}</div><input id="lp-duration-value" class="form-control" type="text" value="${esc(durationText)}" readonly aria-label="Duration, calculated from agenda"></div>
 
-      <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-from">Effective From *</label><input id="lp-d-from" class="form-control" type="date" value="${esc(p.effectiveFrom||'')}"></div>
-      <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-to">Effective To</label><input id="lp-d-to" class="form-control" type="date" value="${esc(p.effectiveTo||'')}"><div class="lp-pi-helper">Leave blank while the program remains current.</div></div>
+      <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-from">Effective From *</label><input id="lp-d-from" class="form-control" type="date" value="${esc(p.effectiveFrom||'')}"${dis(edFull)}></div>
+      <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-to">Effective To</label><input id="lp-d-to" class="form-control" type="date" value="${esc(p.effectiveTo||'')}"${dis(edFull)}><div class="lp-pi-helper">Leave blank while the program remains current.</div></div>
 
-      <div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Program Resources ${help('Link to the program source files, facilitator materials, references, or shared resource folder.')}</div><div class="lp-pi-resource-wrap"><input id="lp-resource-url" class="form-control" aria-label="Program resources URL" type="url" inputmode="url" value="${esc(p.resourceUrl||'')}" placeholder="https://…">${_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-pi-resource-open" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer" title="Open resources">↗</a>`:''}</div><div class="lp-pi-helper">Link to the program's source files, facilitator materials, references, or shared resource folder.</div></div>
+      <div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Program Resources ${help('Link to the program source files, facilitator materials, references, or shared resource folder.')}</div><div class="lp-pi-resource-wrap"><input id="lp-resource-url" class="form-control" aria-label="Program resources URL" type="url" inputmode="url" value="${esc(p.resourceUrl||'')}" placeholder="https://…"${dis(edDetails)}>${_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-pi-resource-open" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer" title="Open resources">↗</a>`:''}</div><div class="lp-pi-helper">Link to the program's source files, facilitator materials, references, or shared resource folder.</div></div>
 
-      <div class="lp-pi-field lp-pi-span-12"><label for="lp-desc">Program Description</label><textarea id="lp-desc" class="form-control lp-pi-desc" rows="4" placeholder="What the program is for, who it's for, and the outcomes it targets.">${esc(p.description||'')}</textarea></div>
+      <div class="lp-pi-field lp-pi-span-12"><label for="lp-desc">Program Description</label><textarea id="lp-desc" class="form-control lp-pi-desc" rows="4"${dis(edDetails)} placeholder="What the program is for, who it's for, and the outcomes it targets.">${esc(p.description||'')}</textarea></div>
       ${_lpDraftError?`<div class="lp-form-error lp-pi-span-12" role="alert">${esc(_lpDraftError)}</div>`:''}
     </div>`:`<div class="lp-pi-grid">
       <div class="lp-pi-span-12">${readField('Program Title',esc(p.title||'—'))}</div>
@@ -5780,7 +5818,7 @@ function _lpDetailHtml(p){
       <div class="lp-pi-span-6">${readField('Default Trainer Checklist',selfLedType?'Not applicable':esc(checklistName),'Trainer checklists apply only to instructor-led programs.')}</div>
       <div class="lp-pi-divider"><div class="lp-pi-section-title">Program Details</div></div>
       <div class="lp-pi-span-4">${readField('Program ID',esc(draft?'Assigned when saved':p.code||'—'),'Generated automatically when the program is first saved.')}</div>
-      <div class="lp-pi-span-4">${readField('Version',esc(p.version||'v1'),'Current program version.')}</div>
+      <div class="lp-pi-span-4">${readField('Version',esc(_lpVerLabel(p)),'Current program version. A decimal (v1.1) is a logged minor revision of the same version.')}</div>
       <div class="lp-pi-span-4">${readField('Duration',esc(durationText),'Calculated from the agenda.')}</div>
       <div class="lp-pi-span-6">${readField('Effective From',p.effectiveFrom?Utils.formatDate(p.effectiveFrom):'—')}</div>
       <div class="lp-pi-span-6">${readField('Effective To',p.effectiveTo?Utils.formatDate(p.effectiveTo):'No end date')}</div>
@@ -5788,13 +5826,29 @@ function _lpDetailHtml(p){
       <div class="lp-pi-span-12">${readField('Program Description',p.description?esc(p.description).replace(/\n/g,'<br>'):'<span class="lp-muted">No description yet.</span>')}</div>
     </div>`}
   </div></div>`;
-  const cs=p.contributors||[];
-  const cands=_lpCandidates().filter(u=>!cs.some(c=>c.profileId===u.id));
-  const contrib=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Contributors</span></div>
-    ${cs.length?cs.map((c,i)=>`<div class="lp-crow">${_lpAva(c.profileId,c.role)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(_lpName(c.profileId))}</div><div class="lp-crole">${esc(c.role||'')}</div></div>
-        ${ed?`<label class="lp-prim"><input type="radio" name="lp-primary-contributor" ${c.primary?'checked':''} onchange="lpContribPrimary(${i})"> Primary</label><button class="lp-icon-btn" title="Remove" onclick="lpContribRemove(${i})">${_lpIc(LP_IC.x)}</button>`:(c.primary?'<span class="badge" style="background:#dcfce7;color:#15803d">Primary</span>':'')}
-      </div>`).join(''):'<div class="lp-muted" style="padding:6px 0 10px;font-size:12.5px">No contributors tagged yet.</div>'}
-    ${ed?`<div class="lp-addrow"><select id="lp-add-person"><option value="">Select from roster…</option>${cands.map(u=>`<option value="${u.id}">${esc(u.firstName+' '+u.lastName)} — ${esc(_lpRoleOf(u))}</option>`).join('')}</select><button class="btn btn-primary btn-sm" onclick="lpContribAdd()">+ Add Contributor</button></div><div class="lp-muted" style="font-size:11px;margin-top:6px">Primary is the one person responsible for keeping this program current. Other contributors remain credited. Roster shows active Instructional Designers, Content Developers and supervisors.</div>`:''}
+  // Contributors are dated assignments (v5.00). Managed directly on the page (saved immediately)
+  // or, while setting up a draft/unused program, inside the working copy.
+  const csAll=p.contributors||[];
+  const csCur=csAll.filter(c=>_lpContribCurrent(c)).sort((a,b)=>(a.role||'').localeCompare(b.role||'')||(b.primary?1:0)-(a.primary?1:0));
+  const csPast=csAll.filter(c=>!_lpContribCurrent(c)).sort((a,b)=>(b.endDate||'').localeCompare(a.endDate||''));
+  const manage=can&&!archived&&(!ed||edFull);
+  const cands=_lpCandidates().filter(u=>!csCur.some(c=>c.profileId===u.id));
+  const cRow=(c,current)=>{
+    const canRemove=manage&&(!used||_lpAddedToday(c));
+    const acts=manage?[
+      current&&!c.primary?`<button class="btn btn-ghost btn-xs" title="Make main ${esc(c.role||'contributor')}" onclick="lpContribPrimary('${esc(c.id)}')">Make main</button>`:'',
+      current&&!canRemove&&(!c.endDate||Auth.isAdmin)?`<button class="btn btn-ghost btn-xs" onclick="lpContribEnd('${esc(c.id)}')">End</button>`:'',
+      Auth.isAdmin&&used?`<button class="btn btn-ghost btn-xs" title="Correct assignment dates (admin)" onclick="lpContribDates('${esc(c.id)}')">Dates</button>`:'',
+      canRemove?`<button class="lp-icon-btn" title="Remove (added by mistake)" onclick="lpContribRemove('${esc(c.id)}')">${_lpIc(LP_IC.x)}</button>`:''
+    ].join(''):'';
+    return `<div class="lp-crow"${current?'':' style="opacity:.75"'}>${_lpAva(c.profileId,c.role)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(_lpName(c.profileId))}</div><div class="lp-crole">${esc(c.role||'')}${_lpAssignmentDates(c)?' · '+esc(_lpAssignmentDates(c)):''}</div></div>
+      ${current&&c.primary?'<span class="badge" style="background:#dcfce7;color:#15803d">Main</span>':''}${current?'':'<span class="badge" style="background:#f1f5f9;color:#64748b">Ended</span>'}<span style="display:flex;gap:4px;align-items:center">${acts}</span></div>`;
+  };
+  const defStart=used?_lpToday():(p.effectiveFrom||_lpToday());
+  const contrib=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Contributors</span>${csPast.length?`<button class="btn btn-ghost btn-xs" onclick="_lpShowPastContrib=!_lpShowPastContrib;renderLearningPrograms()">${_lpShowPastContrib?'Hide':'Show'} past contributors (${csPast.length})</button>`:''}</div>
+    ${csCur.length?csCur.map(c=>cRow(c,true)).join(''):'<div class="lp-muted" style="padding:6px 0 10px;font-size:12.5px">No current contributors.</div>'}
+    ${_lpShowPastContrib&&csPast.length?`<div class="lp-muted" style="font-size:11px;font-weight:600;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em">Past contributors</div>${csPast.map(c=>cRow(c,false)).join('')}`:''}
+    ${manage?`<div class="lp-addrow" style="flex-wrap:wrap"><select id="lp-add-person"><option value="">Select from roster…</option>${cands.map(u=>`<option value="${u.id}">${esc(u.firstName+' '+u.lastName)} — ${esc(_lpRoleOf(u))}</option>`).join('')}</select><input id="lp-add-start" class="form-control" type="date" value="${esc(defStart)}" ${used&&!Auth.isAdmin?`min="${_lpToday()}"`:''} title="Assignment start date" style="width:150px"><button class="btn btn-primary btn-sm" onclick="lpContribAdd()">+ Add Contributor</button></div><div class="lp-muted" style="font-size:11px;margin-top:6px">Each person is credited for sessions delivered while their assignment is active. Use <b>End</b> for handovers so past credit is kept${used?'; Remove is only for an assignment added by mistake today':''}. Main marks the one person per role responsible for keeping this program current.</div>`:''}
   </div>`;
   // Agenda topics are grouped by delivery part so authors build the program in delivery order.
   const ag=p.agenda||[];
@@ -5807,40 +5861,40 @@ function _lpDetailHtml(p){
     const indexed=ag.map((a,i)=>({a,i})).filter(x=>Number(x.a.part||1)===part);
     const rows=indexed.map(({a,i},localIndex)=>`<div class="lp-agenda-item">
       <div class="lp-agenda-item-num">${localIndex+1}</div>
-      <div>${ed?`<input class="form-control" type="text" value="${esc(a.topic||'')}" placeholder="Topic or activity" oninput="lpEditAgendaItem(${i},'topic',this.value)">`:`<div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.topic||'—')}</div>`}</div>
-      <div class="lp-agenda-minutes">${ed?`<div style="position:relative"><input class="form-control" style="padding-right:38px" type="number" min="1" step="1" value="${esc(_lpMinutes(a.duration)??'')}" placeholder="0" oninput="lpEditAgendaItem(${i},'duration',this.value)"><span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">min</span></div>`:`<span style="font-size:12px;color:var(--text2)">${a.duration!=null?esc(_lpDurationText(_lpMinutes(a.duration))):'—'}</span>`}</div>
-      <div class="lp-agenda-actions" style="white-space:nowrap;text-align:right">${ed?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${i===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${i===ag.length-1?'disabled':''} title="Move down">↓</button><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaRemove(${i})">Remove</button>`:''}</div>
+      <div>${edRev?`<input class="form-control" type="text" value="${esc(a.topic||'')}" placeholder="Topic or activity" oninput="lpEditAgendaItem(${i},'topic',this.value)">`:`<div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.topic||'—')}</div>`}</div>
+      <div class="lp-agenda-minutes">${edRev?`<div style="position:relative"><input class="form-control" style="padding-right:38px" type="number" min="1" step="1" value="${esc(_lpMinutes(a.duration)??'')}" placeholder="0" oninput="lpEditAgendaItem(${i},'duration',this.value)"><span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">min</span></div>`:`<span style="font-size:12px;color:var(--text2)">${a.duration!=null?esc(_lpDurationText(_lpMinutes(a.duration))):'—'}</span>`}</div>
+      <div class="lp-agenda-actions" style="white-space:nowrap;text-align:right">${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${localIndex===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${localIndex===indexed.length-1?'disabled':''} title="Move down">↓</button>`:''}${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaRemove(${i})">Remove</button>`:''}</div>
     </div>`).join('');
-    const emptyState=ed?`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div><button class="btn btn-primary btn-sm" type="button" onclick="lpAgendaAdd(${part})">+ Add first topic</button></div>`:`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div></div>`;
-    return `<section class="lp-agenda-part"><div class="lp-agenda-part-hd"><div><div class="lp-agenda-part-title">Part ${part}</div><div class="lp-agenda-part-meta">${indexed.length} topic${indexed.length===1?'':'s'}</div></div><div class="lp-agenda-part-right"><span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>${ed&&part===partCount&&partCount>1?`<button class="btn btn-ghost btn-xs" type="button" onclick="lpAgendaPartRemove()" ${indexed.length?'disabled title="Move or remove this part’s topics first"':'title="Remove this delivery part"'}>Remove part</button>`:''}</div></div><div class="lp-agenda-items">${rows||emptyState}</div>${ed&&rows?`<div class="lp-agenda-part-foot"><button class="btn btn-ghost btn-sm lp-agenda-add-topic" type="button" onclick="lpAgendaAdd(${part})">+ Add topic</button></div>`:''}</section>`;
+    const emptyState=edFull?`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div><button class="btn btn-primary btn-sm" type="button" onclick="lpAgendaAdd(${part})">+ Add first topic</button></div>`:`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div></div>`;
+    return `<section class="lp-agenda-part"><div class="lp-agenda-part-hd"><div><div class="lp-agenda-part-title">Part ${part}</div><div class="lp-agenda-part-meta">${indexed.length} topic${indexed.length===1?'':'s'}</div></div><div class="lp-agenda-part-right"><span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>${edFull&&part===partCount&&partCount>1?`<button class="btn btn-ghost btn-xs" type="button" onclick="lpAgendaPartRemove()" ${indexed.length?'disabled title="Move or remove this part’s topics first"':'title="Remove this delivery part"'}>Remove part</button>`:''}</div></div><div class="lp-agenda-items">${rows||emptyState}</div>${edFull&&rows?`<div class="lp-agenda-part-foot"><button class="btn btn-ghost btn-sm lp-agenda-add-topic" type="button" onclick="lpAgendaAdd(${part})">+ Add topic</button></div>`:''}</section>`;
   }).join('');
-  const agenda=`<div class="card lp-card lp-agenda-card"><div class="lp-agenda-card-head"><div><div class="lp-agenda-card-title">Agenda & Delivery Plan</div><div class="lp-agenda-card-sub">Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar.</div></div>${ed?`<button class="btn btn-secondary btn-sm lp-agenda-import" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}</div>
+  const agenda=`<div class="card lp-card lp-agenda-card"><div class="lp-agenda-card-head"><div><div class="lp-agenda-card-title">Agenda & Delivery Plan</div><div class="lp-agenda-card-sub">Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar.</div></div>${edFull?`<button class="btn btn-secondary btn-sm lp-agenda-import" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}</div>
     <div class="lp-agenda-parts">${agendaParts}</div>
-    ${ed&&partCount<30?`<button class="lp-agenda-add-part" type="button" onclick="lpAgendaPartAdd()"><span style="font-size:18px;font-weight:400;line-height:1">+</span> Add another part</button>`:''}
+    ${edFull&&partCount<30?`<button class="lp-agenda-add-part" type="button" onclick="lpAgendaPartAdd()"><span style="font-size:18px;font-weight:400;line-height:1">+</span> Add another part</button>`:''}
     <div class="lp-agenda-summary"><div><div class="lp-agenda-summary-label">Total Program Duration</div><div class="lp-agenda-summary-meta"><span id="lp-agenda-topic-count">${totalTopicCount}</span> topic${totalTopicCount===1?'':'s'} · <span id="lp-agenda-part-count">${partCount}</span> delivery part${partCount===1?'':'s'}</div></div><div id="lp-agenda-total" class="lp-agenda-summary-duration">${esc(_lpDurationText(totalAgendaMinutes)==='—'?'0 min':_lpDurationText(totalAgendaMinutes))}</div></div>
   </div>`;
   // Evaluation items retain the existing assessments JSON shape for session pre-fill compatibility.
   const as=p.assessments||[];
   const yes='<span style="color:var(--green);font-weight:700">✓</span>', no='<span class="lp-muted">—</span>';
   const asRows=as.map((a,i)=>`<tr style="cursor:default">
-      <td>${ed?`<input class="form-control" type="text" value="${esc(a.name||'')}" placeholder="Evaluation name" oninput="lpEditEvalItem('l2',${i},'name',this.value)">`:esc(a.name||'—')}</td>
-      <td style="text-align:center">${ed?`<input type="checkbox" ${a.pre?'checked':''} onchange="lpEditEvalItem('l2',${i},'pre',this.checked)">`:(a.pre?yes:no)}</td>
-      <td style="text-align:center">${ed?`<input type="checkbox" ${a.post?'checked':''} onchange="lpEditEvalItem('l2',${i},'post',this.checked);document.getElementById('lp-pass-${i}').disabled=!this.checked;document.getElementById('lp-pass-${i}').required=this.checked">`:(a.post?yes:no)}</td>
-      <td>${ed?`<input id="lp-pass-${i}" class="form-control" type="number" min="0" max="100" step="1" value="${a.post?a.passingScore??'':''}" placeholder="${a.post?'Required %':'Pre only'}" ${a.post?'required':'disabled'} oninput="lpEditEvalItem('l2',${i},'passingScore',this.value)">`:(a.post&&a.passingScore!=null?a.passingScore+'%':'—')}</td>
-      <td style="text-align:right">${ed?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l2',${i})">Remove</button>`:''}</td></tr>`).join('');
+      <td>${edFull?`<input class="form-control" type="text" value="${esc(a.name||'')}" placeholder="Evaluation name" oninput="lpEditEvalItem('l2',${i},'name',this.value)">`:esc(a.name||'—')}</td>
+      <td style="text-align:center">${edFull?`<input type="checkbox" ${a.pre?'checked':''} onchange="lpEditEvalItem('l2',${i},'pre',this.checked)">`:(a.pre?yes:no)}</td>
+      <td style="text-align:center">${edFull?`<input type="checkbox" ${a.post?'checked':''} onchange="lpEditEvalItem('l2',${i},'post',this.checked);document.getElementById('lp-pass-${i}').disabled=!this.checked;document.getElementById('lp-pass-${i}').required=this.checked">`:(a.post?yes:no)}</td>
+      <td>${edFull?`<input id="lp-pass-${i}" class="form-control" type="number" min="0" max="100" step="1" value="${a.post?a.passingScore??'':''}" placeholder="${a.post?'Required %':'Pre only'}" ${a.post?'required':'disabled'} oninput="lpEditEvalItem('l2',${i},'passingScore',this.value)">`:(a.post&&a.passingScore!=null?a.passingScore+'%':'—')}</td>
+      <td style="text-align:right">${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l2',${i})">Remove</button>`:''}</td></tr>`).join('');
   const ec=_lpEvalConfig(p);
   const level=(key,title,detail,enabled,body='')=>`<section id="lp-eval-${key}" class="lp-eval-level${_lpDraftError&&_lpDraftError.startsWith(key.toUpperCase()+' ')?' lp-section-invalid':''}"><div class="lp-eval-level-hd"><div class="lp-eval-level-title"><b>${title}</b><small>${detail}</small></div>
-    <label class="lp-switch" title="${enabled?'Disable':'Enable'} ${key} evaluation"><input type="checkbox" role="switch" aria-label="${key} evaluation" aria-checked="${enabled}" ${enabled?'checked':''} ${ed?`onchange="lpSetEvalTag('${key}',this.checked)"`:'disabled'}><span class="lp-switch-track"></span></label><span class="lp-eval-state">${enabled?'Yes':'No'}</span></div>
+    <label class="lp-switch" title="${enabled?'Disable':'Enable'} ${key} evaluation"><input type="checkbox" role="switch" aria-label="${key} evaluation" aria-checked="${enabled}" ${enabled?'checked':''} ${edFull?`onchange="lpSetEvalTag('${key}',this.checked)"`:'disabled'}><span class="lp-switch-track"></span></label><span class="lp-eval-state">${enabled?'Yes':'No'}</span></div>
     ${enabled&&body?`<div class="lp-eval-level-body">${body}</div>`:''}</section>`;
   const l2Body=`<table class="dash-tbl"><thead><tr><th>Evaluation</th><th style="width:60px;text-align:center">Pre</th><th style="width:60px;text-align:center">Post</th><th style="width:110px">Passing %</th><th></th></tr></thead>
     <tbody>${asRows}${!as.length?'<tr style="cursor:default"><td colspan="5" class="lp-muted" style="text-align:center;padding:16px">No L2 evaluation items yet.</td></tr>':''}</tbody></table>
-    ${ed?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l2')">+ Add L2 Evaluation</button></div>`:''}`;
-  const l3Rows=ec.l3.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${ed?`<input class="form-control" type="text" value="${esc(x.method||'')}" placeholder="Manager observation" oninput="lpEditEvalItem('l3',${i},'method',this.value)">`:esc(x.method||'—')}</td><td>${ed?`<input class="form-control" type="number" min="1" max="365" step="1" value="${esc(x.daysAfter??'')}" placeholder="30" oninput="lpEditEvalItem('l3',${i},'daysAfter',this.value)">`:(x.daysAfter!=null?esc(String(x.daysAfter))+' days':'—')}</td><td>${ed?`<input class="form-control" type="text" value="${esc(x.notes||'')}" placeholder="Optional" oninput="lpEditEvalItem('l3',${i},'notes',this.value)">`:esc(x.notes||'—')}</td><td style="text-align:right">${ed?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l3',${i})">Remove</button>`:''}</td></tr>`).join('');
+    ${edFull?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l2')">+ Add L2 Evaluation</button></div>`:''}`;
+  const l3Rows=ec.l3.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.method||'')}" placeholder="Manager observation" oninput="lpEditEvalItem('l3',${i},'method',this.value)">`:esc(x.method||'—')}</td><td>${edFull?`<input class="form-control" type="number" min="1" max="365" step="1" value="${esc(x.daysAfter??'')}" placeholder="30" oninput="lpEditEvalItem('l3',${i},'daysAfter',this.value)">`:(x.daysAfter!=null?esc(String(x.daysAfter))+' days':'—')}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.notes||'')}" placeholder="Optional" oninput="lpEditEvalItem('l3',${i},'notes',this.value)">`:esc(x.notes||'—')}</td><td style="text-align:right">${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l3',${i})">Remove</button>`:''}</td></tr>`).join('');
   const l3Body=`<table class="dash-tbl"><thead><tr><th style="width:34px">#</th><th>Follow-through Method</th><th style="width:100px">Days After</th><th>Notes</th><th></th></tr></thead><tbody>${l3Rows}${!ec.l3.items.length?'<tr style="cursor:default"><td colspan="5" class="lp-muted" style="text-align:center;padding:16px">No L3 follow-through items yet.</td></tr>':''}</tbody></table>
-    ${ed?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l3')">+ Add L3 Item</button></div>`:''}`;
-  const l4Rows=ec.l4.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${ed?`<input class="form-control" type="text" value="${esc(x.measure||'')}" placeholder="CSAT score" oninput="lpEditEvalItem('l4',${i},'measure',this.value)">`:esc(x.measure||'—')}</td><td>${ed?`<input class="form-control" type="text" value="${esc(x.baseline||'')}" placeholder="3.8/5" oninput="lpEditEvalItem('l4',${i},'baseline',this.value)">`:esc(x.baseline||'—')}</td><td>${ed?`<input class="form-control" type="text" value="${esc(x.target||'')}" placeholder="4.3/5" oninput="lpEditEvalItem('l4',${i},'target',this.value)">`:esc(x.target||'—')}</td><td>${ed?`<input class="form-control" type="number" min="1" max="365" step="1" value="${esc(x.daysAfter??'')}" placeholder="90" oninput="lpEditEvalItem('l4',${i},'daysAfter',this.value)">`:(x.daysAfter!=null?esc(String(x.daysAfter))+' days':'—')}</td><td style="text-align:right">${ed?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l4',${i})">Remove</button>`:''}</td></tr>`).join('');
+    ${edFull?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l3')">+ Add L3 Item</button></div>`:''}`;
+  const l4Rows=ec.l4.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.measure||'')}" placeholder="CSAT score" oninput="lpEditEvalItem('l4',${i},'measure',this.value)">`:esc(x.measure||'—')}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.baseline||'')}" placeholder="3.8/5" oninput="lpEditEvalItem('l4',${i},'baseline',this.value)">`:esc(x.baseline||'—')}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.target||'')}" placeholder="4.3/5" oninput="lpEditEvalItem('l4',${i},'target',this.value)">`:esc(x.target||'—')}</td><td>${edFull?`<input class="form-control" type="number" min="1" max="365" step="1" value="${esc(x.daysAfter??'')}" placeholder="90" oninput="lpEditEvalItem('l4',${i},'daysAfter',this.value)">`:(x.daysAfter!=null?esc(String(x.daysAfter))+' days':'—')}</td><td style="text-align:right">${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l4',${i})">Remove</button>`:''}</td></tr>`).join('');
   const l4Body=`<table class="dash-tbl"><thead><tr><th style="width:34px">#</th><th>Measure / Behavior</th><th>Baseline</th><th>Target</th><th style="width:100px">Days After</th><th></th></tr></thead><tbody>${l4Rows}${!ec.l4.items.length?'<tr style="cursor:default"><td colspan="6" class="lp-muted" style="text-align:center;padding:16px">No L4 result items yet.</td></tr>':''}</tbody></table>
-    ${ed?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l4')">+ Add L4 Item</button></div>`:''}`;
+    ${edFull?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l4')">+ Add L4 Item</button></div>`:''}`;
   const assessments=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Evaluations</span></div>
     ${level('l1','L1 · Reaction','Post-training survey',ec.l1)}
     ${level('l2','L2 · Learning','Pre and Post are set on each evaluation item.',ec.l2.enabled,l2Body)}
@@ -5856,7 +5910,7 @@ function _lpDetailHtml(p){
   const implementationsOverview=draft?'':`<div class="card lp-card lp-implementations-overview"><div class="lp-card-hd"><div><span class="lp-card-t">Implementations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Implementation snapshot across all versions of this program.</div></div><button class="btn btn-secondary btn-sm" type="button" onclick="lpSetTab('impl')">View all implementations</button></div>
     <div class="lp-qs-grid">${tile(LP_IC.total,'#f5f3ff','#7c3aed','Total Implementations',implementations.length)}${tile(LP_IC.done,'#f0fdf4','#16a34a','Completed',completed)}${tile(LP_IC.clock,'#fffbeb','#d97706','Upcoming',upcoming)}${tile(LP_IC.users,'#eff6ff','#2563eb','Unique Attendees',learners)}</div>
   </div>`;
-  return head+(ed?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} Your changes are saved when you select <b>${draft?'Create Program':'Save Program'}</b>.</div>${_lpErrorBannerHtml()}`:'')+`${implementationsOverview}<div class="lp-overview-grid lp-overview-top">${info}${contrib}</div><div class="lp-overview-grid lp-overview-middle">${agenda}${assessments}</div>`;
+  return head+(ed?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} ${scope==='details'?'<b>Edit Details</b> · Resource link, description, category and default checklist only. No version change; each change is recorded in the Audit Log.':scope==='revision'?`<b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda topic wording, minutes and order. Keep the same topics and the same total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.`:`Your changes are saved when you select <b>${draft?'Create Program':'Save Program'}</b>.`}</div>${_lpErrorBannerHtml()}`:'')+`${implementationsOverview}<div class="lp-overview-grid lp-overview-top">${info}${contrib}</div><div class="lp-overview-grid lp-overview-middle">${agenda}${assessments}</div>`;
 }
 
 /* ── detail actions ── */
@@ -5890,9 +5944,9 @@ function _lpActivationError(p){
   const resourceUrl=(p.resourceUrl||'').trim();
   if(!resourceUrl) return 'Resource Link is required before activation.';
   if(!_lpSafeResourceUrl(resourceUrl)) return 'Resource Link must be a full http:// or https:// URL.';
-  const contributors=p.contributors||[];
-  if(!contributors.length) return 'Add at least one Contributor before activation.';
-  if(!contributors.some(c=>c.primary)) return 'Choose a Primary Contributor before activation.';
+  const contributors=(p.contributors||[]).filter(c=>_lpContribCurrent(c));
+  if(!contributors.length) return 'Add at least one current Contributor before activation.';
+  if(!contributors.some(c=>c.primary)) return 'Mark a Main contributor before activation.';
   if(!_lpAgendaMinutes(p.agenda)) return 'Add a valid agenda before activation.';
   const deliveryError=_lpDeliveryPlanError(p); if(deliveryError) return deliveryError;
   if(_lpProgramTypeValue(p.deliveryType)==='ILT'&&!p.checklistTemplateId) return 'Choose a Default Trainer Checklist before activation.';
@@ -6071,28 +6125,83 @@ function lpEvalRemove(level,i){
   }else return;
   renderLearningPrograms();
 }
+/* Contributor assignments (v5.00): add / end / main / admin date correction / same-day remove. */
+function _lpContribList(p){ return (p.contributors||[]).map(c=>({...c})); }
+function _lpCanManageContrib(p){ return !!p&&lpCanEdit()&&p.status!=='inactive'&&(!_lpEditMode||_lpEditScope==='full'); }
 async function lpContribAdd(){
-  const p=_lpCur(); if(!p) return;
-  const id=document.getElementById('lp-add-person').value; if(!id){ toast('Select someone from the roster first.','error'); return; }
-  const u=DB.byId(id);
-  const list=[...(p.contributors||[]),{profileId:id,role:_lpRoleOf(u),primary:!(p.contributors||[]).length}];
-  if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Added contributor ${_lpName(id)} to "${p.title}"`); renderLearningPrograms(); }
+  const p=_lpCur(); if(!_lpCanManageContrib(p)) return;
+  const id=document.getElementById('lp-add-person')?.value; if(!id){ toast('Select someone from the roster first.','error'); return; }
+  const start=document.getElementById('lp-add-start')?.value||'';
+  if(!start) return toast('Choose the assignment start date.','error');
+  const used=p.id!=='__draft__'&&_lpHasUsedSessions(p);
+  if(used&&!Auth.isAdmin&&start<_lpToday()) return toast('Only administrators can backdate an assignment. Use today or a later date.','error');
+  const u=DB.byId(id); if(!u) return;
+  const list=_lpContribList(p);
+  if(list.some(c=>c.profileId===id&&_lpContribCurrent(c))) return toast(`${_lpName(id)} already has a current assignment.`,'error');
+  const role=_lpRoleOf(u);
+  const hasMain=list.some(c=>c.role===role&&c.primary&&_lpContribCurrent(c));
+  list.push(_lpNewAssignment(u,start,!hasMain));
+  if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Added contributor ${_lpName(id)} (${role}) to ${p.code||p.title}, starting ${start}`); renderLearningPrograms(); }
 }
-async function lpContribRemove(i){
-  const p=_lpCur(); if(!p) return;
-  const list=(p.contributors||[]).slice(); const [gone]=list.splice(i,1);
-  if(gone?.primary&&list.length) list[0]={...list[0],primary:true};
-  if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Removed contributor ${_lpName(gone&&gone.profileId)} from "${p.title}"`); renderLearningPrograms(); }
+function lpContribRemove(cid){
+  const p=_lpCur(); if(!_lpCanManageContrib(p)) return;
+  const list=_lpContribList(p), i=list.findIndex(c=>c.id===cid); if(i<0) return;
+  const used=p.id!=='__draft__'&&_lpHasUsedSessions(p), gone=list[i];
+  if(used&&!_lpAddedToday(gone)) return toast('This assignment has history. Use End instead so past credit is kept.','error');
+  confirm$('Remove contributor',`Remove <b>${Utils.esc(_lpName(gone.profileId))}</b> completely? Use this only for an assignment added by mistake.`,'Remove',async()=>{
+    list.splice(i,1);
+    if(gone.primary){ const next=list.find(c=>c.role===gone.role&&_lpContribCurrent(c)); if(next) next.primary=true; }
+    if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Removed contributor ${_lpName(gone.profileId)} from ${p.code||p.title} (added by mistake)`); renderLearningPrograms(); }
+  });
 }
-async function lpContribPrimary(i){
-  const p=_lpCur(); if(!p) return;
-  if(i<0||i>=(p.contributors||[]).length) return;
-  const list=(p.contributors||[]).map((c,j)=>({...c,primary:j===i}));
-  if(await _lpPersist(p.id,{contributors:list})) renderLearningPrograms();
+function lpContribEnd(cid){
+  const p=_lpCur(); if(!_lpCanManageContrib(p)) return;
+  const list=_lpContribList(p), c=list.find(x=>x.id===cid); if(!c||!_lpContribCurrent(c)) return;
+  if(c.endDate&&!Auth.isAdmin) return toast('This assignment already has an end date. Ask an administrator to change it.','error');
+  const today=_lpToday(), min=Auth.isAdmin?(c.startDate||''):[c.startDate||'',today].sort().pop();
+  const others=list.filter(x=>x.id!==cid&&x.role===c.role&&_lpContribCurrent(x));
+  confirm$('End assignment',`<p>End <b>${Utils.esc(_lpName(c.profileId))}</b>'s assignment as ${Utils.esc(c.role||'contributor')}? Sessions delivered up to the end date stay credited to them.</p>
+    <label class="form-label" for="lp-end-date">Last day of assignment</label><input type="date" class="form-control" id="lp-end-date" value="${today<min?min:today}" min="${min}">
+    ${c.primary&&others.length?`<label class="form-label" for="lp-next-main" style="margin-top:10px">New main ${Utils.esc(c.role||'contributor')}</label><select class="form-control" id="lp-next-main">${others.map(o=>`<option value="${Utils.esc(o.id)}">${Utils.esc(_lpName(o.profileId))}</option>`).join('')}</select>`:c.primary?`<div class="lp-muted" style="font-size:12px;margin-top:10px">No other current ${Utils.esc(c.role||'contributor')} is assigned. Add the replacement so this role keeps a main contributor.</div>`:''}`,'End Assignment',async()=>{
+    const end=document.getElementById('lp-end-date')?.value||'';
+    if(!end||(min&&end<min)){ toast(Auth.isAdmin?'The end date cannot be before the start date.':'Choose today or a later date. Ask an administrator to record an earlier end date.','error'); return setTimeout(()=>lpContribEnd(cid),0); }
+    c.endDate=end;
+    if(c.primary){ const nid=document.getElementById('lp-next-main')?.value; const n=list.find(x=>x.id===nid); if(n){ c.primary=false; n.primary=true; } else if(end<_lpToday()) c.primary=false; }
+    if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Ended contributor ${_lpName(c.profileId)} (${c.role}) on ${p.code||p.title} as of ${end}`); renderLearningPrograms(); toast('Assignment ended. Past credit is kept.','success'); }
+  });
+  document.getElementById('mc-ok').className='btn btn-primary';
+}
+function lpContribDates(cid){
+  const p=_lpCur(); if(!_lpCanManageContrib(p)||!Auth.isAdmin) return;
+  const list=_lpContribList(p), c=list.find(x=>x.id===cid); if(!c) return;
+  confirm$('Correct assignment dates',`<p>Correct the dates for <b>${Utils.esc(_lpName(c.profileId))}</b> (${Utils.esc(c.role||'')}). KPI credit for affected sessions follows the new dates.</p>
+    <label class="form-label" for="lp-cd-start">Start date</label><input type="date" class="form-control" id="lp-cd-start" value="${Utils.esc(c.startDate||'')}">
+    <label class="form-label" for="lp-cd-end" style="margin-top:10px">End date (blank = current)</label><input type="date" class="form-control" id="lp-cd-end" value="${Utils.esc(c.endDate||'')}">
+    <label class="form-label" for="lp-cd-reason" style="margin-top:10px">Reason for correction *</label><textarea class="form-control" id="lp-cd-reason" rows="2" placeholder="e.g. Ben took over in September; handover was logged late."></textarea>`,'Save Correction',async()=>{
+    const start=document.getElementById('lp-cd-start')?.value||'', end=document.getElementById('lp-cd-end')?.value||'', reason=(document.getElementById('lp-cd-reason')?.value||'').trim();
+    if(!start){ toast('Start date is required.','error'); return setTimeout(()=>lpContribDates(cid),0); }
+    if(end&&end<start){ toast('End date cannot be before the start date.','error'); return setTimeout(()=>lpContribDates(cid),0); }
+    if(!reason){ toast('Add a reason for the correction.','error'); return setTimeout(()=>lpContribDates(cid),0); }
+    const before=`${c.startDate||'—'} → ${c.endDate||'current'}`;
+    c.startDate=start; c.endDate=end||null;
+    if(!_lpContribCurrent(c)&&c.primary) c.primary=false;
+    if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Corrected assignment dates for ${_lpName(c.profileId)} on ${p.code||p.title}: ${before} changed to ${start} → ${end||'current'}. Reason: ${reason}`); renderLearningPrograms(); toast('Assignment dates corrected.','success'); }
+  });
+  document.getElementById('mc-ok').className='btn btn-primary';
+}
+async function lpContribPrimary(cid){
+  const p=_lpCur(); if(!_lpCanManageContrib(p)) return;
+  const list=_lpContribList(p), t=list.find(c=>c.id===cid); if(!t||!_lpContribCurrent(t)) return;
+  list.forEach(c=>{ if(c.role===t.role&&_lpContribCurrent(c)) c.primary=c.id===cid; });
+  if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Set ${_lpName(t.profileId)} as main ${t.role} on ${p.code||p.title}`); renderLearningPrograms(); }
 }
 async function lpAgendaMove(i,d){
   const p=_lpCur(); if(!p) return;
-  const list=(p.agenda||[]).slice(); const j=i+d; if(j<0||j>=list.length) return;
+  if(!_lpEditMode) return;
+  // Move within the same delivery part only (v5.00).
+  const list=(p.agenda||[]).slice(); if(!list[i]) return; const part=Number(list[i].part||1);
+  let j=i+d; while(j>=0&&j<list.length&&Number(list[j].part||1)!==part) j+=d;
+  if(j<0||j>=list.length) return;
   [list[i],list[j]]=[list[j],list[i]];
   if(await _lpPersist(p.id,{agenda:list})) renderLearningPrograms();
 }
@@ -6123,7 +6232,11 @@ function _lpAuditHtml(p){
   const ids=new Set(family.map(x=>x.id));
   const entries=AuditLog.all().filter(x=>x.module==='Learning Program'&&ids.has(x.entityId)).sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
   return `<div class="card lp-card" style="margin-top:16px"><div class="lp-card-hd"><span class="lp-card-t">Version history</span></div>
-    <table class="dash-tbl"><thead><tr><th>Program ID</th><th>Version</th><th>Effective dates</th><th>Status</th></tr></thead><tbody>${family.map(x=>`<tr><td><button class="btn btn-ghost btn-xs" onclick="lpOpen('${x.id}')">${esc(x.code||'—')}</button></td><td>${esc(x.version)}</td><td>${Utils.formatDate(x.effectiveFrom)} – ${x.effectiveTo?Utils.formatDate(x.effectiveTo):'Present'}</td><td>${_lpStatusBadge(x)}</td></tr>`).join('')}</tbody></table>
+    <table class="dash-tbl"><thead><tr><th>Program ID</th><th>Version</th><th>Effective dates</th><th>Status</th></tr></thead><tbody>${family.map(x=>`<tr><td><button class="btn btn-ghost btn-xs" onclick="lpOpen('${x.id}')">${esc(x.code||'—')}</button></td><td>${esc(_lpVerLabel(x))}</td><td>${Utils.formatDate(x.effectiveFrom)} – ${x.effectiveTo?Utils.formatDate(x.effectiveTo):'Present'}</td><td>${_lpStatusBadge(x)}</td></tr>`).join('')}</tbody></table>
+    ${(()=>{ const revs=family.flatMap(x=>(x.revisionHistory||[]).map(h=>({...h,code:x.code,version:x.version||'v1'}))).sort((a,b)=>(b.at||b.date||'').localeCompare(a.at||a.date||''));
+      return `<div class="lp-card-hd" style="margin-top:22px"><span class="lp-card-t">Revision history</span></div>
+      <div class="lp-muted" style="font-size:12px;margin-bottom:8px">Minor revisions change wording, timing or order within a version. Reports and KPIs stay grouped under the main version.</div>
+      ${revs.length?`<table class="dash-tbl"><thead><tr><th>Revision</th><th>Date</th><th>By</th><th>Changed</th><th>Change note</th></tr></thead><tbody>${revs.map(h=>`<tr style="cursor:default"><td>${esc(h.label||`${h.version}.${h.revision}`)}</td><td>${h.date?Utils.formatDate(h.date):'—'}</td><td>${esc(h.byName||(h.by?_lpName(h.by):'—'))}</td><td>${esc((h.fields||[]).join(', ')||'—')}</td><td>${esc(h.note||'')}</td></tr>`).join('')}</tbody></table>`:'<p class="lp-muted">No minor revisions logged.</p>'}`; })()}
     <div class="lp-card-hd" style="margin-top:22px"><span class="lp-card-t">Audit log</span></div>
     ${entries.length?`<table class="dash-tbl"><thead><tr><th>When</th><th>Actor</th><th>Program ID</th><th>Change</th></tr></thead><tbody>${entries.map(e=>`<tr><td>${esc(e.ts?new Date(e.ts).toLocaleString('en-PH'):'—')}</td><td>${esc(e.actorName)}</td><td>${esc(family.find(x=>x.id===e.entityId)?.code||'—')}</td><td>${esc(e.summary||e.action)}</td></tr>`).join('')}</tbody></table>`:'<p class="lp-muted">No audit entries for this program yet.</p>'}
   </div>`;
@@ -6137,25 +6250,27 @@ function lpToggleStatus(id){
   const nextDay=next.toISOString().slice(0,10);
   const futureCount=_lpMappedSessions(id).filter(s=>s.trainingDate&&s.trainingDate>=_todayStr()).length;
   confirm$('Close program version',`<p>Choose what happens to <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b>. Existing sessions remain linked to this version.${futureCount?` Review ${futureCount} linked upcoming session${futureCount===1?'':'s'} after the transition.`:''}</p>
-    <label style="display:block;margin:10px 0"><input type="radio" name="lp-close-type" value="replace" checked onchange="document.getElementById('lp-next-start').disabled=false"> Create a blank draft version with the same Program ID</label>
-    <label style="display:block;margin:10px 0"><input type="radio" name="lp-close-type" value="discontinue" onchange="document.getElementById('lp-next-start').disabled=true"> Discontinue this program</label>
+    <label style="display:block;margin:10px 0"><input type="radio" name="lp-close-type" value="replace" checked onchange="document.getElementById('lp-next-start').disabled=false;document.getElementById('lp-copy-content').disabled=false"> Create a new draft version with the same Program ID</label>
+    <label style="display:block;margin:4px 0 10px 24px;font-size:12.5px"><input type="checkbox" id="lp-copy-content" checked> Start from a copy of the current content (agenda, evaluations, resources, description and current contributors)</label>
+    <label style="display:block;margin:10px 0"><input type="radio" name="lp-close-type" value="discontinue" onchange="document.getElementById('lp-next-start').disabled=true;document.getElementById('lp-copy-content').disabled=true"> Discontinue this program</label>
+    <div class="lp-muted" style="font-size:12px;margin:6px 0 10px">Only small wording, timing or order changes? Cancel and use <b>Log Minor Revision</b> instead — it keeps reports grouped under the same version.</div>
     <label class="form-label" for="lp-close-end">Current version ends</label><input type="date" class="form-control" id="lp-close-end" value="${_todayStr()}">
     <label class="form-label" for="lp-next-start" style="margin-top:10px">New version starts</label><input type="date" class="form-control" id="lp-next-start" value="${nextDay}">
     <div id="lp-close-error" class="modal-err hidden" role="alert" style="margin-top:10px"></div>`,'Continue',async()=>{
     const reason=document.querySelector('input[name="lp-close-type"]:checked')?.value;
-    const end=document.getElementById('lp-close-end').value, start=document.getElementById('lp-next-start').value;
-    const fail=m=>{ toast(m,'error'); lpToggleStatus(id); };
+    const end=document.getElementById('lp-close-end').value, start=document.getElementById('lp-next-start').value, copy=!!document.getElementById('lp-copy-content')?.checked;
+    const fail=m=>{ toast(m,'error'); setTimeout(()=>lpToggleStatus(id),0); };
     if(!end||end<p.effectiveFrom) return fail('Enter an end date on or after the current version start.');
     if(reason==='replace'){
       if(!start||start<=end) return fail('The new version must start after the old one ends.');
-      const {data,error}=await sb.rpc('replace_learning_program',{p_old_id:id,p_end_date:end,p_new_start:start});
+      const {data,error}=await sb.rpc('replace_learning_program',{p_old_id:id,p_end_date:end,p_new_start:start,p_copy_content:copy});
       if(error){ _surfaceDbError(error,'Create new version'); return; }
       const oldRow=rowToCamel(Store.LEARNING_PROGRAMS,data.old),newRow=rowToCamel(Store.LEARNING_PROGRAMS,data.new);
       const arr=Cache.data[Store.LEARNING_PROGRAMS],i=arr.findIndex(x=>x.id===id); if(i>=0) arr[i]=oldRow; arr.push(newRow);
       await AuditLog.record('update','Learning Program',id,`Closed ${p.code} ${p.version} on ${end}; replaced by ${newRow.code} ${newRow.version}`);
-      await AuditLog.record('create','Learning Program',newRow.id,`Created ${newRow.code} ${newRow.version} from ${p.code}; effective ${start}`);
+      await AuditLog.record('create','Learning Program',newRow.id,`Created ${newRow.code} ${newRow.version} from ${p.code} ${_lpVerLabel(p)}${copy?' (copied content)':' (blank)'}; effective ${start}`);
       lpF.status='all'; lpOpen(newRow.id); lpStartEdit(newRow.id);
-      toast('Draft version created with the same Program ID. Fill in its details, then activate it.','success');
+      toast(copy?'Draft version created from a copy of the current content. Make your changes, then activate it.':'Draft version created with the same Program ID. Fill in its details, then activate it.','success');
     } else {
       if(await _lpPersist(id,{status:'inactive',effectiveTo:end,retirementReason:'discontinued'})){
         await AuditLog.record('update','Learning Program',id,`Discontinued ${p.code} ${p.version} on ${end}`);
@@ -6197,15 +6312,17 @@ function lpDelete(id){
 function lpStartDraft(){
   _lpWorking=null;
   _lpDraft={id:'__draft__',code:null,title:'',categoryId:'',deliveryType:'',version:'v1',durationHours:null,durationMinutes:null,status:'draft',effectiveFrom:_todayStr(),effectiveTo:null,description:'',resourceUrl:'',checklistTemplateId:null,allowedModalities:[],contributors:[],agenda:[],assessments:[],evaluationConfig:{l1:false,l2:{enabled:false},l3:{enabled:false,items:[]},l4:{enabled:false,items:[]}},l3Required:false,l3Notes:''};
-  _lpDraftError=''; _lpDetailId='__draft__'; _lpTab='overview'; _lpEditMode=true;
+  _lpDraftError=''; _lpDetailId='__draft__'; _lpTab='overview'; _lpEditMode=true; _lpEditScope='full';
   renderLearningPrograms(); _syncHashForCurrentView();
   document.getElementById('lp-d-title')?.focus();
 }
-function lpStartEdit(id,inactivate=false){
-  const p=LearningProgramDB.byId(id); if(!p||p.status==='inactive'||_lpHasUsedSessions(p)||!lpCanEdit()) return;
-  _lpDraft=null; _lpWorking=JSON.parse(JSON.stringify(p)); _lpDetailId=id; _lpEditMode=true; _lpTab='overview'; _lpDraftError='';
-  const cs=_lpWorking.contributors||[];
-  if(cs.length){ const first=cs.findIndex(c=>c.primary); cs.forEach((c,i)=>{ c.primary=i===(first<0?0:first); }); }
+function lpStartEdit(id,inactivate=false,scope='full'){
+  const p=LearningProgramDB.byId(id); if(!p||p.status==='inactive'||!lpCanEdit()) return;
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  const used=_lpHasUsedSessions(p);
+  if(used&&!['details','revision'].includes(scope)) return toast('This version has implementations. Use Edit Details, Log Minor Revision, or create a new version.','error');
+  if(!used) scope='full';
+  _lpDraft=null; _lpWorking=JSON.parse(JSON.stringify(p)); _lpDetailId=id; _lpEditMode=true; _lpEditScope=scope; _lpTab='overview'; _lpDraftError='';
   if(inactivate) _lpWorking.status='inactive';
   renderLearningPrograms(); _syncHashForCurrentView();
   if(inactivate) document.getElementById('lp-d-to')?.focus();
@@ -6225,12 +6342,80 @@ function lpCancelDraft(){
   confirm$('Discard program changes?','Leave without saving the changes on this page?','Discard',()=>{
     const wasNew=!!_lpDraft;
     _lpDraft=null; _lpWorking=null; if(wasNew) _lpDetailId=null;
-    _lpEditMode=false; _lpDraftError=''; renderLearningPrograms(); _syncHashForCurrentView();
+    _lpEditMode=false; _lpEditScope='full'; _lpDraftError=''; renderLearningPrograms(); _syncHashForCurrentView();
   });
+}
+/* v5.00: saves for a version that already has implementations.
+   details  -> resource link, description, category, checklist (no version change)
+   revision -> title + agenda wording/minutes/order; same topic count, total and parts; note required */
+async function _lpSaveScoped(){
+  const w=_lpWorking, before=w&&LearningProgramDB.byId(w.id), scope=_lpEditScope;
+  if(!w||!before) return;
+  const fail=m=>{ _lpDraftError=m; renderLearningPrograms(); requestAnimationFrame(()=>lpViewProgramIssue(true)); };
+  const finish=async(patch,summary,okMsg)=>{
+    const btn=document.getElementById('lp-create'); if(btn) btn.disabled=true;
+    _lpWorking=null;
+    const saved=await _lpPersist(before.id,patch);
+    if(btn) btn.disabled=false;
+    if(!saved){ _lpWorking=w; return; }
+    await AuditLog.record('update','Learning Program',saved.id,summary);
+    lpOpen(saved.id); toast(okMsg,'success');
+  };
+  if(scope==='details'){
+    const resourceUrl=(w.resourceUrl||'').trim();
+    if(!w.categoryId) return fail('Category is required.');
+    if(!resourceUrl) return fail('Resource Link is required for an active program.');
+    if(!_lpSafeResourceUrl(resourceUrl)) return fail('Resources folder needs a full http:// or https:// URL.');
+    if(!(w.description||'').trim()) return fail('Program Description is required for an active program.');
+    const ilt=_lpProgramTypeValue(before.deliveryType)==='ILT';
+    if(ilt&&!w.checklistTemplateId) return fail('Choose a Default Trainer Checklist.');
+    if(ilt&&w.checklistTemplateId&&!ChecklistTemplateDB.byId(w.checklistTemplateId)) return fail('Select a valid Checklist Template.');
+    const patch={categoryId:w.categoryId,description:w.description.trim(),resourceUrl,checklistTemplateId:ilt?(w.checklistTemplateId||null):null};
+    const changes=[];
+    if(patch.resourceUrl!==(before.resourceUrl||'')) changes.push(`resource link "${before.resourceUrl||'none'}" → "${patch.resourceUrl}"`);
+    if(patch.description!==(before.description||'').trim()) changes.push('description');
+    if(patch.categoryId!==before.categoryId) changes.push(`category ${Sel.nameOf(Store.CATEGORIES,before.categoryId)||'—'} → ${Sel.nameOf(Store.CATEGORIES,patch.categoryId)||'—'}`);
+    if((patch.checklistTemplateId||null)!==(before.checklistTemplateId||null)) changes.push(`default checklist ${ChecklistTemplateDB.byId(before.checklistTemplateId)?.title||'none'} → ${ChecklistTemplateDB.byId(patch.checklistTemplateId)?.title||'none'}`);
+    if(!changes.length){ _lpWorking=null; lpOpen(before.id); return toast('No changes to save.','info'); }
+    return finish(patch,`Edited details of ${before.code} ${_lpVerLabel(before)} (no version change): ${changes.join('; ')}`,'Details saved. No version change.');
+  }
+  if(scope!=='revision') return;
+  const title=(w.title||'').trim();
+  if(!title) return fail('Program Title is required.');
+  if(LearningProgramDB.all().some(x=>x.id!==w.id&&x.programFamilyId!==(w.programFamilyId||w.id)&&(x.title||'').trim().toLowerCase()===title.toLowerCase())) return fail('A program with this title already exists.');
+  const parts=Number(before.deliveryParts||1), agenda=[];
+  for(const [i,a] of (w.agenda||[]).entries()){
+    const minutes=_lpMinutes(a.duration);
+    if(!(a.topic||'').trim()) return fail(`Agenda item ${i+1} needs a topic.`);
+    if(!Number.isSafeInteger(minutes)||minutes<=0) return fail(`Agenda item ${i+1} needs a positive whole number of minutes.`);
+    agenda.push({topic:a.topic.trim(),duration:minutes,part:Number(a.part||1)});
+  }
+  const oldTotal=_lpAgendaMinutes(before.agenda)||0, newTotal=_lpAgendaMinutes(agenda)||0;
+  if(agenda.length!==(before.agenda||[]).length) return fail('A minor revision keeps the same agenda topics. Adding or removing topics needs a new version.');
+  if(newTotal!==oldTotal) return fail(`Agenda item minutes must still total ${_lpDurationText(oldTotal)} (now ${_lpDurationText(newTotal)}). Changing the total duration needs a new version.`);
+  const pErr=_lpDeliveryPlanError({agenda,deliveryParts:parts}); if(pErr) return fail(pErr);
+  const fields=[]; if(title!==before.title) fields.push('title'); if(JSON.stringify(agenda)!==JSON.stringify((before.agenda||[]).map(a=>({topic:(a.topic||'').trim(),duration:_lpMinutes(a.duration),part:Number(a.part||1)})))) fields.push('agenda');
+  if(!fields.length) return fail('No title or agenda changes to log as a revision.');
+  _lpDraftError='';
+  const nextRev=Number(before.revision||0)+1, label=`${before.version||'v1'}.${nextRev}`;
+  const ask=()=>{
+    confirm$(`Log minor revision ${label}`,`<p>Save these ${fields.join(' and ')} changes as <b>${Utils.esc(before.code+' '+label)}</b>. Reports and KPIs stay grouped under ${Utils.esc(before.version||'v1')}; sessions delivered from today show ${Utils.esc(label)}.</p>
+      <label class="form-label" for="lp-rev-note">What changed? *</label><textarea class="form-control" id="lp-rev-note" rows="3" maxlength="500" placeholder="e.g. Updated examples in Topic 3; retimed Topic 2 and 4."></textarea>`,'Save Revision',async()=>{
+      const note=(document.getElementById('lp-rev-note')?.value||'').trim();
+      if(!note){ toast('Add a short change note.','error'); return setTimeout(ask,0); }
+      const me=Auth.user, entry={revision:nextRev,label,date:_lpToday(),at:new Date().toISOString(),by:me?.id||null,byName:me?`${me.firstName} ${me.lastName}`:'',note,fields};
+      const patch={title,agenda,revision:nextRev,revisionHistory:[...(before.revisionHistory||[]),entry]};
+      if(title!==before.title) patch.title=title;
+      await finish(patch,`Logged minor revision ${before.code} ${label} (${fields.join(', ')}): ${note}`,`Revision ${label} saved.`);
+    });
+    document.getElementById('mc-ok').className='btn btn-primary';
+  };
+  ask();
 }
 async function lpSaveDraft(){
   if(!_lpDraft&&!_lpWorking) return;
   _lpCapturePageFields();
+  if(_lpWorking&&_lpEditScope!=='full') return _lpSaveScoped();
   const p=_lpDraft||_lpWorking, isNew=!!_lpDraft, versionDraft=p.status==='draft'&&!isNew, title=p.title.trim();
   const fail=m=>{ _lpDraftError=m; renderLearningPrograms(); requestAnimationFrame(()=>lpViewProgramIssue(true)); };
   if(!title) return fail('Program Title is required.');
@@ -6281,8 +6466,10 @@ async function lpSaveDraft(){
   if(LearningProgramDB.all().some(x=>x.id!==p.id&&x.programFamilyId!==(p.programFamilyId||p.id)&&(x.title||'').trim().toLowerCase()===title.toLowerCase())) return fail('A program with this title already exists.');
   _lpDraftError='';
   const btn=document.getElementById('lp-create'); btn.disabled=true;
-  const contributors=(p.contributors||[]).map((c,i)=>({...c,primary:i===(p.contributors||[]).findIndex(x=>x.primary)}));
-  if(contributors.length&&!contributors.some(c=>c.primary)) contributors[0].primary=true;
+  // Main contributor is per role among current assignments (v5.00).
+  const contributors=(p.contributors||[]).map(c=>({...c}));
+  const curC=contributors.filter(c=>_lpContribCurrent(c));
+  [...new Set(curC.map(c=>c.role))].forEach(role=>{ const g=curC.filter(c=>c.role===role); if(!g.some(c=>c.primary)) g[0].primary=true; });
   const patch={title,categoryId:p.categoryId||null,deliveryType:p.deliveryType||null,version:p.version.trim()||'v1',status:p.status,effectiveFrom:p.effectiveFrom,effectiveTo:p.effectiveTo||null,description:p.description.trim(),resourceUrl:resourceUrl||null,checklistTemplateId:_lpProgramTypeValue(p.deliveryType)==='ILT'?(p.checklistTemplateId||null):null,allowedModalities:[],contributors,agenda,deliveryParts:partCount,assessments:ec.l2.enabled?assessments:(p.assessments||[]),evaluationConfig:ec,l3Required:ec.l3.enabled,l3Notes:p.l3Notes||''};
   if(totalMinutes!=null){ patch.durationMinutes=totalMinutes; patch.durationHours=Number((totalMinutes/60).toFixed(2)); }
   else if(versionDraft){ patch.durationMinutes=null; patch.durationHours=null; }
@@ -13052,7 +13239,7 @@ function _tdPopulateInternalPrograms(){
   const select=document.getElementById('td-ilt-program'); if(!select) return;
   const programs=LearningProgramDB.all().filter(p=>p.status==='active'&&['ILT','VILT','ILT/VILT','Blended','SLT','Self-led'].includes(p.deliveryType))
     .sort((a,b)=>(a.title||'').localeCompare(b.title||''));
-  select.innerHTML='<option value="">— Select an active program —</option>'+programs.map(p=>`<option value="${Utils.esc(p.id)}">${Utils.esc(p.code||'')} · ${Utils.esc(p.title)} · ${Utils.esc(p.version||'v1')} (${Utils.esc(p.deliveryType)})</option>`).join('');
+  select.innerHTML='<option value="">— Select an active program —</option>'+programs.map(p=>`<option value="${Utils.esc(p.id)}">${Utils.esc(p.code||'')} · ${Utils.esc(p.title)} · ${Utils.esc(_lpVerLabel(p))} (${Utils.esc(p.deliveryType)})</option>`).join('');
 }
 function _tdSetTrainingType(type){
   _tdNewTrainingType=type;
@@ -13123,7 +13310,7 @@ async function _tdCreateFromTypePick(deliveryType,programId=''){
     const programEval=program?_lpEvalConfig(program):null;
     const programDeliveryPlan=program?_tdLinkedDeliveryPlan({},program):[];
     const programSnapshot=program?{
-      id:program.id,code:program.code,title:program.title,version:program.version,categoryId:program.categoryId,
+      id:program.id,code:program.code,title:program.title,version:program.version,revision:Number(program.revision||0),contributors:(program.contributors||[]).map(c=>({...c})),categoryId:program.categoryId,
       category:Sel.nameOf(Store.CATEGORIES,program.categoryId)||'',deliveryType:program.deliveryType,
       durationHours:program.durationHours,durationMinutes:program.durationMinutes,description:program.description||'',resourceUrl:program.resourceUrl||'',
       checklistTemplateId:program.checklistTemplateId||null,deliveryParts:program.deliveryParts||1,agenda:(program.agenda||[]).map(x=>({...x})),evaluationConfig:programEval
@@ -17528,7 +17715,7 @@ function _tdLinkedProgramSummaryCard(s){
     <div style="font-weight:700;font-size:15px;margin-bottom:16px;text-align:left">${Utils.esc(p?.title||s.trainingProgram||'Learning Program')}</div>
     <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(220px,.9fr);gap:20px;align-items:start;text-align:left">
       <div style="text-align:left">
-        <div style="font-size:12px;color:var(--text3);margin-bottom:12px;text-align:left">${Utils.esc(p?.code||'—')} · ${Utils.esc(p?.version||'v1')}</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px;text-align:left">${Utils.esc(p?.code||'—')} · ${Utils.esc(_lpSessionVerLabel(s,LearningProgramDB.byId(s.programId))||p?.version||'v1')}${(()=>{const cr=_lpCreditedContributors(s);return cr.length?` · Credited: ${Utils.esc(cr.map(c=>_lpName(c.profileId)).join(', '))}`:'';})()}</div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-start;margin-bottom:12px">
           <span class="badge" style="background:#f5f3ff;color:#6d28d9">${Utils.esc(s.category||p?.category||'—')}</span>
           <span class="badge" style="background:#eff6ff;color:#2563eb">${Utils.esc(typeLabel)}</span>
