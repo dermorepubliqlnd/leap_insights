@@ -5500,7 +5500,14 @@ function _lpSafeResourceUrl(raw){
 // Delivery methods are session-level configuration. Learning Programs no longer restrict modalities.
 function _lpDefaultModalities(){ return []; }
 function _lpAllowedModalities(){ return []; }
-function _lpHasUsedSessions(p){ return _lpMappedSessions(p.id).some(s=>['scheduled','completed'].includes(s.status)); }
+/* v5.01 (2026-10-13, per Sandra): only an ACTIVE version is locked by its implementations (same rule as the
+   lock_used_learning_program_content trigger). Drafts stay fully editable — agenda, parts, evaluations — until activated,
+   even when past sessions are already linked on Implementations. */
+function _lpHasUsedSessions(p){
+  if(!p||p.id==='__draft__') return false;
+  const saved=LearningProgramDB.byId(p.id)||p; // judge by the saved status, not an in-page working copy
+  return saved.status==='active'&&_lpMappedSessions(p.id).some(s=>['scheduled','completed'].includes(s.status));
+}
 
 /* v5.00 (2026-10-07, per Sandra): edit rules once a version has implementations.
    - Edit Details (no version change): resource link, description, category, default checklist.
@@ -5863,10 +5870,10 @@ function _lpDetailHtml(p){
       <div class="lp-agenda-item-num">${localIndex+1}</div>
       <div>${edRev?`<input class="form-control" type="text" value="${esc(a.topic||'')}" placeholder="Topic or activity" oninput="lpEditAgendaItem(${i},'topic',this.value)">`:`<div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.topic||'—')}</div>`}</div>
       <div class="lp-agenda-minutes">${edRev?`<div style="position:relative"><input class="form-control" style="padding-right:38px" type="number" min="1" step="1" value="${esc(_lpMinutes(a.duration)??'')}" placeholder="0" oninput="lpEditAgendaItem(${i},'duration',this.value)"><span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">min</span></div>`:`<span style="font-size:12px;color:var(--text2)">${a.duration!=null?esc(_lpDurationText(_lpMinutes(a.duration))):'—'}</span>`}</div>
-      <div class="lp-agenda-actions" style="white-space:nowrap;text-align:right">${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${localIndex===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${localIndex===indexed.length-1?'disabled':''} title="Move down">↓</button>`:''}${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaRemove(${i})">Remove</button>`:''}</div>
+      <div class="lp-agenda-actions" style="white-space:nowrap;text-align:right">${edFull&&partCount>1?`<select class="form-control" style="display:inline-block;width:auto;height:26px;padding:0 6px;font-size:11.5px;margin-right:4px" title="Move this topic to another part" aria-label="Delivery part" onchange="lpAgendaSetPart(${i},this.value)">${Array.from({length:partCount},(_,k)=>`<option value="${k+1}" ${k+1===part?'selected':''}>Part ${k+1}</option>`).join('')}</select>`:''}${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${localIndex===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${localIndex===indexed.length-1?'disabled':''} title="Move down">↓</button>`:''}${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaRemove(${i})">Remove</button>`:''}</div>
     </div>`).join('');
     const emptyState=edFull?`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div><button class="btn btn-primary btn-sm" type="button" onclick="lpAgendaAdd(${part})">+ Add first topic</button></div>`:`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div></div>`;
-    return `<section class="lp-agenda-part"><div class="lp-agenda-part-hd"><div><div class="lp-agenda-part-title">Part ${part}</div><div class="lp-agenda-part-meta">${indexed.length} topic${indexed.length===1?'':'s'}</div></div><div class="lp-agenda-part-right"><span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>${edFull&&part===partCount&&partCount>1?`<button class="btn btn-ghost btn-xs" type="button" onclick="lpAgendaPartRemove()" ${indexed.length?'disabled title="Move or remove this part’s topics first"':'title="Remove this delivery part"'}>Remove part</button>`:''}</div></div><div class="lp-agenda-items">${rows||emptyState}</div>${edFull&&rows?`<div class="lp-agenda-part-foot"><button class="btn btn-ghost btn-sm lp-agenda-add-topic" type="button" onclick="lpAgendaAdd(${part})">+ Add topic</button></div>`:''}</section>`;
+    return `<section class="lp-agenda-part"><div class="lp-agenda-part-hd"><div><div class="lp-agenda-part-title">Part ${part}</div><div class="lp-agenda-part-meta">${indexed.length} topic${indexed.length===1?'':'s'}</div></div><div class="lp-agenda-part-right"><span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>${edFull&&partCount>1?`<button class="btn btn-ghost btn-xs" type="button" style="color:var(--red)" onclick="lpAgendaPartRemove(${part})" title="${indexed.length?'Remove this part and its topics (move topics to another part first to keep them)':'Remove this delivery part'}">Remove part</button>`:''}</div></div><div class="lp-agenda-items">${rows||emptyState}</div>${edFull&&rows?`<div class="lp-agenda-part-foot"><button class="btn btn-ghost btn-sm lp-agenda-add-topic" type="button" onclick="lpAgendaAdd(${part})">+ Add topic</button></div>`:''}</section>`;
   }).join('');
   const agenda=`<div class="card lp-card lp-agenda-card"><div class="lp-agenda-card-head"><div><div class="lp-agenda-card-title">Agenda & Delivery Plan</div><div class="lp-agenda-card-sub">Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar.</div></div>${edFull?`<button class="btn btn-secondary btn-sm lp-agenda-import" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}</div>
     <div class="lp-agenda-parts">${agendaParts}</div>
@@ -5979,10 +5986,31 @@ function lpAgendaPartAdd(){
   const p=_lpCur(); if(!p||!_lpEditMode||Number(p.deliveryParts||1)>=30) return;
   p.deliveryParts=Number(p.deliveryParts||1)+1; renderLearningPrograms();
 }
-function lpAgendaPartRemove(){
-  const p=_lpCur(); if(!p||!_lpEditMode||Number(p.deliveryParts||1)<=1) return;
-  if((p.agenda||[]).some(a=>Number(a.part||1)===Number(p.deliveryParts))) return toast('Move or remove the topics in the last part first.','error');
-  p.deliveryParts--; renderLearningPrograms();
+/* v5.01 (2026-10-13, per Sandra): any part can be removed while editing (not only the last one).
+   Its topics are removed with it (after confirmation); later parts shift up (Part 4 -> Part 3).
+   Nothing is written until Save Draft / Save Program. */
+function lpAgendaPartRemove(part){
+  const p=_lpCur(); if(!p||!_lpEditMode||_lpEditScope!=='full') return;
+  const count=Number(p.deliveryParts||1); if(count<=1) return;
+  const target=Math.min(Math.max(Number(part)||count,1),count);
+  _lpCapturePageFields();
+  const doRemove=()=>{
+    p.agenda=(p.agenda||[]).filter(a=>Number(a.part||1)!==target).map(a=>{ const n=Number(a.part||1); return n>target?{...a,part:n-1}:a; });
+    p.deliveryParts=count-1; _lpDraftError=''; renderLearningPrograms();
+    toast(`Part ${target} removed. Click ${p.status==='draft'?'Save Draft':'Save Program'} to keep the change.`,'info');
+  };
+  const topics=(p.agenda||[]).filter(a=>Number(a.part||1)===target);
+  if(!topics.length) return doRemove();
+  confirm$(`Remove Part ${target}?`,`Part ${target} has <b>${topics.length} topic${topics.length===1?'':'s'}</b>. They will be removed with it${target<count?` and Parts ${target+1}–${count} will be renumbered`:''}.<br><br>To keep a topic, cancel and use its <b>Part</b> selector to move it first.`,'Remove Part',doRemove);
+}
+/* v5.01: move a topic to another delivery part (full edit only). Appended to the end of the target part. */
+function lpAgendaSetPart(i,part){
+  const p=_lpCur(); if(!p||!_lpEditMode||_lpEditScope!=='full') return;
+  const list=(p.agenda||[]).slice(), item=list[i]; if(!item) return;
+  const target=Number(part), count=Number(p.deliveryParts||1);
+  if(!Number.isInteger(target)||target<1||target>count||target===Number(item.part||1)) return;
+  _lpCapturePageFields();
+  list.splice(i,1); list.push({...item,part:target}); p.agenda=list; renderLearningPrograms();
 }
 function lpEditAgendaItem(i,field,value){
   const p=_lpCur(); if(!p||!_lpEditMode||!p.agenda?.[i]||!['topic','duration','part'].includes(field)) return;
@@ -6283,7 +6311,13 @@ function lpToggleStatus(id){
 async function lpPublishVersion(id){
   const p=LearningProgramDB.byId(id); if(!p||p.status!=='draft'||!lpCanEdit()) return;
   const activationError=_lpActivationError(p);
-  if(activationError) return toast(activationError,'error');
+  if(activationError){
+    // v5.01 (2026-10-13, per Sandra): open the draft in edit mode at the issue so it can be fixed, saved, then activated.
+    toast(activationError,'error');
+    lpOpen(id); lpStartEdit(id);
+    if(_lpEditMode&&_lpWorking){ _lpDraftError=activationError; renderLearningPrograms(); requestAnimationFrame(()=>lpViewProgramIssue(true)); }
+    return;
+  }
   confirm$('Activate version',`Activate <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b> starting ${Utils.formatDate(p.effectiveFrom)}? All required Program Information, Resources, Contributors, Agenda, Checklist and enabled Evaluations have been validated.`,'Activate',async()=>{
     if(await _lpPersist(id,{status:'active'})){
       await AuditLog.record('update','Learning Program',id,`Activated ${p.code} ${p.version}`);
