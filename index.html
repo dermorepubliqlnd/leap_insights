@@ -1185,6 +1185,14 @@
     .lp-mchip{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;margin:1px 4px 1px 0;white-space:nowrap}
     .lp-mchip button{border:0;background:none;color:inherit;cursor:pointer;padding:0 0 0 2px;font-size:12px;line-height:1;opacity:.7}
     .lp-mcell{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+    .lp-mwrap{display:block}
+    .lp-mbtn{display:flex;align-items:center;gap:4px;width:100%;min-height:30px;padding:3px 6px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;text-align:left;font-family:var(--font)}
+    .lp-mbtn:hover{border-color:#93c5fd}
+    .lp-mchips{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+    .lp-mcaret{color:var(--text3);font-size:11px;flex-shrink:0}
+    .lp-mmenu{min-width:210px;max-height:260px;overflow:auto;z-index:60}
+    .lp-mopt{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:12.5px;border-radius:6px;cursor:pointer}
+    .lp-mopt:hover{background:#f8fafc}
     .lp-msel{height:24px;font-size:11px;border:1px dashed #93c5fd;border-radius:6px;color:var(--pri);background:#f8fbff;padding:0 4px;font-family:var(--font);max-width:110px}
     .lp-side-sec{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:10px}
     .lp-side-sec .lp-team-h-row{margin-bottom:6px;font-size:12.5px}
@@ -6167,16 +6175,31 @@ function _lpMethodChip(id,i,removable){
 }
 function _lpMethodCell(a,i,editable){
   const ids=a.methods||[];
-  const chips=ids.map(id=>_lpMethodChip(id,i,editable)).join('');
-  if(!editable) return chips||'<span class="lp-muted">—</span>';
-  const opts=Sel.active(Store.LEARNING_METHODS).filter(m=>!ids.includes(m.id));
-  return `<div class="lp-mcell">${chips}${opts.length?`<select class="lp-msel" aria-label="Add learning method" onchange="lpAgendaMethod(${i},this.value,true)"><option value="">+ Method</option>${opts.map(m=>`<option value="${Utils.esc(m.id)}">${Utils.esc(m.name)}</option>`).join('')}</select>`:''}</div>`;
+  if(!editable) return ids.map(id=>_lpMethodChip(id,i,false)).join('')||'<span class="lp-muted">—</span>';
+  // v5.06 (2026-10-15, per Sandra): one multi-select dropdown (checkboxes) instead of adding methods one at a time.
+  const opts=Sel.all(Store.LEARNING_METHODS).filter(m=>m.isActive||ids.includes(m.id));
+  return `<div class="td-viewmenu-wrap lp-mwrap" onclick="event.stopPropagation()"><button type="button" class="lp-mbtn" aria-haspopup="true" aria-label="Select learning methods" onclick="lpMethodMenu(this)"><span class="lp-mchips" id="lp-mchips-${i}">${_lpMethodChipsEdit(ids)}</span><span class="lp-mcaret">▾</span></button>
+    <div class="td-viewmenu lp-mmenu">${opts.length?opts.map(m=>`<label class="lp-mopt"><input type="checkbox" ${ids.includes(m.id)?'checked':''} onchange="lpAgendaMethod(${i},'${Utils.esc(m.id)}',this.checked,true)"> ${Utils.esc(m.name)}${m.isActive?'':' <span class="lp-muted">(inactive)</span>'}</label>`).join(''):'<div class="lp-muted" style="padding:6px 8px;font-size:12px">No learning methods in Settings → Lists.</div>'}</div></div>`;
 }
-function lpAgendaMethod(i,id,on){
+function _lpMethodChipsEdit(ids){ return ids.length?ids.map(id=>_lpMethodChip(id,0,false)).join(''):'<span class="lp-muted" style="font-size:11.5px">Select methods</span>'; }
+// Opens the method checklist as a fixed-position popover so the table's scroll area does not clip it.
+function lpMethodMenu(btn){
+  const w=btn.closest('.td-viewmenu-wrap'), was=w.classList.contains('open');
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  if(was) return;
+  w.classList.add('open');
+  const m=w.querySelector('.lp-mmenu'), r=btn.getBoundingClientRect();
+  m.style.position='fixed'; m.style.left=Math.min(r.left,window.innerWidth-230)+'px';
+  const below=window.innerHeight-r.bottom; m.style.top=(below>260?r.bottom+4:Math.max(8,r.top-4-Math.min(260,m.scrollHeight)))+'px';
+}
+function lpAgendaMethod(i,id,on,inPlace){
   const p=_lpCur(); if(!p||!_lpEditMode||!['full','revision'].includes(_lpEditScope)||!id||!p.agenda?.[i]) return;
-  _lpCapturePageFields();
   const cur=new Set(p.agenda[i].methods||[]); on?cur.add(id):cur.delete(id);
-  p.agenda[i]={...p.agenda[i],methods:[...cur]}; renderLearningPrograms();
+  // keep the list order of Settings → Lists
+  const order=Sel.all(Store.LEARNING_METHODS).map(m=>m.id);
+  p.agenda[i]={...p.agenda[i],methods:[...cur].sort((a,b)=>order.indexOf(a)-order.indexOf(b))};
+  if(inPlace){ const el=document.getElementById('lp-mchips-'+i); if(el){ el.innerHTML=_lpMethodChipsEdit(p.agenda[i].methods); return; } }
+  _lpCapturePageFields(); renderLearningPrograms();
 }
 function _lpCurSidebarHtml(p){
   const esc=Utils.esc, fid=_lpFamilyId(p), draft=p.id==='__draft__';
