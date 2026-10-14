@@ -6668,11 +6668,11 @@ function _lpDetailHtml(p){
       <td>${edRev?tin(i,'topic',a.topic,'Topic or activity','text','maxlength="250"'):`<span class="lp-ttopic">${esc(a.topic||'—')}</span>`}</td>
       <td>${_lpMethodCell(a,i,edRev)}</td>
       <td>${edRev?`<div class="lp-min-wrap">${tin(i,'duration',_lpMinutes(a.duration)??'','0','number','min="1" step="1"')}<span>min</span></div>`:esc(_lpDurationText(_lpMinutes(a.duration)))}</td>
-      ${ed?`<td class="lp-tact">${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${k===0?'disabled':''} title="Move up" aria-label="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${k===indexed.length-1?'disabled':''} title="Move down" aria-label="Move down">↓</button>`:''}${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
+      ${edFull?`<td class="lp-tact">${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
     </tr>`).join('');
-    const cols=(edRev?1:0)+4+(ed?1:0);
-    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'40%':'44%'}"><col><col style="width:${edRev?'92px':'100px'}">${ed?`<col style="width:${edFull?'92px':'70px'}">`:''}</colgroup>
-      <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Learning Method</th><th>Duration</th>${ed?'<th></th>':''}</tr></thead>`;
+    const cols=(edRev?1:0)+4+(edFull?1:0); // v5.09: topic order by drag handle only (arrows removed per Sandra)
+    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'40%':'44%'}"><col><col style="width:${edRev?'92px':'100px'}">${edFull?'<col style="width:44px">':''}</colgroup>
+      <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Learning Method</th><th>Duration</th>${edFull?'<th></th>':''}</tr></thead>`;
     const empty=`<tr><td colspan="${cols}" class="lp-muted" style="text-align:center;padding:16px">No topics in this part yet.</td></tr>`;
     return `<section class="lp-part${collapsed?' collapsed':''}" ${edFull?`ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,null,${part})"`:''}>
       <div class="lp-part-hd">
