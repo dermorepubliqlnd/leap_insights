@@ -1062,6 +1062,29 @@
     .lp-prim{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);white-space:nowrap}
     .lp-addrow{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
     .lp-addrow select{flex:1;min-width:200px;padding:8px 10px;border:1.5px solid var(--border);font-size:12.5px;font-family:var(--font)}
+    /* v5.02 (2026-10-14, per Sandra): Setup Mode chip + Program Ownership & Delivery Team card + people picker */
+    .lp-setup-chip{background:#fef3c7;color:#92400e;font-weight:700;margin-left:6px;font-size:10.5px;letter-spacing:.02em;cursor:help}
+    .lp-team-card{margin-top:16px}
+    .lp-team-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:0}
+    .lp-team-col{padding:4px 18px;border-left:1px solid var(--border-lt);min-width:0}
+    .lp-team-col:first-child{padding-left:0;border-left:0}
+    .lp-team-h{font-size:13px;font-weight:700;color:var(--text);margin:0 0 2px}
+    .lp-team-sub{font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.45}
+    .lp-team-block{margin-bottom:14px}
+    .lp-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:#f1f5f9;color:#334155;font-size:11.5px;margin:0 4px 4px 0;max-width:100%}
+    .lp-chip button{border:0;background:none;cursor:pointer;color:#64748b;padding:0 0 0 2px;font-size:12px;line-height:1}
+    .lp-pick{position:relative;margin-top:8px}
+    .lp-pick-res{position:absolute;z-index:30;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.12);max-height:260px;overflow:auto;display:none}
+    .lp-pick-item{padding:8px 12px;font-size:12.5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .lp-pick-item:hover{background:#f8fafc}
+    .lp-pick-item small{color:var(--text3);white-space:nowrap}
+    .lp-pick-new{color:var(--pri);font-weight:600;border-top:1px solid var(--border-lt)}
+    .lp-team-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-lt)}
+    .lp-team-row .lp-ava{width:32px;height:32px;font-size:11.5px}
+    .lp-team-row select{height:26px;padding:0 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;font-family:var(--font)}
+    .lp-checklist{max-height:150px;overflow:auto;border:1px solid var(--border-lt);border-radius:8px;padding:6px 10px}
+    .lp-checklist label{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;cursor:pointer}
+    @media (max-width:1100px){.lp-team-grid{grid-template-columns:minmax(0,1fr)}.lp-team-col{border-left:0;padding:12px 0;border-top:1px solid var(--border-lt)}.lp-team-col:first-child{border-top:0;padding-top:0}}
     .lp-map-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-lt);font-size:12.5px;cursor:pointer}
     .lp-map-row:last-child{border-bottom:0}
     .lp-map-row span{min-width:0;overflow-wrap:anywhere}
@@ -3205,6 +3228,32 @@
 </div>
 
 <!-- ══ MODAL: CONFIRM ═════════════════ -->
+<!-- v5.02 (2026-10-14, per Sandra): SME & External Contacts directory add/edit (Settings + quick-add from Learning Programs) -->
+<div id="modal-lpcontact" class="modal-overlay" onclick="if(event.target===this)closeModal('lpcontact')">
+  <div class="modal modal-sm">
+    <div class="modal-hdr">
+      <span class="modal-title" id="lpc-title">Add Contact</span>
+      <button class="modal-close" onclick="closeModal('lpcontact')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="lpc-id"><input type="hidden" id="lpc-link-role">
+      <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input type="text" id="lpc-name" class="form-control" maxlength="120"></div>
+      <div class="form-group"><label class="form-label">Contact Type <span class="req">*</span></label><select id="lpc-type" class="form-control"></select></div>
+      <div class="form-group"><label class="form-label">Organization / Department</label><input type="text" id="lpc-org" class="form-control" maxlength="120"></div>
+      <div class="form-group"><label class="form-label">Position / Designation</label><input type="text" id="lpc-pos" class="form-control" maxlength="120"></div>
+      <div class="form-group"><label class="form-label">Email Address</label><input type="email" id="lpc-email" class="form-control" maxlength="160"></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea id="lpc-notes" class="form-control" rows="2" maxlength="500"></textarea></div>
+      <div class="form-group" id="lpc-active-row"><label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="lpc-active" checked> Active</label></div>
+      <div style="font-size:11.5px;color:var(--text3)">Directory contacts do not get a LEAP account or app access.</div>
+      <div class="modal-err hidden" id="lpc-error" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('lpcontact')">Cancel</button>
+      <button class="btn btn-primary" id="lpc-save" onclick="lpContactSave()">Save Contact</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-confirm" class="modal-overlay" onclick="if(event.target===this)closeModal('confirm')">
   <div class="modal modal-sm">
     <div class="modal-hdr">
@@ -3686,8 +3735,15 @@ const _FIELD_MAPS = {
     id:'id', code:'code', title:'title', categoryId:'category_id', deliveryType:'delivery_type', version:'version', durationHours:'duration_hours', durationMinutes:'duration_minutes', status:'status',
     effectiveFrom:'effective_from', effectiveTo:'effective_to', description:'description', resourceUrl:'resource_url', checklistTemplateId:'checklist_template_id', contributors:'contributors',
     components:'components', agenda:'agenda', deliveryParts:'delivery_parts', allowedModalities:'allowed_modalities', assessments:'assessments', evaluationConfig:'evaluation_config', l3Required:'l3_required', l3Notes:'l3_notes', createdBy:'created_by', updatedBy:'updated_by',
-    programFamilyId:'program_family_id', supersedesProgramId:'supersedes_program_id', retirementReason:'retirement_reason', revision:'revision', revisionHistory:'revision_history', createdAt:'created_at', updatedAt:'updated_at'
-  }
+    programFamilyId:'program_family_id', supersedesProgramId:'supersedes_program_id', retirementReason:'retirement_reason', revision:'revision', revisionHistory:'revision_history', createdAt:'created_at', updatedAt:'updated_at',
+    // v5.02 (2026-10-14, per Sandra): administrative metadata -- outside the version lock.
+    ownership:'ownership', ownerDepartmentId:'owner_department_id', audienceIds:'audience_ids', prerequisiteProgramIds:'prerequisite_program_ids', prerequisiteItemIds:'prerequisite_item_ids'
+  },
+  // v5.02 (2026-10-14, per Sandra): Setup Mode flag, prerequisite list, SME & External Contacts, program SMEs/facilitators.
+  app_flags:{ key:'key', value:'value', updatedAt:'updated_at', updatedBy:'updated_by' },
+  lp_prerequisites:{ id:'id', name:'name', isActive:'is_active' },
+  lnd_contacts:{ id:'id', fullName:'full_name', organization:'organization', contactType:'contact_type', email:'email', position:'position', isActive:'is_active', notes:'notes', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by' },
+  learning_program_people:{ id:'id', programFamilyId:'program_family_id', role:'role', profileId:'profile_id', contactId:'contact_id', accreditationStatus:'accreditation_status', accreditedOn:'accredited_on', expiresOn:'expires_on', notes:'notes', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by' }
 };
 function rowToCamel(table,row){
   const out=_mapRow(row,_FIELD_MAPS[table]);
@@ -3728,14 +3784,17 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[] },
+  // v5.02: tables added by a migration that may not be applied yet -- a load error here must not block the app.
+  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people']),
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
     const results=await Promise.all(tables.map(t=>sb.from(t).select('*')));
     let firstErr=null;
     results.forEach((res,i)=>{
-      if(res.error){ if(!firstErr) firstErr=res.error; this.data[tables[i]]=[]; }
+      if(res.error&&this.optional.has(tables[i])){ console.warn('Optional table not loaded:',tables[i],res.error.message); this.data[tables[i]]=[]; }
+      else if(res.error){ if(!firstErr) firstErr=res.error; this.data[tables[i]]=[]; }
       else this.data[tables[i]]=rowsToCamel(tables[i],res.data);
     });
     this.loaded=true;
@@ -3792,6 +3851,7 @@ const Store = {
   CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
   DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings', PH_HOLIDAYS:'ph_holidays', WORKLOAD_PCT_HISTORY:'workload_pct_history',
   KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots', KPI_TARGETS:'kpi_targets', LEARNING_PROGRAMS:'learning_programs', PROGRAM_TYPES:'program_types',
+  APP_FLAGS:'app_flags', LP_PREREQS:'lp_prerequisites', LND_CONTACTS:'lnd_contacts', LP_PEOPLE:'learning_program_people',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -5508,6 +5568,12 @@ function _lpHasUsedSessions(p){
   const saved=LearningProgramDB.byId(p.id)||p; // judge by the saved status, not an in-page working copy
   return saved.status==='active'&&_lpMappedSessions(p.id).some(s=>['scheduled','completed'].includes(s.status));
 }
+/* v5.02 (2026-10-14, per Sandra): Setup Mode -- versioning temporarily paused for ADMINS (app_flags.lp_versioning_paused,
+   enforced by the lock_used_learning_program_content trigger). In-use active programs can then be edited in place.
+   Contributor history rules still apply, so contributor actions keep using _lpHasUsedSessions(). */
+function lpSetupModeOn(){ const f=(Cache.data[Store.APP_FLAGS]||[]).find(x=>x.key==='lp_versioning_paused'); return f?.value===true; }
+function lpSetupModeForMe(){ return lpSetupModeOn()&&!!Auth.isAdmin; }
+function _lpVersionLocked(p){ return _lpHasUsedSessions(p)&&!lpSetupModeForMe(); }
 
 /* v5.00 (2026-10-07, per Sandra): edit rules once a version has implementations.
    - Edit Details (no version change): resource link, description, category, default checklist.
@@ -5559,6 +5625,330 @@ async function _lpPersist(id,patch){
   return saved;
 }
 
+/* ── v5.02 (2026-10-14, per Sandra): Program Ownership & Delivery Team ─────────────────────────────
+   Administrative metadata -- editable on Draft and Active programs WITHOUT a version change (these
+   columns/tables are outside the version lock) and audited:
+   - Ownership: L&D-Owned / Non-L&D-Owned (+ owning department). Blank = Not Classified (existing programs).
+     Required before activating programs created from v5.02 onward.
+   - Target Audience (audiences list) and Prerequisites (library programs and/or typed items saved to the
+     Settings → Lists → Prerequisites list).
+   - SMEs and program-specific Accredited Facilitators, from the roster or the SME & External Contacts
+     directory. Linked to the program FAMILY so they carry across versions. Contacts never get app access. */
+const LP_OWNERSHIP_REQUIRED_FROM='2026-10-14';
+const LP_CONTACT_TYPES=[['internal_sme','Internal SME'],['external_sme','External SME'],['external_facilitator','External Facilitator'],['other','Other']];
+const LP_ACCRED=[['accredited','Accredited','#dcfce7','#15803d'],['pending','Pending','#fef3c7','#92400e'],['expired','Expired','#fee2e2','#b91c1c'],['revoked','Revoked','#f1f5f9','#475569']];
+let _lpTeamEdit=false, _lpTeamDraft=null, _lpPickQ={sme:'',facilitator:'',prereq:''};
+const LpPeopleDB={
+  all(){ return (Cache.data[Store.LP_PEOPLE]||[]).slice(); },
+  forFamily(fid,role){ return this.all().filter(r=>r.programFamilyId===fid&&(!role||r.role===role)); }
+};
+const LndContactDB={
+  all(){ return (Cache.data[Store.LND_CONTACTS]||[]).slice(); },
+  byId(id){ return this.all().find(c=>c.id===id)||null; },
+  usage(id){ return LpPeopleDB.all().filter(r=>r.contactId===id).length; }
+};
+// The migration seeds app_flags; an empty table means the v5.02 database update is not applied yet.
+function _lpMetaReady(){ return (Cache.data[Store.APP_FLAGS]||[]).length>0; }
+function _lpFamilyId(p){ return p?(p.programFamilyId||p.id):null; }
+function _lpContactTypeLabel(t){ return (LP_CONTACT_TYPES.find(x=>x[0]===t)||[])[1]||'Other'; }
+function _lpLatestByFamily(){
+  const m=new Map(), n=x=>Number(String(x.version||'v1').match(/^v(\d+)$/i)?.[1]||0);
+  LearningProgramDB.all().forEach(p=>{ const k=_lpFamilyId(p), prior=m.get(k); if(!prior||n(p)>n(prior)||(n(p)===n(prior)&&(p.createdAt||'')>(prior.createdAt||''))) m.set(k,p); });
+  return m;
+}
+function _lpPerson(r){
+  if(r.profileId){ const u=DB.byId(r.profileId); return {name:u?`${u.firstName} ${u.lastName}`:'Unknown user',sub:u?(Sel.nameOf(Store.POS,u.positionId)||'Employee'):'',ext:false,inactive:u&&!u.isActive}; }
+  const c=LndContactDB.byId(r.contactId);
+  return {name:c?.fullName||'Unknown contact',sub:c?[_lpContactTypeLabel(c.contactType),c.organization].filter(Boolean).join(' · '):'',ext:true,inactive:c&&!c.isActive};
+}
+function _lpPersonAva(name,ext){ return `<span class="lp-ava" style="background:${ext?'#64748b':'#2563eb'}">${Utils.esc(Utils.initials(name))}</span>`; }
+function _lpAccredState(r){ return r.accreditationStatus==='accredited'&&r.expiresOn&&r.expiresOn<_lpToday()?'expired':(r.accreditationStatus||'pending'); }
+function _lpAccredBadge(r){ const st=_lpAccredState(r), d=LP_ACCRED.find(x=>x[0]===st)||LP_ACCRED[1]; return `<span class="badge" style="background:${d[2]};color:${d[3]}"${st!==r.accreditationStatus?' title="Past its expiry date"':''}>${d[1]}</span>`; }
+function _lpCanEditTeam(p){ return !!p&&lpCanEdit()&&p.id!=='__draft__'&&p.status!=='inactive'&&!_lpEditMode&&_lpMetaReady(); }
+function _lpOwnershipText(p){
+  if(p.ownership==='ld') return '<span class="badge" style="background:#dcfce7;color:#15803d">L&amp;D-Owned</span>';
+  if(p.ownership==='non_ld') return `<span class="badge" style="background:#eff6ff;color:#1d4ed8">Non-L&amp;D-Owned</span> <span style="font-size:12.5px;color:var(--text2)">${Utils.esc(Sel.nameOf(Store.DEPARTMENTS,p.ownerDepartmentId)||'Department not set')}</span>`;
+  return '<span class="badge" style="background:#fef3c7;color:#92400e">Not classified</span>';
+}
+function _lpPrereqChips(d,editing){
+  const esc=Utils.esc, fams=_lpLatestByFamily();
+  const progs=(d.prerequisiteProgramIds||[]).map(fid=>{ const x=fams.get(fid); return `<span class="lp-chip" title="Learning Program">${esc(x?`${x.code||''} · ${x.title}`:'Program unavailable')}${editing?`<button type="button" aria-label="Remove" onclick="lpTeamPrereqRemove('program','${esc(fid)}')">×</button>`:''}</span>`; });
+  const items=(d.prerequisiteItemIds||[]).map(id=>`<span class="lp-chip">${esc(Sel.nameOf(Store.LP_PREREQS,id)||'Item unavailable')}${editing?`<button type="button" aria-label="Remove" onclick="lpTeamPrereqRemove('item','${esc(id)}')">×</button>`:''}</span>`);
+  const all=[...progs,...items];
+  return all.length?all.join(''):'<span class="lp-muted" style="font-size:12.5px">None</span>';
+}
+function _lpTeamHtml(p){
+  const esc=Utils.esc;
+  const shell=(body,right='')=>`<div class="card lp-card lp-team-card" id="lp-team-card"><div class="lp-card-hd"><div><span class="lp-card-t">Program Ownership &amp; Delivery Team</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Who owns the program, its subject matter experts, and who is accredited to facilitate it. Changes here never create a new version.</div></div>${right}</div>${body}</div>`;
+  if(p.id==='__draft__') return shell('<div class="lp-muted" style="font-size:12.5px">Save the draft first. Ownership, target audience, prerequisites, SMEs and accredited facilitators are added once the program record exists.</div>');
+  if(!_lpMetaReady()) return shell('<div class="lp-muted" style="font-size:12.5px">Not available yet: the v5.02 database update has not been applied.</div>');
+  const can=_lpCanEditTeam(p), editing=_lpTeamEdit&&can, d=editing?_lpTeamDraft:p, fid=_lpFamilyId(p);
+  const right=can?(editing?`<div class="lp-edit-actions"><button class="btn btn-secondary btn-sm" onclick="lpTeamCancel()">Cancel</button><button class="btn btn-primary btn-sm" id="lp-team-save" onclick="lpTeamSave()">Save</button></div>`:`<button class="btn btn-secondary btn-sm" onclick="lpTeamEditStart()">${_lpIc(LP_IC.edit)} Edit</button>`):'';
+  // Column 1: ownership, audience, prerequisites (row fields; edited together with Edit/Save)
+  const depts=Sel.active(Store.DEPARTMENTS), curDept=d.ownerDepartmentId&&!depts.some(x=>x.id===d.ownerDepartmentId)?Sel.byId(Store.DEPARTMENTS,d.ownerDepartmentId):null;
+  const auds=Sel.active(Store.AUDIENCES), audIds=d.audienceIds||[];
+  const audView=audIds.length?audIds.map(id=>`<span class="lp-chip">${esc(Sel.nameOf(Store.AUDIENCES,id)||'Audience unavailable')}</span>`).join(''):'<span class="lp-muted" style="font-size:12.5px">Not set</span>';
+  const col1=`<div class="lp-team-col">
+    <div class="lp-team-block"><div class="lp-team-h">Program Ownership${editing?' <span class="req">*</span>':''}</div><div class="lp-team-sub">Accountability for the program, not who facilitates it.</div>
+      ${editing?`<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><input type="radio" name="lp-own" value="ld" ${d.ownership==='ld'?'checked':''} onchange="lpTeamSetOwnership('ld')"> L&amp;D-Owned</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><input type="radio" name="lp-own" value="non_ld" ${d.ownership==='non_ld'?'checked':''} onchange="lpTeamSetOwnership('non_ld')"> Non-L&amp;D-Owned</label>
+        ${d.ownership==='non_ld'?`<select id="lp-own-dept" class="form-control" onchange="_lpTeamDraft.ownerDepartmentId=this.value||null"><option value="">— Select department —</option>${[...depts,...(curDept?[curDept]:[])].map(x=>`<option value="${esc(x.id)}" ${x.id===d.ownerDepartmentId?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`:''}
+        ${!d.ownership?'<div class="lp-muted" style="font-size:11.5px;margin-top:4px">Currently not classified.</div>':''}`:_lpOwnershipText(d)}
+    </div>
+    <div class="lp-team-block"><div class="lp-team-h">Target Audience</div>
+      ${editing?`<div class="lp-checklist">${auds.length?auds.map(a=>`<label><input type="checkbox" ${audIds.includes(a.id)?'checked':''} onchange="lpTeamToggleAudience('${esc(a.id)}',this.checked)"> ${esc(a.name)}</label>`).join(''):'<span class="lp-muted" style="font-size:12px">No audiences in Settings → Lists.</span>'}</div>`:`<div style="margin-top:4px">${audView}</div>`}
+    </div>
+    <div class="lp-team-block" style="margin-bottom:0"><div class="lp-team-h">Prerequisites</div>
+      <div id="lp-prereq-chips" style="margin-top:4px">${_lpPrereqChips(d,editing)}</div>
+      ${editing?`<div class="lp-pick"><input type="text" class="form-control" id="lp-pick-prereq" placeholder="Search programs or type a prerequisite…" autocomplete="off" oninput="lpPickInput('prereq',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lpTeamPrereqAddTyped();}"><div class="lp-pick-res" id="lp-pick-res-prereq"></div></div>`:''}
+    </div>
+  </div>`;
+  // Columns 2-3: SMEs and facilitators (saved immediately; available whenever the program is editable)
+  const peopleCol=(role)=>{
+    const rows=LpPeopleDB.forFamily(fid,role).map(r=>({r,pp:_lpPerson(r)})).sort((a,b)=>a.pp.name.localeCompare(b.pp.name));
+    const fac=role==='facilitator';
+    const list=rows.map(({r,pp})=>`<div class="lp-team-row">${_lpPersonAva(pp.name,pp.ext)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(pp.name)}${pp.inactive?' <span class="lp-muted" style="font-size:11px">(inactive)</span>':''}</div><div class="lp-crole" style="color:var(--text3)">${esc(pp.sub)}${fac&&r.expiresOn?` · Expires ${esc(Utils.formatDate(r.expiresOn))}`:''}</div></div>
+      ${fac?(can?`<select aria-label="Accreditation status" onchange="lpPeopleSetStatus('${esc(r.id)}',this.value)">${LP_ACCRED.map(x=>`<option value="${x[0]}" ${x[0]===r.accreditationStatus?'selected':''}>${x[1]}</option>`).join('')}</select>`:_lpAccredBadge(r)):''}
+      ${can?`${fac?`<button class="btn btn-ghost btn-xs" title="Accreditation dates and notes" onclick="lpPeopleDetails('${esc(r.id)}')">Details</button>`:''}<button class="lp-icon-btn" title="Remove from this program" onclick="lpPeopleRemove('${esc(r.id)}')">${_lpIc(LP_IC.x)}</button>`:''}</div>`).join('');
+    return `<div class="lp-team-col"><div class="lp-team-h">${fac?'Accredited Facilitators':'Subject Matter Experts (SMEs)'}</div><div class="lp-team-sub">${fac?'People authorized to facilitate this program. Accreditation applies to this program only.':'Subject expertise and content accuracy. Optional.'}</div>
+      ${list||`<div class="lp-muted" style="font-size:12.5px;padding:4px 0">${fac?'No facilitators yet.':'No SMEs yet.'}</div>`}
+      ${can?`<div class="lp-pick"><input type="text" class="form-control" id="lp-pick-${role}" placeholder="${fac?'Add facilitator: search roster or contacts…':'Add SME: search roster or contacts…'}" autocomplete="off" oninput="lpPickInput('${role}',this.value)"><div class="lp-pick-res" id="lp-pick-res-${role}"></div></div>`:''}
+    </div>`;
+  };
+  return shell(`<div class="lp-team-grid">${col1}${peopleCol('sme')}${peopleCol('facilitator')}</div>`,right);
+}
+function lpTeamEditStart(){
+  const p=_lpCur(); if(!_lpCanEditTeam(p)) return;
+  _lpTeamDraft={ownership:p.ownership||null,ownerDepartmentId:p.ownerDepartmentId||null,audienceIds:[...(p.audienceIds||[])],prerequisiteProgramIds:[...(p.prerequisiteProgramIds||[])],prerequisiteItemIds:[...(p.prerequisiteItemIds||[])]};
+  _lpTeamEdit=true; _lpPickQ.prereq=''; renderLearningPrograms();
+  requestAnimationFrame(()=>document.getElementById('lp-team-card')?.scrollIntoView({behavior:'smooth',block:'nearest'}));
+}
+function lpTeamCancel(){ _lpTeamEdit=false; _lpTeamDraft=null; renderLearningPrograms(); }
+function lpTeamSetOwnership(v){ if(!_lpTeamDraft) return; _lpTeamDraft.ownership=v; if(v!=='non_ld') _lpTeamDraft.ownerDepartmentId=null; renderLearningPrograms(); }
+function lpTeamToggleAudience(id,on){ if(!_lpTeamDraft) return; const s=new Set(_lpTeamDraft.audienceIds); on?s.add(id):s.delete(id); _lpTeamDraft.audienceIds=[...s]; }
+function _lpRefreshPrereqChips(){ const el=document.getElementById('lp-prereq-chips'); if(el&&_lpTeamDraft) el.innerHTML=_lpPrereqChips(_lpTeamDraft,true); }
+function lpTeamPrereqRemove(kind,id){
+  if(!_lpTeamDraft) return;
+  const k=kind==='program'?'prerequisiteProgramIds':'prerequisiteItemIds';
+  _lpTeamDraft[k]=_lpTeamDraft[k].filter(x=>x!==id); _lpRefreshPrereqChips();
+}
+function lpTeamPrereqAdd(kind,id){
+  if(!_lpTeamDraft) return;
+  const k=kind==='program'?'prerequisiteProgramIds':'prerequisiteItemIds';
+  if(!_lpTeamDraft[k].includes(id)) _lpTeamDraft[k].push(id);
+  _lpPickQ.prereq=''; const inp=document.getElementById('lp-pick-prereq'); if(inp){ inp.value=''; inp.focus(); }
+  lpPickInput('prereq',''); _lpRefreshPrereqChips();
+}
+// Typed prerequisite: reuse an existing list item with the same name, otherwise save it to the list.
+async function lpTeamPrereqAddTyped(){
+  const name=(document.getElementById('lp-pick-prereq')?.value||'').trim(); if(!name||!_lpTeamDraft) return;
+  const hit=Sel.byName(Store.LP_PREREQS,name);
+  if(hit){ if(!hit.isActive) return toast('That prerequisite is inactive in Settings → Lists.','error'); return lpTeamPrereqAdd('item',hit.id); }
+  try{ const saved=await Sel.add(Store.LP_PREREQS,{name}); lpTeamPrereqAdd('item',saved.id); toast(`"${name}" saved to the Prerequisites list.`,'success'); }catch(e){ /* surfaced */ }
+}
+async function lpTeamSave(){
+  const p=_lpCur(), d=_lpTeamDraft; if(!_lpCanEditTeam(p)||!d) return;
+  if(d.ownership==='non_ld'&&!d.ownerDepartmentId){ toast('Select the department that owns this program.','error'); document.getElementById('lp-own-dept')?.focus(); return; }
+  const patch={ownership:d.ownership||null,ownerDepartmentId:d.ownership==='non_ld'?d.ownerDepartmentId:null,audienceIds:d.audienceIds,prerequisiteProgramIds:d.prerequisiteProgramIds,prerequisiteItemIds:d.prerequisiteItemIds};
+  const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
+  const changes=[];
+  if(!same(patch.ownership,p.ownership||null)||!same(patch.ownerDepartmentId,p.ownerDepartmentId||null)) changes.push(`ownership → ${patch.ownership==='ld'?'L&D-Owned':patch.ownership==='non_ld'?'Non-L&D-Owned ('+(Sel.nameOf(Store.DEPARTMENTS,patch.ownerDepartmentId)||'—')+')':'Not classified'}`);
+  if(!same([...patch.audienceIds].sort(),[...(p.audienceIds||[])].sort())) changes.push(`target audience → ${patch.audienceIds.map(id=>Sel.nameOf(Store.AUDIENCES,id)).join(', ')||'none'}`);
+  if(!same(patch.prerequisiteProgramIds,p.prerequisiteProgramIds||[])||!same(patch.prerequisiteItemIds,p.prerequisiteItemIds||[])){ const fams=_lpLatestByFamily(); changes.push(`prerequisites → ${[...patch.prerequisiteProgramIds.map(f=>fams.get(f)?.code||'program'),...patch.prerequisiteItemIds.map(id=>Sel.nameOf(Store.LP_PREREQS,id))].join(', ')||'none'}`); }
+  if(!changes.length){ lpTeamCancel(); return toast('No changes to save.','info'); }
+  const btn=document.getElementById('lp-team-save'); if(btn) btn.disabled=true;
+  const saved=await _lpPersist(p.id,patch);
+  if(btn) btn.disabled=false;
+  if(!saved) return;
+  await AuditLog.record('update','Learning Program',saved.id,`Updated ownership & delivery team of ${saved.code} ${_lpVerLabel(saved)} (no version change): ${changes.join('; ')}`);
+  _lpTeamEdit=false; _lpTeamDraft=null; renderLearningPrograms(); toast('Saved. No version change.','success');
+}
+/* People picker (SMEs, facilitators) and prerequisite picker */
+function _lpPickResults(role){
+  const esc=Utils.esc, raw=(_lpPickQ[role]||'').trim(), q=raw.toLowerCase(); if(!q) return '';
+  const p=_lpCur(), fid=_lpFamilyId(p);
+  if(role==='prereq'){
+    const d=_lpTeamDraft||{prerequisiteProgramIds:[],prerequisiteItemIds:[]};
+    const progs=[..._lpLatestByFamily().values()].filter(x=>_lpFamilyId(x)!==fid&&x.status!=='inactive'&&!d.prerequisiteProgramIds.includes(_lpFamilyId(x))&&[x.code,x.title].some(v=>(v||'').toLowerCase().includes(q))).slice(0,8);
+    const items=Sel.active(Store.LP_PREREQS).filter(x=>x.name.toLowerCase().includes(q)&&!d.prerequisiteItemIds.includes(x.id)).slice(0,8);
+    const exact=Sel.all(Store.LP_PREREQS).some(x=>x.name.trim().toLowerCase()===q);
+    return progs.map(x=>`<div class="lp-pick-item" onmousedown="event.preventDefault();lpTeamPrereqAdd('program','${esc(_lpFamilyId(x))}')"><span>${esc(x.code||'')} · ${esc(x.title)}</span><small>Program</small></div>`).join('')
+      +items.map(x=>`<div class="lp-pick-item" onmousedown="event.preventDefault();lpTeamPrereqAdd('item','${esc(x.id)}')"><span>${esc(x.name)}</span><small>Prerequisite</small></div>`).join('')
+      +(exact?'':`<div class="lp-pick-item lp-pick-new" onmousedown="event.preventDefault();lpTeamPrereqAddTyped()">+ Add “${esc(raw)}” as a new prerequisite</div>`);
+  }
+  const taken=LpPeopleDB.forFamily(fid,role);
+  const users=DB.all().filter(u=>u.isActive&&`${u.firstName} ${u.lastName}`.toLowerCase().includes(q)&&!taken.some(r=>r.profileId===u.id)).slice(0,8);
+  const contacts=LndContactDB.all().filter(c=>c.isActive&&[c.fullName,c.organization,c.email].some(v=>(v||'').toLowerCase().includes(q))&&!taken.some(r=>r.contactId===c.id)).slice(0,8);
+  const exact=LndContactDB.all().some(c=>c.fullName.trim().toLowerCase()===q)||DB.all().some(u=>`${u.firstName} ${u.lastName}`.trim().toLowerCase()===q);
+  return users.map(u=>`<div class="lp-pick-item" onmousedown="event.preventDefault();lpPeopleAdd('${role}','profile','${esc(u.id)}')"><span>${esc(u.firstName+' '+u.lastName)}</span><small>${esc(Sel.nameOf(Store.POS,u.positionId)||'Employee')}</small></div>`).join('')
+    +contacts.map(c=>`<div class="lp-pick-item" onmousedown="event.preventDefault();lpPeopleAdd('${role}','contact','${esc(c.id)}')"><span>${esc(c.fullName)}</span><small>${esc([_lpContactTypeLabel(c.contactType),c.organization].filter(Boolean).join(' · '))}</small></div>`).join('')
+    +(!users.length&&!contacts.length&&exact?'<div class="lp-pick-item lp-muted" style="cursor:default">Already added to this program.</div>':'')
+    +(exact?'':`<div class="lp-pick-item lp-pick-new" onmousedown="event.preventDefault();lpContactOpen(null,{role:'${role}',fromPick:true})">+ Add new contact “${esc(raw)}”</div>`);
+}
+function lpPickInput(role,v){
+  _lpPickQ[role]=v;
+  const el=document.getElementById('lp-pick-res-'+role); if(!el) return;
+  el.innerHTML=_lpPickResults(role); el.style.display=v.trim()?'block':'none';
+  const inp=document.getElementById('lp-pick-'+role);
+  if(inp&&!inp._lpBlur){ inp._lpBlur=true; inp.addEventListener('blur',()=>setTimeout(()=>{ const r=document.getElementById('lp-pick-res-'+role); if(r) r.style.display='none'; },150)); }
+}
+async function lpPeopleAdd(role,kind,id){
+  const p=_lpCur(); if(!_lpCanEditTeam(p)) return;
+  const fid=_lpFamilyId(p);
+  if(LpPeopleDB.forFamily(fid,role).some(r=>(kind==='profile'?r.profileId:r.contactId)===id)) return toast('Already added to this program.','info');
+  const now=new Date().toISOString(), me=Auth.user?.id||null;
+  const row=patchToSnake(Store.LP_PEOPLE,{programFamilyId:fid,role,profileId:kind==='profile'?id:null,contactId:kind==='contact'?id:null,accreditationStatus:role==='facilitator'?'accredited':null,createdBy:me,updatedBy:me,updatedAt:now});
+  const {data,error}=await sb.from(Store.LP_PEOPLE).insert(row).select().single();
+  if(error){ _surfaceDbError(error,'Add person'); return; }
+  const saved=rowToCamel(Store.LP_PEOPLE,data); Cache.data[Store.LP_PEOPLE].push(saved);
+  _lpPickQ[role]='';
+  await AuditLog.record('update','Learning Program',p.id,`Added ${role==='facilitator'?'accredited facilitator':'SME'} ${_lpPerson(saved).name} to ${p.code} (no version change)`);
+  renderLearningPrograms();
+  requestAnimationFrame(()=>document.getElementById('lp-pick-'+role)?.focus());
+}
+async function _lpPeopleUpdate(id,patch,summary){
+  const p=_lpCur(); if(!_lpCanEditTeam(p)) return null;
+  const row=patchToSnake(Store.LP_PEOPLE,{...patch,updatedAt:new Date().toISOString(),updatedBy:Auth.user?.id||null});
+  const {data,error}=await sb.from(Store.LP_PEOPLE).update(row).eq('id',id).select().single();
+  if(error){ _surfaceDbError(error,'Save'); renderLearningPrograms(); return null; }
+  const saved=rowToCamel(Store.LP_PEOPLE,data), arr=Cache.data[Store.LP_PEOPLE], i=arr.findIndex(x=>x.id===id); if(i>=0) arr[i]=saved;
+  await AuditLog.record('update','Learning Program',p.id,`${summary} on ${p.code} (no version change)`);
+  return saved;
+}
+async function lpPeopleSetStatus(id,status){
+  const r=LpPeopleDB.all().find(x=>x.id===id); if(!r) return;
+  const label=(LP_ACCRED.find(x=>x[0]===status)||[])[1]||status;
+  if(await _lpPeopleUpdate(id,{accreditationStatus:status},`Set accreditation of ${_lpPerson(r).name} to ${label}`)){ renderLearningPrograms(); toast('Accreditation updated.','success'); }
+}
+function lpPeopleDetails(id){
+  const r=LpPeopleDB.all().find(x=>x.id===id); if(!r) return; const esc=Utils.esc;
+  confirm$(`Accreditation · ${esc(_lpPerson(r).name)}`,`<label class="form-label" for="lp-acc-status">Status</label><select id="lp-acc-status" class="form-control">${LP_ACCRED.map(x=>`<option value="${x[0]}" ${x[0]===r.accreditationStatus?'selected':''}>${x[1]}</option>`).join('')}</select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div><label class="form-label" for="lp-acc-on">Accreditation Date</label><input type="date" id="lp-acc-on" class="form-control" value="${esc(r.accreditedOn||'')}"></div><div><label class="form-label" for="lp-acc-exp">Expiry Date</label><input type="date" id="lp-acc-exp" class="form-control" value="${esc(r.expiresOn||'')}"></div></div>
+    <label class="form-label" for="lp-acc-notes" style="margin-top:10px">Notes</label><textarea id="lp-acc-notes" class="form-control" rows="2" maxlength="500">${esc(r.notes||'')}</textarea>`,'Save',async()=>{
+    const v=x=>document.getElementById(x)?.value||'';
+    const on=v('lp-acc-on')||null, exp=v('lp-acc-exp')||null;
+    if(on&&exp&&exp<on){ toast('Expiry date cannot be before the accreditation date.','error'); return setTimeout(()=>lpPeopleDetails(id),0); }
+    if(await _lpPeopleUpdate(id,{accreditationStatus:v('lp-acc-status')||'pending',accreditedOn:on,expiresOn:exp,notes:v('lp-acc-notes').trim()||null},`Updated accreditation details of ${_lpPerson(r).name}`)){ renderLearningPrograms(); toast('Accreditation saved.','success'); }
+  });
+  document.getElementById('mc-ok').className='btn btn-primary';
+}
+function lpPeopleRemove(id){
+  const p=_lpCur(), r=LpPeopleDB.all().find(x=>x.id===id); if(!r||!_lpCanEditTeam(p)) return;
+  const who=_lpPerson(r).name, what=r.role==='facilitator'?'accredited facilitator':'SME';
+  confirm$(`Remove ${what}`,`Remove <b>${Utils.esc(who)}</b> as ${what} of this program? Their directory record and other programs are not affected.`,'Remove',async()=>{
+    const {error}=await sb.from(Store.LP_PEOPLE).delete().eq('id',id);
+    if(error){ _surfaceDbError(error,'Remove'); return; }
+    const arr=Cache.data[Store.LP_PEOPLE], i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1);
+    await AuditLog.record('update','Learning Program',p.id,`Removed ${what} ${who} from ${p.code} (no version change)`);
+    renderLearningPrograms(); toast('Removed.','success');
+  });
+}
+/* SME & External Contacts directory: modal shared by Settings and the Learning Programs quick-add */
+function lpContactOpen(id,opts={}){
+  const c=id?LndContactDB.byId(id):null;
+  if(id&&!Auth.isAdmin) return toast('Only administrators can edit directory contacts.','error');
+  const set=(k,v)=>{ const el=document.getElementById(k); if(el) el.value=v??''; };
+  document.getElementById('lpc-title').textContent=c?'Edit Contact':'Add Contact';
+  document.getElementById('lpc-type').innerHTML=LP_CONTACT_TYPES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  set('lpc-id',c?.id||''); set('lpc-link-role',opts.role||''); set('lpc-name',c?.fullName||opts.name||(opts.fromPick?(_lpPickQ[opts.role]||'').trim():'')||'');
+  set('lpc-type',c?.contactType||(opts.role==='facilitator'?'external_facilitator':'external_sme'));
+  set('lpc-org',c?.organization); set('lpc-pos',c?.position); set('lpc-email',c?.email); set('lpc-notes',c?.notes);
+  document.getElementById('lpc-active').checked=c?!!c.isActive:true;
+  document.getElementById('lpc-active-row').style.display=c?'':'none';
+  document.getElementById('lpc-error').classList.add('hidden');
+  const r=document.getElementById('lp-pick-res-'+(opts.role||'')); if(r) r.style.display='none';
+  openModal('lpcontact'); setTimeout(()=>document.getElementById('lpc-name')?.focus(),50);
+}
+async function lpContactSave(){
+  const v=k=>(document.getElementById(k)?.value||'').trim();
+  const id=v('lpc-id'), role=v('lpc-link-role'), err=document.getElementById('lpc-error');
+  const fail=m=>{ err.textContent=m; err.classList.remove('hidden'); };
+  const name=v('lpc-name'), email=v('lpc-email');
+  if(!name) return fail('Full Name is required.');
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Enter a valid email address or leave it blank.');
+  const dup=LndContactDB.all().find(c=>c.id!==id&&c.fullName.trim().toLowerCase()===name.toLowerCase()&&(c.email||'').trim().toLowerCase()===email.toLowerCase());
+  if(dup) return fail(`"${dup.fullName}" is already in the directory${dup.isActive?'':' (inactive)'}. Search for them instead.`);
+  if(!id&&DB.all().some(u=>u.isActive&&`${u.firstName} ${u.lastName}`.trim().toLowerCase()===name.toLowerCase())) return fail('This name matches an employee on the roster. Select them from the roster instead.');
+  const now=new Date().toISOString(), me=Auth.user?.id||null;
+  const patch={fullName:name,contactType:v('lpc-type')||'other',organization:v('lpc-org')||null,position:v('lpc-pos')||null,email:email||null,notes:v('lpc-notes')||null,updatedAt:now,updatedBy:me};
+  if(id) patch.isActive=document.getElementById('lpc-active').checked;
+  const btn=document.getElementById('lpc-save'); btn.disabled=true;
+  const q=id?sb.from(Store.LND_CONTACTS).update(patchToSnake(Store.LND_CONTACTS,patch)).eq('id',id):sb.from(Store.LND_CONTACTS).insert(patchToSnake(Store.LND_CONTACTS,{...patch,isActive:true,createdBy:me}));
+  const {data,error}=await q.select().single();
+  btn.disabled=false;
+  if(error){ return fail(/duplicate|unique/i.test(error.message||'')?'This contact is already in the directory.':(error.message||'Save failed.')); }
+  const saved=rowToCamel(Store.LND_CONTACTS,data), arr=Cache.data[Store.LND_CONTACTS], i=arr.findIndex(x=>x.id===saved.id); if(i>=0) arr[i]=saved; else arr.push(saved);
+  await AuditLog.record(id?'update':'create','SME & External Contacts',saved.id,`${id?'Updated':'Added'} contact "${saved.fullName}" (${_lpContactTypeLabel(saved.contactType)})`);
+  closeModal('lpcontact'); toast(id?'Contact updated.':'Contact added to the directory.','success');
+  if(role) await lpPeopleAdd(role,'contact',saved.id);
+  if(document.getElementById('spane-lpsettings')) renderLpSettingsPane();
+}
+/* Settings → Learning Programs: Setup Mode switch + SME & External Contacts directory */
+let _lpcF={q:'',type:'all',inactive:false};
+function renderLpSettingsPane(){
+  const pane=document.getElementById('spane-lpsettings'); if(!pane) return;
+  if(!_lpMetaReady()){ pane.innerHTML='<div class="card" style="padding:18px 20px"><b>Database update needed.</b><div style="font-size:12.5px;color:var(--text3);margin-top:4px">Run migration 20261014090000_lp_v502_setup_mode_ownership_people.sql in Supabase, then reload LEAP.</div></div>'; return; }
+  const on=lpSetupModeOn(), flag=(Cache.data[Store.APP_FLAGS]||[]).find(x=>x.key==='lp_versioning_paused');
+  pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Program Versioning · Setup Mode</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Temporarily pause Learning Program versioning while programs are being built out and sessions mapped.</div></div></div>
+    <div class="card" style="padding:16px 20px;max-width:760px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><b>Setup Mode</b>${on?'<span class="badge" style="background:#fef3c7;color:#92400e;font-weight:700">ON · versioning paused</span>':'<span class="badge" style="background:#dcfce7;color:#15803d">OFF · versioning active</span>'}</div>
+        <div style="font-size:12.5px;color:var(--text3);margin-top:4px;line-height:1.55">While on, <b>administrators</b> can edit in-use programs in place (agenda, evaluations, delivery setup) with no minor revision or new version. Each save is tagged <b>[Setup Mode]</b> in the Audit Log. Sessions created from a program keep their own saved copy; mapped historical sessions show their own details. Contributor history rules still apply.${flag?.updatedAt?` <br>Last changed ${Utils.esc(new Date(flag.updatedAt).toLocaleString('en-PH'))}${flag.updatedBy?' by '+Utils.esc(_lpName(flag.updatedBy)):''}.`:''}</div></div>
+      ${Auth.isAdmin?`<button class="btn ${on?'btn-primary':'btn-secondary'} btn-sm" onclick="lpToggleSetupMode()">${on?'Turn Off Setup Mode':'Turn On Setup Mode'}</button>`:''}
+    </div>
+    <div class="sec-hdr" style="margin-top:22px"><div><strong style="font-size:14px">SME &amp; External Contacts</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">People without LEAP accounts who can be selected as SMEs or accredited facilitators on Learning Programs. Contacts never get app access. Linked contacts can be deactivated but not deleted.</div></div>${lpCanEdit()?'<button class="btn btn-primary btn-sm" onclick="lpContactOpen()">+ Add Contact</button>':''}</div>
+    <div class="card" style="padding:12px 16px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <input type="search" class="form-control" style="max-width:280px" placeholder="Search name, organization, email…" value="${Utils.esc(_lpcF.q).replace(/"/g,'&quot;')}" oninput="_lpcF.q=this.value;_lpRenderContactsTable()">
+        <select class="form-control" style="width:auto" onchange="_lpcF.type=this.value;_lpRenderContactsTable()"><option value="all">All Types</option>${LP_CONTACT_TYPES.map(([v,l])=>`<option value="${v}" ${_lpcF.type===v?'selected':''}>${l}</option>`).join('')}</select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px"><input type="checkbox" ${_lpcF.inactive?'checked':''} onchange="_lpcF.inactive=this.checked;_lpRenderContactsTable()"> Show inactive</label>
+      </div>
+      <div id="lpc-table">${_lpContactsTableHtml()}</div>
+    </div>`;
+}
+function _lpRenderContactsTable(){ const el=document.getElementById('lpc-table'); if(el) el.innerHTML=_lpContactsTableHtml(); }
+function _lpContactsTableHtml(){
+  const esc=Utils.esc, q=_lpcF.q.trim().toLowerCase();
+  const rows=LndContactDB.all().filter(c=>(_lpcF.inactive||c.isActive)&&(_lpcF.type==='all'||c.contactType===_lpcF.type)&&(!q||[c.fullName,c.organization,c.email,c.position].some(v=>(v||'').toLowerCase().includes(q)))).sort((a,b)=>a.fullName.localeCompare(b.fullName));
+  if(!rows.length) return `<div class="lp-muted" style="padding:16px 4px;font-size:12.5px">${LndContactDB.all().length?'No contacts match these filters.':'No contacts yet. Add one here, or from a Learning Program (Ownership & Delivery Team → Add SME / Add facilitator).'}</div>`;
+  return `<table class="stg-tbl"><thead><tr><th>Name</th><th>Type</th><th>Organization / Dept</th><th>Position</th><th>Email</th><th style="width:80px">Programs</th><th style="width:80px">Status</th><th style="width:190px">Actions</th></tr></thead><tbody>${rows.map(c=>{ const used=LndContactDB.usage(c.id); return `<tr>
+    <td><b style="font-size:13px">${esc(c.fullName)}</b>${c.notes?`<div style="font-size:11.5px;color:var(--text3)">${esc(c.notes)}</div>`:''}</td><td style="font-size:12.5px">${esc(_lpContactTypeLabel(c.contactType))}</td><td style="font-size:12.5px">${esc(c.organization||'—')}</td><td style="font-size:12.5px">${esc(c.position||'—')}</td><td style="font-size:12.5px">${esc(c.email||'—')}</td><td style="font-size:12.5px">${used}</td>
+    <td>${c.isActive?'<span class="badge" style="background:#dcfce7;color:#15803d">Active</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b">Inactive</span>'}</td>
+    <td>${Auth.isAdmin?`<button class="btn btn-ghost btn-xs" onclick="lpContactOpen('${esc(c.id)}')">Edit</button><button class="btn btn-ghost btn-xs" onclick="lpContactToggle('${esc(c.id)}')">${c.isActive?'Deactivate':'Activate'}</button>${used?'':`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpContactDelete('${esc(c.id)}')">Delete</button>`}`:''}</td></tr>`; }).join('')}</tbody></table>`;
+}
+async function lpContactToggle(id){
+  const c=LndContactDB.byId(id); if(!c||!Auth.isAdmin) return;
+  const {data,error}=await sb.from(Store.LND_CONTACTS).update({is_active:!c.isActive,updated_at:new Date().toISOString(),updated_by:Auth.user?.id||null}).eq('id',id).select().single();
+  if(error){ _surfaceDbError(error,'Save'); return; }
+  const saved=rowToCamel(Store.LND_CONTACTS,data), arr=Cache.data[Store.LND_CONTACTS], i=arr.findIndex(x=>x.id===id); if(i>=0) arr[i]=saved;
+  await AuditLog.record('status_change','SME & External Contacts',id,`${saved.isActive?'Activated':'Deactivated'} contact "${saved.fullName}"`);
+  renderLpSettingsPane();
+}
+function lpContactDelete(id){
+  const c=LndContactDB.byId(id); if(!c||!Auth.isAdmin) return;
+  if(LndContactDB.usage(id)) return toast('This contact is linked to a program. Deactivate it instead.','error');
+  confirm$('Delete contact',`Permanently delete <b>${Utils.esc(c.fullName)}</b> from the directory? They are not linked to any program.`,'Delete',async()=>{
+    const {error}=await sb.from(Store.LND_CONTACTS).delete().eq('id',id);
+    if(error){ _surfaceDbError(error,'Delete'); return; }
+    const arr=Cache.data[Store.LND_CONTACTS], i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1);
+    await AuditLog.record('delete','SME & External Contacts',id,`Deleted contact "${c.fullName}"`);
+    renderLpSettingsPane(); toast('Contact deleted.','success');
+  });
+}
+function lpToggleSetupMode(){
+  if(!Auth.isAdmin) return;
+  const on=!lpSetupModeOn();
+  confirm$(on?'Turn on Setup Mode?':'Turn off Setup Mode?',on
+    ?'<p>Versioning pauses for <b>administrators</b>: in-use Learning Programs can be edited in place, including agenda topics, durations, delivery parts and evaluations. No minor revision or new version is created, and every save is tagged <b>[Setup Mode]</b> in the Audit Log.</p><p style="margin-top:8px">Sessions created from a program keep their own saved copy. Turn Setup Mode off when the build-out is finished.</p>'
+    :'<p>Normal versioning resumes. Content changes to in-use programs will again need <b>Log Minor Revision</b> or a <b>new version</b>.</p>',on?'Turn On':'Turn Off',async()=>{
+    const {data,error}=await sb.from(Store.APP_FLAGS).update({value:on,updated_at:new Date().toISOString(),updated_by:Auth.user?.id||null}).eq('key','lp_versioning_paused').select().single();
+    if(error){ _surfaceDbError(error,'Setup Mode'); return; }
+    const saved=rowToCamel(Store.APP_FLAGS,data), arr=Cache.data[Store.APP_FLAGS], i=arr.findIndex(x=>x.key===saved.key); if(i>=0) arr[i]=saved; else arr.push(saved);
+    await AuditLog.record('update','Settings','lp_versioning_paused',`${on?'Turned ON':'Turned OFF'} Learning Programs Setup Mode (versioning ${on?'paused':'resumed'})`);
+    renderLpSettingsPane(); toast(on?'Setup Mode on. Versioning paused for administrators.':'Setup Mode off. Versioning resumed.','success');
+  });
+  document.getElementById('mc-ok').className='btn btn-primary';
+}
+
 /* ── list page ── */
 function _lpFiltered(){
   const q=lpF.q.trim().toLowerCase();
@@ -5598,8 +5988,8 @@ function _lpRowMenu(p,detail=false){
     <button type="button" class="${detail?'btn btn-primary btn-sm':'lp-icon-btn'}" title="Program actions" aria-label="Program actions" aria-haspopup="true" onclick="lpToggleMenu(this)">${detail?'Actions ▾':_lpIc(LP_IC.dots)}</button>
     <div class="td-viewmenu lp-menu">
       ${detail?'':`<div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>`}
-      ${can&&!_lpHasUsedSessions(p)?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')" title="Active programs can be corrected until their first Scheduled or Completed implementation.">${p.status==='active'?'Edit Program Setup':'Edit Draft'}</div>`:''}
-      ${can&&p.status==='active'&&_lpHasUsedSessions(p)?`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div><div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
+      ${can&&!_lpVersionLocked(p)?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')" title="${_lpHasUsedSessions(p)?'Setup Mode: versioning is paused, so changes save in place on this version.':'Active programs can be corrected until their first Scheduled or Completed implementation.'}">${p.status==='active'?(_lpHasUsedSessions(p)?'Edit Program (Setup Mode)':'Edit Program Setup'):'Edit Draft'}</div>`:''}
+      ${can&&p.status==='active'&&_lpVersionLocked(p)?`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div><div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
       ${can?`<div class="td-viewmenu-item" onclick="lpToggleStatus('${p.id}')">${p.status==='draft'?'Activate Version':p.status==='inactive'?'Reactivate':'Deactivate / New Version'}</div>`:''}
       ${Auth.isAdmin?`<div class="td-viewmenu-item" style="color:var(--red)" onclick="lpDelete('${p.id}')">Delete</div>`:''}
     </div>
@@ -5626,8 +6016,8 @@ function _lpListHtml(){
   const toolbar=`<div class="card lp-toolbar">
       <div class="lp-search">${_lpIc(LP_IC.search)}<input type="text" id="lp-q" placeholder="Search program ID, title, category, or owner..." value="${Utils.esc(lpF.q)}" oninput="lpF.q=this.value;_lpRenderResults()"></div>
       <select onchange="lpF.cat=this.value;_lpRenderResults()">${opt('all','All Categories',lpF.cat)}${cats.map(c=>opt(c.id,c.name,lpF.cat)).join('')}</select>
-      <select onchange="lpF.type=this.value;_lpRenderResults()">${opt('all','All Types',lpF.type)}${_lpTypes(true).map(t=>opt(t,t,lpF.type)).join('')}</select>
-      <select aria-label="Program status" onchange="lpF.status=this.value;_lpRenderResults()">${opt('all','Current Programs',lpF.status)}${opt('active','Active',lpF.status)}${opt('draft','Drafts',lpF.status)}${opt('inactive','Discontinued',lpF.status)}</select>
+      <select onchange="lpF.type=this.value;_lpRenderResults()">${opt('all','All Types',lpF.type)}${_lpTypes(true).map(t=>opt(t,_lpProgramTypeLabel(t),lpF.type)).join('')}</select>
+      <select aria-label="Program status" onchange="lpF.status=this.value;_lpRenderResults()">${opt('all','Current Programs',lpF.status)}${opt('active','Active',lpF.status)}${opt('draft','Drafts',lpF.status)}${opt('inactive','Archived',lpF.status)}</select>
       <button class="btn btn-secondary btn-sm" onclick="lpReset()">Reset</button>
       <div class="lp-toolbar-right">
         <label class="ov-filter"><span class="ov-filter-l">Sort by</span><select onchange="lpF.sort=this.value;_lpRenderResults()"><option value="updated"${lpF.sort==='updated'?' selected':''}>Recently Updated</option><option value="title"${lpF.sort==='title'?' selected':''}>Title A–Z</option></select></label>
@@ -5647,9 +6037,9 @@ function _lpResultsHtml(rows){
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">${_lpTile(p)}${_lpRowMenu(p)}</div>
         <div class="lp-code" style="margin-top:10px">${Utils.esc(p.code||'')}</div>
         <div class="lp-gtitle" style="margin-top:2px">${Utils.esc(p.title)}</div>
-        <div class="lp-gmeta">${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${Utils.esc(p.deliveryType||'—')} · ${Utils.esc(_lpVerLabel(p))}</div>
+        <div class="lp-gmeta">${Utils.esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${Utils.esc(_lpProgramTypeLabel(p.deliveryType))} · ${Utils.esc(_lpVerLabel(p))}</div>
         <div style="margin:10px 0">${_lpContribCell(p)}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center">${_lpStatusBadge(p)}<span class="lp-muted" style="font-size:11.5px">Implementations: —</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center">${_lpStatusBadge(p)}<span class="lp-muted" style="font-size:11.5px">Implementations: ${_lpMappedSessions(p.id).length}</span></div>
       </div>`).join('')}</div>`;
   }
   return hdr+`<div class="card lp-tblcard"><table class="dash-tbl lp-tbl"><thead><tr><th>Program ID</th><th>Program Title</th><th>Category</th><th>Type</th><th>Version</th><th>Owners / Contributors</th><th>Status</th><th>Implementations</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr onclick="lpOpen('${p.id}')">
@@ -5668,7 +6058,7 @@ function _lpRenderResults(){ const el=document.getElementById('lp-results'); if(
 function lpReset(){ lpF={...lpF,q:'',cat:'all',type:'all',status:'all'}; renderLearningPrograms(); }
 
 /* ── detail page ── */
-function lpOpen(id){ _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpEditScope='full'; _lpShowPastContrib=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
+function lpOpen(id){ _lpTeamEdit=false; _lpTeamDraft=null; _lpPickQ={sme:'',facilitator:'',prereq:''}; _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpEditScope='full'; _lpShowPastContrib=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpBack(){ if(_lpDraft||_lpWorking) return lpCancelDraft(); _lpDetailId=null; renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpSetTab(t){
   _lpTab=t; renderLearningPrograms();
@@ -5701,7 +6091,7 @@ function _lpMappedSessions(programId){ return (Cache.data[Store.TRSESSIONS]||[])
 function _lpSessionLabel(s){ return `${s.code||s.id} · ${s.trainingProgram||'Untitled'}${s.batchNo?' · Batch '+s.batchNo:''}${s.trainingDate?' · '+s.trainingDate:''}`; }
 function _lpEligibleForLegacyMapping(s){
   if(!s||s.programId||['cancelled','tentative'].includes(s.status)) return false;
-  return s.status==='completed'||!!(_tdSessionEndDate(s)&&_tdSessionEndDate(s)<_todayStr());
+  return s.status==='completed'||!!(_tdSessionEndDate(s)&&_tdSessionEndDate(s)<_lpToday()); // v5.02: Manila date
 }
 function _lpMappingResultsHtml(){
   const esc=Utils.esc, query=_lpMapQuery.trim().toLowerCase();
@@ -5759,7 +6149,7 @@ function _lpDetailHtml(p){
   const draft=p.id==='__draft__';
   const archived=p.status==='inactive', ed=can&&!archived&&_lpEditMode;
   const scope=ed?_lpEditScope:'', edFull=ed&&scope==='full', edDetails=ed&&(scope==='full'||scope==='details'), edRev=ed&&(scope==='full'||scope==='revision');
-  const used=!draft&&_lpHasUsedSessions(p);
+  const used=!draft&&_lpHasUsedSessions(p), locked=!draft&&_lpVersionLocked(p), setupEdit=used&&!locked;
   const dis=on=>on?'':' disabled';
   const upd=p.updatedAt?`Last updated: ${Utils.formatDate(p.updatedAt.slice(0,10))}${p.updatedBy?` by ${esc(_lpName(p.updatedBy))}`:''}`:'';
   const head=`<button type="button" class="ov-link" style="padding-left:0" onclick="lpBack()">${_lpIc(LP_IC.back)} ${draft?'Cancel and return':'Back to Learning Programs'}</button>
@@ -5767,7 +6157,7 @@ function _lpDetailHtml(p){
       <div style="min-width:0">
         ${!draft&&p.code?`<div class="lp-code" style="margin-bottom:2px">${esc(p.code)}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${draft?'New Learning Program':esc(p.title)}</h2></div>
-        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, agenda, and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))}`}</div>
+        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, agenda, and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))}`}${lpSetupModeForMe()&&!archived?` <span class="badge lp-setup-chip" title="Versioning is paused for administrators. Changes save in place on this version and are tagged [Setup Mode] in the Audit Log. Turn it off in Settings → Learning Programs.">SETUP MODE · versioning paused</span>`:''}</div>
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -5775,8 +6165,8 @@ function _lpDetailHtml(p){
       </div>
     </div>
     ${archived?'<div role="status" style="padding:10px 14px;margin-top:12px;border-radius:8px;background:#f1f5f9;color:#334155;font-weight:600">READ ONLY · Archived program details cannot be edited. Administrators may link past sessions on Implementations for migration.</div>':''}
-    ${!archived&&!ed&&p.status==='active'&&!_lpHasUsedSessions(p)?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px"><b>Active · still editable.</b> Use <b>Actions → Edit Program Setup</b> for corrections before the first Scheduled or Completed implementation. After first use, content changes require a minor revision or a new version.</div>':''}
-    ${!archived&&!ed&&p.status==='active'&&used&&can?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:12px;line-height:1.55"><b>In use · '+esc(_lpVerLabel(p))+'.</b> Use <b>Actions</b> to choose the right change: <b>Edit Details</b> for the resource link, description, category or checklist (no version change). <b>Log Minor Revision</b> for title or agenda wording, timing or order with the same topics and total duration. <b>Deactivate / New Version</b> for anything else. Contributors can be added or ended any time below.</div>':''}
+    ${!archived&&!ed&&p.status==='active'&&!used?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px"><b>Active · still editable.</b> Use <b>Actions → Edit Program Setup</b> for corrections before the first Scheduled or Completed implementation. After first use, content changes require a minor revision or a new version.</div>':''}
+    ${!archived&&!ed&&p.status==='active'&&locked&&can?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:12px;line-height:1.55"><b>In use · '+esc(_lpVerLabel(p))+'.</b> Use <b>Actions</b> to choose the right change: <b>Edit Details</b> for the resource link, description, category or checklist (no version change). <b>Log Minor Revision</b> for title or agenda wording, timing or order with the same topics and total duration. <b>Deactivate / New Version</b> for anything else. Contributors can be added or ended any time below.</div>':''}
     ${ed?'':`<div class="dmain-tabs" style="margin-top:14px">${LP_TABS.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>`}`;
   if(_lpTab!=='overview'){
     if(_lpTab==='impl'&&!draft) return head+_lpImplementationsHtml(p);
@@ -5911,13 +6301,13 @@ function _lpDetailHtml(p){
   const family=LearningProgramDB.all().filter(v=>(v.programFamilyId||v.id)===(p.programFamilyId||p.id));
   const implementations=(Cache.data[Store.TRSESSIONS]||[]).filter(x=>family.some(v=>v.id===x.programId)).sort((a,b)=>(b.trainingDate||'').localeCompare(a.trainingDate||''));
   const completed=implementations.filter(x=>x.status==='completed').length;
-  const upcoming=implementations.filter(x=>x.status==='scheduled'&&(!x.trainingDate||x.trainingDate>=_todayStr())).length;
+  const upcoming=implementations.filter(x=>x.status==='scheduled'&&(!x.trainingDate||x.trainingDate>=_lpToday())).length; // v5.02: Manila date
   const learners=new Set(implementations.flatMap(x=>SessionParticipantsDB.all().filter(r=>r.sessionId===x.id&&_lpAttended(r,x)).map(r=>r.profileId||r.employeeId||r.id))).size;
   const tile=(ic,bg,fg,l,n)=>`<div class="lp-qs"><span class="lp-qs-ic" style="background:${bg};color:${fg}">${_lpIc(ic)}</span><div class="lp-qs-v">${n}</div><div class="lp-qs-l">${l}</div></div>`;
   const implementationsOverview=draft?'':`<div class="card lp-card lp-implementations-overview"><div class="lp-card-hd"><div><span class="lp-card-t">Implementations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Implementation snapshot across all versions of this program.</div></div><button class="btn btn-secondary btn-sm" type="button" onclick="lpSetTab('impl')">View all implementations</button></div>
     <div class="lp-qs-grid">${tile(LP_IC.total,'#f5f3ff','#7c3aed','Total Implementations',implementations.length)}${tile(LP_IC.done,'#f0fdf4','#16a34a','Completed',completed)}${tile(LP_IC.clock,'#fffbeb','#d97706','Upcoming',upcoming)}${tile(LP_IC.users,'#eff6ff','#2563eb','Unique Attendees',learners)}</div>
   </div>`;
-  return head+(ed?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} ${scope==='details'?'<b>Edit Details</b> · Resource link, description, category and default checklist only. No version change; each change is recorded in the Audit Log.':scope==='revision'?`<b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda topic wording, minutes and order. Keep the same topics and the same total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.`:`Your changes are saved when you select <b>${draft?'Create Program':'Save Program'}</b>.`}</div>${_lpErrorBannerHtml()}`:'')+`${implementationsOverview}<div class="lp-overview-grid lp-overview-top">${info}${contrib}</div><div class="lp-overview-grid lp-overview-middle">${agenda}${assessments}</div>`;
+  return head+(ed?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} ${scope==='details'?'<b>Edit Details</b> · Resource link, description, category and default checklist only. No version change; each change is recorded in the Audit Log.':scope==='revision'?`<b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda topic wording, minutes and order. Keep the same topics and the same total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.`:`Your changes are saved when you select <b>${draft||p.status==='draft'?'Save Draft':'Save Program'}</b>.`}</div>${_lpErrorBannerHtml()}`:'')+`${implementationsOverview}<div class="lp-overview-grid lp-overview-top">${info}${contrib}</div>${_lpTeamHtml(p)}<div class="lp-overview-grid lp-overview-middle">${agenda}${assessments}</div>`;
 }
 
 /* ── detail actions ── */
@@ -5951,6 +6341,8 @@ function _lpActivationError(p){
   const resourceUrl=(p.resourceUrl||'').trim();
   if(!resourceUrl) return 'Resource Link is required before activation.';
   if(!_lpSafeResourceUrl(resourceUrl)) return 'Resource Link must be a full http:// or https:// URL.';
+  // v5.02: ownership is required for programs created from v5.02 onward (existing ones may stay Not Classified).
+  if(_lpMetaReady()&&!p.ownership&&(p.createdAt||'').slice(0,10)>=LP_OWNERSHIP_REQUIRED_FROM) return 'Program Ownership is required before activation. Set it under Program Ownership & Delivery Team.';
   const contributors=(p.contributors||[]).filter(c=>_lpContribCurrent(c));
   if(!contributors.length) return 'Add at least one current Contributor before activation.';
   if(!contributors.some(c=>c.primary)) return 'Mark a Main contributor before activation.';
@@ -6311,6 +6703,10 @@ function lpToggleStatus(id){
 async function lpPublishVersion(id){
   const p=LearningProgramDB.byId(id); if(!p||p.status!=='draft'||!lpCanEdit()) return;
   const activationError=_lpActivationError(p);
+  if(activationError&&activationError.startsWith('Program Ownership')){
+    // v5.02: ownership is edited on the Ownership & Delivery Team card, not in the page edit mode.
+    toast(activationError,'error'); lpOpen(id); lpTeamEditStart(); return;
+  }
   if(activationError){
     // v5.01 (2026-10-13, per Sandra): open the draft in edit mode at the issue so it can be fixed, saved, then activated.
     toast(activationError,'error');
@@ -6353,7 +6749,7 @@ function lpStartDraft(){
 function lpStartEdit(id,inactivate=false,scope='full'){
   const p=LearningProgramDB.byId(id); if(!p||p.status==='inactive'||!lpCanEdit()) return;
   document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
-  const used=_lpHasUsedSessions(p);
+  const used=_lpVersionLocked(p);
   if(used&&!['details','revision'].includes(scope)) return toast('This version has implementations. Use Edit Details, Log Minor Revision, or create a new version.','error');
   if(!used) scope='full';
   _lpDraft=null; _lpWorking=JSON.parse(JSON.stringify(p)); _lpDetailId=id; _lpEditMode=true; _lpEditScope=scope; _lpTab='overview'; _lpDraftError='';
@@ -6514,7 +6910,8 @@ async function lpSaveDraft(){
   btn.disabled=false;
   if(!saved){ _lpWorking=working; return; }
   const changed=before?Object.keys(patch).filter(k=>JSON.stringify(before[k]??null)!==JSON.stringify(patch[k]??null)&&!['updatedAt','updatedBy'].includes(k)):[];
-  AuditLog.record(isNew?'create':'update','Learning Program',saved.id,isNew?`Created program "${saved.title}"`:`Updated ${saved.code}: ${changed.length?changed.join(', '):'program details'}`);
+  const setupTag=before&&_lpHasUsedSessions(before)&&lpSetupModeForMe()?'[Setup Mode · no version change] ':'';
+  AuditLog.record(isNew?'create':'update','Learning Program',saved.id,isNew?`Created program "${saved.title}"`:`${setupTag}Updated ${saved.code}: ${changed.length?changed.join(', '):'program details'}`);
   lpOpen(saved.id); toast(isNew?'Draft program created. Complete its setup, then activate it.':versionDraft?'Draft version saved. Activate it when its details are ready.':'Program saved.','success');
 }
 function _lpFriendlyError(message){
@@ -8094,7 +8491,9 @@ const STABS=[
   {id:'categories',  label:'Categories',          key:Store.CATEGORIES, desc:'Training categories used on ILT sessions.', sing:'Category'},
   {id:'audiences',   label:'Audiences',           key:Store.AUDIENCES, desc:'Target employee population or leadership level for a training session. Department is captured separately per attendee.', sing:'Audience'},
   {id:'departments', label:'Departments',         key:Store.DEPARTMENTS, desc:'Actual organizational department captured per attendee in the Attendance roster.', sing:'Department'},
-  {id:'programtypes',label:'Program Types',       key:Store.PROGRAM_TYPES, desc:'Delivery types available when adding or editing a Learning Program.', sing:'Program Type'}
+  {id:'programtypes',label:'Program Types',       key:Store.PROGRAM_TYPES, desc:'Delivery types available when adding or editing a Learning Program.', sing:'Program Type'},
+  // v5.02 (2026-10-14, per Sandra): typed prerequisites saved from Learning Programs are reusable here.
+  {id:'lpprereqs',   label:'Prerequisites',       key:Store.LP_PREREQS, desc:'Reusable prerequisites for Learning Programs (e.g., "Regular employee"). Entries typed on a program are saved here. Prerequisite programs are picked from the Learning Programs library instead.', sing:'Prerequisite'}
 ];
 let activeSettingsSection='lists'; // 'lists' | 'backup'
 let _settingsDrawerTabId=null;     // which STABS.id is currently open in the drawer, or null
@@ -8102,7 +8501,7 @@ let _settingsSortAsc={};  // per-key sort direction: true=asc, false=desc
 let _settingsShowInactive={};  // per-key: true=show inactive, false=hide
 
 function renderSettings(){
-  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Delivery'},{id:'kpi',label:'Supervisor KPIs'},{id:'kpitargets',label:'Dashboard KPI Targets'},{id:'backup',label:'Data & Backup'}];
+  const sections=[{id:'lists',label:'Lists'},{id:'templates',label:'Agenda Templates'},{id:'checklisttpl',label:'Checklist Templates'},{id:'attendance',label:'Attendance'},{id:'workload',label:'Trainer Delivery'},{id:'kpi',label:'Supervisor KPIs'},{id:'kpitargets',label:'Dashboard KPI Targets'},{id:'lpsettings',label:'Learning Programs'},{id:'backup',label:'Data & Backup'}];
   document.getElementById('stabs').innerHTML=sections.map(t=>`<div class="stab${t.id===activeSettingsSection?' active':''}" data-stab="${t.id}">${t.label}</div>`).join('');
   document.querySelectorAll('#stabs .stab').forEach(el=>el.addEventListener('click',()=>{activeSettingsSection=el.dataset.stab;renderSettings();}));
   document.getElementById('stab-panes').innerHTML=
@@ -8113,6 +8512,7 @@ function renderSettings(){
     `<div class="stab-pane${activeSettingsSection==='workload'?' active':''}" id="spane-workload"></div>`+
     `<div class="stab-pane${activeSettingsSection==='kpi'?' active':''}" id="spane-kpi"></div>`+
     `<div class="stab-pane${activeSettingsSection==='kpitargets'?' active':''}" id="spane-kpitargets"></div>`+
+    `<div class="stab-pane${activeSettingsSection==='lpsettings'?' active':''}" id="spane-lpsettings"></div>`+
     `<div class="stab-pane${activeSettingsSection==='backup'?' active':''}" id="spane-backup"></div>`;
   if(activeSettingsSection==='lists') renderListsOverview();
   else if(activeSettingsSection==='templates') renderAgendaTemplatesOverview();
@@ -8121,6 +8521,7 @@ function renderSettings(){
   else if(activeSettingsSection==='workload') renderWorkloadSettingsPane();
   else if(activeSettingsSection==='kpi') renderKpiSettingsPane();
   else if(activeSettingsSection==='kpitargets') renderKpiTargetsPane();
+  else if(activeSettingsSection==='lpsettings') renderLpSettingsPane(); // v5.02: Setup Mode + SME & External Contacts
   else renderBackupPane();
   renderListManageDrawer();
 }
@@ -9136,9 +9537,12 @@ function _selRefCount(key, id){
   // one name; Audience: an array of names) rather than foreign-key ids, matching how
   // Deliverables already work — so ref-count by NAME match, not id.
   if(key===Store.CATEGORIES){ const item=Sel.byId(key,id); return item?TrSessionDB.all().filter(s=>s.category===item.name).length:0; }
-  if(key===Store.AUDIENCES){ const item=Sel.byId(key,id); return item?TrSessionDB.all().filter(s=>(s.audience||[]).includes(item.name)).length:0; }
+  if(key===Store.AUDIENCES){ const item=Sel.byId(key,id); return item?TrSessionDB.all().filter(s=>(s.audience||[]).includes(item.name)).length+LearningProgramDB.all().filter(p=>(p.audienceIds||[]).includes(id)).length:0; }
   // Program Types are stored on learning_programs by NAME (delivery_type), same as Category on sessions.
   if(key===Store.PROGRAM_TYPES){ const item=Sel.byId(key,id); return item?LearningProgramDB.all().filter(p=>p.deliveryType===item.name).length:0; }
+  // v5.02: audiences/departments/prerequisites referenced by id on Learning Programs.
+  if(key===Store.LP_PREREQS) return LearningProgramDB.all().filter(p=>(p.prerequisiteItemIds||[]).includes(id)).length;
+  if(key===Store.DEPARTMENTS) return LearningProgramDB.all().filter(p=>p.ownerDepartmentId===id).length;
   return 0; // deliverables stored as strings — safe to delete
 }
 function _selIsRefSafe(key){ return key===Store.DELIVERABLES; }
@@ -9344,7 +9748,7 @@ const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
   'departments','attendance_settings','workload_settings','ph_holidays','workload_pct_history','checklist_templates','session_checklists',
-  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets','learning_programs','program_types'
+  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets','learning_programs','program_types','app_flags','lp_prerequisites','lnd_contacts','learning_program_people'
 ];
 
 function _buildBackupPayload(){
@@ -16962,7 +17366,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
   const editOrLockHeader=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-weight:700;font-size:14.5px">1. Session Information</div>
         ${_tdCanEditSession(s)?`<a href="javascript:void(0)" onclick="tdDetailToggleEdit()" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:600">✎ Edit</a>`:`<span title="Only the assigned Trainer/Co-Facilitator/Owner (or their chain of command) can edit this session" style="font-size:11px;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;gap:4px">${_tdIconSvg('lock','#94a3b8',12)} View Only</span>`}
-      </div>`;
+      </div>`+_tdMappedProgramRef(s);
   if(s.programLinkOrigin==='program_selection'&&s.programId){
     const program=Object.keys(s.programInfoSnapshot||{}).length?s.programInfoSnapshot:LearningProgramDB.byId(s.programId);
     const plan=s.deliveryPlan?.length?s.deliveryPlan:[{part:1,minutes:Math.round(Number(s.durationHours||0)*60)}];
@@ -17731,8 +18135,17 @@ function _tdLinkedDeliveryPlan(s,p){
 function _tdIsHistoricalMappedSession(s){
   return !!s?.programId&&s.programLinkOrigin==='catalog_mapping';
 }
+/* v5.02 (2026-10-14, per Sandra): sessions mapped to a program afterwards (Map Historical Sessions) were set up in
+   Training Calendar before the program library existed. They keep their OWN overview, agenda and details; the program
+   link only counts them as implementations (see _tdMappedProgramRef). Only sessions created from a program use the
+   program-linked overview, backed by their saved program snapshot. */
 function _tdUsesLinkedProgramOverview(s){
-  return !!s?.programId&&['program_selection','catalog_mapping'].includes(s.programLinkOrigin)&&_tdFieldGroup(s.deliveryType)==='trainer';
+  return !!s?.programId&&s.programLinkOrigin==='program_selection'&&_tdFieldGroup(s.deliveryType)==='trainer';
+}
+function _tdMappedProgramRef(s){
+  if(!_tdIsHistoricalMappedSession(s)) return '';
+  const p=LearningProgramDB.byId(s.programId); if(!p) return '';
+  return `<div style="margin:-6px 0 14px;font-size:12px;color:var(--text3)">Counted under <b style="color:var(--text2)">${Utils.esc(p.code||'Learning Program')} · ${Utils.esc(p.version||'v1')}</b> as a mapped implementation · <a href="javascript:void(0)" onclick="showView('learning-programs');lpOpen('${Utils.esc(p.id)}')" style="color:var(--pri);text-decoration:none;font-weight:600">View program →</a></div>`;
 }
 
 function _tdLinkedProgramSummaryCard(s){
@@ -19100,7 +19513,7 @@ const AuditLog={
   }
 };
 function _selModuleLabel(k){
-  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience',[Store.DEPARTMENTS]:'Department',[Store.PROGRAM_TYPES]:'Program Type'};
+  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience',[Store.DEPARTMENTS]:'Department',[Store.PROGRAM_TYPES]:'Program Type',[Store.LP_PREREQS]:'Prerequisite'};
   return map[k]||'Selection List';
 }
 
