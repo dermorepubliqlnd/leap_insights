@@ -1084,6 +1084,50 @@
     .lp-team-row select{height:26px;padding:0 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;font-family:var(--font)}
     .lp-checklist{max-height:150px;overflow:auto;border:1px solid var(--border-lt);border-radius:8px;padding:6px 10px}
     .lp-checklist label{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;cursor:pointer}
+    /* v5.03 (2026-10-14, per Sandra): program page header/tabs, Curriculum & Agenda tab, Evaluations tab */
+    .lp-tabs{margin-top:14px}
+    .lp-hd-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .lp-impl-link{color:var(--pri);text-decoration:none;font-weight:600}
+    .lp-impl-link:hover{text-decoration:underline}
+    .lp-cur-card .lp-card-hd,.lp-evals-card .lp-card-hd{align-items:flex-start}
+    .lp-parts{display:flex;flex-direction:column;gap:12px}
+    .lp-part{border:1px solid var(--border-lt);border-radius:12px;background:#fff;overflow:hidden}
+    .lp-part-hd{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--border-lt)}
+    .lp-part.collapsed .lp-part-hd{border-bottom:0}
+    .lp-part-toggle{border:0;background:none;cursor:pointer;color:var(--text3);font-size:13px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s;flex-shrink:0}
+    .lp-part.collapsed .lp-part-toggle{transform:rotate(-90deg)}
+    .lp-part-title{flex:1;min-width:0;cursor:pointer;display:flex;align-items:baseline;gap:8px}
+    .lp-part-title b{font-size:13.5px;color:var(--text)}
+    .lp-part-title small{font-size:11.5px;color:var(--text3)}
+    .lp-tbl-scroll{overflow-x:auto}
+    .lp-topic-tbl{width:100%;min-width:720px;border-collapse:collapse;table-layout:fixed;font-size:12.5px}
+    .lp-topic-tbl th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--border-lt);background:#fff}
+    .lp-topic-tbl td{padding:7px 10px;border-bottom:1px solid var(--border-lt);vertical-align:middle;color:var(--text2);overflow-wrap:anywhere}
+    .lp-topic-tbl tbody tr:last-child td{border-bottom:0}
+    .lp-tnum{color:var(--text3)}
+    .lp-ttopic{font-weight:500;color:var(--text)}
+    .lp-drag{cursor:grab;color:#94a3b8;letter-spacing:-2px;user-select:none;text-align:center}
+    .lp-trow.dragging{opacity:.4}
+    .lp-tin{height:30px;padding:4px 8px;font-size:12.5px}
+    .lp-min-wrap{position:relative}.lp-min-wrap input{padding-right:32px}.lp-min-wrap span{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none}
+    .lp-tact{white-space:nowrap;text-align:right}
+    .lp-part-sel{display:inline-block;width:auto;height:26px;padding:0 6px;font-size:11.5px;margin-right:4px}
+    .lp-part-foot{padding:8px 12px;border-top:1px dashed var(--border-lt)}
+    .lp-add-topic{display:block;width:100%;border:1px dashed #93c5fd;background:#f8fbff;color:var(--pri);border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font)}
+    .lp-add-topic:hover{background:#eff6ff}
+    .lp-eval-summary{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;margin-bottom:14px}
+    .lp-eval-chips{display:flex;gap:6px;align-items:center}
+    .lp-lvl-chip{font-weight:700;font-size:11.5px;padding:3px 10px;border-radius:999px}
+    .lp-tl{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 0;flex:1;min-width:0}
+    .lp-tl li{display:flex;flex-direction:column;padding:0 16px;border-left:2px solid #c7d2fe;font-size:11.5px;line-height:1.4;min-width:0}
+    .lp-tl li b{color:var(--text);font-weight:600}
+    .lp-tl li span{color:var(--text3)}
+    .lp-lvl-ic{width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;flex-shrink:0}
+    .lp-eval-level-hd{gap:10px}
+    .lp-l1-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px}
+    .lp-l1-v{font-size:13px;color:var(--text);margin-top:3px}
+    .lp-eval-tbl td{vertical-align:middle}
+    @media (max-width:1100px){.lp-l1-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:1100px){.lp-team-grid{grid-template-columns:minmax(0,1fr)}.lp-team-col{border-left:0;padding:12px 0;border-top:1px solid var(--border-lt)}.lp-team-col:first-child{border-top:0;padding-top:0}}
     .lp-map-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-lt);font-size:12.5px;cursor:pointer}
     .lp-map-row:last-child{border-bottom:0}
@@ -2785,7 +2829,7 @@
     <div class="drawer-hdr">
       <div class="drawer-hdr-meta">
         <div class="drawer-title">Bulk Upload Agenda</div>
-        <div class="drawer-sub">Three columns: part, topic_title and duration_minutes. Use the Part column to place each topic in its delivery part. Import stays in this page until Save Program.</div>
+        <div class="drawer-sub">Required columns: part, topic_title and duration_minutes. Optional: learning_objective and materials. Use the Part column to place each topic in its delivery part. Nothing is saved until you click Save.</div>
       </div>
       <button class="modal-close" onclick="closeModal('lp-agenda-csv')" style="width:32px;height:32px;font-size:16px;flex-shrink:0">✕</button>
     </div>
@@ -5451,7 +5495,14 @@ function _lpProgramTypeLabel(type){ return ['SLT','Self-led'].includes(type)?'Se
 function _lpProgramTypeValue(type){ return ['SLT','Self-led'].includes(type)?'SLT':'ILT'; }
 function _lpTypes(){ return LP_TYPES.slice(); }
 const LP_ASSESS=['None','Pre-test','Post-test','Pre & Post'];
-const LP_TABS=[['overview','Overview'],['impl','Implementations'],['audit','Audit Log']];
+const LP_TABS=[['overview','Overview'],['curriculum','Curriculum & Agenda'],['evals','Evaluations'],['impl','Implementations'],['audit','Audit Log']]; // v5.03 tabs
+// v5.03 (2026-10-14, per Sandra): evaluation option lists. Each select also offers "Other (specify)" free text.
+const LP_L2_TYPES=['Knowledge Test','Skills Demonstration','Practical Assessment','Observation Checklist','Case Analysis'];
+const LP_L3_METHODS=['Supervisor Observation','Coaching Check-in','On-the-Job Application Assignment','Behavior Checklist','Follow-up Survey','Self-Assessment','360° Feedback','Work Sample Review'];
+const LP_L3_RESPONSIBLE=['Immediate Supervisor','Department Manager','Trainer','L&D Team','Participant (self)','HR Business Partner'];
+const LP_L1_TIMING=['End of each session','End of the last delivery part','Within 24 hours after training','Within 3 days after training'];
+const LP_L1_COMPLETION=['Required for all participants','Optional'];
+let _lpCollapsedParts=new Set(), _lpDragIdx=null;
 const LP_TILE_COLORS=[['#eef2ff','#4f46e5'],['#fff7ed','#ea580c'],['#fef2f2','#dc2626'],['#f5f3ff','#7c3aed'],['#ecfeff','#0891b2'],['#f0fdf4','#16a34a'],['#fffbeb','#d97706'],['#fdf2f8','#db2777']];
 const LearningProgramDB={
   all(){ return (Cache.data[Store.LEARNING_PROGRAMS]||[]).slice(); },
@@ -5513,7 +5564,7 @@ function _lpEvalConfig(p){
     (c.l3?.method||c.l3?.daysAfter||p.l3Notes?[{method:c.l3?.method||'',daysAfter:c.l3?.daysAfter??null,notes:p.l3Notes||''}]:[]);
   const l4Items=Array.isArray(c.l4?.items)?c.l4.items.map(x=>({...x})):
     (c.l4?.measure||c.l4?.baseline||c.l4?.target||c.l4?.daysAfter?[{measure:c.l4?.measure||'',baseline:c.l4?.baseline||'',target:c.l4?.target||'',daysAfter:c.l4?.daysAfter??null}]:[]);
-  return {l1:!!c.l1,
+  return {l1:!!c.l1, l1Config:{...(c.l1Config||{})}, // v5.03: L1 setup (method, instrument, timing, targets)
     l2:{enabled:typeof c.l2?.enabled==='boolean'?c.l2.enabled:!!(c.l2?.pre||c.l2?.post||(p.assessments||[]).length)},
     l3:{enabled:!!(c.l3?.enabled||p.l3Required),items:l3Items},
     l4:{enabled:!!c.l4?.enabled,items:l4Items}};
@@ -5988,8 +6039,8 @@ function _lpRowMenu(p,detail=false){
     <button type="button" class="${detail?'btn btn-primary btn-sm':'lp-icon-btn'}" title="Program actions" aria-label="Program actions" aria-haspopup="true" onclick="lpToggleMenu(this)">${detail?'Actions ▾':_lpIc(LP_IC.dots)}</button>
     <div class="td-viewmenu lp-menu">
       ${detail?'':`<div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>`}
-      ${can&&!_lpVersionLocked(p)?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')" title="${_lpHasUsedSessions(p)?'Setup Mode: versioning is paused, so changes save in place on this version.':'Active programs can be corrected until their first Scheduled or Completed implementation.'}">${p.status==='active'?(_lpHasUsedSessions(p)?'Edit Program (Setup Mode)':'Edit Program Setup'):'Edit Draft'}</div>`:''}
-      ${can&&p.status==='active'&&_lpVersionLocked(p)?`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div><div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
+      ${can&&!detail&&!_lpVersionLocked(p)?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')" title="${_lpHasUsedSessions(p)?'Setup Mode: versioning is paused, so changes save in place on this version.':'Active programs can be corrected until their first Scheduled or Completed implementation.'}">${p.status==='active'?(_lpHasUsedSessions(p)?'Edit Program (Setup Mode)':'Edit Program Setup'):'Edit Draft'}</div>`:''}
+      ${can&&p.status==='active'&&_lpVersionLocked(p)?`${detail?'':`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div>`}<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision','curriculum')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
       ${can?`<div class="td-viewmenu-item" onclick="lpToggleStatus('${p.id}')">${p.status==='draft'?'Activate Version':p.status==='inactive'?'Reactivate':'Deactivate / New Version'}</div>`:''}
       ${Auth.isAdmin?`<div class="td-viewmenu-item" style="color:var(--red)" onclick="lpDelete('${p.id}')">Delete</div>`:''}
     </div>
@@ -6058,7 +6109,7 @@ function _lpRenderResults(){ const el=document.getElementById('lp-results'); if(
 function lpReset(){ lpF={...lpF,q:'',cat:'all',type:'all',status:'all'}; renderLearningPrograms(); }
 
 /* ── detail page ── */
-function lpOpen(id){ _lpTeamEdit=false; _lpTeamDraft=null; _lpPickQ={sme:'',facilitator:'',prereq:''}; _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpEditScope='full'; _lpShowPastContrib=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
+function lpOpen(id){ _lpCollapsedParts=new Set(); _lpTeamEdit=false; _lpTeamDraft=null; _lpPickQ={sme:'',facilitator:'',prereq:''}; _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpEditScope='full'; _lpShowPastContrib=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpBack(){ if(_lpDraft||_lpWorking) return lpCancelDraft(); _lpDetailId=null; renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpSetTab(t){
   _lpTab=t; renderLearningPrograms();
@@ -6152,28 +6203,44 @@ function _lpDetailHtml(p){
   const used=!draft&&_lpHasUsedSessions(p), locked=!draft&&_lpVersionLocked(p), setupEdit=used&&!locked;
   const dis=on=>on?'':' disabled';
   const upd=p.updatedAt?`Last updated: ${Utils.formatDate(p.updatedAt.slice(0,10))}${p.updatedBy?` by ${esc(_lpName(p.updatedBy))}`:''}`:'';
+  /* v5.03 (2026-10-14, per Sandra): header refresh + tabs. Version guidance moved into a tooltip; the
+     long status banners, the implementation mini-cards and the in-page tab placeholders are gone.
+     Each card has its own Edit; Save / Discard appear in the header only while editing. */
+  const helpTip=(tip)=>`<span class="lp-help" tabindex="0" data-tip="${esc(tip).replace(/"/g,'&quot;')}" aria-label="Help">i</span>`;
+  const implCount=draft?0:LearningProgramDB.all().filter(v=>_lpFamilyId(v)===_lpFamilyId(p)).reduce((n,v)=>n+_lpMappedSessions(v.id).length,0);
+  const verTip=draft||p.status==='draft'?'Draft version: fully editable until it is activated.'
+    :archived?'Archived version: read only.'
+    :setupEdit?'Setup Mode is on: versioning is paused for administrators, so changes save in place on this version.'
+    :locked?'In use. Program Information (category, description, resources, checklist) can be edited any time with no version change. Title and agenda wording, timing or order: Log Minor Revision (e.g. v1.1). Anything else, including evaluations: Actions → Deactivate / New Version.'
+    :'Active and not yet used: editable until its first Scheduled or Completed session. After that, content changes need a minor revision or a new version.';
+  const tabs=draft?LP_TABS.filter(t=>!['impl','audit'].includes(t[0])):LP_TABS;
+  if(!tabs.some(t=>t[0]===_lpTab)) _lpTab='overview';
+  const saveLabel=scope==='details'?'Save Details':scope==='revision'?'Save Revision…':draft||p.status==='draft'?'Save Draft':'Save Changes';
+  const canEditContent=can&&!archived&&!ed&&!draft;
+  const editBtn=(area)=>{
+    if(!canEditContent) return '';
+    const b=(onclick,label,title='')=>`<button type="button" class="btn btn-secondary btn-sm" ${title?`title="${esc(title)}"`:''} onclick="${onclick}">${_lpIc(LP_IC.edit)} ${label}</button>`;
+    if(area==='overview') return b(`lpStartEdit('${p.id}',false,'${locked?'details':'full'}','overview')`,locked?'Edit Details':'Edit',locked?'Category, description, resources and checklist. No version change.':'');
+    if(area==='curriculum') return locked?b(`lpStartEdit('${p.id}',false,'revision','curriculum')`,'Log Minor Revision',`Wording, timing or order with the same topics and total duration. Saved as ${(p.version||'v1')+'.'+(Number(p.revision||0)+1)}.`):b(`lpStartEdit('${p.id}',false,'full','curriculum')`,'Edit');
+    if(area==='evals') return locked?`<span class="lp-muted" style="font-size:11.5px" title="Evaluation changes on an in-use version need a new version (Actions → Deactivate / New Version).">🔒 Changes need a new version</span>`:b(`lpStartEdit('${p.id}',false,'full','evals')`,'Edit');
+    return '';
+  };
   const head=`<button type="button" class="ov-link" style="padding-left:0" onclick="lpBack()">${_lpIc(LP_IC.back)} ${draft?'Cancel and return':'Back to Learning Programs'}</button>
     <div class="lp-dhead">
       <div style="min-width:0">
         ${!draft&&p.code?`<div class="lp-code" style="margin-bottom:2px">${esc(p.code)}</div>`:''}
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${draft?'New Learning Program':esc(p.title)}</h2></div>
-        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, agenda, and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))}`}${lpSetupModeForMe()&&!archived?` <span class="badge lp-setup-chip" title="Versioning is paused for administrators. Changes save in place on this version and are tagged [Setup Mode] in the Audit Log. Turn it off in Settings → Learning Programs.">SETUP MODE · versioning paused</span>`:''}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${draft?'New Learning Program':esc(p.title)}</h2>${draft?'':_lpStatusBadge(p)}</div>
+        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, curriculum and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))} ${helpTip(verTip)}${implCount?` · <a href="javascript:void(0)" class="lp-impl-link" onclick="lpSetTab('impl')">${implCount} implementation${implCount===1?'':'s'} →</a>`:''}`}${lpSetupModeForMe()&&!archived?` <span class="badge lp-setup-chip" title="Versioning is paused for administrators. Changes save in place on this version and are tagged [Setup Mode] in the Audit Log. Turn it off in Settings → Learning Programs.">SETUP MODE · versioning paused</span>`:''}</div>
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        ${ed?`<div class="lp-edit-actions"><button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${scope==='details'?'Save Details':scope==='revision'?'Save Revision…':draft||p.status==='draft'?'Save Draft':'Save Program'}</button></div>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700">READ ONLY</span>':can?_lpRowMenu(p,true):used?'<span class="badge" style="background:#eef2ff;color:#4338ca">IN USE · content changes need a revision or new version</span>':'')}
+      <div class="lp-hd-actions">
+        ${ed?`<button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${saveLabel}</button>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700" title="Archived program details cannot be edited. Administrators may link past sessions on Implementations.">READ ONLY</span>':can?_lpRowMenu(p,true):'')}
       </div>
     </div>
-    ${archived?'<div role="status" style="padding:10px 14px;margin-top:12px;border-radius:8px;background:#f1f5f9;color:#334155;font-weight:600">READ ONLY · Archived program details cannot be edited. Administrators may link past sessions on Implementations for migration.</div>':''}
-    ${!archived&&!ed&&p.status==='active'&&!used?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px"><b>Active · still editable.</b> Use <b>Actions → Edit Program Setup</b> for corrections before the first Scheduled or Completed implementation. After first use, content changes require a minor revision or a new version.</div>':''}
-    ${!archived&&!ed&&p.status==='active'&&locked&&can?'<div role="status" style="padding:9px 13px;margin-top:12px;border-radius:10px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:12px;line-height:1.55"><b>In use · '+esc(_lpVerLabel(p))+'.</b> Use <b>Actions</b> to choose the right change: <b>Edit Details</b> for the resource link, description, category or checklist (no version change). <b>Log Minor Revision</b> for title or agenda wording, timing or order with the same topics and total duration. <b>Deactivate / New Version</b> for anything else. Contributors can be added or ended any time below.</div>':''}
-    ${ed?'':`<div class="dmain-tabs" style="margin-top:14px">${LP_TABS.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>`}`;
-  if(_lpTab!=='overview'){
-    if(_lpTab==='impl'&&!draft) return head+_lpImplementationsHtml(p);
-    if(_lpTab==='audit'&&!draft) return head+_lpAuditHtml(p);
-    const l=(LP_TABS.find(t=>t[0]===_lpTab)||[])[1];
-    return head+`<div class="card"><div class="empty-state"><div style="margin-bottom:12px;color:var(--text3)"><svg viewBox="0 0 24 24" fill="none" style="width:40px;height:40px"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3.5 17.5a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.2-.3-.3-2.2 2.4-2.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="empty-title">${esc(l)} is under development</div><div style="font-size:13px;color:var(--text3);margin-top:4px">This tab is being built. Check back soon.</div></div></div>`;
-  }
+    ${ed&&scope==='details'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Edit Details</b> · Category, description, resources and default checklist. No version change; changes are recorded in the Audit Log.</div>`:''}
+    ${ed&&scope==='revision'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda wording, objectives, materials, minutes and order. Keep the same topics and total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.</div>`:''}
+    <div class="dmain-tabs lp-tabs">${tabs.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>
+    ${ed?_lpErrorBannerHtml():''}`;
   const draftField=(id,label,value,type='text',extra='')=>`<div class="lp-info-edit"><label for="${id}">${label}</label><input id="${id}" class="form-control" type="${type}" value="${esc(value??'')}" ${extra}></div>`;
   const lockedField=(label,value)=>`<div class="lp-info-edit"><label>${label}</label><input class="form-control" type="text" value="${esc(value??'')}" readonly aria-label="${label}, read only"></div>`;
   const draftSelect=(id,label,items,value,extra='')=>`<div class="lp-info-edit"><label for="${id}">${label}</label><select id="${id}" class="form-control" ${extra}><option value="">— Select —</option>${items.map(([v,n])=>`<option value="${esc(v)}"${v===value?' selected':''}>${esc(n)}</option>`).join('')}</select></div>`;
@@ -6187,7 +6254,7 @@ function _lpDetailHtml(p){
   const durationText=_lpDurationText(_lpAgendaMinutes(p.agenda));
   const help=(tip)=>`<span class="lp-help" tabindex="0" data-tip="${esc(tip)}" aria-label="Help">i</span>`;
   const readField=(label,value,tip='')=>`<div class="lp-pi-read"><div class="lp-info-l">${label}${tip?help(tip):''}</div><div class="lp-info-v">${value}</div></div>`;
-  const info=`<div class="card lp-card lp-program-info"><div class="lp-card-hd lp-info-header"><span class="lp-card-t">Program Information</span>${_lpStatusBadge(p)}</div><div class="lp-program-info-body">
+  const info=`<div class="card lp-card lp-program-info"><div class="lp-card-hd lp-info-header"><span class="lp-card-t">Program Information</span><div class="lp-hd-actions">${editBtn('overview')}</div></div><div class="lp-program-info-body">
     <div class="lp-program-info-sub">Provide the basic details about this learning program.</div>
     ${ed?`<div class="lp-pi-grid">
       <div class="lp-pi-field lp-pi-span-12"><label for="lp-d-title">Program Title *</label><input id="lp-d-title" class="form-control" type="text" value="${esc(p.title||'')}"${dis(edRev)}></div>
@@ -6247,67 +6314,118 @@ function _lpDetailHtml(p){
     ${_lpShowPastContrib&&csPast.length?`<div class="lp-muted" style="font-size:11px;font-weight:600;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em">Past contributors</div>${csPast.map(c=>cRow(c,false)).join('')}`:''}
     ${manage?`<div class="lp-addrow" style="flex-wrap:wrap"><select id="lp-add-person"><option value="">Select from roster…</option>${cands.map(u=>`<option value="${u.id}">${esc(u.firstName+' '+u.lastName)} — ${esc(_lpRoleOf(u))}</option>`).join('')}</select><input id="lp-add-start" class="form-control" type="date" value="${esc(defStart)}" ${used&&!Auth.isAdmin?`min="${_lpToday()}"`:''} title="Assignment start date" style="width:150px"><button class="btn btn-primary btn-sm" onclick="lpContribAdd()">+ Add Contributor</button></div><div class="lp-muted" style="font-size:11px;margin-top:6px">Each person is credited for sessions delivered while their assignment is active. Use <b>End</b> for handovers so past credit is kept${used?'; Remove is only for an assignment added by mistake today':''}. Main marks the one person per role responsible for keeping this program current.</div>`:''}
   </div>`;
-  // Agenda topics are grouped by delivery part so authors build the program in delivery order.
+  /* v5.03 (2026-10-14, per Sandra): Curriculum & Agenda tab. Collapsible delivery parts, topic table with
+     Learning Objective and Materials (no Method column), drag-to-reorder (within a part on a minor revision;
+     across parts and part order on full edits). Planned curriculum only; actual delivery stays on the session. */
   const ag=p.agenda||[];
   const partCount=Number(p.deliveryParts)||1;
   const totalAgendaMinutes=ag.reduce((sum,a)=>sum+(_lpMinutes(a.duration)||0),0);
   const totalTopicCount=ag.length;
   const partTotals=Array.from({length:partCount},(_,i)=>ag.filter(a=>Number(a.part||1)===i+1).reduce((sum,a)=>sum+(_lpMinutes(a.duration)||0),0));
+  const tin=(i,field,val,ph,type='text',extra='')=>`<input class="form-control lp-tin" type="${type}" value="${esc(val??'')}" placeholder="${ph}" ${extra} oninput="lpEditAgendaItem(${i},'${field}',this.value)">`;
+  const dash='<span class="lp-muted">—</span>';
   const agendaParts=Array.from({length:partCount},(_,pi)=>{
-    const part=pi+1;
+    const part=pi+1, collapsed=_lpCollapsedParts.has(part);
     const indexed=ag.map((a,i)=>({a,i})).filter(x=>Number(x.a.part||1)===part);
-    const rows=indexed.map(({a,i},localIndex)=>`<div class="lp-agenda-item">
-      <div class="lp-agenda-item-num">${localIndex+1}</div>
-      <div>${edRev?`<input class="form-control" type="text" value="${esc(a.topic||'')}" placeholder="Topic or activity" oninput="lpEditAgendaItem(${i},'topic',this.value)">`:`<div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.topic||'—')}</div>`}</div>
-      <div class="lp-agenda-minutes">${edRev?`<div style="position:relative"><input class="form-control" style="padding-right:38px" type="number" min="1" step="1" value="${esc(_lpMinutes(a.duration)??'')}" placeholder="0" oninput="lpEditAgendaItem(${i},'duration',this.value)"><span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">min</span></div>`:`<span style="font-size:12px;color:var(--text2)">${a.duration!=null?esc(_lpDurationText(_lpMinutes(a.duration))):'—'}</span>`}</div>
-      <div class="lp-agenda-actions" style="white-space:nowrap;text-align:right">${edFull&&partCount>1?`<select class="form-control" style="display:inline-block;width:auto;height:26px;padding:0 6px;font-size:11.5px;margin-right:4px" title="Move this topic to another part" aria-label="Delivery part" onchange="lpAgendaSetPart(${i},this.value)">${Array.from({length:partCount},(_,k)=>`<option value="${k+1}" ${k+1===part?'selected':''}>Part ${k+1}</option>`).join('')}</select>`:''}${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${localIndex===0?'disabled':''} title="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${localIndex===indexed.length-1?'disabled':''} title="Move down">↓</button>`:''}${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaRemove(${i})">Remove</button>`:''}</div>
-    </div>`).join('');
-    const emptyState=edFull?`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div><button class="btn btn-primary btn-sm" type="button" onclick="lpAgendaAdd(${part})">+ Add first topic</button></div>`:`<div class="lp-agenda-empty"><div class="lp-agenda-empty-ic">☷</div><div class="lp-agenda-empty-title">No topics added yet</div></div>`;
-    return `<section class="lp-agenda-part"><div class="lp-agenda-part-hd"><div><div class="lp-agenda-part-title">Part ${part}</div><div class="lp-agenda-part-meta">${indexed.length} topic${indexed.length===1?'':'s'}</div></div><div class="lp-agenda-part-right"><span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>${edFull&&partCount>1?`<button class="btn btn-ghost btn-xs" type="button" style="color:var(--red)" onclick="lpAgendaPartRemove(${part})" title="${indexed.length?'Remove this part and its topics (move topics to another part first to keep them)':'Remove this delivery part'}">Remove part</button>`:''}</div></div><div class="lp-agenda-items">${rows||emptyState}</div>${edFull&&rows?`<div class="lp-agenda-part-foot"><button class="btn btn-ghost btn-sm lp-agenda-add-topic" type="button" onclick="lpAgendaAdd(${part})">+ Add topic</button></div>`:''}</section>`;
+    const rows=indexed.map(({a,i},k)=>`<tr class="lp-trow"${edRev?` draggable="true" ondragstart="lpAgendaDragStart(event,${i})" ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,${i},${part})" ondragend="lpAgendaDragEnd()"`:''}>
+      ${edRev?'<td class="lp-drag" title="Drag to reorder">⋮⋮</td>':''}
+      <td class="lp-tnum">${k+1}</td>
+      <td>${edRev?tin(i,'topic',a.topic,'Topic or activity','text','maxlength="250"'):`<span class="lp-ttopic">${esc(a.topic||'—')}</span>`}</td>
+      <td>${edRev?tin(i,'objective',a.objective,'Short learning objective','text','maxlength="300"'):(a.objective?esc(a.objective):dash)}</td>
+      <td>${edRev?`<div class="lp-min-wrap">${tin(i,'duration',_lpMinutes(a.duration)??'','0','number','min="1" step="1"')}<span>min</span></div>`:esc(_lpDurationText(_lpMinutes(a.duration)))}</td>
+      <td>${edRev?tin(i,'materials',a.materials,'e.g. Slides, Handout','text','maxlength="300"'):(a.materials?esc(a.materials):dash)}</td>
+      ${ed?`<td class="lp-tact">${edFull&&partCount>1?`<select class="form-control lp-part-sel" title="Move to another part" aria-label="Delivery part" onchange="lpAgendaSetPart(${i},this.value)">${Array.from({length:partCount},(_,x)=>`<option value="${x+1}" ${x+1===part?'selected':''}>Part ${x+1}</option>`).join('')}</select>`:''}${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${k===0?'disabled':''} title="Move up" aria-label="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${k===indexed.length-1?'disabled':''} title="Move down" aria-label="Move down">↓</button>`:''}${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
+    </tr>`).join('');
+    const cols=(edRev?1:0)+5+(ed?1:0);
+    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:38px"><col style="width:27%"><col><col style="width:${edRev?'104px':'96px'}"><col style="width:22%">${ed?`<col style="width:${edFull?(partCount>1?'178px':'64px'):'72px'}">`:''}</colgroup>
+      <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Learning Objective</th><th>Duration</th><th>Materials / Resources</th>${ed?'<th></th>':''}</tr></thead>`;
+    const empty=`<tr><td colspan="${cols}" class="lp-muted" style="text-align:center;padding:16px">No topics in this part yet.</td></tr>`;
+    return `<section class="lp-part${collapsed?' collapsed':''}" ${edFull?`ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,null,${part})"`:''}>
+      <div class="lp-part-hd">
+        <button type="button" class="lp-part-toggle" onclick="lpTogglePart(${part})" aria-expanded="${!collapsed}" aria-label="${collapsed?'Expand':'Collapse'} Part ${part}">▾</button>
+        <div class="lp-part-title" onclick="lpTogglePart(${part})"><b>Part ${part}</b><small>${indexed.length} topic${indexed.length===1?'':'s'}</small></div>
+        <span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>
+        ${edFull&&partCount>1?`<button type="button" class="btn btn-ghost btn-xs" onclick="lpAgendaPartMove(${part},-1)" ${part===1?'disabled':''} title="Move part up" aria-label="Move part up">↑</button><button type="button" class="btn btn-ghost btn-xs" onclick="lpAgendaPartMove(${part},1)" ${part===partCount?'disabled':''} title="Move part down" aria-label="Move part down">↓</button><button type="button" class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaPartRemove(${part})" title="${indexed.length?'Remove this part and its topics':'Remove this delivery part'}">Remove part</button>`:''}
+      </div>
+      ${collapsed?'':`<div class="lp-part-body"><div class="lp-tbl-scroll"><table class="lp-topic-tbl">${thead}<tbody>${rows||empty}</tbody></table></div>${edFull?`<div class="lp-part-foot"><button type="button" class="lp-add-topic" onclick="lpAgendaAdd(${part})">+ Add Topic</button></div>`:''}</div>`}
+    </section>`;
   }).join('');
-  const agenda=`<div class="card lp-card lp-agenda-card"><div class="lp-agenda-card-head"><div><div class="lp-agenda-card-title">Agenda & Delivery Plan</div><div class="lp-agenda-card-sub">Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar.</div></div>${edFull?`<button class="btn btn-secondary btn-sm lp-agenda-import" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}</div>
-    <div class="lp-agenda-parts">${agendaParts}</div>
+  const agenda=`<div class="card lp-card lp-agenda-card lp-cur-card">
+    <div class="lp-card-hd"><div><span class="lp-card-t">Curriculum &amp; Agenda</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar; actual delivery changes are recorded on the session.</div></div>
+      <div class="lp-hd-actions">${partCount>1?`<button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(true)">Expand all</button><button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(false)">Collapse all</button>`:''}${edFull?`<button class="btn btn-secondary btn-sm" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}${editBtn('curriculum')}</div></div>
+    <div class="lp-parts">${agendaParts}</div>
     ${edFull&&partCount<30?`<button class="lp-agenda-add-part" type="button" onclick="lpAgendaPartAdd()"><span style="font-size:18px;font-weight:400;line-height:1">+</span> Add another part</button>`:''}
     <div class="lp-agenda-summary"><div><div class="lp-agenda-summary-label">Total Program Duration</div><div class="lp-agenda-summary-meta"><span id="lp-agenda-topic-count">${totalTopicCount}</span> topic${totalTopicCount===1?'':'s'} · <span id="lp-agenda-part-count">${partCount}</span> delivery part${partCount===1?'':'s'}</div></div><div id="lp-agenda-total" class="lp-agenda-summary-duration">${esc(_lpDurationText(totalAgendaMinutes)==='—'?'0 min':_lpDurationText(totalAgendaMinutes))}</div></div>
   </div>`;
-  // Evaluation items retain the existing assessments JSON shape for session pre-fill compatibility.
+  /* v5.03 (2026-10-14, per Sandra): Evaluations tab. L1 setup fields; L2 item Type and L3 Method use
+     default options plus "Other (specify)"; L3 Responsible; L4 Unit. Stored inside the existing
+     assessments / evaluation_config JSON so sessions keep inheriting them. */
   const as=p.assessments||[];
+  const ec=_lpEvalConfig(p), l1c=ec.l1Config||{};
   const yes='<span style="color:var(--green);font-weight:700">✓</span>', no='<span class="lp-muted">—</span>';
+  const choice=(level,i,field,opts,item,ph)=>{
+    const val=item[field]||'', other=!!item['_other_'+field]||(!!val&&!opts.includes(val));
+    if(!edFull) return val?esc(val):no;
+    return `<select class="form-control lp-tin" onchange="lpEvalChoice('${level}',${i},'${field}',this.value)"><option value="">— Select —</option>${opts.map(o=>`<option${!other&&o===val?' selected':''}>${esc(o)}</option>`).join('')}<option value="__other__"${other?' selected':''}>Other (specify)</option></select>${other?`<input class="form-control lp-tin" style="margin-top:4px" type="text" maxlength="120" value="${esc(val)}" placeholder="${ph}" oninput="lpEditEvalItem('${level}',${i},'${field}',this.value)">`:''}`;
+  };
+  const cell=(level,i,field,val,ph,type='text',extra='')=>edFull?`<input class="form-control lp-tin" type="${type}" value="${esc(val??'')}" placeholder="${ph}" ${extra} oninput="lpEditEvalItem('${level}',${i},'${field}',this.value)">`:(val!==null&&val!==undefined&&String(val)!==''?esc(String(val)):no);
+  const rm=(level,i)=>edFull?`<button class="lp-icon-btn" title="Remove" aria-label="Remove" onclick="lpEvalRemove('${level}',${i})">${_lpIc(LP_IC.x)}</button>`:'';
   const asRows=as.map((a,i)=>`<tr style="cursor:default">
-      <td>${edFull?`<input class="form-control" type="text" value="${esc(a.name||'')}" placeholder="Evaluation name" oninput="lpEditEvalItem('l2',${i},'name',this.value)">`:esc(a.name||'—')}</td>
+      <td>${cell('l2',i,'name',a.name,'Evaluation name','text','maxlength="200"')}</td>
+      <td>${choice('l2',i,'type',LP_L2_TYPES,a,'Specify type')}</td>
       <td style="text-align:center">${edFull?`<input type="checkbox" ${a.pre?'checked':''} onchange="lpEditEvalItem('l2',${i},'pre',this.checked)">`:(a.pre?yes:no)}</td>
       <td style="text-align:center">${edFull?`<input type="checkbox" ${a.post?'checked':''} onchange="lpEditEvalItem('l2',${i},'post',this.checked);document.getElementById('lp-pass-${i}').disabled=!this.checked;document.getElementById('lp-pass-${i}').required=this.checked">`:(a.post?yes:no)}</td>
-      <td>${edFull?`<input id="lp-pass-${i}" class="form-control" type="number" min="0" max="100" step="1" value="${a.post?a.passingScore??'':''}" placeholder="${a.post?'Required %':'Pre only'}" ${a.post?'required':'disabled'} oninput="lpEditEvalItem('l2',${i},'passingScore',this.value)">`:(a.post&&a.passingScore!=null?a.passingScore+'%':'—')}</td>
-      <td style="text-align:right">${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l2',${i})">Remove</button>`:''}</td></tr>`).join('');
-  const ec=_lpEvalConfig(p);
-  const level=(key,title,detail,enabled,body='')=>`<section id="lp-eval-${key}" class="lp-eval-level${_lpDraftError&&_lpDraftError.startsWith(key.toUpperCase()+' ')?' lp-section-invalid':''}"><div class="lp-eval-level-hd"><div class="lp-eval-level-title"><b>${title}</b><small>${detail}</small></div>
-    <label class="lp-switch" title="${enabled?'Disable':'Enable'} ${key} evaluation"><input type="checkbox" role="switch" aria-label="${key} evaluation" aria-checked="${enabled}" ${enabled?'checked':''} ${edFull?`onchange="lpSetEvalTag('${key}',this.checked)"`:'disabled'}><span class="lp-switch-track"></span></label><span class="lp-eval-state">${enabled?'Yes':'No'}</span></div>
+      <td>${edFull?`<input id="lp-pass-${i}" class="form-control lp-tin" type="number" min="0" max="100" step="1" value="${a.post?a.passingScore??'':''}" placeholder="${a.post?'Required %':'Pre only'}" ${a.post?'required':'disabled'} oninput="lpEditEvalItem('l2',${i},'passingScore',this.value)">`:(a.post&&a.passingScore!=null?a.passingScore+'%':'—')}</td>
+      <td style="text-align:right">${rm('l2',i)}</td></tr>`).join('');
+  const level=(key,title,detail,enabled,body='',tone=['#eef2ff','#4f46e5'])=>`<section id="lp-eval-${key}" class="lp-eval-level${_lpDraftError&&_lpDraftError.startsWith(key.toUpperCase()+' ')?' lp-section-invalid':''}"><div class="lp-eval-level-hd"><span class="lp-lvl-ic" style="background:${tone[0]};color:${tone[1]}">${key.toUpperCase()}</span><div class="lp-eval-level-title"><b>${title}</b><small>${detail}</small></div>
+    <label class="lp-switch" title="${enabled?'Disable':'Enable'} ${key} evaluation"><input type="checkbox" role="switch" aria-label="${key} evaluation" aria-checked="${enabled}" ${enabled?'checked':''} ${edFull?`onchange="lpSetEvalTag('${key}',this.checked)"`:'disabled'}><span class="lp-switch-track"></span></label><span class="lp-eval-state">${enabled?'Enabled':'Disabled'}</span></div>
     ${enabled&&body?`<div class="lp-eval-level-body">${body}</div>`:''}</section>`;
-  const l2Body=`<table class="dash-tbl"><thead><tr><th>Evaluation</th><th style="width:60px;text-align:center">Pre</th><th style="width:60px;text-align:center">Post</th><th style="width:110px">Passing %</th><th></th></tr></thead>
-    <tbody>${asRows}${!as.length?'<tr style="cursor:default"><td colspan="5" class="lp-muted" style="text-align:center;padding:16px">No L2 evaluation items yet.</td></tr>':''}</tbody></table>
-    ${edFull?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l2')">+ Add L2 Evaluation</button></div>`:''}`;
-  const l3Rows=ec.l3.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.method||'')}" placeholder="Manager observation" oninput="lpEditEvalItem('l3',${i},'method',this.value)">`:esc(x.method||'—')}</td><td>${edFull?`<input class="form-control" type="number" min="1" max="365" step="1" value="${esc(x.daysAfter??'')}" placeholder="30" oninput="lpEditEvalItem('l3',${i},'daysAfter',this.value)">`:(x.daysAfter!=null?esc(String(x.daysAfter))+' days':'—')}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.notes||'')}" placeholder="Optional" oninput="lpEditEvalItem('l3',${i},'notes',this.value)">`:esc(x.notes||'—')}</td><td style="text-align:right">${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l3',${i})">Remove</button>`:''}</td></tr>`).join('');
-  const l3Body=`<table class="dash-tbl"><thead><tr><th style="width:34px">#</th><th>Follow-through Method</th><th style="width:100px">Days After</th><th>Notes</th><th></th></tr></thead><tbody>${l3Rows}${!ec.l3.items.length?'<tr style="cursor:default"><td colspan="5" class="lp-muted" style="text-align:center;padding:16px">No L3 follow-through items yet.</td></tr>':''}</tbody></table>
-    ${edFull?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l3')">+ Add L3 Item</button></div>`:''}`;
-  const l4Rows=ec.l4.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.measure||'')}" placeholder="CSAT score" oninput="lpEditEvalItem('l4',${i},'measure',this.value)">`:esc(x.measure||'—')}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.baseline||'')}" placeholder="3.8/5" oninput="lpEditEvalItem('l4',${i},'baseline',this.value)">`:esc(x.baseline||'—')}</td><td>${edFull?`<input class="form-control" type="text" value="${esc(x.target||'')}" placeholder="4.3/5" oninput="lpEditEvalItem('l4',${i},'target',this.value)">`:esc(x.target||'—')}</td><td>${edFull?`<input class="form-control" type="number" min="1" max="365" step="1" value="${esc(x.daysAfter??'')}" placeholder="90" oninput="lpEditEvalItem('l4',${i},'daysAfter',this.value)">`:(x.daysAfter!=null?esc(String(x.daysAfter))+' days':'—')}</td><td style="text-align:right">${edFull?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpEvalRemove('l4',${i})">Remove</button>`:''}</td></tr>`).join('');
-  const l4Body=`<table class="dash-tbl"><thead><tr><th style="width:34px">#</th><th>Measure / Behavior</th><th>Baseline</th><th>Target</th><th style="width:100px">Days After</th><th></th></tr></thead><tbody>${l4Rows}${!ec.l4.items.length?'<tr style="cursor:default"><td colspan="6" class="lp-muted" style="text-align:center;padding:16px">No L4 result items yet.</td></tr>':''}</tbody></table>
-    ${edFull?`<div class="lp-card-actions"><button class="btn btn-secondary btn-sm" onclick="lpEvalAdd('l4')">+ Add L4 Item</button></div>`:''}`;
-  const assessments=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Evaluations</span></div>
-    ${level('l1','L1 · Reaction','Post-training survey',ec.l1)}
-    ${level('l2','L2 · Learning','Pre and Post are set on each evaluation item.',ec.l2.enabled,l2Body)}
-    ${level('l3','L3 · Behavior','Add one or more follow-through methods and timing.',ec.l3.enabled,l3Body)}
-    ${level('l4','L4 · Results','Track outcome measures, baselines, targets and timing.',ec.l4.enabled,l4Body)}
+  const l1Val=(v,suffix='')=>v!==null&&v!==undefined&&String(v)!==''?esc(String(v))+suffix:no;
+  const l1In=(field,val,ph,type='text',extra='')=>`<input class="form-control lp-tin" type="${type}" value="${esc(val??'')}" placeholder="${ph}" ${extra} oninput="lpEditL1('${field}',this.value)">`;
+  const l1Sel=(field,opts,val)=>`<select class="form-control lp-tin" onchange="lpEditL1('${field}',this.value)"><option value="">— Select —</option>${opts.map(o=>`<option${o===val?' selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  const l1Url=_lpSafeResourceUrl(l1c.instrumentUrl);
+  const l1F=(label,html)=>`<div class="lp-l1-f"><div class="lp-info-l">${label}</div><div class="lp-l1-v">${html}</div></div>`;
+  const l1Body=`<div class="lp-l1-grid">
+      ${l1F('Evaluation Method',edFull?l1In('method',l1c.method,'Post-training survey','text','maxlength="120"'):l1Val(l1c.method||'Post-training survey'))}
+      ${l1F('Instrument / Survey Link',edFull?l1In('instrumentUrl',l1c.instrumentUrl,'https://…','url'):(l1Url?`<a class="lp-resource-link" href="${esc(l1Url)}" target="_blank" rel="noopener noreferrer">Open instrument ↗</a>`:no))}
+      ${l1F('When to Administer',edFull?l1Sel('timing',LP_L1_TIMING,l1c.timing):l1Val(l1c.timing))}
+      ${l1F('Completion Requirement',edFull?l1Sel('completion',LP_L1_COMPLETION,l1c.completion):l1Val(l1c.completion))}
+      ${l1F('Target Completion Rate',edFull?l1In('targetCompletionRate',l1c.targetCompletionRate,'e.g. 100','number','min="0" max="100" step="1"'):l1Val(l1c.targetCompletionRate,'%'))}
+      ${l1F('CSAT Target (1–5)',edFull?l1In('csatTarget',l1c.csatTarget,'e.g. 4.5','number','min="1" max="5" step="0.1"'):l1Val(l1c.csatTarget))}
+      ${l1F('NPS Target',edFull?l1In('npsTarget',l1c.npsTarget,'e.g. 50','number','min="-100" max="100" step="1"'):l1Val(l1c.npsTarget))}
+    </div>`;
+  const tbl=(h,body)=>`<div class="lp-tbl-scroll"><table class="dash-tbl lp-eval-tbl"><thead><tr>${h}</tr></thead><tbody>${body}</tbody></table></div>`;
+  const emptyRow=(n,t)=>`<tr style="cursor:default"><td colspan="${n}" class="lp-muted" style="text-align:center;padding:16px">${t}</td></tr>`;
+  const addBtn=(level,label)=>edFull?`<button type="button" class="lp-add-topic" style="margin-top:8px" onclick="lpEvalAdd('${level}')">+ ${label}</button>`:'';
+  const l2Body=tbl('<th>Evaluation Item</th><th style="width:210px">Type</th><th style="width:60px;text-align:center">Pre</th><th style="width:60px;text-align:center">Post</th><th style="width:110px">Passing %</th><th style="width:40px"></th>',asRows||emptyRow(6,'No L2 evaluation items yet.'))+addBtn('l2','Add Evaluation Item');
+  const l3Rows=ec.l3.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${choice('l3',i,'method',LP_L3_METHODS,x,'Specify method')}</td><td>${edFull?`<input class="form-control lp-tin" list="lp-l3-resp" type="text" maxlength="120" value="${esc(x.responsible||'')}" placeholder="e.g. Immediate Supervisor" oninput="lpEditEvalItem('l3',${i},'responsible',this.value)">`:(x.responsible?esc(x.responsible):no)}</td><td>${edFull?cell('l3',i,'daysAfter',x.daysAfter,'30','number','min="1" max="365" step="1"'):(x.daysAfter!=null&&x.daysAfter!==''?esc(String(x.daysAfter))+' days':no)}</td><td>${cell('l3',i,'notes',x.notes,'Optional','text','maxlength="300"')}</td><td style="text-align:right">${rm('l3',i)}</td></tr>`).join('');
+  const l3Body=tbl('<th style="width:34px">#</th><th style="width:240px">Follow-through Method</th><th style="width:190px">Responsible</th><th style="width:100px">Days After</th><th>Notes</th><th style="width:40px"></th>',l3Rows||emptyRow(6,'No L3 follow-through items yet.'))+addBtn('l3','Add L3 Item')+(edFull?`<datalist id="lp-l3-resp">${LP_L3_RESPONSIBLE.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:'');
+  const l4Rows=ec.l4.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${cell('l4',i,'measure',x.measure,'e.g. Units per transaction','text','maxlength="200"')}</td><td>${cell('l4',i,'baseline',x.baseline,'e.g. 1.8')}</td><td>${cell('l4',i,'target',x.target,'e.g. 2.2')}</td><td>${cell('l4',i,'unit',x.unit,'e.g. units, %, PHP')}</td><td>${edFull?cell('l4',i,'daysAfter',x.daysAfter,'90','number','min="1" max="365" step="1"'):(x.daysAfter!=null&&x.daysAfter!==''?esc(String(x.daysAfter))+' days':no)}</td><td style="text-align:right">${rm('l4',i)}</td></tr>`).join('');
+  const l4Body=tbl('<th style="width:34px">#</th><th>Measure / Behavior</th><th style="width:120px">Baseline</th><th style="width:120px">Target</th><th style="width:120px">Unit</th><th style="width:100px">Days After</th><th style="width:40px"></th>',l4Rows||emptyRow(7,'No L4 result items yet.'))+addBtn('l4','Add L4 Item');
+  // Summary strip: enabled levels + when each evaluation happens (built from the configured days).
+  const lvChip=(l,on,bg,fg)=>`<span class="lp-lvl-chip" style="background:${on?bg:'#f1f5f9'};color:${on?fg:'#94a3b8'}" title="${l} ${on?'enabled':'not enabled'}">${l}</span>`;
+  const tl=[];
+  if(ec.l2.enabled&&as.some(a=>a.pre)) tl.push(['Start of session','L2 pre-test']);
+  const endItems=[...(ec.l2.enabled&&as.some(a=>a.post)?['L2 post-test']:[]),...(ec.l1?[`L1 survey${l1c.timing?' · '+l1c.timing:''}`]:[])];
+  if(endItems.length) tl.push(['End of training',endItems.join(' · ')]);
+  [...(ec.l3.enabled?ec.l3.items.map(x=>({d:Number(x.daysAfter)||0,t:`L3 · ${x.method||'Follow-through'}${x.responsible?' ('+x.responsible+')':''}`})):[]),
+   ...(ec.l4.enabled?ec.l4.items.map(x=>({d:Number(x.daysAfter)||0,t:`L4 · ${x.measure||'Result measure'}`})):[])]
+    .sort((a,b)=>a.d-b.d).forEach(x=>tl.push([x.d?`${x.d} days after`:'After training',x.t]));
+  const assessments=`<div class="card lp-card lp-evals-card"><div class="lp-card-hd"><div><span class="lp-card-t">Evaluations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Kirkpatrick L1–L4 requirements for this program. Sessions created from the program copy these settings.</div></div><div class="lp-hd-actions">${editBtn('evals')}</div></div>
+    <div class="lp-eval-summary"><div class="lp-eval-chips">${lvChip('L1',ec.l1,'#f5f3ff','#7c3aed')}${lvChip('L2',ec.l2.enabled,'#ecfdf5','#059669')}${lvChip('L3',ec.l3.enabled,'#fffbeb','#d97706')}${lvChip('L4',ec.l4.enabled,'#fef2f2','#dc2626')}</div>
+      ${tl.length?`<ol class="lp-tl">${tl.map(([w,t])=>`<li><b>${esc(w)}</b><span>${esc(t)}</span></li>`).join('')}</ol>`:'<span class="lp-muted" style="font-size:12px">No evaluations enabled yet.</span>'}</div>
+    ${level('l1','L1 · Reaction','Participants’ immediate feedback on the training experience.',ec.l1,l1Body,['#f5f3ff','#7c3aed'])}
+    ${level('l2','L2 · Learning','Knowledge and skills gained. Pre / Post and passing % are set per item.',ec.l2.enabled,l2Body,['#ecfdf5','#059669'])}
+    ${level('l3','L3 · Behavior','Application on the job: follow-through methods, who is responsible, and timing.',ec.l3.enabled,l3Body,['#fffbeb','#d97706'])}
+    ${level('l4','L4 · Results','Business outcome measures with baseline, target, unit and timing.',ec.l4.enabled,l4Body,['#fef2f2','#dc2626'])}
   </div>`;
-  const family=LearningProgramDB.all().filter(v=>(v.programFamilyId||v.id)===(p.programFamilyId||p.id));
-  const implementations=(Cache.data[Store.TRSESSIONS]||[]).filter(x=>family.some(v=>v.id===x.programId)).sort((a,b)=>(b.trainingDate||'').localeCompare(a.trainingDate||''));
-  const completed=implementations.filter(x=>x.status==='completed').length;
-  const upcoming=implementations.filter(x=>x.status==='scheduled'&&(!x.trainingDate||x.trainingDate>=_lpToday())).length; // v5.02: Manila date
-  const learners=new Set(implementations.flatMap(x=>SessionParticipantsDB.all().filter(r=>r.sessionId===x.id&&_lpAttended(r,x)).map(r=>r.profileId||r.employeeId||r.id))).size;
-  const tile=(ic,bg,fg,l,n)=>`<div class="lp-qs"><span class="lp-qs-ic" style="background:${bg};color:${fg}">${_lpIc(ic)}</span><div class="lp-qs-v">${n}</div><div class="lp-qs-l">${l}</div></div>`;
-  const implementationsOverview=draft?'':`<div class="card lp-card lp-implementations-overview"><div class="lp-card-hd"><div><span class="lp-card-t">Implementations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Implementation snapshot across all versions of this program.</div></div><button class="btn btn-secondary btn-sm" type="button" onclick="lpSetTab('impl')">View all implementations</button></div>
-    <div class="lp-qs-grid">${tile(LP_IC.total,'#f5f3ff','#7c3aed','Total Implementations',implementations.length)}${tile(LP_IC.done,'#f0fdf4','#16a34a','Completed',completed)}${tile(LP_IC.clock,'#fffbeb','#d97706','Upcoming',upcoming)}${tile(LP_IC.users,'#eff6ff','#2563eb','Unique Attendees',learners)}</div>
-  </div>`;
-  return head+(ed?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} ${scope==='details'?'<b>Edit Details</b> · Resource link, description, category and default checklist only. No version change; each change is recorded in the Audit Log.':scope==='revision'?`<b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda topic wording, minutes and order. Keep the same topics and the same total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.`:`Your changes are saved when you select <b>${draft||p.status==='draft'?'Save Draft':'Save Program'}</b>.`}</div>${_lpErrorBannerHtml()}`:'')+`${implementationsOverview}<div class="lp-overview-grid lp-overview-top">${info}${contrib}</div>${_lpTeamHtml(p)}<div class="lp-overview-grid lp-overview-middle">${agenda}${assessments}</div>`;
+  let body;
+  if(_lpTab==='impl') body=_lpImplementationsHtml(p);
+  else if(_lpTab==='audit') body=_lpAuditHtml(p);
+  else if(_lpTab==='curriculum') body=agenda;
+  else if(_lpTab==='evals') body=assessments;
+  else body=`<div class="lp-overview-grid lp-overview-top">${info}${contrib}</div>${_lpTeamHtml(p)}`;
+  return head+body;
 }
 
 /* ── detail actions ── */
@@ -6371,8 +6489,9 @@ function _lpActivationError(p){
 function lpAgendaAdd(part){
   const p=_lpCur(); if(!p||!_lpEditMode) return;
   const target=Math.min(Math.max(Number(part)||Number(p.deliveryParts)||1,1),Number(p.deliveryParts)||1);
-  p.agenda=[...(p.agenda||[]),{topic:'',duration:'',part:target}]; renderLearningPrograms();
-  requestAnimationFrame(()=>{const inputs=[...document.querySelectorAll('.lp-agenda-part input[type=text]')];inputs[inputs.length-1]?.focus();});
+  _lpCollapsedParts.delete(target);
+  p.agenda=[...(p.agenda||[]),{topic:'',duration:'',part:target}]; const idx=p.agenda.length-1; renderLearningPrograms();
+  requestAnimationFrame(()=>{ const inp=document.querySelector(`.lp-trow input[oninput*="lpEditAgendaItem(${idx},'topic'"]`); inp?.focus(); });
 }
 function lpAgendaPartAdd(){
   const p=_lpCur(); if(!p||!_lpEditMode||Number(p.deliveryParts||1)>=30) return;
@@ -6389,7 +6508,7 @@ function lpAgendaPartRemove(part){
   const doRemove=()=>{
     p.agenda=(p.agenda||[]).filter(a=>Number(a.part||1)!==target).map(a=>{ const n=Number(a.part||1); return n>target?{...a,part:n-1}:a; });
     p.deliveryParts=count-1; _lpDraftError=''; renderLearningPrograms();
-    toast(`Part ${target} removed. Click ${p.status==='draft'?'Save Draft':'Save Program'} to keep the change.`,'info');
+    toast(`Part ${target} removed. Click ${p.status==='draft'?'Save Draft':'Save Changes'} to keep the change.`,'info');
   };
   const topics=(p.agenda||[]).filter(a=>Number(a.part||1)===target);
   if(!topics.length) return doRemove();
@@ -6405,7 +6524,7 @@ function lpAgendaSetPart(i,part){
   list.splice(i,1); list.push({...item,part:target}); p.agenda=list; renderLearningPrograms();
 }
 function lpEditAgendaItem(i,field,value){
-  const p=_lpCur(); if(!p||!_lpEditMode||!p.agenda?.[i]||!['topic','duration','part'].includes(field)) return;
+  const p=_lpCur(); if(!p||!_lpEditMode||!p.agenda?.[i]||!['topic','duration','part','objective','materials'].includes(field)) return; // v5.03: objective + materials
   p.agenda[i][field]=field==='part'?Number(value):value;
   if(field==='duration'||field==='part') lpRefreshDuration();
 }
@@ -6435,7 +6554,8 @@ function lpAgendaCsvOpen(){
   openModal('lp-agenda-csv');
 }
 function lpAgendaCsvTemplate(){
-  const blob=new Blob(['\ufeffpart,topic_title,duration_minutes\r\n1,Introduction,30\r\n1,Product Fundamentals,45\r\n2,Application Activity,60\r\n'],{type:'text/csv;charset=utf-8'});
+  // v5.03: optional learning_objective and materials columns.
+  const blob=new Blob(['\ufeffpart,topic_title,duration_minutes,learning_objective,materials\r\n1,Introduction,30,Set expectations and outline the learning journey,Slides\r\n1,Product Fundamentals,45,Explain key ingredients and benefits,"Slides, Product samples"\r\n2,Application Activity,60,Build a basic skincare routine for a customer,Activity sheet\r\n'],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url; a.download='learning_program_agenda_template.csv'; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -6466,13 +6586,14 @@ function _lpValidateAgendaCsv(text){
   const parsed=_lpParseAgendaCsv(text), errors=[...parsed.errors], rows=parsed.rows;
   if(!rows.length) return {items:[],errors:['The CSV is empty. Add the header and at least one agenda row.']};
   const headers=rows[0].cells.map(v=>v.toLowerCase());
-  if(headers.length!==3||!headers.includes('part')||!headers.includes('topic_title')||!headers.includes('duration_minutes')) errors.push('Header must contain exactly part, topic_title and duration_minutes.');
-  const partCol=headers.indexOf('part'), topicCol=headers.indexOf('topic_title'), minutesCol=headers.indexOf('duration_minutes');
+  const allowedCols=['part','topic_title','duration_minutes','learning_objective','materials'];
+  if(!headers.includes('part')||!headers.includes('topic_title')||!headers.includes('duration_minutes')||headers.some(h=>!allowedCols.includes(h))||new Set(headers).size!==headers.length) errors.push('Header must contain part, topic_title and duration_minutes, plus optional learning_objective and materials.');
+  const partCol=headers.indexOf('part'), topicCol=headers.indexOf('topic_title'), minutesCol=headers.indexOf('duration_minutes'), objCol=headers.indexOf('learning_objective'), matCol=headers.indexOf('materials');
   const items=[];
   if(rows.length===1) errors.push('Add at least one agenda row below the header.');
   if(rows.length-1>500) errors.push('A CSV can contain at most 500 agenda rows.');
   for(const row of rows.slice(1,501)){
-    if(row.cells.length!==3){errors.push(`Line ${row.line}: expected exactly three columns.`);continue;}
+    if(row.cells.length!==headers.length){errors.push(`Line ${row.line}: expected ${headers.length} columns.`);continue;}
     if(partCol<0||topicCol<0||minutesCol<0) continue;
     const rawPart=row.cells[partCol], topic=row.cells[topicCol], raw=row.cells[minutesCol];
     const part=Number(rawPart), duration=Number(raw);
@@ -6482,7 +6603,9 @@ function _lpValidateAgendaCsv(text){
     if(!validPart) errors.push(`Line ${row.line}: part must be a whole number from 1 to 30.`);
     if(!validTopic) errors.push(`Line ${row.line}: topic title must be one line, 1–250 characters.`);
     if(!validDuration) errors.push(`Line ${row.line}: duration must be a positive whole number of minutes.`);
-    if(validPart&&validTopic&&validDuration) items.push({part,topic,duration});
+    const objective=objCol>=0?row.cells[objCol]:'', materials=matCol>=0?row.cells[matCol]:'';
+    if(objective.length>300||materials.length>300) errors.push(`Line ${row.line}: learning_objective and materials must be 300 characters or fewer.`);
+    else if(validPart&&validTopic&&validDuration) items.push({part,topic,duration,...(objective?{objective}:{}),...(materials?{materials}:{})});
   }
   const total=items.reduce((sum,x)=>sum+x.duration,0);
   if(!Number.isSafeInteger(total)||total>59999999) errors.push('Total duration is too large.');
@@ -6502,41 +6625,89 @@ async function lpAgendaCsvRead(file){
   try{
     const result=_lpValidateAgendaCsv(await file.text());
     if(box) box.innerHTML=result.errors.length?`<div class="lp-form-error" role="alert">${result.errors.map(Utils.esc).join('<br>')}</div>`:
-      `<div style="font-size:12.5px;margin-bottom:8px"><b>${result.items.length} valid rows</b> · ${result.partCount} delivery part${result.partCount===1?'':'s'} · Total ${Utils.esc(_lpHoursDisplay(result.total))} hours (HH.MM)</div><div style="max-height:260px;overflow:auto"><table class="dash-tbl"><thead><tr><th>Part</th><th>Topic title</th><th>Minutes</th></tr></thead><tbody>${result.items.map(x=>`<tr><td>Part ${x.part}</td><td>${Utils.esc(x.topic)}</td><td>${x.duration}</td></tr>`).join('')}</tbody></table></div>`;
+      `<div style="font-size:12.5px;margin-bottom:8px"><b>${result.items.length} valid rows</b> · ${result.partCount} delivery part${result.partCount===1?'':'s'} · Total ${Utils.esc(_lpHoursDisplay(result.total))} hours (HH.MM)</div><div style="max-height:260px;overflow:auto"><table class="dash-tbl"><thead><tr><th>Part</th><th>Topic title</th><th>Minutes</th><th>Learning objective</th><th>Materials</th></tr></thead><tbody>${result.items.map(x=>`<tr><td>Part ${x.part}</td><td>${Utils.esc(x.topic)}</td><td>${x.duration}</td><td>${Utils.esc(x.objective||'—')}</td><td>${Utils.esc(x.materials||'—')}</td></tr>`).join('')}</tbody></table></div>`;
     if(!result.errors.length){_lpAgendaCsvPreview={items:result.items,partCount:result.partCount};if(btn) btn.disabled=false;}
   }catch(e){if(box) box.innerHTML='<div class="lp-form-error">Could not read the CSV file. Please try again.</div>';}
 }
 function lpAgendaCsvApply(){
   const p=_lpCur(); if(!p||!_lpEditMode||!_lpAgendaCsvPreview?.items?.length) return;
   const append=document.getElementById('lp-agenda-csv-mode')?.value==='append';
-  const imported=_lpAgendaCsvPreview.items.map(x=>({part:Number(x.part)||1,topic:x.topic,duration:x.duration}));
+  const imported=_lpAgendaCsvPreview.items.map(x=>({part:Number(x.part)||1,topic:x.topic,duration:x.duration,...(x.objective?{objective:x.objective}:{}),...(x.materials?{materials:x.materials}:{})}));
   const next=append?[...(p.agenda||[]),...imported]:imported.slice();
   const total=_lpAgendaMinutes(next);
   if(total===null||!Number.isSafeInteger(total)||total>59999999){toast('Check the existing agenda durations or choose Replace current agenda and parts.','error');return;}
   const importedMax=Math.max(1,...imported.map(x=>Number(x.part)||1));
   p.deliveryParts=append?Math.max(Number(p.deliveryParts)||1,importedMax):importedMax;
   p.agenda=next; _lpAgendaCsvPreview=null; closeModal('lp-agenda-csv'); renderLearningPrograms();
-  toast(`${imported.length} agenda item(s) imported across ${importedMax} delivery part${importedMax===1?'':'s'}. Total ${_lpHoursDisplay(total)} hours; click Save Program to keep the changes.`,'success');
+  toast(`${imported.length} agenda item(s) imported across ${importedMax} delivery part${importedMax===1?'':'s'}. Total ${_lpHoursDisplay(total)} hours; click Save to keep the changes.`,'success');
 }
 function lpEvalAdd(level){
   const p=_lpCur(); if(!p||!_lpEditMode) return;
-  if(level==='l2') p.assessments=[...(p.assessments||[]),{name:'',pre:false,post:true,passingScore:null}];
+  if(level==='l2') p.assessments=[...(p.assessments||[]),{name:'',type:'',pre:false,post:true,passingScore:null}];
   else if(level==='l3'||level==='l4'){
-    const ec=_lpEvalConfig(p); ec[level].items.push(level==='l3'?{method:'',daysAfter:'',notes:''}:{measure:'',baseline:'',target:'',daysAfter:''}); p.evaluationConfig=ec;
+    const ec=_lpEvalConfig(p); ec[level].items.push(level==='l3'?{method:'',responsible:'',daysAfter:'',notes:''}:{measure:'',baseline:'',target:'',unit:'',daysAfter:''}); p.evaluationConfig=ec;
   }else return;
   renderLearningPrograms();
 }
 function lpEditEvalItem(level,i,field,value){
   const p=_lpCur(); if(!p||!_lpEditMode) return;
   if(level==='l2'){
-    if(!p.assessments?.[i]||!['name','pre','post','passingScore'].includes(field)) return;
+    if(!p.assessments?.[i]||!['name','type','pre','post','passingScore'].includes(field)) return;
     p.assessments[i][field]=value;
     if(field==='post'&&!value) p.assessments[i].passingScore=null;
   }else if(level==='l3'||level==='l4'){
-    const ec=_lpEvalConfig(p); if(!ec[level].items[i]||!Object.hasOwn(ec[level].items[i],field)) return;
+    const allowed={l3:['method','responsible','daysAfter','notes'],l4:['measure','baseline','target','unit','daysAfter']}[level]; // v5.03
+    const ec=_lpEvalConfig(p); if(!ec[level].items[i]||!allowed.includes(field)) return;
     ec[level].items[i][field]=value; p.evaluationConfig=ec;
   }
 }
+/* v5.03 (2026-10-14, per Sandra): option list + "Other (specify)" for L2 Type and L3 Method.
+   The chosen label (or the typed text) is stored; a transient _other_<field> flag keeps the text box open. */
+function lpEvalChoice(level,i,field,v){
+  const p=_lpCur(); if(!p||!_lpEditMode) return;
+  let item;
+  if(level==='l2') item=p.assessments?.[i];
+  else { const ec=_lpEvalConfig(p); item=ec[level]?.items?.[i]; p.evaluationConfig=ec; }
+  if(!item) return;
+  if(v==='__other__'){ item['_other_'+field]=true; item[field]=''; }
+  else { delete item['_other_'+field]; item[field]=v; }
+  renderLearningPrograms();
+  if(v==='__other__') requestAnimationFrame(()=>document.querySelector(`input[oninput*="lpEditEvalItem('${level}',${i},'${field}'"]`)?.focus());
+}
+function lpEditL1(field,value){
+  const p=_lpCur(); if(!p||!_lpEditMode||!['method','instrumentUrl','timing','completion','targetCompletionRate','csatTarget','npsTarget'].includes(field)) return;
+  const ec=_lpEvalConfig(p); ec.l1Config[field]=value; p.evaluationConfig=ec;
+}
+/* v5.03: Curriculum tab helpers -- collapsible parts, drag-to-reorder, part order. Nothing is written until Save. */
+function lpTogglePart(n){ _lpCollapsedParts.has(n)?_lpCollapsedParts.delete(n):_lpCollapsedParts.add(n); renderLearningPrograms(); }
+function lpExpandAllParts(on){ const p=_lpCur(); _lpCollapsedParts=on?new Set():new Set(Array.from({length:Number(p?.deliveryParts)||1},(_,i)=>i+1)); renderLearningPrograms(); }
+function lpAgendaDragStart(e,i){ _lpDragIdx=i; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(i)); }catch(_){} e.currentTarget.classList.add('dragging'); }
+function lpAgendaDragOver(e){ if(_lpDragIdx===null) return; e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(_){} }
+function lpAgendaDragEnd(){ _lpDragIdx=null; document.querySelectorAll('.lp-trow.dragging').forEach(r=>r.classList.remove('dragging')); }
+function lpAgendaDrop(e,targetIdx,targetPart){
+  e.preventDefault(); e.stopPropagation();
+  const from=_lpDragIdx; lpAgendaDragEnd();
+  const p=_lpCur(); if(from===null||!p||!_lpEditMode||!['full','revision'].includes(_lpEditScope)) return;
+  const orig=p.agenda||[], item=orig[from]; if(!item||targetIdx===from) return;
+  const fromPart=Number(item.part||1);
+  if(targetPart!==fromPart&&_lpEditScope!=='full') return toast('A minor revision keeps topics in their delivery part. Moving a topic to another part needs a full edit or a new version.','error');
+  _lpCapturePageFields();
+  const list=orig.slice(); list.splice(from,1);
+  const moved={...item,part:targetPart};
+  let at;
+  if(targetIdx===null){ let last=-1; list.forEach((a,k)=>{ if(Number(a.part||1)===targetPart) last=k; }); at=last<0?list.length:last+1; }
+  else { at=list.indexOf(orig[targetIdx]); if(at<0) at=list.length; else if(from<targetIdx&&fromPart===targetPart) at+=1; }
+  list.splice(at,0,moved); p.agenda=list; renderLearningPrograms();
+}
+function lpAgendaPartMove(part,d){
+  const p=_lpCur(); if(!p||!_lpEditMode||_lpEditScope!=='full') return;
+  const count=Number(p.deliveryParts||1), other=part+d; if(other<1||other>count) return;
+  _lpCapturePageFields();
+  p.agenda=(p.agenda||[]).map(a=>{ const n=Number(a.part||1); return n===part?{...a,part:other}:n===other?{...a,part}:a; });
+  const c=_lpCollapsedParts, hp=c.has(part), ho=c.has(other); c.delete(part); c.delete(other); if(hp) c.add(other); if(ho) c.add(part);
+  renderLearningPrograms();
+}
+window.addEventListener('beforeunload',e=>{ if(typeof _lpDraft!=='undefined'&&(_lpDraft||_lpWorking||_lpTeamEdit)){ e.preventDefault(); e.returnValue=''; } });
 function lpEvalRemove(level,i){
   const p=_lpCur(); if(!p||!_lpEditMode) return;
   if(level==='l2') p.assessments?.splice(i,1);
@@ -6746,13 +6917,13 @@ function lpStartDraft(){
   renderLearningPrograms(); _syncHashForCurrentView();
   document.getElementById('lp-d-title')?.focus();
 }
-function lpStartEdit(id,inactivate=false,scope='full'){
+function lpStartEdit(id,inactivate=false,scope='full',tab='overview'){
   const p=LearningProgramDB.byId(id); if(!p||p.status==='inactive'||!lpCanEdit()) return;
   document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
   const used=_lpVersionLocked(p);
   if(used&&!['details','revision'].includes(scope)) return toast('This version has implementations. Use Edit Details, Log Minor Revision, or create a new version.','error');
   if(!used) scope='full';
-  _lpDraft=null; _lpWorking=JSON.parse(JSON.stringify(p)); _lpDetailId=id; _lpEditMode=true; _lpEditScope=scope; _lpTab='overview'; _lpDraftError='';
+  _lpDraft=null; _lpWorking=JSON.parse(JSON.stringify(p)); _lpDetailId=id; _lpEditMode=true; _lpEditScope=scope; _lpTab=tab||'overview'; _lpDraftError=''; _lpTeamEdit=false;
   if(inactivate) _lpWorking.status='inactive';
   renderLearningPrograms(); _syncHashForCurrentView();
   if(inactivate) document.getElementById('lp-d-to')?.focus();
@@ -6818,13 +6989,13 @@ async function _lpSaveScoped(){
     const minutes=_lpMinutes(a.duration);
     if(!(a.topic||'').trim()) return fail(`Agenda item ${i+1} needs a topic.`);
     if(!Number.isSafeInteger(minutes)||minutes<=0) return fail(`Agenda item ${i+1} needs a positive whole number of minutes.`);
-    agenda.push({topic:a.topic.trim(),duration:minutes,part:Number(a.part||1)});
+    agenda.push(_lpAgendaRow(a,minutes,Number(a.part||1)));
   }
   const oldTotal=_lpAgendaMinutes(before.agenda)||0, newTotal=_lpAgendaMinutes(agenda)||0;
   if(agenda.length!==(before.agenda||[]).length) return fail('A minor revision keeps the same agenda topics. Adding or removing topics needs a new version.');
   if(newTotal!==oldTotal) return fail(`Agenda item minutes must still total ${_lpDurationText(oldTotal)} (now ${_lpDurationText(newTotal)}). Changing the total duration needs a new version.`);
   const pErr=_lpDeliveryPlanError({agenda,deliveryParts:parts}); if(pErr) return fail(pErr);
-  const fields=[]; if(title!==before.title) fields.push('title'); if(JSON.stringify(agenda)!==JSON.stringify((before.agenda||[]).map(a=>({topic:(a.topic||'').trim(),duration:_lpMinutes(a.duration),part:Number(a.part||1)})))) fields.push('agenda');
+  const fields=[]; if(title!==before.title) fields.push('title'); if(JSON.stringify(agenda)!==JSON.stringify((before.agenda||[]).map(a=>_lpAgendaRow(a,_lpMinutes(a.duration),Number(a.part||1))))) fields.push('agenda');
   if(!fields.length) return fail('No title or agenda changes to log as a revision.');
   _lpDraftError='';
   const nextRev=Number(before.revision||0)+1, label=`${before.version||'v1'}.${nextRev}`;
@@ -6841,6 +7012,13 @@ async function _lpSaveScoped(){
     document.getElementById('mc-ok').className='btn btn-primary';
   };
   ask();
+}
+// v5.03 (2026-10-14, per Sandra): one saved agenda row -- objective/materials kept only when filled in.
+function _lpAgendaRow(a,minutes,part){
+  const row={topic:(a.topic||'').trim(),duration:minutes,part};
+  const obj=(a.objective||'').trim().slice(0,300), mat=(a.materials||'').trim().slice(0,300);
+  if(obj) row.objective=obj; if(mat) row.materials=mat;
+  return row;
 }
 async function lpSaveDraft(){
   if(!_lpDraft&&!_lpWorking) return;
@@ -6865,7 +7043,7 @@ async function lpSaveDraft(){
     if(!Number.isSafeInteger(minutes)||minutes<=0) return fail(`Agenda item ${i+1} needs a positive whole number of minutes.`);
     const part=Number(a.part||1);
     if(!Number.isInteger(part)||part<1||part>partCount) return fail(`Agenda item ${i+1} needs a valid delivery part.`);
-    agenda.push({topic:a.topic.trim(),duration:minutes,part});
+    agenda.push(_lpAgendaRow(a,minutes,part));
   }
   const totalMinutes=_lpAgendaMinutes(agenda);
   if(totalMinutes!=null&&(!Number.isSafeInteger(totalMinutes)||totalMinutes>59999999)) return fail('The total agenda duration is too large.');
@@ -6880,18 +7058,29 @@ async function lpSaveDraft(){
     if(assessments.some(x=>x.name.toLowerCase()===name.toLowerCase())) return fail(`L2 evaluation "${name}" is duplicated.`);
     if(a.post&&(score===null||score===undefined||String(score).trim()==='')) return fail(`L2 item ${i+1} needs a passing percentage for its post-test.`);
     if(a.post&&(!/^\d+(?:\.\d+)?$/.test(String(score).trim())||Number(score)<0||Number(score)>100)) return fail(`L2 item ${i+1} needs a passing percentage from 0 to 100.`);
-    assessments.push({name,pre:!!a.pre,post:!!a.post,passingScore:a.post?Number(score):null});
+    const type=(a.type||'').trim();
+    if(a._other_type&&!type) return fail(`L2 item ${i+1} needs the Other type specified.`);
+    assessments.push({name,type:type||null,pre:!!a.pre,post:!!a.post,passingScore:a.post?Number(score):null});
   }
   if(ec.l3.enabled) for(const [i,x] of ec.l3.items.entries()){
     const days=String(x.daysAfter??'').trim();
     if(!(x.method||'').trim()||!/^\d+$/.test(days)||Number(days)<1||Number(days)>365) return fail(`L3 item ${i+1} needs a method and days after training (1–365).`);
-    ec.l3.items[i]={method:x.method.trim(),daysAfter:Number(days),notes:(x.notes||'').trim()};
+    ec.l3.items[i]={method:x.method.trim(),responsible:(x.responsible||'').trim()||null,daysAfter:Number(days),notes:(x.notes||'').trim()};
   }
   if(ec.l4.enabled) for(const [i,x] of ec.l4.items.entries()){
     const days=String(x.daysAfter??'').trim();
     if(!(x.measure||'').trim()) return fail(`L4 item ${i+1} needs a measure or behavior.`);
     if(days&&(!/^\d+$/.test(days)||Number(days)<1||Number(days)>365)) return fail(`L4 item ${i+1} needs days after training from 1–365.`);
-    ec.l4.items[i]={measure:x.measure.trim(),baseline:(x.baseline||'').trim(),target:(x.target||'').trim(),daysAfter:days?Number(days):null};
+    ec.l4.items[i]={measure:x.measure.trim(),baseline:(x.baseline||'').trim(),target:(x.target||'').trim(),unit:(x.unit||'').trim()||null,daysAfter:days?Number(days):null};
+  }
+  { // v5.03: L1 setup fields (optional) -- validated and cleaned; kept even while L1 is switched off.
+    const c=ec.l1Config||{}, num=v=>String(v??'').trim()===''?null:Number(v);
+    const rate=num(c.targetCompletionRate), csat=num(c.csatTarget), nps=num(c.npsTarget), url=String(c.instrumentUrl||'').trim();
+    if(rate!==null&&!(rate>=0&&rate<=100)) return fail('L1 target completion rate must be from 0 to 100%.');
+    if(csat!==null&&!(csat>=1&&csat<=5)) return fail('L1 CSAT target must be from 1 to 5.');
+    if(nps!==null&&!(nps>=-100&&nps<=100)) return fail('L1 NPS target must be from -100 to 100.');
+    if(url&&!_lpSafeResourceUrl(url)) return fail('L1 instrument link must be a full http:// or https:// URL.');
+    ec.l1Config={method:String(c.method||'').trim()||null,instrumentUrl:url||null,timing:c.timing||null,completion:c.completion||null,targetCompletionRate:rate,csatTarget:csat,npsTarget:nps};
   }
   if(LearningProgramDB.all().some(x=>x.id!==p.id&&x.programFamilyId!==(p.programFamilyId||p.id)&&(x.title||'').trim().toLowerCase()===title.toLowerCase())) return fail('A program with this title already exists.');
   _lpDraftError='';
@@ -6942,6 +7131,7 @@ function _lpErrorTargetSelector(message){
   if(m.startsWith('Resources folder')) return '#lp-resource-url';
   if(m.startsWith('Select a valid Checklist')) return '#lp-d-checklist';
   if(m.startsWith('Agenda item ')||m.includes('agenda duration')||m.includes('delivery part')) return '.lp-agenda-card';
+  if(m.startsWith('L1 ')) return '#lp-eval-l1';
   if(m.startsWith('L2 ')||m.includes('L2 evaluation')) return '#lp-eval-l2';
   if(m.startsWith('L3 ')||m.includes('L3 follow-through')) return '#lp-eval-l3';
   if(m.startsWith('L4 ')||m.includes('L4 result')) return '#lp-eval-l4';
@@ -6949,6 +7139,9 @@ function _lpErrorTargetSelector(message){
 }
 function lpViewProgramIssue(focus=true){
   if(!_lpDraftError) return;
+  // v5.03: the issue may be on another tab -- switch to it first.
+  const sel=_lpErrorTargetSelector(_lpDraftError), tab=sel==='.lp-agenda-card'?'curriculum':sel.startsWith('#lp-eval-')?'evals':'overview';
+  if(_lpTab!==tab){ _lpTab=tab; renderLearningPrograms(); }
   const target=document.querySelector(_lpErrorTargetSelector(_lpDraftError));
   if(!target) return;
   target.scrollIntoView({behavior:'smooth',block:'center'});
