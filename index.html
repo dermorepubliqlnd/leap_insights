@@ -1085,7 +1085,8 @@
     .lp-checklist{max-height:150px;overflow:auto;border:1px solid var(--border-lt);border-radius:8px;padding:6px 10px}
     .lp-checklist label{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;cursor:pointer}
     /* v5.03 (2026-10-14, per Sandra): program page header/tabs, Curriculum & Agenda tab, Evaluations tab */
-    .lp-tabs{margin-top:14px}
+    .lp-tabs{margin-top:14px;align-items:center}
+    .lp-tab-actions{margin-left:auto;display:flex;align-items:center;gap:8px;padding:0 2px 4px 12px;flex-shrink:0}
     .lp-hd-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
     .lp-impl-link{color:var(--pri);text-decoration:none;font-weight:600}
     .lp-impl-link:hover{text-decoration:underline}
@@ -1127,8 +1128,85 @@
     .lp-l1-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px}
     .lp-l1-v{font-size:13px;color:var(--text);margin-top:3px}
     .lp-eval-tbl td{vertical-align:middle}
+    /* v5.04 (2026-10-15, per Sandra): Overview two-column dashboard layout (~68/32), compact cards, person rows */
+    .lp-ov2{display:grid;grid-template-columns:minmax(0,68fr) minmax(300px,32fr);gap:16px;align-items:start;margin-top:16px}
+    .lp-ov2-main,.lp-ov2-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+    .lp-ov2-main{container-type:inline-size}
+    .lp-ov2 .lp-team-card{margin-top:0}
+    @media (max-width:1180px){.lp-ov2{grid-template-columns:minmax(0,1fr)}.lp-ov2-side{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start}}
+    .lp-ov2 .lp-card{padding:14px 16px}
+    .lp-ov2 .lp-card-hd{margin-bottom:10px}
+    .lp-ov2 .lp-program-info{padding:0}
+    .lp-ov2 .lp-program-info .lp-card-hd{padding:14px 16px 4px}
+    .lp-ov2 .lp-program-info-body{padding:0 16px 14px}
+    .lp-ov2 .lp-pi-grid{gap:10px 16px}
+    .lp-pi-compact{gap:4px 16px!important}
+    .lp-pi-compact .lp-pi-read{min-height:0;padding:6px 0;border-bottom:0}
+    .lp-pi-compact .lp-pi-read .lp-info-l{font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+    .lp-pi-compact .lp-pi-read .lp-info-v{font-size:13px;line-height:1.5}
+    .lp-side-card .lp-crow{padding:7px 0}
+    .lp-side-card .lp-crow .lp-ava{width:32px;height:32px;font-size:11.5px}
+    .lp-link-btn{border:0;background:none;color:var(--pri);font-size:12px;font-weight:600;cursor:pointer;padding:0;margin-top:8px;font-family:var(--font)}
+    .lp-link-btn:hover{text-decoration:underline}
+    .lp-kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .lp-kpi{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border-lt);border-radius:10px;background:#f8fafc;min-width:0}
+    .lp-kpi-ic{width:32px;height:32px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .lp-kpi-ic svg{width:16px!important;height:16px!important}
+    .lp-kpi-v{font-family:var(--font-heading);font-size:18px;font-weight:700;color:var(--text);line-height:1.1}
+    .lp-kpi-l{font-size:11.5px;color:var(--text2)}
+    .lp-kpi-s{font-size:10.5px;color:var(--text3)}
+    .lp-qd-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-lt);font-size:12.5px}
+    .lp-qd-row:last-child{border-bottom:0}
+    .lp-qd-row span:first-child{color:var(--text3)}
+    .lp-qd-row span:last-child{color:var(--text);font-weight:500;text-align:right}
+    .lp-team-h-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .lp-opt{font-size:10.5px;font-weight:600;color:#2563eb;background:#eff6ff;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle}
+    .lp-count-chip{font-size:10.5px;font-weight:600;color:var(--text2);background:#f1f5f9;border-radius:999px;padding:2px 8px;white-space:nowrap}
+    .lp-plist{display:flex;flex-direction:column;gap:6px}
+    .lp-prow{display:flex;align-items:center;gap:9px;padding:7px 8px 7px 9px;border:1px solid var(--border-lt);border-radius:10px;background:#fff;min-width:0}
+    .lp-prow .lp-ava{width:30px;height:30px;font-size:11px}
+    .lp-prow-main{flex:1;min-width:0}
+    .lp-prow-n{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
+    .lp-prow-s{font-size:11px;color:var(--text3);line-height:1.3;overflow-wrap:anywhere}
+    .lp-team-h{white-space:nowrap}
+    .lp-prow .badge{flex-shrink:0;font-size:10.5px}
+    .lp-add-person{margin-top:8px}
+    .lp-team-col{padding:2px 14px}
+    /* mid widths (laptops): ownership across the top in three mini-columns, SMEs | Facilitators below */
+    @container (max-width:880px){.lp-team-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:12px}.lp-team-col:first-child{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 16px;padding:0 0 12px!important;border-bottom:1px solid var(--border-lt)}.lp-team-col:first-child .lp-team-block{margin-bottom:0}.lp-team-col:nth-child(2){border-left:0;padding-left:0}}
+    @container (max-width:560px){.lp-team-grid{grid-template-columns:minmax(0,1fr)}.lp-team-col:first-child{grid-template-columns:minmax(0,1fr);gap:10px}.lp-team-col{border-left:0!important;padding:12px 0!important}.lp-team-col:nth-child(3){border-top:1px solid var(--border-lt)}}
+    @container (max-width:640px){.lp-pi-compact .lp-pi-span-4{grid-column:span 6}}
     @media (max-width:1100px){.lp-l1-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:1100px){.lp-team-grid{grid-template-columns:minmax(0,1fr)}.lp-team-col{border-left:0;padding:12px 0;border-top:1px solid var(--border-lt)}.lp-team-col:first-child{border-top:0;padding-top:0}}
+    /* v5.04 (2026-10-15, per Sandra): Curriculum KPIs, method badges, read-only sidebar, resource list */
+    .lp-cur-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .lp-cur-kpis .lp-kpi-l{font-size:11.5px;color:var(--text3)}
+    .lp-cur-kpis .lp-kpi-v{font-size:19px}
+    @container (max-width:560px){.lp-cur-kpis{grid-template-columns:minmax(0,1fr)}}
+    .lp-mchip{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;margin:1px 4px 1px 0;white-space:nowrap}
+    .lp-mchip button{border:0;background:none;color:inherit;cursor:pointer;padding:0 0 0 2px;font-size:12px;line-height:1;opacity:.7}
+    .lp-mcell{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+    .lp-msel{height:24px;font-size:11px;border:1px dashed #93c5fd;border-radius:6px;color:var(--pri);background:#f8fbff;padding:0 4px;font-family:var(--font);max-width:110px}
+    .lp-side-sec{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:10px}
+    .lp-side-sec .lp-team-h-row{margin-bottom:6px;font-size:12.5px}
+    .lp-side-person{display:flex;align-items:center;gap:9px;padding:5px 0}
+    .lp-side-person .lp-ava{width:30px;height:30px;font-size:11px}
+    .lp-res-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-lt);font-size:12.5px}
+    .lp-res-row:last-of-type{border-bottom:0}
+    .lp-res-ic{color:#2563eb;display:inline-flex}.lp-res-ic svg{width:15px!important;height:15px!important}
+    .lp-res-t{flex:1;min-width:0;color:var(--text);font-weight:500;overflow-wrap:anywhere}
+    .lp-res-d{font-size:11px;color:var(--text3);white-space:nowrap}
+    .lp-res-edit{display:flex;flex-direction:column;gap:6px}
+    .lp-res-fic{width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .lp-res-fic svg{width:15px!important;height:15px!important}
+    .lp-res-f{display:block;font-size:10.5px;color:var(--text3);font-weight:400}
+    .lp-cur-card .lp-hd-actions{flex-wrap:nowrap}
+    .lp-topic-tbl-edit{min-width:700px}
+    .lp-topic-tbl-edit td.lp-tact{padding-left:4px;padding-right:6px}
+    .lp-topic-tbl-edit .lp-part-sel{width:72px}
+    .lp-side-card .lp-card-hd .lp-link-btn{white-space:nowrap}
+    .lp-side-card .lp-card-t{font-size:14px}
+    .lp-res-erow{display:flex;gap:6px;align-items:center}
+    /* v5.04: team grid stacking now follows its column width (container query below), not the viewport. */
     .lp-map-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-lt);font-size:12.5px;cursor:pointer}
     .lp-map-row:last-child{border-bottom:0}
     .lp-map-row span{min-width:0;overflow-wrap:anywhere}
@@ -3781,8 +3859,12 @@ const _FIELD_MAPS = {
     components:'components', agenda:'agenda', deliveryParts:'delivery_parts', allowedModalities:'allowed_modalities', assessments:'assessments', evaluationConfig:'evaluation_config', l3Required:'l3_required', l3Notes:'l3_notes', createdBy:'created_by', updatedBy:'updated_by',
     programFamilyId:'program_family_id', supersedesProgramId:'supersedes_program_id', retirementReason:'retirement_reason', revision:'revision', revisionHistory:'revision_history', createdAt:'created_at', updatedAt:'updated_at',
     // v5.02 (2026-10-14, per Sandra): administrative metadata -- outside the version lock.
-    ownership:'ownership', ownerDepartmentId:'owner_department_id', audienceIds:'audience_ids', prerequisiteProgramIds:'prerequisite_program_ids', prerequisiteItemIds:'prerequisite_item_ids'
+    ownership:'ownership', ownerDepartmentId:'owner_department_id', audienceIds:'audience_ids', prerequisiteProgramIds:'prerequisite_program_ids', prerequisiteItemIds:'prerequisite_item_ids',
+    learningResources:'learning_resources' // v5.04 (2026-10-15, per Sandra): resource inventory titles [{id,title,updatedAt}]
   },
+  learning_methods:{ id:'id', name:'name', isActive:'is_active' }, // v5.04: Learning Method list (Settings → Lists)
+  // v5.04: dated L1 targets; programFamilyId null = organisation default
+  l1_targets:{ id:'id', programFamilyId:'program_family_id', metric:'metric', target:'target', effectiveFrom:'effective_from', effectiveTo:'effective_to', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by' },
   // v5.02 (2026-10-14, per Sandra): Setup Mode flag, prerequisite list, SME & External Contacts, program SMEs/facilitators.
   app_flags:{ key:'key', value:'value', updatedAt:'updated_at', updatedBy:'updated_by' },
   lp_prerequisites:{ id:'id', name:'name', isActive:'is_active' },
@@ -3828,9 +3910,9 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] },
   // v5.02: tables added by a migration that may not be applied yet -- a load error here must not block the app.
-  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people']),
+  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets']),
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -3895,7 +3977,7 @@ const Store = {
   CHECKLIST_TEMPLATES:'checklist_templates', SESSION_CHECKLISTS:'session_checklists',
   DEPARTMENTS:'departments', ATTENDANCE_SETTINGS:'attendance_settings', WORKLOAD_SETTINGS:'workload_settings', PH_HOLIDAYS:'ph_holidays', WORKLOAD_PCT_HISTORY:'workload_pct_history',
   KPI_SETTINGS:'kpi_settings', KPI_SNAPSHOTS:'kpi_monthly_snapshots', KPI_TARGETS:'kpi_targets', LEARNING_PROGRAMS:'learning_programs', PROGRAM_TYPES:'program_types',
-  APP_FLAGS:'app_flags', LP_PREREQS:'lp_prerequisites', LND_CONTACTS:'lnd_contacts', LP_PEOPLE:'learning_program_people',
+  APP_FLAGS:'app_flags', LP_PREREQS:'lp_prerequisites', LND_CONTACTS:'lnd_contacts', LP_PEOPLE:'learning_program_people', LEARNING_METHODS:'learning_methods', L1_TARGETS:'l1_targets',
   EVALS:'evaluations', CQA:'cdqa_reviews', TRSESSIONS:'training_sessions', AUDIT:'audit_log',
   get(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
   set(k,v){ localStorage.setItem(k,JSON.stringify(v)); },
@@ -5685,8 +5767,9 @@ async function _lpPersist(id,patch){
      directory. Linked to the program FAMILY so they carry across versions. Contacts never get app access. */
 const LP_OWNERSHIP_REQUIRED_FROM='2026-10-14';
 const LP_CONTACT_TYPES=[['internal_sme','Internal SME'],['external_sme','External SME'],['external_facilitator','External Facilitator'],['other','Other']];
-const LP_ACCRED=[['accredited','Accredited','#dcfce7','#15803d'],['pending','Pending','#fef3c7','#92400e'],['expired','Expired','#fee2e2','#b91c1c'],['revoked','Revoked','#f1f5f9','#475569']];
+const LP_ACCRED=[['accredited','Accredited','#dcfce7','#15803d'],['pending','Pending','#fef3c7','#92400e'],['expired','For Renewal','#fee2e2','#b91c1c'],['revoked','Revoked','#f1f5f9','#475569']];
 let _lpTeamEdit=false, _lpTeamDraft=null, _lpPickQ={sme:'',facilitator:'',prereq:''};
+let _lpContribManage=false, _lpPickOpen={sme:false,facilitator:false}; // v5.04
 const LpPeopleDB={
   all(){ return (Cache.data[Store.LP_PEOPLE]||[]).slice(); },
   forFamily(fid,role){ return this.all().filter(r=>r.programFamilyId===fid&&(!role||r.role===role)); }
@@ -5712,8 +5795,11 @@ function _lpPerson(r){
 }
 function _lpPersonAva(name,ext){ return `<span class="lp-ava" style="background:${ext?'#64748b':'#2563eb'}">${Utils.esc(Utils.initials(name))}</span>`; }
 function _lpAccredState(r){ return r.accreditationStatus==='accredited'&&r.expiresOn&&r.expiresOn<_lpToday()?'expired':(r.accreditationStatus||'pending'); }
-function _lpAccredBadge(r){ const st=_lpAccredState(r), d=LP_ACCRED.find(x=>x[0]===st)||LP_ACCRED[1]; return `<span class="badge" style="background:${d[2]};color:${d[3]}"${st!==r.accreditationStatus?' title="Past its expiry date"':''}>${d[1]}</span>`; }
-function _lpCanEditTeam(p){ return !!p&&lpCanEdit()&&p.id!=='__draft__'&&p.status!=='inactive'&&!_lpEditMode&&_lpMetaReady(); }
+function _lpAccredBadge(r){ const st=_lpAccredState(r), d=LP_ACCRED.find(x=>x[0]===st)||LP_ACCRED[1]; return `<span class="badge" style="background:${d[2]};color:${d[3]}"${st!==r.accreditationStatus?' title="Accreditation is past its expiry date and needs renewal"':''}>${d[1]}</span>`; }
+// v5.04b (2026-10-15, per Sandra): one edit mode for the whole Overview. Team fields edit the page working copy
+// (saved with Save); SMEs / facilitators are linked immediately while editing (they need the saved program record).
+function _lpOverviewEditing(){ return _lpEditMode&&['full','details'].includes(_lpEditScope)&&lpCanEdit(); }
+function _lpCanEditTeam(p){ return !!p&&p.id!=='__draft__'&&p.status!=='inactive'&&_lpOverviewEditing()&&_lpMetaReady(); }
 function _lpOwnershipText(p){
   if(p.ownership==='ld') return '<span class="badge" style="background:#dcfce7;color:#15803d">L&amp;D-Owned</span>';
   if(p.ownership==='non_ld') return `<span class="badge" style="background:#eff6ff;color:#1d4ed8">Non-L&amp;D-Owned</span> <span style="font-size:12.5px;color:var(--text2)">${Utils.esc(Sel.nameOf(Store.DEPARTMENTS,p.ownerDepartmentId)||'Department not set')}</span>`;
@@ -5729,10 +5815,9 @@ function _lpPrereqChips(d,editing){
 function _lpTeamHtml(p){
   const esc=Utils.esc;
   const shell=(body,right='')=>`<div class="card lp-card lp-team-card" id="lp-team-card"><div class="lp-card-hd"><div><span class="lp-card-t">Program Ownership &amp; Delivery Team</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Who owns the program, its subject matter experts, and who is accredited to facilitate it. Changes here never create a new version.</div></div>${right}</div>${body}</div>`;
-  if(p.id==='__draft__') return shell('<div class="lp-muted" style="font-size:12.5px">Save the draft first. Ownership, target audience, prerequisites, SMEs and accredited facilitators are added once the program record exists.</div>');
   if(!_lpMetaReady()) return shell('<div class="lp-muted" style="font-size:12.5px">Not available yet: the v5.02 database update has not been applied.</div>');
-  const can=_lpCanEditTeam(p), editing=_lpTeamEdit&&can, d=editing?_lpTeamDraft:p, fid=_lpFamilyId(p);
-  const right=can?(editing?`<div class="lp-edit-actions"><button class="btn btn-secondary btn-sm" onclick="lpTeamCancel()">Cancel</button><button class="btn btn-primary btn-sm" id="lp-team-save" onclick="lpTeamSave()">Save</button></div>`:`<button class="btn btn-secondary btn-sm" onclick="lpTeamEditStart()">${_lpIc(LP_IC.edit)} Edit</button>`):'';
+  const isDraft=p.id==='__draft__', can=_lpCanEditTeam(p), editing=_lpOverviewEditing()&&!!_lpTeamDraft&&p.status!=='inactive', d=editing?_lpTeamDraft:p, fid=_lpFamilyId(p);
+  const right='';
   // Column 1: ownership, audience, prerequisites (row fields; edited together with Edit/Save)
   const depts=Sel.active(Store.DEPARTMENTS), curDept=d.ownerDepartmentId&&!depts.some(x=>x.id===d.ownerDepartmentId)?Sel.byId(Store.DEPARTMENTS,d.ownerDepartmentId):null;
   const auds=Sel.active(Store.AUDIENCES), audIds=d.audienceIds||[];
@@ -5753,19 +5838,72 @@ function _lpTeamHtml(p){
     </div>
   </div>`;
   // Columns 2-3: SMEs and facilitators (saved immediately; available whenever the program is editable)
+  /* v5.04 (2026-10-15, per Sandra): compact person rows -- avatar, name, role/source, accreditation badge (facilitators)
+     and a three-dot menu. Status changes go through Edit Accreditation; removing only unlinks the person from this program. */
   const peopleCol=(role)=>{
     const rows=LpPeopleDB.forFamily(fid,role).map(r=>({r,pp:_lpPerson(r)})).sort((a,b)=>a.pp.name.localeCompare(b.pp.name));
     const fac=role==='facilitator';
-    const list=rows.map(({r,pp})=>`<div class="lp-team-row">${_lpPersonAva(pp.name,pp.ext)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(pp.name)}${pp.inactive?' <span class="lp-muted" style="font-size:11px">(inactive)</span>':''}</div><div class="lp-crole" style="color:var(--text3)">${esc(pp.sub)}${fac&&r.expiresOn?` · Expires ${esc(Utils.formatDate(r.expiresOn))}`:''}</div></div>
-      ${fac?(can?`<select aria-label="Accreditation status" onchange="lpPeopleSetStatus('${esc(r.id)}',this.value)">${LP_ACCRED.map(x=>`<option value="${x[0]}" ${x[0]===r.accreditationStatus?'selected':''}>${x[1]}</option>`).join('')}</select>`:_lpAccredBadge(r)):''}
-      ${can?`${fac?`<button class="btn btn-ghost btn-xs" title="Accreditation dates and notes" onclick="lpPeopleDetails('${esc(r.id)}')">Details</button>`:''}<button class="lp-icon-btn" title="Remove from this program" onclick="lpPeopleRemove('${esc(r.id)}')">${_lpIc(LP_IC.x)}</button>`:''}</div>`).join('');
-    return `<div class="lp-team-col"><div class="lp-team-h">${fac?'Accredited Facilitators':'Subject Matter Experts (SMEs)'}</div><div class="lp-team-sub">${fac?'People authorized to facilitate this program. Accreditation applies to this program only.':'Subject expertise and content accuracy. Optional.'}</div>
-      ${list||`<div class="lp-muted" style="font-size:12.5px;padding:4px 0">${fac?'No facilitators yet.':'No SMEs yet.'}</div>`}
-      ${can?`<div class="lp-pick"><input type="text" class="form-control" id="lp-pick-${role}" placeholder="${fac?'Add facilitator: search roster or contacts…':'Add SME: search roster or contacts…'}" autocomplete="off" oninput="lpPickInput('${role}',this.value)"><div class="lp-pick-res" id="lp-pick-res-${role}"></div></div>`:''}
+    const menu=(r)=>{
+      const items=fac
+        ?[`<div class="td-viewmenu-item" onclick="lpPeopleView('${esc(r.id)}')">View Details</div>`,can?`<div class="td-viewmenu-item" onclick="lpPeopleDetails('${esc(r.id)}')">Edit Accreditation</div>`:'',can?`<div class="td-viewmenu-item" style="color:var(--red)" onclick="lpPeopleRemove('${esc(r.id)}')">Remove from Program</div>`:'']
+        :[`<div class="td-viewmenu-item" onclick="lpPeopleView('${esc(r.id)}')">View Contact Details</div>`,r.contactId&&Auth.isAdmin?`<div class="td-viewmenu-item" onclick="lpContactOpen('${esc(r.contactId)}')">Edit Contact</div>`:'',can?`<div class="td-viewmenu-item" style="color:var(--red)" onclick="lpPeopleRemove('${esc(r.id)}')">Remove from Program</div>`:''];
+      return `<div class="td-viewmenu-wrap lp-menu-wrap" onclick="event.stopPropagation()"><button type="button" class="lp-icon-btn" title="More actions" aria-label="More actions for ${esc(_lpPerson(r).name)}" aria-haspopup="true" onclick="lpToggleMenu(this)">${_lpIc(LP_IC.dots)}</button><div class="td-viewmenu lp-menu">${items.join('')}</div></div>`;
+    };
+    const list=rows.map(({r,pp})=>`<div class="lp-prow">${_lpPersonAva(pp.name,pp.ext)}<div class="lp-prow-main"><div class="lp-prow-n">${esc(pp.name)}${pp.inactive?' <span class="lp-muted" style="font-size:11px;font-weight:400">(inactive)</span>':''}</div><div class="lp-prow-s">${esc(pp.sub)}${fac&&r.expiresOn?` · Expires ${esc(Utils.formatDate(r.expiresOn))}`:''}</div></div>${fac?_lpAccredBadge(r):''}${menu(r)}</div>`).join('');
+    const open=can&&_lpPickOpen[role];
+    return `<div class="lp-team-col"><div class="lp-team-h-row"><div class="lp-team-h">${fac?'Accredited Facilitators':'Subject Matter Experts'}${fac?'':' <span class="lp-opt">Optional</span>'}</div>${rows.length?`<span class="lp-count-chip">${rows.length} ${rows.length===1?'person':'people'}</span>`:''}</div><div class="lp-team-sub">${fac?'Authorized to facilitate this program. Accreditation applies to this program only.':'Subject expertise and content accuracy.'}</div>
+      <div class="lp-plist">${list||`<div class="lp-muted" style="font-size:12.5px;padding:4px 0">${fac?'No facilitators yet.':'No SMEs yet.'}</div>`}</div>
+      ${open?`<div class="lp-pick"><input type="text" class="form-control lp-tin" id="lp-pick-${role}" placeholder="Search roster or contacts…" autocomplete="off" oninput="lpPickInput('${role}',this.value)" onkeydown="if(event.key==='Escape')lpPickToggle('${role}',false)"><div class="lp-pick-res" id="lp-pick-res-${role}"></div><button type="button" class="lp-link-btn" onclick="lpPickToggle('${role}',false)">Cancel</button></div>`
+        :can?`<button type="button" class="lp-add-topic lp-add-person" onclick="lpPickToggle('${role}',true)">+ ${fac?'Add Accredited Facilitator':'Add SME / Contact'}</button>`:''}
     </div>`;
   };
-  return shell(`<div class="lp-team-grid">${col1}${peopleCol('sme')}${peopleCol('facilitator')}</div>`,right);
+  const draftPeople=`<div class="lp-team-col"><div class="lp-team-h">Subject Matter Experts</div><div class="lp-team-sub">Added after the draft is first saved.</div></div><div class="lp-team-col"><div class="lp-team-h">Accredited Facilitators</div><div class="lp-team-sub">Added after the draft is first saved.</div></div>`;
+  return shell(`<div class="lp-team-grid">${col1}${isDraft?draftPeople:peopleCol('sme')+peopleCol('facilitator')}</div>${can?'<div class="lp-muted" style="font-size:11px;margin-top:8px">SME and facilitator changes are saved as you make them. Ownership, audience and prerequisites are saved with the page.</div>':''}`,right);
 }
+function _lpBindTeamDraft(w){
+  if(!w){ _lpTeamDraft=null; return; }
+  w.ownership=w.ownership||null; w.ownerDepartmentId=w.ownerDepartmentId||null;
+  ['audienceIds','prerequisiteProgramIds','prerequisiteItemIds'].forEach(k=>{ w[k]=[...(w[k]||[])]; });
+  w.learningResources=(w.learningResources||[]).map(x=>({...x}));
+  _lpTeamDraft=w; _lpPickOpen={sme:false,facilitator:false};
+}
+function _lpTeamPatch(w,before){
+  if(!_lpMetaReady()) return {};
+  const out={ownership:w.ownership||null,ownerDepartmentId:w.ownership==='non_ld'?(w.ownerDepartmentId||null):null,audienceIds:[...(w.audienceIds||[])],prerequisiteProgramIds:[...(w.prerequisiteProgramIds||[])],prerequisiteItemIds:[...(w.prerequisiteItemIds||[])]};
+  if(_lpV504Ready()){ // v5.04: resource inventory -- Last Updated is stamped only when a title is added or renamed in LEAP
+    const prev=new Map((before?.learningResources||[]).map(x=>[x.id,x])), now=new Date().toISOString();
+    out.learningResources=(w.learningResources||[]).map(x=>{
+      const t=(x.title||'').trim(), f=LP_RES_FORMATS.some(k=>k[0]===x.format)?x.format:'online', fo=f==='other'?(x.formatOther||'').trim():'', o=prev.get(x.id);
+      const same=o&&o.title===t&&(o.format||'online')===f&&(o.formatOther||'')===fo&&o.updatedAt;
+      const r={...x,title:t,format:f,updatedAt:same?o.updatedAt:now}; if(fo) r.formatOther=fo; else delete r.formatOther; return r;
+    });
+  }
+  return out;
+}
+// v5.04 (2026-10-15, per Sandra): resource format with icon; default Online Resource; Other = free text.
+const LP_RES_FORMATS=[['online','Online Resource','#0369a1','#e0f2fe','<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.5 3.6 5.3 3.6 8.5s-1.2 6-3.6 8.5c-2.4-2.5-3.6-5.3-3.6-8.5S9.6 6 12 3.5Z"/>'],
+  ['slides','Slide Deck (PowerPoint)','#c2410c','#ffedd5','<rect x="3.5" y="4" width="17" height="12" rx="1.5"/><path d="M12 16v4M8.5 20h7M8 8h5M8 11h8"/>'],
+  ['document','Document (Word)','#1d4ed8','#dbeafe','<path d="M6.5 3.5h7.5l4 4v13h-11.5Z"/><path d="M13.5 3.5v4.5h4.5M9 12.5h6M9 15.5h6"/>'],
+  ['spreadsheet','Spreadsheet (Excel)','#15803d','#dcfce7','<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M10 4v16"/>'],
+  ['pdf','PDF','#b91c1c','#fee2e2','<path d="M6.5 3.5h7.5l4 4v13h-11.5Z"/><path d="M13.5 3.5v4.5h4.5"/><path d="M8.5 16.5v-4h1.5a1.2 1.2 0 0 1 0 2.4H8.5"/>'],
+  ['video','Video','#7e22ce','#f3e8ff','<rect x="3.5" y="6" width="12.5" height="12" rx="1.5"/><path d="m16 10.5 4.5-2.5v8l-4.5-2.5"/>'],
+  ['image','Image / Visual Aid','#0f766e','#ccfbf1','<rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 3.5 3.5 2.5-2.5 5 5"/>'],
+  ['printed','Printed Material','#475569','#f1f5f9','<path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8" rx="1.5"/><path d="M7 14h10v6.5H7Z"/>'],
+  ['other','Other','#475569','#f1f5f9','<path d="M6.5 3.5h7.5l4 4v13h-11.5Z"/><path d="M13.5 3.5v4.5h4.5"/>']];
+function _lpResFmt(x){ return LP_RES_FORMATS.find(f=>f[0]===(x?.format||'online'))||LP_RES_FORMATS[0]; }
+function _lpResIcon(x){ const f=_lpResFmt(x); return `<span class="lp-res-fic" style="background:${f[3]};color:${f[2]}" title="${Utils.esc(x?.format==='other'&&x?.formatOther?x.formatOther:f[1])}">${_lpIc(f[4])}</span>`; }
+function _lpResFmtLabel(x){ const f=_lpResFmt(x); return x?.format==='other'&&(x.formatOther||'').trim()?x.formatOther.trim():f[1]; }
+function lpResFormat(i,v){ const p=_lpCur(); if(!p||!_lpOverviewEditing()||!p.learningResources?.[i]) return; _lpCapturePageFields(); p.learningResources[i]={...p.learningResources[i],format:v}; if(v!=='other') delete p.learningResources[i].formatOther; renderLearningPrograms(); }
+function lpResFormatOther(i,v){ const p=_lpCur(); if(!p||!_lpOverviewEditing()||!p.learningResources?.[i]) return; p.learningResources[i]={...p.learningResources[i],formatOther:v}; }
+function _lpV504Ready(){ return (Cache.data[Store.LEARNING_METHODS]||[]).length>0; }
+function _lpResourceError(w){
+  const list=w.learningResources||[];
+  let i=list.findIndex(x=>!(x.title||'').trim()); if(i>=0) return `Learning resource ${i+1} needs a title.`;
+  i=list.findIndex(x=>x.format==='other'&&!(x.formatOther||'').trim()); return i>=0?`Learning resource ${i+1} needs the Other format specified.`:'';
+}
+function lpResAdd(){ const p=_lpCur(); if(!p||!_lpOverviewEditing()) return; _lpCapturePageFields(); p.learningResources=[...(p.learningResources||[]),{id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title:'',format:'online'}]; renderLearningPrograms(); requestAnimationFrame(()=>{ const ins=document.querySelectorAll('#lp-res-edit input'); ins[ins.length-1]?.focus(); }); }
+function lpResEdit(i,v){ const p=_lpCur(); if(!p||!_lpOverviewEditing()||!p.learningResources?.[i]) return; p.learningResources[i]={...p.learningResources[i],title:v}; }
+function lpResRemove(i){ const p=_lpCur(); if(!p||!_lpOverviewEditing()) return; _lpCapturePageFields(); p.learningResources=(p.learningResources||[]).filter((_,k)=>k!==i); renderLearningPrograms(); }
 function lpTeamEditStart(){
   const p=_lpCur(); if(!_lpCanEditTeam(p)) return;
   _lpTeamDraft={ownership:p.ownership||null,ownerDepartmentId:p.ownerDepartmentId||null,audienceIds:[...(p.audienceIds||[])],prerequisiteProgramIds:[...(p.prerequisiteProgramIds||[])],prerequisiteItemIds:[...(p.prerequisiteItemIds||[])]};
@@ -5834,6 +5972,21 @@ function _lpPickResults(role){
     +(!users.length&&!contacts.length&&exact?'<div class="lp-pick-item lp-muted" style="cursor:default">Already added to this program.</div>':'')
     +(exact?'':`<div class="lp-pick-item lp-pick-new" onmousedown="event.preventDefault();lpContactOpen(null,{role:'${role}',fromPick:true})">+ Add new contact “${esc(raw)}”</div>`);
 }
+function lpPickToggle(role,on){
+  _lpPickOpen[role]=!!on; _lpPickQ[role]=''; renderLearningPrograms();
+  if(on) requestAnimationFrame(()=>document.getElementById('lp-pick-'+role)?.focus());
+}
+// v5.04: read-only details for an SME / facilitator (roster person or directory contact).
+function lpPeopleView(id){
+  const r=LpPeopleDB.all().find(x=>x.id===id); if(!r) return; const esc=Utils.esc;
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  const row=(l,v)=>v?`<div style="display:flex;gap:12px;padding:5px 0;border-bottom:1px solid var(--border-lt);font-size:13px"><span style="width:140px;color:var(--text3);flex-shrink:0">${l}</span><span style="min-width:0;overflow-wrap:anywhere">${v}</span></div>`:'';
+  let html='';
+  if(r.profileId){ const u=DB.byId(r.profileId)||{}; html+=row('Name',esc(`${u.firstName||''} ${u.lastName||''}`.trim()||'Unknown user'))+row('Source','Employee roster')+row('Position',esc(Sel.nameOf(Store.POS,u.positionId)||''))+row('Department',esc(Sel.nameOf(Store.DEPARTMENTS,u.departmentId)||''))+row('Email',esc(u.email||'')); }
+  else { const c=LndContactDB.byId(r.contactId)||{}; html+=row('Name',esc(c.fullName||'Unknown contact'))+row('Source','SME & External Contacts')+row('Contact Type',esc(_lpContactTypeLabel(c.contactType)))+row('Organization',esc(c.organization||''))+row('Position',esc(c.position||''))+row('Email',esc(c.email||''))+row('Notes',esc(c.notes||''))+row('Status',c.isActive===false?'Inactive':'Active'); }
+  if(r.role==='facilitator') html+=row('Accreditation',_lpAccredBadge(r))+row('Accredited On',r.accreditedOn?esc(Utils.formatDate(r.accreditedOn)):'—')+row('Expires On',r.expiresOn?esc(Utils.formatDate(r.expiresOn)):'—')+row('Accreditation Notes',esc(r.notes||''));
+  confirm$(r.role==='facilitator'?'Facilitator Details':'Contact Details',`<div style="margin-top:-4px">${html}</div>`,'Close',null,true);
+}
 function lpPickInput(role,v){
   _lpPickQ[role]=v;
   const el=document.getElementById('lp-pick-res-'+role); if(!el) return;
@@ -5850,10 +6003,9 @@ async function lpPeopleAdd(role,kind,id){
   const {data,error}=await sb.from(Store.LP_PEOPLE).insert(row).select().single();
   if(error){ _surfaceDbError(error,'Add person'); return; }
   const saved=rowToCamel(Store.LP_PEOPLE,data); Cache.data[Store.LP_PEOPLE].push(saved);
-  _lpPickQ[role]='';
+  _lpPickQ[role]=''; _lpPickOpen[role]=false;
   await AuditLog.record('update','Learning Program',p.id,`Added ${role==='facilitator'?'accredited facilitator':'SME'} ${_lpPerson(saved).name} to ${p.code} (no version change)`);
   renderLearningPrograms();
-  requestAnimationFrame(()=>document.getElementById('lp-pick-'+role)?.focus());
 }
 async function _lpPeopleUpdate(id,patch,summary){
   const p=_lpCur(); if(!_lpCanEditTeam(p)) return null;
@@ -5871,7 +6023,8 @@ async function lpPeopleSetStatus(id,status){
 }
 function lpPeopleDetails(id){
   const r=LpPeopleDB.all().find(x=>x.id===id); if(!r) return; const esc=Utils.esc;
-  confirm$(`Accreditation · ${esc(_lpPerson(r).name)}`,`<label class="form-label" for="lp-acc-status">Status</label><select id="lp-acc-status" class="form-control">${LP_ACCRED.map(x=>`<option value="${x[0]}" ${x[0]===r.accreditationStatus?'selected':''}>${x[1]}</option>`).join('')}</select>
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  confirm$(`Edit Accreditation · ${esc(_lpPerson(r).name)}`,`<label class="form-label" for="lp-acc-status">Status</label><select id="lp-acc-status" class="form-control">${LP_ACCRED.map(x=>`<option value="${x[0]}" ${x[0]===r.accreditationStatus?'selected':''}>${x[1]}</option>`).join('')}</select>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div><label class="form-label" for="lp-acc-on">Accreditation Date</label><input type="date" id="lp-acc-on" class="form-control" value="${esc(r.accreditedOn||'')}"></div><div><label class="form-label" for="lp-acc-exp">Expiry Date</label><input type="date" id="lp-acc-exp" class="form-control" value="${esc(r.expiresOn||'')}"></div></div>
     <label class="form-label" for="lp-acc-notes" style="margin-top:10px">Notes</label><textarea id="lp-acc-notes" class="form-control" rows="2" maxlength="500">${esc(r.notes||'')}</textarea>`,'Save',async()=>{
     const v=x=>document.getElementById(x)?.value||'';
@@ -5884,7 +6037,8 @@ function lpPeopleDetails(id){
 function lpPeopleRemove(id){
   const p=_lpCur(), r=LpPeopleDB.all().find(x=>x.id===id); if(!r||!_lpCanEditTeam(p)) return;
   const who=_lpPerson(r).name, what=r.role==='facilitator'?'accredited facilitator':'SME';
-  confirm$(`Remove ${what}`,`Remove <b>${Utils.esc(who)}</b> as ${what} of this program? Their directory record and other programs are not affected.`,'Remove',async()=>{
+  document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
+  confirm$('Remove from Program',`Remove <b>${Utils.esc(who)}</b> as ${what} of this program? Only the link to this program is removed. Their ${r.profileId?'employee':'contact directory'} record and other programs are not affected.`,'Remove',async()=>{
     const {error}=await sb.from(Store.LP_PEOPLE).delete().eq('id',id);
     if(error){ _surfaceDbError(error,'Remove'); return; }
     const arr=Cache.data[Store.LP_PEOPLE], i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1);
@@ -5944,6 +6098,8 @@ function renderLpSettingsPane(){
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px;line-height:1.55">While on, <b>administrators</b> can edit in-use programs in place (agenda, evaluations, delivery setup) with no minor revision or new version. Each save is tagged <b>[Setup Mode]</b> in the Audit Log. Sessions created from a program keep their own saved copy; mapped historical sessions show their own details. Contributor history rules still apply.${flag?.updatedAt?` <br>Last changed ${Utils.esc(new Date(flag.updatedAt).toLocaleString('en-PH'))}${flag.updatedBy?' by '+Utils.esc(_lpName(flag.updatedBy)):''}.`:''}</div></div>
       ${Auth.isAdmin?`<button class="btn ${on?'btn-primary':'btn-secondary'} btn-sm" onclick="lpToggleSetupMode()">${on?'Turn Off Setup Mode':'Turn On Setup Mode'}</button>`:''}
     </div>
+    <div class="sec-hdr" style="margin-top:22px"><div><strong style="font-size:14px">Default L1 Targets</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Organisation-wide targets for the post-training survey. A program can set its own targets on its Evaluations tab; otherwise these apply. Each target has an effective-from date and an optional end date.</div></div></div>
+    <div class="card" style="padding:12px 16px;max-width:900px">${_l1TargetsTableHtml(null,!!Auth.isAdmin)}</div>
     <div class="sec-hdr" style="margin-top:22px"><div><strong style="font-size:14px">SME &amp; External Contacts</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">People without LEAP accounts who can be selected as SMEs or accredited facilitators on Learning Programs. Contacts never get app access. Linked contacts can be deactivated but not deleted.</div></div>${lpCanEdit()?'<button class="btn btn-primary btn-sm" onclick="lpContactOpen()">+ Add Contact</button>':''}</div>
     <div class="card" style="padding:12px 16px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
@@ -5998,6 +6154,143 @@ function lpToggleSetupMode(){
   document.getElementById('mc-ok').className='btn btn-primary';
 }
 
+/* ── v5.04 (2026-10-15, per Sandra): Learning Methods on curriculum topics + Curriculum sidebar ─────────────
+   Methods: ids from the learning_methods list, stored as agenda[i].methods (curriculum content -> normal
+   versioning / minor revision rules). Sidebar: read-only Ownership & Delivery Team and Learning Resources
+   (titles + last-updated date; edited on Overview, no version change). */
+const LP_METHOD_TONES=[['#e0f2fe','#0369a1'],['#dcfce7','#15803d'],['#f3e8ff','#7e22ce'],['#fef3c7','#b45309'],['#ede9fe','#6d28d9'],['#ccfbf1','#0f766e'],['#fee2e2','#b91c1c'],['#fce7f3','#be185d'],['#f1f5f9','#334155']];
+function _lpMethodTone(id){ const all=Sel.all(Store.LEARNING_METHODS); const i=all.findIndex(m=>m.id===id); return LP_METHOD_TONES[(i<0?all.length:i)%LP_METHOD_TONES.length]; }
+function _lpMethodChip(id,i,removable){
+  const [bg,fg]=_lpMethodTone(id), name=Sel.nameOf(Store.LEARNING_METHODS,id)||'Method unavailable';
+  return `<span class="lp-mchip" style="background:${bg};color:${fg}">${Utils.esc(name)}${removable?`<button type="button" aria-label="Remove ${Utils.esc(name)}" onclick="lpAgendaMethod(${i},'${Utils.esc(id)}',false)">×</button>`:''}</span>`;
+}
+function _lpMethodCell(a,i,editable){
+  const ids=a.methods||[];
+  const chips=ids.map(id=>_lpMethodChip(id,i,editable)).join('');
+  if(!editable) return chips||'<span class="lp-muted">—</span>';
+  const opts=Sel.active(Store.LEARNING_METHODS).filter(m=>!ids.includes(m.id));
+  return `<div class="lp-mcell">${chips}${opts.length?`<select class="lp-msel" aria-label="Add learning method" onchange="lpAgendaMethod(${i},this.value,true)"><option value="">+ Method</option>${opts.map(m=>`<option value="${Utils.esc(m.id)}">${Utils.esc(m.name)}</option>`).join('')}</select>`:''}</div>`;
+}
+function lpAgendaMethod(i,id,on){
+  const p=_lpCur(); if(!p||!_lpEditMode||!['full','revision'].includes(_lpEditScope)||!id||!p.agenda?.[i]) return;
+  _lpCapturePageFields();
+  const cur=new Set(p.agenda[i].methods||[]); on?cur.add(id):cur.delete(id);
+  p.agenda[i]={...p.agenda[i],methods:[...cur]}; renderLearningPrograms();
+}
+function _lpCurSidebarHtml(p){
+  const esc=Utils.esc, fid=_lpFamilyId(p), draft=p.id==='__draft__';
+  const viewLink=draft?'':`<button class="lp-link-btn" style="margin:0" onclick="lpSetTab('overview')">View in Overview →</button>`;
+  const qd=(l,v)=>`<div class="lp-qd-row"><span>${l}</span><span>${v}</span></div>`;
+  const people=(role)=>{
+    const rows=draft?[]:LpPeopleDB.forFamily(fid,role).map(r=>({r,pp:_lpPerson(r)})).sort((a,b)=>a.pp.name.localeCompare(b.pp.name));
+    const shown=rows.slice(0,3);
+    return `<div class="lp-side-sec"><div class="lp-team-h-row"><b>${role==='sme'?'Subject Matter Experts (SMEs)':'Accredited Facilitators'}</b>${rows.length?`<span class="lp-count-chip">${rows.length} ${rows.length===1?'person':'people'}</span>`:''}</div>
+      ${shown.length?shown.map(({r,pp})=>`<div class="lp-side-person">${_lpPersonAva(pp.name,pp.ext)}<div style="flex:1;min-width:0"><div class="lp-prow-n">${esc(pp.name)}</div><div class="lp-prow-s">${esc(pp.sub)}</div></div>${role==='facilitator'?_lpAccredBadge(r):''}</div>`).join(''):`<div class="lp-muted" style="font-size:12px;padding:4px 0">None yet.</div>`}
+      ${rows.length>3?`<button class="lp-link-btn" style="margin-top:2px" onclick="lpSetTab('overview')">View all ${role==='sme'?'SMEs':'facilitators'} (${rows.length}) →</button>`:''}</div>`;
+  };
+  const team=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Program Ownership &amp; Delivery Team</span>${viewLink}</div>
+    ${_lpMetaReady()?`${qd('Program Ownership',p.ownership==='ld'?'<span class="badge" style="background:#dcfce7;color:#15803d">L&amp;D-Owned</span>':p.ownership==='non_ld'?'<span class="badge" style="background:#eff6ff;color:#1d4ed8">Non-L&amp;D-Owned</span>':'<span class="badge" style="background:#fef3c7;color:#92400e">Not classified</span>')}
+    ${p.ownership==='non_ld'?qd('Owning Department',esc(Sel.nameOf(Store.DEPARTMENTS,p.ownerDepartmentId)||'—')):p.ownership==='ld'?qd('Owning Department','L&amp;D'):''}
+    ${people('sme')}${people('facilitator')}`:'<div class="lp-muted" style="font-size:12px">Not available yet.</div>'}</div>`;
+  const res=(p.learningResources||[]).filter(x=>(x.title||'').trim());
+  const resources=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Learning Resources</span>${res.length?`<span class="lp-count-chip" style="background:#eff6ff;color:#1d4ed8">${res.length} resource${res.length===1?'':'s'}</span>`:''}</div>
+    ${res.length?res.map(x=>`<div class="lp-res-row">${_lpResIcon(x)}<span class="lp-res-t">${esc(x.title)}<span class="lp-res-f">${esc(_lpResFmtLabel(x))}</span></span><span class="lp-res-d">${x.updatedAt&&!isNaN(new Date(x.updatedAt))?'Updated '+esc(Utils.formatDate(new Date(x.updatedAt).toLocaleDateString('en-CA',{timeZone:'Asia/Manila'}))):''}</span></div>`).join(''):'<div class="lp-muted" style="font-size:12px">No learning resources listed yet.</div>'}
+    <div class="lp-muted" style="font-size:11px;margin-top:8px">Resource titles are managed in Actions → Edit Overview.</div></div>`;
+  return team+resources;
+}
+
+/* ── v5.04 (2026-10-15, per Sandra): L1 targets ──────────────────────────────────────────────────────
+   Five measures with organisation defaults (Settings → Learning Programs, admin) and optional program-specific
+   targets (Evaluations tab, program editors). Every target has an effective-from and optional end date; the
+   target in force on a date is the program's own if one covers that date, otherwise the default. Stored in
+   l1_targets (not on the program row), so changes never create a new program version. */
+const LP_L1_METRICS=[['content','Learning Content Rating','1–5'],['material','Learning Material Rating','1–5'],['facilitator','Facilitator Effectiveness','1–5'],['csat','CSAT','1–5'],['nps','NPS','-100 to 100']];
+const L1TargetDB={
+  all(){ return (Cache.data[Store.L1_TARGETS]||[]).slice(); },
+  rows(fid,metric){ return this.all().filter(r=>(r.programFamilyId||null)===(fid||null)&&r.metric===metric).sort((a,b)=>(b.effectiveFrom||'').localeCompare(a.effectiveFrom||'')); },
+  at(fid,metric,date){
+    const cover=r=>r.effectiveFrom<=date&&(!r.effectiveTo||r.effectiveTo>=date);
+    const own=fid?this.rows(fid,metric).find(cover):null; if(own) return {row:own,source:'program'};
+    const def=this.rows(null,metric).find(cover); return def?{row:def,source:'default'}:null;
+  }
+};
+function _l1Ready(){ return (Cache.data[Store.L1_TARGETS]||[]).length>0; }
+function _l1Label(m){ return (LP_L1_METRICS.find(x=>x[0]===m)||[])[1]||m; }
+function _l1Fmt(m,v){ if(v===null||v===undefined||v==='') return '—'; const n=Number(v); return m==='nps'?String(Math.round(n)):n.toFixed(2).replace(/0$/,''); }
+function _lpAddDays(d,n){ const x=new Date(d+'T12:00:00Z'); x.setUTCDate(x.getUTCDate()+n); return x.toISOString().slice(0,10); }
+function _l1Range(r){ return `${Utils.formatDate(r.effectiveFrom)} – ${r.effectiveTo?Utils.formatDate(r.effectiveTo):'onwards'}`; }
+// Adds a dated target. An earlier open/longer target for the same measure is ended the day before; later ones must be adjusted first.
+async function _l1Save(fid,metric,target,from,to,label){
+  const n=Number(target);
+  if(!from) return 'Choose the effective-from date.';
+  if(to&&to<from) return 'The end date cannot be before the effective-from date.';
+  if(String(target).trim()===''||isNaN(n)) return 'Enter a target.';
+  if(metric==='nps'?(n<-100||n>100):(n<1||n>5)) return metric==='nps'?'NPS target must be from -100 to 100.':'Rating targets must be from 1 to 5.';
+  const rows=L1TargetDB.rows(fid,metric);
+  const clash=rows.find(r=>r.effectiveFrom>=from&&(!to||r.effectiveFrom<=to));
+  if(clash) return `A target is already set from ${Utils.formatDate(clash.effectiveFrom)}. End or adjust that one first.`;
+  const prev=rows.find(r=>r.effectiveFrom<from&&(!r.effectiveTo||r.effectiveTo>=from));
+  const me=Auth.user?.id||null, now=new Date().toISOString();
+  if(prev){
+    const {data,error}=await sb.from(Store.L1_TARGETS).update({effective_to:_lpAddDays(from,-1),updated_at:now,updated_by:me}).eq('id',prev.id).select().single();
+    if(error){ _surfaceDbError(error,'Save target'); return 'x'; }
+    const a=Cache.data[Store.L1_TARGETS], i=a.findIndex(x=>x.id===prev.id); if(i>=0) a[i]=rowToCamel(Store.L1_TARGETS,data);
+  }
+  const {data,error}=await sb.from(Store.L1_TARGETS).insert(patchToSnake(Store.L1_TARGETS,{programFamilyId:fid||null,metric,target:n,effectiveFrom:from,effectiveTo:to||null,createdBy:me,updatedBy:me,updatedAt:now})).select().single();
+  if(error){ _surfaceDbError(error,'Save target'); return 'x'; }
+  Cache.data[Store.L1_TARGETS].push(rowToCamel(Store.L1_TARGETS,data));
+  await AuditLog.record('update',fid?'Learning Program':'Settings',fid||'l1_targets',`${fid?'Set program':'Set default'} L1 target${label?' for '+label:''}: ${_l1Label(metric)} = ${_l1Fmt(metric,n)} effective ${from}${to?' to '+to:''}${prev?` (previous target ended ${_lpAddDays(from,-1)})`:''}`);
+  return '';
+}
+function lpL1TargetDialog(fid,metric){
+  const prog=fid?LearningProgramDB.byId(_lpDetailId):null;
+  if(fid?!lpCanEdit():!Auth.isAdmin) return;
+  const cur=L1TargetDB.at(fid,metric,_lpToday()), esc=Utils.esc, nps=metric==='nps';
+  confirm$(`${fid?'Program':'Default'} target · ${esc(_l1Label(metric))}`,`<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">${fid?`Applies to this program only (all versions). Current: <b>${esc(cur?_l1Fmt(metric,cur.row.target):'—')}</b> (${cur?cur.source==='program'?'program target':'default':'none'}).`:'Applies to every program without its own target.'} An earlier target for this measure ends the day before the new one starts.</div>
+    <label class="form-label" for="l1t-v">Target (${nps?'-100 to 100':'1 to 5'})</label><input id="l1t-v" class="form-control" type="number" ${nps?'min="-100" max="100" step="1"':'min="1" max="5" step="0.05"'} value="${esc(cur?_l1Fmt(metric,cur.row.target):'')}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div><label class="form-label" for="l1t-f">Effective From</label><input id="l1t-f" class="form-control" type="date" value="${_lpToday()}"></div><div><label class="form-label" for="l1t-t">End Date (optional)</label><input id="l1t-t" class="form-control" type="date"></div></div>`,'Save Target',async()=>{
+    const v=id=>document.getElementById(id)?.value||'';
+    const err=await _l1Save(fid,metric,v('l1t-v'),v('l1t-f'),v('l1t-t'),prog?`${prog.code}`:'');
+    if(err){ if(err!=='x') toast(err,'error'); return setTimeout(()=>lpL1TargetDialog(fid,metric),0); }
+    toast('Target saved.','success'); fid?renderLearningPrograms():renderLpSettingsPane();
+  });
+  document.getElementById('mc-ok').className='btn btn-primary';
+}
+// Ends (or removes, if not yet started) a target; for a program this returns the measure to the default.
+function lpL1TargetEnd(id){
+  const r=L1TargetDB.all().find(x=>x.id===id); if(!r) return;
+  if(r.programFamilyId?!lpCanEdit():!Auth.isAdmin) return;
+  const today=_lpToday(), future=r.effectiveFrom>today;
+  confirm$(future?'Remove scheduled target':'End target',`${future?'Remove':'End'} the ${r.programFamilyId?'program':'default'} ${Utils.esc(_l1Label(r.metric))} target of <b>${Utils.esc(_l1Fmt(r.metric,r.target))}</b> (${Utils.esc(_l1Range(r))})${future?'':' as of today'}?${r.programFamilyId?' The default target applies after that.':''}`,future?'Remove':'End Target',async()=>{
+    const q=future?sb.from(Store.L1_TARGETS).delete().eq('id',id):sb.from(Store.L1_TARGETS).update({effective_to:today,updated_at:new Date().toISOString(),updated_by:Auth.user?.id||null}).eq('id',id).select().single();
+    const {data,error}=await q;
+    if(error){ _surfaceDbError(error,'Save target'); return; }
+    const a=Cache.data[Store.L1_TARGETS], i=a.findIndex(x=>x.id===id);
+    if(future){ if(i>=0) a.splice(i,1); } else if(i>=0) a[i]=rowToCamel(Store.L1_TARGETS,data);
+    await AuditLog.record('update',r.programFamilyId?'Learning Program':'Settings',r.programFamilyId?(_lpDetailId||r.programFamilyId):'l1_targets',`${future?'Removed scheduled':'Ended'} ${r.programFamilyId?'program':'default'} L1 target ${_l1Label(r.metric)} = ${_l1Fmt(r.metric,r.target)} (${r.effectiveFrom}${r.effectiveTo?' to '+r.effectiveTo:''})`);
+    toast(future?'Scheduled target removed.':'Target ended.','success'); r.programFamilyId?renderLearningPrograms():renderLpSettingsPane();
+  });
+}
+let _l1ShowHistory=false;
+// Table used on the Evaluations tab (fid = program family) and in Settings (fid = null, defaults).
+function _l1TargetsTableHtml(fid,canEdit){
+  const esc=Utils.esc, today=_lpToday();
+  if(!_l1Ready()) return '<div class="lp-muted" style="font-size:12px">L1 targets are not available yet (database update pending).</div>';
+  const rows=LP_L1_METRICS.map(([m,label,scale])=>{
+    const cur=L1TargetDB.at(fid,m,today), next=L1TargetDB.rows(fid,m).find(r=>r.effectiveFrom>today);
+    const src=fid?(cur?.source==='program'?'<span class="badge" style="background:#eef2ff;color:#4338ca">Program</span>':'<span class="badge" style="background:#f1f5f9;color:#475569">Default</span>'):'';
+    const own=cur&&(fid?cur.source==='program':true)?cur.row:null;
+    return `<tr style="cursor:default"><td><b style="font-weight:600">${esc(label)}</b><div class="lp-muted" style="font-size:11px">Scale ${esc(scale)}</div></td>
+      <td style="font-family:var(--font-heading);font-weight:700;font-size:15px">${esc(cur?_l1Fmt(m,cur.row.target):'—')}</td>${fid?`<td>${src}</td>`:''}
+      <td style="font-size:12px">${cur?esc(_l1Range(cur.row)):'—'}${next?`<div class="lp-muted" style="font-size:11px">Next: ${esc(_l1Fmt(m,next.target))} from ${esc(Utils.formatDate(next.effectiveFrom))}</div>`:''}</td>
+      ${canEdit?`<td style="text-align:right;white-space:nowrap"><button class="btn btn-ghost btn-xs" onclick="lpL1TargetDialog(${fid?`'${esc(fid)}'`:'null'},'${m}')">${fid?'Set program target':'Set new target'}</button>${own&&fid?`<button class="btn btn-ghost btn-xs" onclick="lpL1TargetEnd('${esc(own.id)}')">${fid?'Use default':'End'}</button>`:''}</td>`:''}</tr>`;
+  }).join('');
+  const hist=L1TargetDB.all().filter(r=>(r.programFamilyId||null)===(fid||null)).sort((a,b)=>a.metric.localeCompare(b.metric)||(b.effectiveFrom||'').localeCompare(a.effectiveFrom||''));
+  return `<div class="lp-tbl-scroll"><table class="dash-tbl lp-eval-tbl"><thead><tr><th>Measure</th><th style="width:90px">Target</th>${fid?'<th style="width:90px">Source</th>':''}<th style="width:220px">In effect</th>${canEdit?'<th style="width:200px"></th>':''}</tr></thead><tbody>${rows}</tbody></table></div>
+    ${hist.length?`<button class="lp-link-btn" onclick="_l1ShowHistory=!_l1ShowHistory;${fid?'renderLearningPrograms()':'renderLpSettingsPane()'}">${_l1ShowHistory?'Hide':'Show'} target history (${hist.length})</button>`:''}
+    ${_l1ShowHistory&&hist.length?`<table class="dash-tbl" style="margin-top:6px"><thead><tr><th>Measure</th><th>Target</th><th>Effective</th><th style="width:120px"></th></tr></thead><tbody>${hist.map(r=>`<tr style="cursor:default"><td>${esc(_l1Label(r.metric))}</td><td>${esc(_l1Fmt(r.metric,r.target))}</td><td>${esc(_l1Range(r))}</td><td style="text-align:right">${canEdit&&(!r.effectiveTo||r.effectiveTo>=today)?`<button class="btn btn-ghost btn-xs" onclick="lpL1TargetEnd('${esc(r.id)}')">${r.effectiveFrom>today?'Remove':'End'}</button>`:''}</td></tr>`).join('')}</tbody></table>`:''}`;
+}
+
 /* ── list page ── */
 function _lpFiltered(){
   const q=lpF.q.trim().toLowerCase();
@@ -6037,8 +6330,15 @@ function _lpRowMenu(p,detail=false){
     <button type="button" class="${detail?'btn btn-primary btn-sm':'lp-icon-btn'}" title="Program actions" aria-label="Program actions" aria-haspopup="true" onclick="lpToggleMenu(this)">${detail?'Actions ▾':_lpIc(LP_IC.dots)}</button>
     <div class="td-viewmenu lp-menu">
       ${detail?'':`<div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>`}
+      ${detail&&can?(()=>{ /* v5.04c (2026-10-15, per Sandra): edit lives in the Actions menu (one entry per tab). */
+        const lk=_lpVersionLocked(p), it=(tab,scope,label,title='')=>`<div class="td-viewmenu-item" ${title?`title="${Utils.esc(title)}"`:''} onclick="lpStartEdit('${p.id}',false,'${scope}','${tab}')">${label}</div>`;
+        return it('overview',lk?'details':'full','Edit Overview',lk?'Program details, ownership, SMEs, facilitators and contributors. No version change.':'')
+          +(lk?it('curriculum','revision','Log Minor Revision',`Curriculum wording, timing or order with the same topics and total duration. Saved as ${(p.version||'v1')+'.'+(Number(p.revision||0)+1)}.`):it('curriculum','full','Edit Curriculum &amp; Agenda'))
+          +(lk?'':it('evals','full','Edit Evaluations'))
+          +'<div style="border-top:1px solid var(--border-lt);margin:4px 0"></div>';
+      })():''}
       ${can&&!detail&&!_lpVersionLocked(p)?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')" title="${_lpHasUsedSessions(p)?'Setup Mode: versioning is paused, so changes save in place on this version.':'Active programs can be corrected until their first Scheduled or Completed implementation.'}">${p.status==='active'?(_lpHasUsedSessions(p)?'Edit Program (Setup Mode)':'Edit Program Setup'):'Edit Draft'}</div>`:''}
-      ${can&&p.status==='active'&&_lpVersionLocked(p)?`${detail?'':`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div>`}<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision','curriculum')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
+      ${can&&!detail&&p.status==='active'&&_lpVersionLocked(p)?`${detail?'':`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div>`}<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision','curriculum')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
       ${can?`<div class="td-viewmenu-item" onclick="lpToggleStatus('${p.id}')">${p.status==='draft'?'Activate Version':p.status==='inactive'?'Reactivate':'Deactivate / New Version'}</div>`:''}
       ${Auth.isAdmin?`<div class="td-viewmenu-item" style="color:var(--red)" onclick="lpDelete('${p.id}')">Delete</div>`:''}
     </div>
@@ -6107,7 +6407,7 @@ function _lpRenderResults(){ const el=document.getElementById('lp-results'); if(
 function lpReset(){ lpF={...lpF,q:'',cat:'all',type:'all',status:'all'}; renderLearningPrograms(); }
 
 /* ── detail page ── */
-function lpOpen(id){ _lpCollapsedParts=new Set(); _lpTeamEdit=false; _lpTeamDraft=null; _lpPickQ={sme:'',facilitator:'',prereq:''}; _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpEditScope='full'; _lpShowPastContrib=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
+function lpOpen(id){ _lpCollapsedParts=new Set(); _lpContribManage=false; _lpPickOpen={sme:false,facilitator:false}; _lpTeamEdit=false; _lpTeamDraft=null; _lpPickQ={sme:'',facilitator:'',prereq:''}; _lpDraft=null; _lpWorking=null; _lpDetailId=id; _lpTab='overview'; _lpEditMode=false; _lpEditScope='full'; _lpShowPastContrib=false; _lpMapQuery=''; _lpMapSelected.clear(); renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpBack(){ if(_lpDraft||_lpWorking) return lpCancelDraft(); _lpDetailId=null; renderLearningPrograms(); _syncHashForCurrentView(); }
 function lpSetTab(t){
   _lpTab=t; renderLearningPrograms();
@@ -6209,16 +6509,16 @@ function _lpDetailHtml(p){
   const verTip=draft||p.status==='draft'?'Draft version: fully editable until it is activated.'
     :archived?'Archived version: read only.'
     :setupEdit?'Setup Mode is on: versioning is paused for administrators, so changes save in place on this version.'
-    :locked?'In use. Program Information (category, description, resources, checklist) can be edited any time with no version change. Title and agenda wording, timing or order: Log Minor Revision (e.g. v1.1). Anything else, including evaluations: Actions → Deactivate / New Version.'
+    :locked?'In use. Overview details (category, description, program folder, checklist, ownership, SMEs, facilitators, contributors) can be edited any time with no version change. Title and agenda wording, timing or order: Log Minor Revision (e.g. v1.1). Anything else, including evaluations: Actions → Deactivate / New Version.'
     :'Active and not yet used: editable until its first Scheduled or Completed session. After that, content changes need a minor revision or a new version.';
   const tabs=draft?LP_TABS.filter(t=>!['impl','audit'].includes(t[0])):LP_TABS;
   if(!tabs.some(t=>t[0]===_lpTab)) _lpTab='overview';
-  const saveLabel=scope==='details'?'Save Details':scope==='revision'?'Save Revision…':draft||p.status==='draft'?'Save Draft':'Save Changes';
+  const saveLabel=scope==='details'?'Save Changes':scope==='revision'?'Save Revision…':draft||p.status==='draft'?'Save Draft':'Save Changes';
   const canEditContent=can&&!archived&&!ed&&!draft;
   const editBtn=(area)=>{
     if(!canEditContent) return '';
     const b=(onclick,label,title='')=>`<button type="button" class="btn btn-secondary btn-sm" ${title?`title="${esc(title)}"`:''} onclick="${onclick}">${_lpIc(LP_IC.edit)} ${label}</button>`;
-    if(area==='overview') return b(`lpStartEdit('${p.id}',false,'${locked?'details':'full'}','overview')`,locked?'Edit Details':'Edit',locked?'Category, description, resources and checklist. No version change.':'');
+    if(area==='overview') return b(`lpStartEdit('${p.id}',false,'${locked?'details':'full'}','overview')`,'Edit',locked?'Edit program details, ownership, SMEs, facilitators and contributors. No version change.':'Edit everything on the Overview tab.');
     if(area==='curriculum') return locked?b(`lpStartEdit('${p.id}',false,'revision','curriculum')`,'Log Minor Revision',`Wording, timing or order with the same topics and total duration. Saved as ${(p.version||'v1')+'.'+(Number(p.revision||0)+1)}.`):b(`lpStartEdit('${p.id}',false,'full','curriculum')`,'Edit');
     if(area==='evals') return locked?`<span class="lp-muted" style="font-size:11.5px" title="Evaluation changes on an in-use version need a new version (Actions → Deactivate / New Version).">🔒 Changes need a new version</span>`:b(`lpStartEdit('${p.id}',false,'full','evals')`,'Edit');
     return '';
@@ -6235,7 +6535,7 @@ function _lpDetailHtml(p){
         ${ed?`<button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${saveLabel}</button>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700" title="Archived program details cannot be edited. Administrators may link past sessions on Implementations.">READ ONLY</span>':can?_lpRowMenu(p,true):'')}
       </div>
     </div>
-    ${ed&&scope==='details'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Edit Details</b> · Category, description, resources and default checklist. No version change; changes are recorded in the Audit Log.</div>`:''}
+    ${ed&&scope==='details'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Editing Overview</b> · Category, description, program folder, checklist, ownership, SMEs, facilitators and contributors. No version change; changes are recorded in the Audit Log.</div>`:''}
     ${ed&&scope==='revision'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda wording, minutes and order. Keep the same topics and total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.</div>`:''}
     <div class="dmain-tabs lp-tabs">${tabs.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>
     ${ed?_lpErrorBannerHtml():''}`;
@@ -6252,9 +6552,8 @@ function _lpDetailHtml(p){
   const durationText=_lpDurationText(_lpAgendaMinutes(p.agenda));
   const help=(tip)=>`<span class="lp-help" tabindex="0" data-tip="${esc(tip)}" aria-label="Help">i</span>`;
   const readField=(label,value,tip='')=>`<div class="lp-pi-read"><div class="lp-info-l">${label}${tip?help(tip):''}</div><div class="lp-info-v">${value}</div></div>`;
-  const info=`<div class="card lp-card lp-program-info"><div class="lp-card-hd lp-info-header"><span class="lp-card-t">Program Information</span><div class="lp-hd-actions">${editBtn('overview')}</div></div><div class="lp-program-info-body">
-    <div class="lp-program-info-sub">Provide the basic details about this learning program.</div>
-    ${ed?`<div class="lp-pi-grid">
+  const info=`<div class="card lp-card lp-program-info"><div class="lp-card-hd lp-info-header"><span class="lp-card-t">Program Information</span></div><div class="lp-program-info-body">
+    ${ed?`<div class="lp-program-info-sub">Provide the basic details about this learning program.</div><div class="lp-pi-grid">
       <div class="lp-pi-field lp-pi-span-12"><label for="lp-d-title">Program Title *</label><input id="lp-d-title" class="form-control" type="text" value="${esc(p.title||'')}"${dis(edRev)}></div>
       <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-cat','Category'+(p.status==='draft'?'':' *'),[...cats,...(currentCat?[currentCat]:[])].map(c=>[c.id,c.name]),p.categoryId,dis(edDetails))}</div>
       <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-type','Delivery Type'+(p.status==='draft'?'':' *'),types.map(t=>[t,_lpProgramTypeLabel(t)]),programType,'onchange="lpProgramTypeChanged(this.value)"'+dis(edFull))}</div>
@@ -6269,23 +6568,23 @@ function _lpDetailHtml(p){
       <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-from">Effective From *</label><input id="lp-d-from" class="form-control" type="date" value="${esc(p.effectiveFrom||'')}"${dis(edFull)}></div>
       <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-to">Effective To</label><input id="lp-d-to" class="form-control" type="date" value="${esc(p.effectiveTo||'')}"${dis(edFull)}><div class="lp-pi-helper">Leave blank while the program remains current.</div></div>
 
-      <div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Program Resources ${help('Link to the program source files, facilitator materials, references, or shared resource folder.')}</div><div class="lp-pi-resource-wrap"><input id="lp-resource-url" class="form-control" aria-label="Program resources URL" type="url" inputmode="url" value="${esc(p.resourceUrl||'')}" placeholder="https://…"${dis(edDetails)}>${_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-pi-resource-open" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer" title="Open resources">↗</a>`:''}</div><div class="lp-pi-helper">Link to the program's source files, facilitator materials, references, or shared resource folder.</div></div>
+      <div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Program Folder ${help('Link to the shared folder with the program source files, facilitator materials and references.')}</div><div class="lp-pi-resource-wrap"><input id="lp-resource-url" class="form-control" aria-label="Program folder link" type="url" inputmode="url" value="${esc(p.resourceUrl||'')}" placeholder="https://…"${dis(edDetails)}>${_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-pi-resource-open" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer" title="Open program folder">↗</a>`:''}</div><div class="lp-pi-helper">Link to the shared folder with the program's source files, facilitator materials and references.</div></div>
+      ${_lpV504Ready()?`<div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Learning Resources ${help('Titles of the materials used in this program (e.g., Facilitator Guide, Learner Handout). Titles only; files stay in the program folder. Shown on the Curriculum & Agenda tab. No version change.')}</div>
+        <div id="lp-res-edit" class="lp-res-edit">${(p.learningResources||[]).map((x,i)=>`<div class="lp-res-erow">${_lpResIcon(x)}<select class="form-control lp-tin" style="width:190px;flex-shrink:0" aria-label="Resource format" onchange="lpResFormat(${i},this.value)"${dis(edDetails)}>${LP_RES_FORMATS.map(f=>`<option value="${f[0]}"${(x.format||'online')===f[0]?' selected':''}>${esc(f[1])}</option>`).join('')}</select>${x.format==='other'?`<input class="form-control lp-tin" style="width:150px;flex-shrink:0" type="text" maxlength="60" value="${esc(x.formatOther||'')}" placeholder="Specify format" oninput="lpResFormatOther(${i},this.value)"${dis(edDetails)}>`:''}<input class="form-control lp-tin" type="text" maxlength="150" value="${esc(x.title||'')}" placeholder="Resource title (e.g., Facilitator Guide)" oninput="lpResEdit(${i},this.value)"${dis(edDetails)}>${edDetails?`<button type="button" class="lp-icon-btn" title="Remove resource" aria-label="Remove resource" onclick="lpResRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</div>`).join('')}</div>
+        ${edDetails?`<button type="button" class="lp-add-topic" style="margin-top:6px" onclick="lpResAdd()">+ Add Resource</button>`:''}</div>`:''}
 
       <div class="lp-pi-field lp-pi-span-12"><label for="lp-desc">Program Description</label><textarea id="lp-desc" class="form-control lp-pi-desc" rows="4"${dis(edDetails)} placeholder="What the program is for, who it's for, and the outcomes it targets.">${esc(p.description||'')}</textarea></div>
       ${_lpDraftError?`<div class="lp-form-error lp-pi-span-12" role="alert">${esc(_lpDraftError)}</div>`:''}
-    </div>`:`<div class="lp-pi-grid">
+    </div>`:`<div class="lp-pi-grid lp-pi-compact">
       <div class="lp-pi-span-12">${readField('Program Title',esc(p.title||'—'))}</div>
-      <div class="lp-pi-span-6">${readField('Category',esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—'))}</div>
-      <div class="lp-pi-span-6">${readField('Delivery Type',esc(_lpProgramTypeLabel(p.deliveryType)))}</div>
-      <div class="lp-pi-span-6">${readField('Default Trainer Checklist',selfLedType?'Not applicable':esc(checklistName),'Trainer checklists apply only to instructor-led programs.')}</div>
-      <div class="lp-pi-divider"><div class="lp-pi-section-title">Program Details</div></div>
-      <div class="lp-pi-span-4">${readField('Program ID',esc(draft?'Assigned when saved':p.code||'—'),'Generated automatically when the program is first saved.')}</div>
-      <div class="lp-pi-span-4">${readField('Version',esc(_lpVerLabel(p)),'Current program version. A decimal (v1.1) is a logged minor revision of the same version.')}</div>
-      <div class="lp-pi-span-4">${readField('Duration',esc(durationText),'Calculated from the agenda.')}</div>
-      <div class="lp-pi-span-6">${readField('Effective From',p.effectiveFrom?Utils.formatDate(p.effectiveFrom):'—')}</div>
-      <div class="lp-pi-span-6">${readField('Effective To',p.effectiveTo?Utils.formatDate(p.effectiveTo):'No end date')}</div>
-      <div class="lp-pi-span-12">${readField('Program Resources',_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-resource-link" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer">Open program resources ↗</a>`:'<span class="lp-muted">No resources linked</span>','Link to program source files, facilitator materials, references, or a shared resource folder.')}</div>
+      <div class="lp-pi-span-4">${readField('Category',esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—'))}</div>
+      <div class="lp-pi-span-4">${readField('Delivery Type',esc(_lpProgramTypeLabel(p.deliveryType)))}</div>
+      <div class="lp-pi-span-4">${readField('Duration',esc(durationText)+(Number(p.deliveryParts||1)>1?` <span class="lp-muted">(${Number(p.deliveryParts)} delivery parts)</span>`:''),'Calculated from the agenda.')}</div>
       <div class="lp-pi-span-12">${readField('Program Description',p.description?esc(p.description).replace(/\n/g,'<br>'):'<span class="lp-muted">No description yet.</span>')}</div>
+      <div class="lp-pi-span-4">${readField('Default Trainer Checklist',selfLedType?'Not applicable':esc(checklistName),'Trainer checklists apply only to instructor-led programs.')}</div>
+      <div class="lp-pi-span-4">${readField('Effective From',p.effectiveFrom?Utils.formatDate(p.effectiveFrom):'—')}</div>
+      <div class="lp-pi-span-4">${readField('Effective To',p.effectiveTo?Utils.formatDate(p.effectiveTo):'No end date')}</div>
+      <div class="lp-pi-span-12">${readField('Program Folder',_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-resource-link" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer">Open program folder ↗</a>`:'<span class="lp-muted">No folder linked</span>','Shared folder with the program source files, facilitator materials and references.')}</div>
     </div>`}
   </div></div>`;
   // Contributors are dated assignments (v5.00). Managed directly on the page (saved immediately)
@@ -6293,7 +6592,8 @@ function _lpDetailHtml(p){
   const csAll=p.contributors||[];
   const csCur=csAll.filter(c=>_lpContribCurrent(c)).sort((a,b)=>(a.role||'').localeCompare(b.role||'')||(b.primary?1:0)-(a.primary?1:0));
   const csPast=csAll.filter(c=>!_lpContribCurrent(c)).sort((a,b)=>(b.endDate||'').localeCompare(a.endDate||''));
-  const manage=can&&!archived&&(!ed||edFull);
+  // v5.04 (2026-10-15, per Sandra): compact list; add/end/main/date controls only in the Overview edit mode.
+  const manage=can&&!archived&&ed&&(edFull||scope==='details');
   const cands=_lpCandidates().filter(u=>!csCur.some(c=>c.profileId===u.id));
   const cRow=(c,current)=>{
     const canRemove=manage&&(!used||_lpAddedToday(c));
@@ -6307,8 +6607,9 @@ function _lpDetailHtml(p){
       ${current&&c.primary?'<span class="badge" style="background:#dcfce7;color:#15803d">Main</span>':''}${current?'':'<span class="badge" style="background:#f1f5f9;color:#64748b">Ended</span>'}<span style="display:flex;gap:4px;align-items:center">${acts}</span></div>`;
   };
   const defStart=used?_lpToday():(p.effectiveFrom||_lpToday());
-  const contrib=`<div class="card lp-card"><div class="lp-card-hd"><span class="lp-card-t">Program Contributors</span>${csPast.length?`<button class="btn btn-ghost btn-xs" onclick="_lpShowPastContrib=!_lpShowPastContrib;renderLearningPrograms()">${_lpShowPastContrib?'Hide':'Show'} past contributors (${csPast.length})</button>`:''}</div>
+  const contrib=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Program Contributors ${helpTip('Each person is credited for sessions delivered while their assignment is active. Use End for handovers so past credit is kept.')}</span></div>
     ${csCur.length?csCur.map(c=>cRow(c,true)).join(''):'<div class="lp-muted" style="padding:6px 0 10px;font-size:12.5px">No current contributors.</div>'}
+    ${csPast.length?`<button class="lp-link-btn" onclick="_lpShowPastContrib=!_lpShowPastContrib;renderLearningPrograms()">${_lpShowPastContrib?'Hide':'Show'} past contributors (${csPast.length})</button>`:''}
     ${_lpShowPastContrib&&csPast.length?`<div class="lp-muted" style="font-size:11px;font-weight:600;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em">Past contributors</div>${csPast.map(c=>cRow(c,false)).join('')}`:''}
     ${manage?`<div class="lp-addrow" style="flex-wrap:wrap"><select id="lp-add-person"><option value="">Select from roster…</option>${cands.map(u=>`<option value="${u.id}">${esc(u.firstName+' '+u.lastName)} — ${esc(_lpRoleOf(u))}</option>`).join('')}</select><input id="lp-add-start" class="form-control" type="date" value="${esc(defStart)}" ${used&&!Auth.isAdmin?`min="${_lpToday()}"`:''} title="Assignment start date" style="width:150px"><button class="btn btn-primary btn-sm" onclick="lpContribAdd()">+ Add Contributor</button></div><div class="lp-muted" style="font-size:11px;margin-top:6px">Each person is credited for sessions delivered while their assignment is active. Use <b>End</b> for handovers so past credit is kept${used?'; Remove is only for an assignment added by mistake today':''}. Main marks the one person per role responsible for keeping this program current.</div>`:''}
   </div>`;
@@ -6329,12 +6630,13 @@ function _lpDetailHtml(p){
       ${edRev?'<td class="lp-drag" title="Drag to reorder">⋮⋮</td>':''}
       <td class="lp-tnum">${k+1}</td>
       <td>${edRev?tin(i,'topic',a.topic,'Topic or activity','text','maxlength="250"'):`<span class="lp-ttopic">${esc(a.topic||'—')}</span>`}</td>
+      <td>${_lpMethodCell(a,i,edRev)}</td>
       <td>${edRev?`<div class="lp-min-wrap">${tin(i,'duration',_lpMinutes(a.duration)??'','0','number','min="1" step="1"')}<span>min</span></div>`:esc(_lpDurationText(_lpMinutes(a.duration)))}</td>
       ${ed?`<td class="lp-tact">${edFull&&partCount>1?`<select class="form-control lp-part-sel" title="Move to another part" aria-label="Delivery part" onchange="lpAgendaSetPart(${i},this.value)">${Array.from({length:partCount},(_,x)=>`<option value="${x+1}" ${x+1===part?'selected':''}>Part ${x+1}</option>`).join('')}</select>`:''}${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${k===0?'disabled':''} title="Move up" aria-label="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${k===indexed.length-1?'disabled':''} title="Move down" aria-label="Move down">↓</button>`:''}${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
     </tr>`).join('');
-    const cols=(edRev?1:0)+3+(ed?1:0);
-    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:38px"><col><col style="width:${edRev?'120px':'110px'}">${ed?`<col style="width:${edFull?(partCount>1?'178px':'64px'):'72px'}">`:''}</colgroup>
-      <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Duration</th>${ed?'<th></th>':''}</tr></thead>`;
+    const cols=(edRev?1:0)+4+(ed?1:0);
+    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'38%':'42%'}"><col><col style="width:${edRev?'96px':'110px'}">${ed?`<col style="width:${edFull?(partCount>1?'196px':'110px'):'84px'}">`:''}</colgroup>
+      <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Learning Method</th><th>Duration</th>${ed?'<th></th>':''}</tr></thead>`;
     const empty=`<tr><td colspan="${cols}" class="lp-muted" style="text-align:center;padding:16px">No topics in this part yet.</td></tr>`;
     return `<section class="lp-part${collapsed?' collapsed':''}" ${edFull?`ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,null,${part})"`:''}>
       <div class="lp-part-hd">
@@ -6343,15 +6645,19 @@ function _lpDetailHtml(p){
         <span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>
         ${edFull&&partCount>1?`<button type="button" class="btn btn-ghost btn-xs" onclick="lpAgendaPartMove(${part},-1)" ${part===1?'disabled':''} title="Move part up" aria-label="Move part up">↑</button><button type="button" class="btn btn-ghost btn-xs" onclick="lpAgendaPartMove(${part},1)" ${part===partCount?'disabled':''} title="Move part down" aria-label="Move part down">↓</button><button type="button" class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaPartRemove(${part})" title="${indexed.length?'Remove this part and its topics':'Remove this delivery part'}">Remove part</button>`:''}
       </div>
-      ${collapsed?'':`<div class="lp-part-body"><div class="lp-tbl-scroll"><table class="lp-topic-tbl">${thead}<tbody>${rows||empty}</tbody></table></div>${edFull?`<div class="lp-part-foot"><button type="button" class="lp-add-topic" onclick="lpAgendaAdd(${part})">+ Add Topic</button></div>`:''}</div>`}
+      ${collapsed?'':`<div class="lp-part-body"><div class="lp-tbl-scroll"><table class="lp-topic-tbl${edRev?' lp-topic-tbl-edit':''}">${thead}<tbody>${rows||empty}</tbody></table></div>${edFull?`<div class="lp-part-foot"><button type="button" class="lp-add-topic" onclick="lpAgendaAdd(${part})">+ Add Topic</button></div>`:''}</div>`}
     </section>`;
   }).join('');
   const agenda=`<div class="card lp-card lp-agenda-card lp-cur-card">
     <div class="lp-card-hd"><div><span class="lp-card-t">Curriculum &amp; Agenda</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar; actual delivery changes are recorded on the session.</div></div>
-      <div class="lp-hd-actions">${partCount>1?`<button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(true)">Expand all</button><button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(false)">Collapse all</button>`:''}${edFull?`<button class="btn btn-secondary btn-sm" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}${editBtn('curriculum')}</div></div>
+      <div class="lp-hd-actions">${partCount>1?`<button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(true)">Expand all</button><button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(false)">Collapse all</button>`:''}${edFull?`<button class="btn btn-secondary btn-sm" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}</div></div>
+    <div class="lp-cur-kpis">
+      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#f5f3ff;color:#7c3aed">${_lpIc(LP_IC.clock)}</span><div><div class="lp-kpi-l">Total Program Duration</div><div class="lp-kpi-v" id="lp-agenda-total">${esc(_lpDurationText(totalAgendaMinutes)==='—'?'0 min':_lpDurationText(totalAgendaMinutes))}</div></div></div>
+      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#eff6ff;color:#2563eb">${_lpIc(LP_IC.layers)}</span><div><div class="lp-kpi-l">Delivery Parts</div><div class="lp-kpi-v" id="lp-agenda-part-count">${partCount}</div></div></div>
+      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#eef2ff;color:#4f46e5">${_lpIc(LP_IC.total)}</span><div><div class="lp-kpi-l">Total Topics</div><div class="lp-kpi-v" id="lp-agenda-topic-count">${totalTopicCount}</div></div></div>
+    </div>
     <div class="lp-parts">${agendaParts}</div>
     ${edFull&&partCount<30?`<button class="lp-agenda-add-part" type="button" onclick="lpAgendaPartAdd()"><span style="font-size:18px;font-weight:400;line-height:1">+</span> Add another part</button>`:''}
-    <div class="lp-agenda-summary"><div><div class="lp-agenda-summary-label">Total Program Duration</div><div class="lp-agenda-summary-meta"><span id="lp-agenda-topic-count">${totalTopicCount}</span> topic${totalTopicCount===1?'':'s'} · <span id="lp-agenda-part-count">${partCount}</span> delivery part${partCount===1?'':'s'}</div></div><div id="lp-agenda-total" class="lp-agenda-summary-duration">${esc(_lpDurationText(totalAgendaMinutes)==='—'?'0 min':_lpDurationText(totalAgendaMinutes))}</div></div>
   </div>`;
   /* v5.03 (2026-10-14, per Sandra): Evaluations tab. L1 = on/off only (always the post-training survey; v5.04 per Sandra); L2 item Type and L3 Method use
      default options plus "Other (specify)"; L3 Responsible; L4 Unit. Stored inside the existing
@@ -6393,10 +6699,10 @@ function _lpDetailHtml(p){
   [...(ec.l3.enabled?ec.l3.items.map(x=>({d:Number(x.daysAfter)||0,t:`L3 · ${x.method||'Follow-through'}${x.responsible?' ('+x.responsible+')':''}`})):[]),
    ...(ec.l4.enabled?ec.l4.items.map(x=>({d:Number(x.daysAfter)||0,t:`L4 · ${x.measure||'Result measure'}`})):[])]
     .sort((a,b)=>a.d-b.d).forEach(x=>tl.push([x.d?`${x.d} days after`:'After training',x.t]));
-  const assessments=`<div class="card lp-card lp-evals-card"><div class="lp-card-hd"><div><span class="lp-card-t">Evaluations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Kirkpatrick L1–L4 requirements for this program. Sessions created from the program copy these settings.</div></div><div class="lp-hd-actions">${editBtn('evals')}</div></div>
+  const assessments=`<div class="card lp-card lp-evals-card"><div class="lp-card-hd"><div><span class="lp-card-t">Evaluations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Kirkpatrick L1–L4 requirements for this program. Sessions created from the program copy these settings.</div></div></div>
     <div class="lp-eval-summary"><div class="lp-eval-chips">${lvChip('L1',ec.l1,'#f5f3ff','#7c3aed')}${lvChip('L2',ec.l2.enabled,'#ecfdf5','#059669')}${lvChip('L3',ec.l3.enabled,'#fffbeb','#d97706')}${lvChip('L4',ec.l4.enabled,'#fef2f2','#dc2626')}</div>
       ${tl.length?`<ol class="lp-tl">${tl.map(([w,t])=>`<li><b>${esc(w)}</b><span>${esc(t)}</span></li>`).join('')}</ol>`:'<span class="lp-muted" style="font-size:12px">No evaluations enabled yet.</span>'}</div>
-    ${level('l1','L1 · Reaction','Post-training survey: participants’ immediate feedback on the training experience.',ec.l1,'',['#f5f3ff','#7c3aed'])}
+    ${level('l1','L1 · Reaction','Post-training survey: participants’ immediate feedback on the training experience.',ec.l1,draft?'<div class="lp-muted" style="font-size:12px">Targets can be set after the draft is first saved. Organisation defaults apply until then.</div>':`<div class="lp-team-h" style="margin-bottom:6px">Targets <span class="lp-muted" style="font-weight:400;font-size:11.5px">· program targets override the defaults for their dates; changes never create a new version</span></div>${_l1TargetsTableHtml(_lpFamilyId(p),can&&!archived&&!ed)}`,['#f5f3ff','#7c3aed'])}
     ${level('l2','L2 · Learning','Knowledge and skills gained. Pre / Post and passing % are set per item.',ec.l2.enabled,l2Body,['#ecfdf5','#059669'])}
     ${level('l3','L3 · Behavior','Application on the job: follow-through methods, who is responsible, and timing.',ec.l3.enabled,l3Body,['#fffbeb','#d97706'])}
     ${level('l4','L4 · Results','Business outcome measures with baseline, target, unit and timing.',ec.l4.enabled,l4Body,['#fef2f2','#dc2626'])}
@@ -6404,9 +6710,27 @@ function _lpDetailHtml(p){
   let body;
   if(_lpTab==='impl') body=_lpImplementationsHtml(p);
   else if(_lpTab==='audit') body=_lpAuditHtml(p);
-  else if(_lpTab==='curriculum') body=agenda;
+  // v5.04: read-only sidebar beside the curriculum; while editing, the curriculum takes the full width.
+  else if(_lpTab==='curriculum') body=ed?`<div class="lp-ov2-main" style="margin-top:16px">${agenda}</div>`:`<div class="lp-ov2"><div class="lp-ov2-main">${agenda}</div><div class="lp-ov2-side">${_lpCurSidebarHtml(p)}</div></div>`;
   else if(_lpTab==='evals') body=assessments;
-  else body=`<div class="lp-overview-grid lp-overview-top">${info}${contrib}</div>${_lpTeamHtml(p)}`;
+  else {
+    /* v5.04 (2026-10-15, per Sandra): Overview = two columns (~68/32). Left: Program Information + Ownership & Delivery Team.
+       Right: Contributors, Implementations summary, Quick Details (read-only reference). */
+    const fam=LearningProgramDB.all().filter(v=>_lpFamilyId(v)===_lpFamilyId(p));
+    const sess=draft?[]:(Cache.data[Store.TRSESSIONS]||[]).filter(x=>fam.some(v=>v.id===x.programId));
+    const today=_lpToday();
+    const nCompleted=sess.filter(x=>x.status==='completed').length;
+    const upcomingList=sess.filter(x=>x.status==='scheduled'&&(!x.trainingDate||x.trainingDate>=today)).sort((a,b)=>(a.trainingDate||'9999').localeCompare(b.trainingDate||'9999'));
+    const learners=new Set(sess.flatMap(x=>SessionParticipantsDB.all().filter(r=>r.sessionId===x.id&&_lpAttended(r,x)).map(r=>r.profileId||r.employeeId||r.id))).size;
+    const kpi=(ic,bg,fg,n,l,sub='')=>`<div class="lp-kpi"><span class="lp-kpi-ic" style="background:${bg};color:${fg}">${_lpIc(ic)}</span><div><div class="lp-kpi-v">${n}</div><div class="lp-kpi-l">${l}</div>${sub?`<div class="lp-kpi-s">${sub}</div>`:''}</div></div>`;
+    const implCard=draft?'':`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Implementations</span><button class="lp-link-btn" style="margin:0" onclick="lpSetTab('impl')">View all →</button></div>
+      <div class="lp-kpi-grid">${kpi(LP_IC.total,'#f5f3ff','#7c3aed',sess.length,'Total')}${kpi(LP_IC.done,'#f0fdf4','#16a34a',nCompleted,'Completed',sess.length?Math.round(nCompleted/sess.length*100)+'% of total':'')}${kpi(LP_IC.clock,'#fffbeb','#d97706',upcomingList.length,'Upcoming',upcomingList[0]?.trainingDate?'Next: '+esc(Utils.formatDate(upcomingList[0].trainingDate)):'')}${kpi(LP_IC.users,'#eff6ff','#2563eb',learners,'Unique Attendees')}</div>
+      <div class="lp-muted" style="font-size:11px;margin-top:8px">All versions of this program.</div></div>`;
+    const qd=(l,v)=>`<div class="lp-qd-row"><span>${l}</span><span>${v}</span></div>`;
+    const quick=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Quick Details</span></div>
+      ${qd('Program ID',esc(draft?'Assigned when saved':p.code||'—'))}${qd('Version',esc(_lpVerLabel(p)))}${qd('Status',_lpStatusBadge(p))}${qd('Delivery Type',esc(_lpProgramTypeLabel(p.deliveryType)))}${qd('Total Topics',`${totalTopicCount} <span class="lp-muted">(${partCount} part${partCount===1?'':'s'})</span>`)}${qd('Total Duration',esc(_lpDurationText(totalAgendaMinutes)))}${qd('Last Updated',p.updatedAt?`${esc(Utils.formatDate(p.updatedAt.slice(0,10)))}${p.updatedBy?`<br><span class="lp-muted">${esc(_lpName(p.updatedBy))}</span>`:''}`:'—')}</div>`;
+    body=`<div class="lp-ov2"><div class="lp-ov2-main">${info}${_lpTeamHtml(p)}</div><div class="lp-ov2-side">${contrib}${implCard}${quick}</div></div>`;
+  }
   return head+body;
 }
 
@@ -6439,8 +6763,8 @@ function _lpActivationError(p){
   if(!p.effectiveFrom) return 'Effective From is required before activation.';
   if(!(p.description||'').trim()) return 'Program Description is required before activation.';
   const resourceUrl=(p.resourceUrl||'').trim();
-  if(!resourceUrl) return 'Resource Link is required before activation.';
-  if(!_lpSafeResourceUrl(resourceUrl)) return 'Resource Link must be a full http:// or https:// URL.';
+  if(!resourceUrl) return 'Program Folder link is required before activation.';
+  if(!_lpSafeResourceUrl(resourceUrl)) return 'Program Folder link must be a full http:// or https:// URL.';
   // v5.02: ownership is required for programs created from v5.02 onward (existing ones may stay Not Classified).
   if(_lpMetaReady()&&!p.ownership&&(p.createdAt||'').slice(0,10)>=LP_OWNERSHIP_REQUIRED_FROM) return 'Program Ownership is required before activation. Set it under Program Ownership & Delivery Team.';
   const contributors=(p.contributors||[]).filter(c=>_lpContribCurrent(c));
@@ -6692,7 +7016,7 @@ function lpEvalRemove(level,i){
 }
 /* Contributor assignments (v5.00): add / end / main / admin date correction / same-day remove. */
 function _lpContribList(p){ return (p.contributors||[]).map(c=>({...c})); }
-function _lpCanManageContrib(p){ return !!p&&lpCanEdit()&&p.status!=='inactive'&&(!_lpEditMode||_lpEditScope==='full'); }
+function _lpCanManageContrib(p){ return !!p&&lpCanEdit()&&p.status!=='inactive'&&(!_lpEditMode||['full','details'].includes(_lpEditScope)); }
 async function lpContribAdd(){
   const p=_lpCur(); if(!_lpCanManageContrib(p)) return;
   const id=document.getElementById('lp-add-person')?.value; if(!id){ toast('Select someone from the roster first.','error'); return; }
@@ -6850,7 +7174,7 @@ async function lpPublishVersion(id){
   const activationError=_lpActivationError(p);
   if(activationError&&activationError.startsWith('Program Ownership')){
     // v5.02: ownership is edited on the Ownership & Delivery Team card, not in the page edit mode.
-    toast(activationError,'error'); lpOpen(id); lpTeamEditStart(); return;
+    toast(activationError,'error'); lpOpen(id); lpStartEdit(id,false,'full','overview'); requestAnimationFrame(()=>document.getElementById('lp-team-card')?.scrollIntoView({behavior:'smooth',block:'center'})); return;
   }
   if(activationError){
     // v5.01 (2026-10-13, per Sandra): open the draft in edit mode at the issue so it can be fixed, saved, then activated.
@@ -6859,7 +7183,7 @@ async function lpPublishVersion(id){
     if(_lpEditMode&&_lpWorking){ _lpDraftError=activationError; renderLearningPrograms(); requestAnimationFrame(()=>lpViewProgramIssue(true)); }
     return;
   }
-  confirm$('Activate version',`Activate <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b> starting ${Utils.formatDate(p.effectiveFrom)}? All required Program Information, Resources, Contributors, Agenda, Checklist and enabled Evaluations have been validated.`,'Activate',async()=>{
+  confirm$('Activate version',`Activate <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b> starting ${Utils.formatDate(p.effectiveFrom)}? All required Program Information, Program Folder, Contributors, Agenda, Checklist and enabled Evaluations have been validated.`,'Activate',async()=>{
     if(await _lpPersist(id,{status:'active'})){
       await AuditLog.record('update','Learning Program',id,`Activated ${p.code} ${p.version}`);
       lpOpen(id); toast('Version activated.','success');
@@ -6887,7 +7211,7 @@ function lpDelete(id){
 function lpStartDraft(){
   _lpWorking=null;
   _lpDraft={id:'__draft__',code:null,title:'',categoryId:'',deliveryType:'',version:'v1',durationHours:null,durationMinutes:null,status:'draft',effectiveFrom:_todayStr(),effectiveTo:null,description:'',resourceUrl:'',checklistTemplateId:null,allowedModalities:[],contributors:[],agenda:[],assessments:[],evaluationConfig:{l1:false,l2:{enabled:false},l3:{enabled:false,items:[]},l4:{enabled:false,items:[]}},l3Required:false,l3Notes:''};
-  _lpDraftError=''; _lpDetailId='__draft__'; _lpTab='overview'; _lpEditMode=true; _lpEditScope='full';
+  _lpDraftError=''; _lpDetailId='__draft__'; _lpTab='overview'; _lpEditMode=true; _lpEditScope='full'; _lpBindTeamDraft(_lpDraft);
   renderLearningPrograms(); _syncHashForCurrentView();
   document.getElementById('lp-d-title')?.focus();
 }
@@ -6899,6 +7223,7 @@ function lpStartEdit(id,inactivate=false,scope='full',tab='overview'){
   if(!used) scope='full';
   _lpDraft=null; _lpWorking=JSON.parse(JSON.stringify(p)); _lpDetailId=id; _lpEditMode=true; _lpEditScope=scope; _lpTab=tab||'overview'; _lpDraftError=''; _lpTeamEdit=false;
   if(inactivate) _lpWorking.status='inactive';
+  _lpBindTeamDraft(_lpWorking);
   renderLearningPrograms(); _syncHashForCurrentView();
   if(inactivate) document.getElementById('lp-d-to')?.focus();
 }
@@ -6916,7 +7241,7 @@ function lpCancelDraft(){
   if(!_lpDraft&&!_lpWorking) return;
   confirm$('Discard program changes?','Leave without saving the changes on this page?','Discard',()=>{
     const wasNew=!!_lpDraft;
-    _lpDraft=null; _lpWorking=null; if(wasNew) _lpDetailId=null;
+    _lpDraft=null; _lpWorking=null; _lpTeamDraft=null; if(wasNew) _lpDetailId=null;
     _lpEditMode=false; _lpEditScope='full'; _lpDraftError=''; renderLearningPrograms(); _syncHashForCurrentView();
   });
 }
@@ -6939,20 +7264,29 @@ async function _lpSaveScoped(){
   if(scope==='details'){
     const resourceUrl=(w.resourceUrl||'').trim();
     if(!w.categoryId) return fail('Category is required.');
-    if(!resourceUrl) return fail('Resource Link is required for an active program.');
-    if(!_lpSafeResourceUrl(resourceUrl)) return fail('Resources folder needs a full http:// or https:// URL.');
+    if(!resourceUrl) return fail('Program Folder link is required for an active program.');
+    if(!_lpSafeResourceUrl(resourceUrl)) return fail('Program Folder needs a full http:// or https:// URL.');
     if(!(w.description||'').trim()) return fail('Program Description is required for an active program.');
     const ilt=_lpProgramTypeValue(before.deliveryType)==='ILT';
     if(ilt&&!w.checklistTemplateId) return fail('Choose a Default Trainer Checklist.');
     if(ilt&&w.checklistTemplateId&&!ChecklistTemplateDB.byId(w.checklistTemplateId)) return fail('Select a valid Checklist Template.');
-    const patch={categoryId:w.categoryId,description:w.description.trim(),resourceUrl,checklistTemplateId:ilt?(w.checklistTemplateId||null):null};
+    if(w.ownership==='non_ld'&&!w.ownerDepartmentId) return fail('Owning department is required for a Non-L&D-Owned program.');
+    const resErr=_lpResourceError(w); if(resErr) return fail(resErr);
+    const patch={categoryId:w.categoryId,description:w.description.trim(),resourceUrl,checklistTemplateId:ilt?(w.checklistTemplateId||null):null,..._lpTeamPatch(w,before),contributors:(w.contributors||[]).map(c=>({...c}))};
     const changes=[];
-    if(patch.resourceUrl!==(before.resourceUrl||'')) changes.push(`resource link "${before.resourceUrl||'none'}" → "${patch.resourceUrl}"`);
+    const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
+    if(!same(patch.ownership,before.ownership||null)||!same(patch.ownerDepartmentId,before.ownerDepartmentId||null)) changes.push('ownership');
+    if(patch.audienceIds&&!same([...patch.audienceIds].sort(),[...(before.audienceIds||[])].sort())) changes.push('target audience');
+    if(patch.prerequisiteProgramIds&&(!same(patch.prerequisiteProgramIds,before.prerequisiteProgramIds||[])||!same(patch.prerequisiteItemIds,before.prerequisiteItemIds||[]))) changes.push('prerequisites');
+    if(!same(patch.contributors,before.contributors||[])) changes.push('contributors');
+    const resKey=l=>(l||[]).map(x=>[x.title,x.format||'online',x.formatOther||'']);
+    if(patch.learningResources&&!same(resKey(patch.learningResources),resKey(before.learningResources))) changes.push('learning resources');
+    if(patch.resourceUrl!==(before.resourceUrl||'')) changes.push(`program folder "${before.resourceUrl||'none'}" → "${patch.resourceUrl}"`);
     if(patch.description!==(before.description||'').trim()) changes.push('description');
     if(patch.categoryId!==before.categoryId) changes.push(`category ${Sel.nameOf(Store.CATEGORIES,before.categoryId)||'—'} → ${Sel.nameOf(Store.CATEGORIES,patch.categoryId)||'—'}`);
     if((patch.checklistTemplateId||null)!==(before.checklistTemplateId||null)) changes.push(`default checklist ${ChecklistTemplateDB.byId(before.checklistTemplateId)?.title||'none'} → ${ChecklistTemplateDB.byId(patch.checklistTemplateId)?.title||'none'}`);
     if(!changes.length){ _lpWorking=null; lpOpen(before.id); return toast('No changes to save.','info'); }
-    return finish(patch,`Edited details of ${before.code} ${_lpVerLabel(before)} (no version change): ${changes.join('; ')}`,'Details saved. No version change.');
+    return finish(patch,`Edited details of ${before.code} ${_lpVerLabel(before)} (no version change): ${changes.join('; ')}`,'Saved. No version change.');
   }
   if(scope!=='revision') return;
   const title=(w.title||'').trim();
@@ -6989,7 +7323,11 @@ async function _lpSaveScoped(){
 }
 // v5.03 (2026-10-14, per Sandra): one saved agenda row (topic, minutes, part).
 function _lpAgendaRow(a,minutes,part){
-  return {topic:(a.topic||'').trim(),duration:minutes,part}; // v5.04: objective/materials removed per Sandra
+  // v5.04 (2026-10-15, per Sandra): optional learning method ids per topic.
+  const row={topic:(a.topic||'').trim(),duration:minutes,part};
+  const m=[...new Set((a.methods||[]).filter(x=>typeof x==='string'&&x))];
+  if(m.length) row.methods=m;
+  return row;
 }
 async function lpSaveDraft(){
   if(!_lpDraft&&!_lpWorking) return;
@@ -7004,7 +7342,7 @@ async function lpSaveDraft(){
   if(p.status==='inactive'&&!p.effectiveTo) return fail('Effective To is required when the program is Inactive.');
   if(p.effectiveTo&&p.effectiveTo<p.effectiveFrom) return fail('Effective To cannot be earlier than Effective From.');
   const resourceUrl=(p.resourceUrl||'').trim();
-  if(resourceUrl&&!_lpSafeResourceUrl(resourceUrl)) return fail('Resources folder needs a full http:// or https:// URL.');
+  if(resourceUrl&&!_lpSafeResourceUrl(resourceUrl)) return fail('Program Folder needs a full http:// or https:// URL.');
   if((p.deliveryType==='ILT'||p.deliveryType==='Blended')&&p.checklistTemplateId&&!ChecklistTemplateDB.byId(p.checklistTemplateId)) return fail('Select a valid Checklist Template.');
   const agenda=[];
   const partCount=Number(p.deliveryParts||1);
@@ -7055,6 +7393,11 @@ async function lpSaveDraft(){
   const patch={title,categoryId:p.categoryId||null,deliveryType:p.deliveryType||null,version:p.version.trim()||'v1',status:p.status,effectiveFrom:p.effectiveFrom,effectiveTo:p.effectiveTo||null,description:p.description.trim(),resourceUrl:resourceUrl||null,checklistTemplateId:_lpProgramTypeValue(p.deliveryType)==='ILT'?(p.checklistTemplateId||null):null,allowedModalities:[],contributors,agenda,deliveryParts:partCount,assessments:ec.l2.enabled?assessments:(p.assessments||[]),evaluationConfig:ec,l3Required:ec.l3.enabled,l3Notes:p.l3Notes||''};
   if(totalMinutes!=null){ patch.durationMinutes=totalMinutes; patch.durationHours=Number((totalMinutes/60).toFixed(2)); }
   else if(versionDraft){ patch.durationMinutes=null; patch.durationHours=null; }
+  if(_lpMetaReady()){ // v5.04b: ownership / audience / prerequisites saved with the page
+    if(p.ownership==='non_ld'&&!p.ownerDepartmentId){ btn.disabled=false; return fail('Owning department is required for a Non-L&D-Owned program.'); }
+    const resErr=_lpResourceError(p); if(resErr){ btn.disabled=false; return fail(resErr); }
+    Object.assign(patch,_lpTeamPatch(p,isNew?null:LearningProgramDB.byId(p.id)));
+  }
   if(isNew) patch.code=_lpNextCode();
   const working=_lpWorking; _lpWorking=null;
   const before=isNew?null:LearningProgramDB.byId(p.id);
@@ -7091,7 +7434,8 @@ function _lpErrorTargetSelector(message){
   if(m.startsWith('Delivery Type')) return '#lp-d-type';
   if(m.startsWith('Effective From')) return '#lp-d-from';
   if(m.startsWith('Effective To')) return '#lp-d-to';
-  if(m.startsWith('Resources folder')) return '#lp-resource-url';
+  if(m.startsWith('Program Folder')) return '#lp-resource-url';
+  if(m.startsWith('Learning resource')) return '#lp-res-edit';
   if(m.startsWith('Select a valid Checklist')) return '#lp-d-checklist';
   if(m.startsWith('Agenda item ')||m.includes('agenda duration')||m.includes('delivery part')) return '.lp-agenda-card';
   if(m.startsWith('L1 ')) return '#lp-eval-l1';
@@ -8649,7 +8993,9 @@ const STABS=[
   {id:'departments', label:'Departments',         key:Store.DEPARTMENTS, desc:'Actual organizational department captured per attendee in the Attendance roster.', sing:'Department'},
   {id:'programtypes',label:'Program Types',       key:Store.PROGRAM_TYPES, desc:'Delivery types available when adding or editing a Learning Program.', sing:'Program Type'},
   // v5.02 (2026-10-14, per Sandra): typed prerequisites saved from Learning Programs are reusable here.
-  {id:'lpprereqs',   label:'Prerequisites',       key:Store.LP_PREREQS, desc:'Reusable prerequisites for Learning Programs (e.g., "Regular employee"). Entries typed on a program are saved here. Prerequisite programs are picked from the Learning Programs library instead.', sing:'Prerequisite'}
+  {id:'lpprereqs',   label:'Prerequisites',       key:Store.LP_PREREQS, desc:'Reusable prerequisites for Learning Programs (e.g., "Regular employee"). Entries typed on a program are saved here. Prerequisite programs are picked from the Learning Programs library instead.', sing:'Prerequisite'},
+  // v5.04 (2026-10-15, per Sandra): methods tagged on each curriculum topic. Deactivate instead of deleting once used.
+  {id:'lpmethods',  label:'Learning Methods',    key:Store.LEARNING_METHODS, desc:'Methods tagged on Learning Program curriculum topics (e.g., Presentation, Role Play). Methods already used on a program can be renamed or deactivated, not deleted.', sing:'Learning Method'}
 ];
 let activeSettingsSection='lists'; // 'lists' | 'backup'
 let _settingsDrawerTabId=null;     // which STABS.id is currently open in the drawer, or null
@@ -9698,6 +10044,7 @@ function _selRefCount(key, id){
   if(key===Store.PROGRAM_TYPES){ const item=Sel.byId(key,id); return item?LearningProgramDB.all().filter(p=>p.deliveryType===item.name).length:0; }
   // v5.02: audiences/departments/prerequisites referenced by id on Learning Programs.
   if(key===Store.LP_PREREQS) return LearningProgramDB.all().filter(p=>(p.prerequisiteItemIds||[]).includes(id)).length;
+  if(key===Store.LEARNING_METHODS) return LearningProgramDB.all().filter(p=>(p.agenda||[]).some(a=>(a.methods||[]).includes(id))).length+(Cache.data[Store.TRSESSIONS]||[]).filter(s=>(s.programInfoSnapshot?.agenda||[]).some(a=>(a.methods||[]).includes(id))).length;
   if(key===Store.DEPARTMENTS) return LearningProgramDB.all().filter(p=>p.ownerDepartmentId===id).length;
   return 0; // deliverables stored as strings — safe to delete
 }
@@ -9904,7 +10251,7 @@ const BACKUP_STORE_KEYS=[
   'profiles','evaluations','cdqa_reviews','idqa_reviews',
   'deliverables','positions','venues','modalities','categories','audiences','agenda_templates',
   'departments','attendance_settings','workload_settings','ph_holidays','workload_pct_history','checklist_templates','session_checklists',
-  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets','learning_programs','program_types','app_flags','lp_prerequisites','lnd_contacts','learning_program_people'
+  'training_sessions','audit_log','session_participants','training_reports','kpi_settings','kpi_monthly_snapshots','kpi_targets','learning_programs','program_types','app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets'
 ];
 
 function _buildBackupPayload(){
@@ -19669,7 +20016,7 @@ const AuditLog={
   }
 };
 function _selModuleLabel(k){
-  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience',[Store.DEPARTMENTS]:'Department',[Store.PROGRAM_TYPES]:'Program Type',[Store.LP_PREREQS]:'Prerequisite'};
+  const map={[Store.VENUES]:'Venue',[Store.MODALS]:'Delivery Method',[Store.POS]:'Position',[Store.DELIVERABLES]:'Deliverable',[Store.CATEGORIES]:'Category',[Store.AUDIENCES]:'Audience',[Store.DEPARTMENTS]:'Department',[Store.PROGRAM_TYPES]:'Program Type',[Store.LP_PREREQS]:'Prerequisite',[Store.LEARNING_METHODS]:'Learning Method'};
   return map[k]||'Selection List';
 }
 
