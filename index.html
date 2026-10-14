@@ -5703,7 +5703,8 @@ function _lpHasUsedSessions(p){
    enforced by the lock_used_learning_program_content trigger). In-use active programs can then be edited in place.
    Contributor history rules still apply, so contributor actions keep using _lpHasUsedSessions(). */
 function lpSetupModeOn(){ const f=(Cache.data[Store.APP_FLAGS]||[]).find(x=>x.key==='lp_versioning_paused'); return f?.value===true; }
-function lpSetupModeForMe(){ return lpSetupModeOn()&&!!Auth.isAdmin; }
+// v5.05 (2026-10-15, per Sandra): Setup Mode applies to everyone who can edit programs (switching it stays admin-only).
+function lpSetupModeForMe(){ return lpSetupModeOn()&&lpCanEdit(); }
 function _lpVersionLocked(p){ return _lpHasUsedSessions(p)&&!lpSetupModeForMe(); }
 
 /* v5.00 (2026-10-07, per Sandra): edit rules once a version has implementations.
@@ -6095,7 +6096,7 @@ function renderLpSettingsPane(){
   pane.innerHTML=`<div class="sec-hdr"><div><strong style="font-size:14px">Program Versioning · Setup Mode</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Temporarily pause Learning Program versioning while programs are being built out and sessions mapped.</div></div></div>
     <div class="card" style="padding:16px 20px;max-width:760px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap">
       <div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><b>Setup Mode</b>${on?'<span class="badge" style="background:#fef3c7;color:#92400e;font-weight:700">ON · versioning paused</span>':'<span class="badge" style="background:#dcfce7;color:#15803d">OFF · versioning active</span>'}</div>
-        <div style="font-size:12.5px;color:var(--text3);margin-top:4px;line-height:1.55">While on, <b>administrators</b> can edit in-use programs in place (agenda, evaluations, delivery setup) with no minor revision or new version. Each save is tagged <b>[Setup Mode]</b> in the Audit Log. Sessions created from a program keep their own saved copy; mapped historical sessions show their own details. Contributor history rules still apply.${flag?.updatedAt?` <br>Last changed ${Utils.esc(new Date(flag.updatedAt).toLocaleString('en-PH'))}${flag.updatedBy?' by '+Utils.esc(_lpName(flag.updatedBy)):''}.`:''}</div></div>
+        <div style="font-size:12.5px;color:var(--text3);margin-top:4px;line-height:1.55">While on, <b>everyone who can edit programs</b> can edit in-use programs in place (agenda, evaluations, delivery setup) with no minor revision or new version. Each save is tagged <b>[Setup Mode]</b> in the Audit Log. Sessions created from a program keep their own saved copy; mapped historical sessions show their own details. Contributor history rules still apply.${flag?.updatedAt?` <br>Last changed ${Utils.esc(new Date(flag.updatedAt).toLocaleString('en-PH'))}${flag.updatedBy?' by '+Utils.esc(_lpName(flag.updatedBy)):''}.`:''}</div></div>
       ${Auth.isAdmin?`<button class="btn ${on?'btn-primary':'btn-secondary'} btn-sm" onclick="lpToggleSetupMode()">${on?'Turn Off Setup Mode':'Turn On Setup Mode'}</button>`:''}
     </div>
     <div class="sec-hdr" style="margin-top:22px"><div><strong style="font-size:14px">Default L1 Targets</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Organisation-wide targets for the post-training survey. A program can set its own targets on its Evaluations tab; otherwise these apply. Each target has an effective-from date and an optional end date.</div></div></div>
@@ -6143,13 +6144,13 @@ function lpToggleSetupMode(){
   if(!Auth.isAdmin) return;
   const on=!lpSetupModeOn();
   confirm$(on?'Turn on Setup Mode?':'Turn off Setup Mode?',on
-    ?'<p>Versioning pauses for <b>administrators</b>: in-use Learning Programs can be edited in place, including agenda topics, durations, delivery parts and evaluations. No minor revision or new version is created, and every save is tagged <b>[Setup Mode]</b> in the Audit Log.</p><p style="margin-top:8px">Sessions created from a program keep their own saved copy. Turn Setup Mode off when the build-out is finished.</p>'
+    ?'<p>Versioning pauses for <b>everyone who can edit programs</b>: in-use Learning Programs can be edited in place, including agenda topics, durations, delivery parts and evaluations. No minor revision or new version is created, and every save is tagged <b>[Setup Mode]</b> in the Audit Log.</p><p style="margin-top:8px">Sessions created from a program keep their own saved copy. Turn Setup Mode off when the build-out is finished.</p>'
     :'<p>Normal versioning resumes. Content changes to in-use programs will again need <b>Log Minor Revision</b> or a <b>new version</b>.</p>',on?'Turn On':'Turn Off',async()=>{
     const {data,error}=await sb.from(Store.APP_FLAGS).update({value:on,updated_at:new Date().toISOString(),updated_by:Auth.user?.id||null}).eq('key','lp_versioning_paused').select().single();
     if(error){ _surfaceDbError(error,'Setup Mode'); return; }
     const saved=rowToCamel(Store.APP_FLAGS,data), arr=Cache.data[Store.APP_FLAGS], i=arr.findIndex(x=>x.key===saved.key); if(i>=0) arr[i]=saved; else arr.push(saved);
     await AuditLog.record('update','Settings','lp_versioning_paused',`${on?'Turned ON':'Turned OFF'} Learning Programs Setup Mode (versioning ${on?'paused':'resumed'})`);
-    renderLpSettingsPane(); toast(on?'Setup Mode on. Versioning paused for administrators.':'Setup Mode off. Versioning resumed.','success');
+    renderLpSettingsPane(); toast(on?'Setup Mode on. Versioning paused for all program editors.':'Setup Mode off. Versioning resumed.','success');
   });
   document.getElementById('mc-ok').className='btn btn-primary';
 }
@@ -6508,7 +6509,7 @@ function _lpDetailHtml(p){
   const implCount=draft?0:LearningProgramDB.all().filter(v=>_lpFamilyId(v)===_lpFamilyId(p)).reduce((n,v)=>n+_lpMappedSessions(v.id).length,0);
   const verTip=draft||p.status==='draft'?'Draft version: fully editable until it is activated.'
     :archived?'Archived version: read only.'
-    :setupEdit?'Setup Mode is on: versioning is paused for administrators, so changes save in place on this version.'
+    :setupEdit?'Setup Mode is on: versioning is paused for everyone who can edit programs, so changes save in place on this version.'
     :locked?'In use. Overview details (category, description, program folder, checklist, ownership, SMEs, facilitators, contributors) can be edited any time with no version change. Title and agenda wording, timing or order: Log Minor Revision (e.g. v1.1). Anything else, including evaluations: Actions → Deactivate / New Version.'
     :'Active and not yet used: editable until its first Scheduled or Completed session. After that, content changes need a minor revision or a new version.';
   const tabs=draft?LP_TABS.filter(t=>!['impl','audit'].includes(t[0])):LP_TABS;
@@ -6528,7 +6529,7 @@ function _lpDetailHtml(p){
       <div style="min-width:0">
         ${!draft&&p.code?`<div class="lp-code" style="margin-bottom:2px">${esc(p.code)}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${draft?'New Learning Program':esc(p.title)}</h2>${draft?'':_lpStatusBadge(p)}</div>
-        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, curriculum and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))} ${helpTip(verTip)}${implCount?` · <a href="javascript:void(0)" class="lp-impl-link" onclick="lpSetTab('impl')">${implCount} implementation${implCount===1?'':'s'} →</a>`:''}`}${lpSetupModeForMe()&&!archived?` <span class="badge lp-setup-chip" title="Versioning is paused for administrators. Changes save in place on this version and are tagged [Setup Mode] in the Audit Log. Turn it off in Settings → Learning Programs.">SETUP MODE · versioning paused</span>`:''}</div>
+        <div class="lp-dmeta">${draft?'Create the program record first. Contributors, curriculum and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))} ${helpTip(verTip)}${implCount?` · <a href="javascript:void(0)" class="lp-impl-link" onclick="lpSetTab('impl')">${implCount} implementation${implCount===1?'':'s'} →</a>`:''}`}${lpSetupModeForMe()&&!archived?` <span class="badge lp-setup-chip" title="Versioning is paused for everyone who can edit programs. Changes save in place on this version and are tagged [Setup Mode] in the Audit Log. An admin can turn it off in Settings → Learning Programs.">SETUP MODE · versioning paused</span>`:''}</div>
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
       </div>
       <div class="lp-hd-actions">
