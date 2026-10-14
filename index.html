@@ -6663,15 +6663,15 @@ function _lpDetailHtml(p){
     const part=pi+1, collapsed=_lpCollapsedParts.has(part);
     const indexed=ag.map((a,i)=>({a,i})).filter(x=>Number(x.a.part||1)===part);
     const rows=indexed.map(({a,i},k)=>`<tr class="lp-trow"${edRev?` draggable="true" ondragstart="lpAgendaDragStart(event,${i})" ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,${i},${part})" ondragend="lpAgendaDragEnd()"`:''}>
-      ${edRev?'<td class="lp-drag" title="Drag to reorder">⋮⋮</td>':''}
+      ${edRev?`<td class="lp-drag" title="${edFull&&partCount>1?'Drag to reorder or onto another part':'Drag to reorder'}">⋮⋮</td>`:''}
       <td class="lp-tnum">${k+1}</td>
       <td>${edRev?tin(i,'topic',a.topic,'Topic or activity','text','maxlength="250"'):`<span class="lp-ttopic">${esc(a.topic||'—')}</span>`}</td>
       <td>${_lpMethodCell(a,i,edRev)}</td>
       <td>${edRev?`<div class="lp-min-wrap">${tin(i,'duration',_lpMinutes(a.duration)??'','0','number','min="1" step="1"')}<span>min</span></div>`:esc(_lpDurationText(_lpMinutes(a.duration)))}</td>
-      ${ed?`<td class="lp-tact">${edFull&&partCount>1?`<select class="form-control lp-part-sel" title="Move to another part" aria-label="Delivery part" onchange="lpAgendaSetPart(${i},this.value)">${Array.from({length:partCount},(_,x)=>`<option value="${x+1}" ${x+1===part?'selected':''}>Part ${x+1}</option>`).join('')}</select>`:''}${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${k===0?'disabled':''} title="Move up" aria-label="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${k===indexed.length-1?'disabled':''} title="Move down" aria-label="Move down">↓</button>`:''}${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
+      ${ed?`<td class="lp-tact">${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${k===0?'disabled':''} title="Move up" aria-label="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${k===indexed.length-1?'disabled':''} title="Move down" aria-label="Move down">↓</button>`:''}${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
     </tr>`).join('');
     const cols=(edRev?1:0)+4+(ed?1:0);
-    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'40%':'44%'}"><col><col style="width:${edRev?'92px':'100px'}">${ed?`<col style="width:${edFull?(partCount>1?'178px':'92px'):'70px'}">`:''}</colgroup>
+    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'40%':'44%'}"><col><col style="width:${edRev?'92px':'100px'}">${ed?`<col style="width:${edFull?'92px':'70px'}">`:''}</colgroup>
       <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Learning Method</th><th>Duration</th>${ed?'<th></th>':''}</tr></thead>`;
     const empty=`<tr><td colspan="${cols}" class="lp-muted" style="text-align:center;padding:16px">No topics in this part yet.</td></tr>`;
     return `<section class="lp-part${collapsed?' collapsed':''}" ${edFull?`ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,null,${part})"`:''}>
