@@ -1204,11 +1204,14 @@
     .lp-res-t{flex:1;min-width:0;color:var(--text);font-weight:500;overflow-wrap:anywhere}
     .lp-res-d{font-size:11px;color:var(--text3);white-space:nowrap}
     .lp-res-edit{display:flex;flex-direction:column;gap:6px}
+    .lp-side-res-row{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border-lt)}
+    .lp-side-res-row:last-child{border-bottom:0}
+    .lp-side-res .lp-res-edit{gap:0}
     .lp-res-fic{width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
     .lp-res-fic svg{width:15px!important;height:15px!important}
     .lp-res-f{display:block;font-size:10.5px;color:var(--text3);font-weight:400}
     .lp-cur-card .lp-hd-actions{flex-wrap:nowrap}
-    .lp-topic-tbl-edit{min-width:700px}
+    .lp-topic-tbl-edit{min-width:640px}
     .lp-topic-tbl-edit td.lp-tact{padding-left:4px;padding-right:6px}
     .lp-topic-tbl-edit .lp-part-sel{width:72px}
     .lp-side-card .lp-card-hd .lp-link-btn{white-space:nowrap}
@@ -5902,17 +5905,18 @@ const LP_RES_FORMATS=[['online','Online Resource','#0369a1','#e0f2fe','<circle c
 function _lpResFmt(x){ return LP_RES_FORMATS.find(f=>f[0]===(x?.format||'online'))||LP_RES_FORMATS[0]; }
 function _lpResIcon(x){ const f=_lpResFmt(x); return `<span class="lp-res-fic" style="background:${f[3]};color:${f[2]}" title="${Utils.esc(x?.format==='other'&&x?.formatOther?x.formatOther:f[1])}">${_lpIc(f[4])}</span>`; }
 function _lpResFmtLabel(x){ const f=_lpResFmt(x); return x?.format==='other'&&(x.formatOther||'').trim()?x.formatOther.trim():f[1]; }
-function lpResFormat(i,v){ const p=_lpCur(); if(!p||!_lpOverviewEditing()||!p.learningResources?.[i]) return; _lpCapturePageFields(); p.learningResources[i]={...p.learningResources[i],format:v}; if(v!=='other') delete p.learningResources[i].formatOther; renderLearningPrograms(); }
-function lpResFormatOther(i,v){ const p=_lpCur(); if(!p||!_lpOverviewEditing()||!p.learningResources?.[i]) return; p.learningResources[i]={...p.learningResources[i],formatOther:v}; }
+function lpResFormat(i,v){ const p=_lpCur(); if(!p||!_lpResEditing()||!p.learningResources?.[i]) return; _lpCapturePageFields(); p.learningResources[i]={...p.learningResources[i],format:v}; if(v!=='other') delete p.learningResources[i].formatOther; renderLearningPrograms(); }
+function lpResFormatOther(i,v){ const p=_lpCur(); if(!p||!_lpResEditing()||!p.learningResources?.[i]) return; p.learningResources[i]={...p.learningResources[i],formatOther:v}; }
 function _lpV504Ready(){ return (Cache.data[Store.LEARNING_METHODS]||[]).length>0; }
 function _lpResourceError(w){
   const list=w.learningResources||[];
   let i=list.findIndex(x=>!(x.title||'').trim()); if(i>=0) return `Learning resource ${i+1} needs a title.`;
   i=list.findIndex(x=>x.format==='other'&&!(x.formatOther||'').trim()); return i>=0?`Learning resource ${i+1} needs the Other format specified.`:'';
 }
-function lpResAdd(){ const p=_lpCur(); if(!p||!_lpOverviewEditing()) return; _lpCapturePageFields(); p.learningResources=[...(p.learningResources||[]),{id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title:'',format:'online'}]; renderLearningPrograms(); requestAnimationFrame(()=>{ const ins=document.querySelectorAll('#lp-res-edit input'); ins[ins.length-1]?.focus(); }); }
-function lpResEdit(i,v){ const p=_lpCur(); if(!p||!_lpOverviewEditing()||!p.learningResources?.[i]) return; p.learningResources[i]={...p.learningResources[i],title:v}; }
-function lpResRemove(i){ const p=_lpCur(); if(!p||!_lpOverviewEditing()) return; _lpCapturePageFields(); p.learningResources=(p.learningResources||[]).filter((_,k)=>k!==i); renderLearningPrograms(); }
+function _lpResEditing(){ return _lpEditMode&&lpCanEdit(); }
+function lpResAdd(){ const p=_lpCur(); if(!p||!_lpResEditing()) return; _lpCapturePageFields(); p.learningResources=[...(p.learningResources||[]),{id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title:'',format:'online'}]; renderLearningPrograms(); requestAnimationFrame(()=>{ const ins=document.querySelectorAll('#lp-res-edit input[type=text],.lp-side-res input[type=text]'); ins[ins.length-1]?.focus(); }); }
+function lpResEdit(i,v){ const p=_lpCur(); if(!p||!_lpResEditing()||!p.learningResources?.[i]) return; p.learningResources[i]={...p.learningResources[i],title:v}; }
+function lpResRemove(i){ const p=_lpCur(); if(!p||!_lpResEditing()) return; _lpCapturePageFields(); p.learningResources=(p.learningResources||[]).filter((_,k)=>k!==i); renderLearningPrograms(); }
 function lpTeamEditStart(){
   const p=_lpCur(); if(!_lpCanEditTeam(p)) return;
   _lpTeamDraft={ownership:p.ownership||null,ownerDepartmentId:p.ownerDepartmentId||null,audienceIds:[...(p.audienceIds||[])],prerequisiteProgramIds:[...(p.prerequisiteProgramIds||[])],prerequisiteItemIds:[...(p.prerequisiteItemIds||[])]};
@@ -6201,7 +6205,7 @@ function lpAgendaMethod(i,id,on,inPlace){
   if(inPlace){ const el=document.getElementById('lp-mchips-'+i); if(el){ el.innerHTML=_lpMethodChipsEdit(p.agenda[i].methods); return; } }
   _lpCapturePageFields(); renderLearningPrograms();
 }
-function _lpCurSidebarHtml(p){
+function _lpCurSidebarHtml(p,editRes){
   const esc=Utils.esc, fid=_lpFamilyId(p), draft=p.id==='__draft__';
   const viewLink=draft?'':`<button class="lp-link-btn" style="margin:0" onclick="lpSetTab('overview')">View in Overview →</button>`;
   const qd=(l,v)=>`<div class="lp-qd-row"><span>${l}</span><span>${v}</span></div>`;
@@ -6216,10 +6220,18 @@ function _lpCurSidebarHtml(p){
     ${_lpMetaReady()?`${qd('Program Ownership',p.ownership==='ld'?'<span class="badge" style="background:#dcfce7;color:#15803d">L&amp;D-Owned</span>':p.ownership==='non_ld'?'<span class="badge" style="background:#eff6ff;color:#1d4ed8">Non-L&amp;D-Owned</span>':'<span class="badge" style="background:#fef3c7;color:#92400e">Not classified</span>')}
     ${p.ownership==='non_ld'?qd('Owning Department',esc(Sel.nameOf(Store.DEPARTMENTS,p.ownerDepartmentId)||'—')):p.ownership==='ld'?qd('Owning Department','L&amp;D'):''}
     ${people('sme')}${people('facilitator')}`:'<div class="lp-muted" style="font-size:12px">Not available yet.</div>'}</div>`;
+  if(editRes&&_lpV504Ready()){
+    const all=p.learningResources||[];
+    const rows=all.map((x,i)=>`<div class="lp-side-res-row">${_lpResIcon(x)}<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><input class="form-control lp-tin" type="text" maxlength="150" value="${esc(x.title||'')}" placeholder="Resource title" oninput="lpResEdit(${i},this.value)"><div style="display:flex;gap:4px"><select class="form-control lp-tin" aria-label="Resource format" onchange="lpResFormat(${i},this.value)">${LP_RES_FORMATS.map(f=>`<option value="${f[0]}"${(x.format||'online')===f[0]?' selected':''}>${esc(f[1])}</option>`).join('')}</select>${x.format==='other'?`<input class="form-control lp-tin" type="text" maxlength="60" value="${esc(x.formatOther||'')}" placeholder="Specify format" oninput="lpResFormatOther(${i},this.value)">`:''}</div></div><button type="button" class="lp-icon-btn" title="Remove resource" aria-label="Remove resource" onclick="lpResRemove(${i})">${_lpIc(LP_IC.x)}</button></div>`).join('');
+    return team+`<div class="card lp-card lp-side-card lp-side-res"><div class="lp-card-hd"><span class="lp-card-t">Learning Resources</span>${all.length?`<span class="lp-count-chip" style="background:#eff6ff;color:#1d4ed8">${all.length} resource${all.length===1?'':'s'}</span>`:''}</div>
+      <div class="lp-res-edit">${rows||'<div class="lp-muted" style="font-size:12px">No learning resources yet.</div>'}</div>
+      <button type="button" class="lp-add-topic" style="margin-top:8px" onclick="lpResAdd()">+ Add Resource</button>
+      <div class="lp-muted" style="font-size:11px;margin-top:8px">Saved with the page. Resource changes never create a new version.</div></div>`;
+  }
   const res=(p.learningResources||[]).filter(x=>(x.title||'').trim());
   const resources=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Learning Resources</span>${res.length?`<span class="lp-count-chip" style="background:#eff6ff;color:#1d4ed8">${res.length} resource${res.length===1?'':'s'}</span>`:''}</div>
     ${res.length?res.map(x=>`<div class="lp-res-row">${_lpResIcon(x)}<span class="lp-res-t">${esc(x.title)}<span class="lp-res-f">${esc(_lpResFmtLabel(x))}</span></span><span class="lp-res-d">${x.updatedAt&&!isNaN(new Date(x.updatedAt))?'Updated '+esc(Utils.formatDate(new Date(x.updatedAt).toLocaleDateString('en-CA',{timeZone:'Asia/Manila'}))):''}</span></div>`).join(''):'<div class="lp-muted" style="font-size:12px">No learning resources listed yet.</div>'}
-    <div class="lp-muted" style="font-size:11px;margin-top:8px">Resource titles are managed in Actions → Edit Overview.</div></div>`;
+    <div class="lp-muted" style="font-size:11px;margin-top:8px">Edit resources from Actions → Edit Curriculum or Edit Overview.</div></div>`;
   return team+resources;
 }
 
@@ -6659,7 +6671,7 @@ function _lpDetailHtml(p){
       ${ed?`<td class="lp-tact">${edFull&&partCount>1?`<select class="form-control lp-part-sel" title="Move to another part" aria-label="Delivery part" onchange="lpAgendaSetPart(${i},this.value)">${Array.from({length:partCount},(_,x)=>`<option value="${x+1}" ${x+1===part?'selected':''}>Part ${x+1}</option>`).join('')}</select>`:''}${edRev?`<button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},-1)" ${k===0?'disabled':''} title="Move up" aria-label="Move up">↑</button><button class="btn btn-ghost btn-xs" onclick="lpAgendaMove(${i},1)" ${k===indexed.length-1?'disabled':''} title="Move down" aria-label="Move down">↓</button>`:''}${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
     </tr>`).join('');
     const cols=(edRev?1:0)+4+(ed?1:0);
-    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'38%':'42%'}"><col><col style="width:${edRev?'96px':'110px'}">${ed?`<col style="width:${edFull?(partCount>1?'196px':'110px'):'84px'}">`:''}</colgroup>
+    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'40%':'44%'}"><col><col style="width:${edRev?'92px':'100px'}">${ed?`<col style="width:${edFull?(partCount>1?'178px':'92px'):'70px'}">`:''}</colgroup>
       <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Learning Method</th><th>Duration</th>${ed?'<th></th>':''}</tr></thead>`;
     const empty=`<tr><td colspan="${cols}" class="lp-muted" style="text-align:center;padding:16px">No topics in this part yet.</td></tr>`;
     return `<section class="lp-part${collapsed?' collapsed':''}" ${edFull?`ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,null,${part})"`:''}>
@@ -6735,7 +6747,8 @@ function _lpDetailHtml(p){
   if(_lpTab==='impl') body=_lpImplementationsHtml(p);
   else if(_lpTab==='audit') body=_lpAuditHtml(p);
   // v5.04: read-only sidebar beside the curriculum; while editing, the curriculum takes the full width.
-  else if(_lpTab==='curriculum') body=ed?`<div class="lp-ov2-main" style="margin-top:16px">${agenda}</div>`:`<div class="lp-ov2"><div class="lp-ov2-main">${agenda}</div><div class="lp-ov2-side">${_lpCurSidebarHtml(p)}</div></div>`;
+  // v5.07 (2026-10-15, per Sandra): sidebar stays while editing; Learning Resources are editable there (version-exempt).
+  else if(_lpTab==='curriculum') body=`<div class="lp-ov2"><div class="lp-ov2-main">${agenda}</div><div class="lp-ov2-side">${_lpCurSidebarHtml(p,ed&&can&&!archived)}</div></div>`;
   else if(_lpTab==='evals') body=assessments;
   else {
     /* v5.04 (2026-10-15, per Sandra): Overview = two columns (~68/32). Left: Program Information + Ownership & Delivery Team.
@@ -7328,6 +7341,12 @@ async function _lpSaveScoped(){
   if(newTotal!==oldTotal) return fail(`Agenda item minutes must still total ${_lpDurationText(oldTotal)} (now ${_lpDurationText(newTotal)}). Changing the total duration needs a new version.`);
   const pErr=_lpDeliveryPlanError({agenda,deliveryParts:parts}); if(pErr) return fail(pErr);
   const fields=[]; if(title!==before.title) fields.push('title'); if(JSON.stringify(agenda)!==JSON.stringify((before.agenda||[]).map(a=>_lpAgendaRow(a,_lpMinutes(a.duration),Number(a.part||1))))) fields.push('agenda');
+  // v5.07: learning resources are version-exempt -- saved with a revision, or on their own without one.
+  const resPatch=_lpV504Ready()?{learningResources:_lpTeamPatch(w,before).learningResources}:{};
+  const resErr=_lpResourceError(w); if(resErr) return fail(resErr);
+  const resKey=l=>JSON.stringify((l||[]).map(x=>[x.title,x.format||'online',x.formatOther||'']));
+  const resChanged=!!resPatch.learningResources&&resKey(resPatch.learningResources)!==resKey(before.learningResources);
+  if(!fields.length&&resChanged) return finish(resPatch,`Updated learning resources of ${before.code} ${_lpVerLabel(before)} (no version change)`,'Learning resources saved. No version change.');
   if(!fields.length) return fail('No title or agenda changes to log as a revision.');
   _lpDraftError='';
   const nextRev=Number(before.revision||0)+1, label=`${before.version||'v1'}.${nextRev}`;
@@ -7337,7 +7356,7 @@ async function _lpSaveScoped(){
       const note=(document.getElementById('lp-rev-note')?.value||'').trim();
       if(!note){ toast('Add a short change note.','error'); return setTimeout(ask,0); }
       const me=Auth.user, entry={revision:nextRev,label,date:_lpToday(),at:new Date().toISOString(),by:me?.id||null,byName:me?`${me.firstName} ${me.lastName}`:'',note,fields};
-      const patch={title,agenda,revision:nextRev,revisionHistory:[...(before.revisionHistory||[]),entry]};
+      const patch={title,agenda,revision:nextRev,revisionHistory:[...(before.revisionHistory||[]),entry],...(resChanged?resPatch:{})};
       if(title!==before.title) patch.title=title;
       await finish(patch,`Logged minor revision ${before.code} ${label} (${fields.join(', ')}): ${note}`,`Revision ${label} saved.`);
     });
