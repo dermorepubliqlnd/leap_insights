@@ -1110,6 +1110,7 @@
     .lp-drag{cursor:grab;color:#94a3b8;letter-spacing:-2px;user-select:none;text-align:center}
     .lp-trow.dragging{opacity:.4}
     .lp-tin{height:30px;padding:4px 8px;font-size:12.5px}
+    .lp-ret-wrap{display:flex;align-items:center;gap:6px}.lp-ret-wrap input[type=number]{width:64px}.lp-ret-wrap span{font-size:11px;color:var(--text3)} /* v5.10 */
     .lp-min-wrap{position:relative}.lp-min-wrap input{padding-right:32px}.lp-min-wrap span{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none}
     .lp-tact{white-space:nowrap;text-align:right}
     .lp-part-sel{display:inline-block;width:auto;height:26px;padding:0 6px;font-size:11.5px;margin-right:4px}
@@ -3786,6 +3787,8 @@ const _FIELD_MAPS = {
     // {"Module 1":80,"Module 2":95} -- read/written whenever the session has 1+ rows in
     // training_sessions.assessments. The plain columns above are legacy fallback only.
     preTestScores:'pre_test_scores', postTestScores:'post_test_scores',
+    // v5.10 (2026-10-16, per Sandra): L2 retention test scores, same shape (keyed by assessment name).
+    retentionTestScores:'retention_test_scores',
     // Manual-entry participant fields (2026-07-30) -- Add Participant / CSV are fully manual (no
     // system-user picker); role & supervisor are free text tied to the participant, not a profile lookup.
     // externalSupervisor kept for historical data (2026-08-05, Phase38 item 4) -- no longer
@@ -6712,7 +6715,8 @@ function _lpDetailHtml(p){
       <td>${cell('l2',i,'name',a.name,'Evaluation name','text','maxlength="200"')}</td>
       <td>${choice('l2',i,'type',LP_L2_TYPES,a,'Specify type')}</td>
       <td style="text-align:center">${edFull?`<input type="checkbox" ${a.pre?'checked':''} onchange="lpEditEvalItem('l2',${i},'pre',this.checked)">`:(a.pre?yes:no)}</td>
-      <td style="text-align:center">${edFull?`<input type="checkbox" ${a.post?'checked':''} onchange="lpEditEvalItem('l2',${i},'post',this.checked);document.getElementById('lp-pass-${i}').disabled=!this.checked;document.getElementById('lp-pass-${i}').required=this.checked">`:(a.post?yes:no)}</td>
+      <td style="text-align:center">${edFull?`<input type="checkbox" ${a.post?'checked':''} onchange="lpEditEvalItem('l2',${i},'post',this.checked)">`:(a.post?yes:no)}</td>
+      <td>${edFull?`<div class="lp-ret-wrap"><input type="checkbox" title="${a.post?'Give the post-test again after training':'Tick Post first — a retention test re-uses the post-test'}" ${a.retention&&a.post?'checked':''} ${a.post?'':'disabled'} onchange="lpEditEvalItem('l2',${i},'retention',this.checked)">${a.retention&&a.post?`<input class="form-control lp-tin" type="number" min="1" max="365" step="1" value="${esc(String(a.retentionDays??''))}" placeholder="30" aria-label="Retention days after training" oninput="lpEditEvalItem('l2',${i},'retentionDays',this.value)"><span>days</span>`:''}</div>`:(a.retention?`${yes} <span class="lp-muted" style="font-size:11.5px">${esc(String(a.retentionDays||''))} days after</span>`:no)}</td>
       <td>${edFull?`<input id="lp-pass-${i}" class="form-control lp-tin" type="number" min="0" max="100" step="1" value="${a.post?a.passingScore??'':''}" placeholder="${a.post?'Required %':'Pre only'}" ${a.post?'required':'disabled'} oninput="lpEditEvalItem('l2',${i},'passingScore',this.value)">`:(a.post&&a.passingScore!=null?a.passingScore+'%':'—')}</td>
       <td style="text-align:right">${rm('l2',i)}</td></tr>`).join('');
   const level=(key,title,detail,enabled,body='',tone=['#eef2ff','#4f46e5'])=>`<section id="lp-eval-${key}" class="lp-eval-level${_lpDraftError&&_lpDraftError.startsWith(key.toUpperCase()+' ')?' lp-section-invalid':''}"><div class="lp-eval-level-hd"><span class="lp-lvl-ic" style="background:${tone[0]};color:${tone[1]}">${key.toUpperCase()}</span><div class="lp-eval-level-title"><b>${title}</b><small>${detail}</small></div>
@@ -6721,7 +6725,7 @@ function _lpDetailHtml(p){
   const tbl=(h,body)=>`<div class="lp-tbl-scroll"><table class="dash-tbl lp-eval-tbl"><thead><tr>${h}</tr></thead><tbody>${body}</tbody></table></div>`;
   const emptyRow=(n,t)=>`<tr style="cursor:default"><td colspan="${n}" class="lp-muted" style="text-align:center;padding:16px">${t}</td></tr>`;
   const addBtn=(level,label)=>edFull?`<button type="button" class="lp-add-topic" style="margin-top:8px" onclick="lpEvalAdd('${level}')">+ ${label}</button>`:'';
-  const l2Body=tbl('<th>Evaluation Item</th><th style="width:210px">Type</th><th style="width:60px;text-align:center">Pre</th><th style="width:60px;text-align:center">Post</th><th style="width:110px">Passing %</th><th style="width:40px"></th>',asRows||emptyRow(6,'No L2 evaluation items yet.'))+addBtn('l2','Add Evaluation Item');
+  const l2Body=tbl('<th>Evaluation Item</th><th style="width:210px">Type</th><th style="width:60px;text-align:center">Pre</th><th style="width:60px;text-align:center">Post</th><th style="width:150px" title="Post-test given again N days after training (same passing %)">Retention</th><th style="width:110px">Passing %</th><th style="width:40px"></th>',asRows||emptyRow(7,'No L2 evaluation items yet.'))+addBtn('l2','Add Evaluation Item');
   const l3Rows=ec.l3.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${choice('l3',i,'method',LP_L3_METHODS,x,'Specify method')}</td><td>${edFull?`<input class="form-control lp-tin" list="lp-l3-resp" type="text" maxlength="120" value="${esc(x.responsible||'')}" placeholder="e.g. Immediate Supervisor" oninput="lpEditEvalItem('l3',${i},'responsible',this.value)">`:(x.responsible?esc(x.responsible):no)}</td><td>${edFull?cell('l3',i,'daysAfter',x.daysAfter,'30','number','min="1" max="365" step="1"'):(x.daysAfter!=null&&x.daysAfter!==''?esc(String(x.daysAfter))+' days':no)}</td><td>${cell('l3',i,'notes',x.notes,'Optional','text','maxlength="300"')}</td><td style="text-align:right">${rm('l3',i)}</td></tr>`).join('');
   const l3Body=tbl('<th style="width:34px">#</th><th style="width:240px">Follow-through Method</th><th style="width:190px">Responsible</th><th style="width:100px">Days After</th><th>Notes</th><th style="width:40px"></th>',l3Rows||emptyRow(6,'No L3 follow-through items yet.'))+addBtn('l3','Add L3 Item')+(edFull?`<datalist id="lp-l3-resp">${LP_L3_RESPONSIBLE.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:'');
   const l4Rows=ec.l4.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${cell('l4',i,'measure',x.measure,'e.g. Units per transaction','text','maxlength="200"')}</td><td>${cell('l4',i,'baseline',x.baseline,'e.g. 1.8')}</td><td>${cell('l4',i,'target',x.target,'e.g. 2.2')}</td><td>${cell('l4',i,'unit',x.unit,'e.g. units, %, PHP')}</td><td>${edFull?cell('l4',i,'daysAfter',x.daysAfter,'90','number','min="1" max="365" step="1"'):(x.daysAfter!=null&&x.daysAfter!==''?esc(String(x.daysAfter))+' days':no)}</td><td style="text-align:right">${rm('l4',i)}</td></tr>`).join('');
@@ -6732,14 +6736,15 @@ function _lpDetailHtml(p){
   if(ec.l2.enabled&&as.some(a=>a.pre)) tl.push(['Start of session','L2 pre-test']);
   const endItems=[...(ec.l2.enabled&&as.some(a=>a.post)?['L2 post-test']:[]),...(ec.l1?['L1 post-training survey']:[])];
   if(endItems.length) tl.push(['End of training',endItems.join(' · ')]);
-  [...(ec.l3.enabled?ec.l3.items.map(x=>({d:Number(x.daysAfter)||0,t:`L3 · ${x.method||'Follow-through'}${x.responsible?' ('+x.responsible+')':''}`})):[]),
+  [...(ec.l2.enabled?as.filter(a=>a.retention&&a.post).map(a=>({d:Number(a.retentionDays)||0,t:`L2 retention test · ${a.name||'Evaluation item'}`})):[]), // v5.10
+   ...(ec.l3.enabled?ec.l3.items.map(x=>({d:Number(x.daysAfter)||0,t:`L3 · ${x.method||'Follow-through'}${x.responsible?' ('+x.responsible+')':''}`})):[]),
    ...(ec.l4.enabled?ec.l4.items.map(x=>({d:Number(x.daysAfter)||0,t:`L4 · ${x.measure||'Result measure'}`})):[])]
     .sort((a,b)=>a.d-b.d).forEach(x=>tl.push([x.d?`${x.d} days after`:'After training',x.t]));
   const assessments=`<div class="card lp-card lp-evals-card"><div class="lp-card-hd"><div><span class="lp-card-t">Evaluations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Kirkpatrick L1–L4 requirements for this program. Sessions created from the program copy these settings.</div></div></div>
     <div class="lp-eval-summary"><div class="lp-eval-chips">${lvChip('L1',ec.l1,'#f5f3ff','#7c3aed')}${lvChip('L2',ec.l2.enabled,'#ecfdf5','#059669')}${lvChip('L3',ec.l3.enabled,'#fffbeb','#d97706')}${lvChip('L4',ec.l4.enabled,'#fef2f2','#dc2626')}</div>
       ${tl.length?`<ol class="lp-tl">${tl.map(([w,t])=>`<li><b>${esc(w)}</b><span>${esc(t)}</span></li>`).join('')}</ol>`:'<span class="lp-muted" style="font-size:12px">No evaluations enabled yet.</span>'}</div>
     ${level('l1','L1 · Reaction','Post-training survey: participants’ immediate feedback on the training experience.',ec.l1,draft?'<div class="lp-muted" style="font-size:12px">Targets can be set after the draft is first saved. Organisation defaults apply until then.</div>':`<div class="lp-team-h" style="margin-bottom:6px">Targets <span class="lp-muted" style="font-weight:400;font-size:11.5px">· program targets override the defaults for their dates; changes never create a new version</span></div>${_l1TargetsTableHtml(_lpFamilyId(p),can&&!archived&&!ed)}`,['#f5f3ff','#7c3aed'])}
-    ${level('l2','L2 · Learning','Knowledge and skills gained. Pre / Post and passing % are set per item.',ec.l2.enabled,l2Body,['#ecfdf5','#059669'])}
+    ${level('l2','L2 · Learning','Knowledge and skills gained. Pre / Post, optional Retention (post-test re-taken N days later, plotted on the Training Calendar) and passing % are set per item.',ec.l2.enabled,l2Body,['#ecfdf5','#059669'])}
     ${level('l3','L3 · Behavior','Application on the job: follow-through methods, who is responsible, and timing.',ec.l3.enabled,l3Body,['#fffbeb','#d97706'])}
     ${level('l4','L4 · Results','Business outcome measures with baseline, target, unit and timing.',ec.l4.enabled,l4Body,['#fef2f2','#dc2626'])}
   </div>`;
@@ -6815,6 +6820,7 @@ function _lpActivationError(p){
     const name=(a.name||'').trim();
     if(!name||(!a.pre&&!a.post)) return `L2 item ${i+1} needs a name and Pre, Post, or both.`;
     if(a.post&&(a.passingScore===null||a.passingScore===undefined||String(a.passingScore).trim()===''||Number(a.passingScore)<0||Number(a.passingScore)>100)) return `L2 item ${i+1} needs a passing percentage from 0 to 100.`;
+    if(a.retention){ const rd=Number(a.retentionDays); if(!a.post) return `L2 item ${i+1}: a retention test re-uses the post-test. Tick Post as well.`; if(!Number.isInteger(rd)||rd<1||rd>365) return `L2 item ${i+1} needs retention days after training (1–365).`; } // v5.10
   }
   if(ec.l3.enabled) for(const [i,x] of ec.l3.items.entries()){
     const days=Number(x.daysAfter);
@@ -6991,9 +6997,11 @@ function lpEvalAdd(level){
 function lpEditEvalItem(level,i,field,value){
   const p=_lpCur(); if(!p||!_lpEditMode) return;
   if(level==='l2'){
-    if(!p.assessments?.[i]||!['name','type','pre','post','passingScore'].includes(field)) return;
+    if(!p.assessments?.[i]||!['name','type','pre','post','passingScore','retention','retentionDays'].includes(field)) return;
     p.assessments[i][field]=value;
-    if(field==='post'&&!value) p.assessments[i].passingScore=null;
+    if(field==='post'&&!value){ p.assessments[i].passingScore=null; p.assessments[i].retention=false; } // v5.10: retention needs Post
+    if(field==='retention'&&value&&!p.assessments[i].retentionDays) p.assessments[i].retentionDays=30;
+    if(field==='post'||field==='retention') renderLearningPrograms();
   }else if(level==='l3'||level==='l4'){
     const allowed={l3:['method','responsible','daysAfter','notes'],l4:['measure','baseline','target','unit','daysAfter']}[level]; // v5.03
     const ec=_lpEvalConfig(p); if(!ec[level].items[i]||!allowed.includes(field)) return;
@@ -7412,7 +7420,11 @@ async function lpSaveDraft(){
     if(a.post&&(!/^\d+(?:\.\d+)?$/.test(String(score).trim())||Number(score)<0||Number(score)>100)) return fail(`L2 item ${i+1} needs a passing percentage from 0 to 100.`);
     const type=(a.type||'').trim();
     if(a._other_type&&!type) return fail(`L2 item ${i+1} needs the Other type specified.`);
-    assessments.push({name,type:type||null,pre:!!a.pre,post:!!a.post,passingScore:a.post?Number(score):null});
+    // v5.10 (2026-10-16, per Sandra): retention test = the post-test given again N days after training (same passing %).
+    const rDays=String(a.retentionDays??'').trim();
+    if(a.retention&&!a.post) return fail(`L2 item ${i+1}: a retention test re-uses the post-test. Tick Post as well.`);
+    if(a.retention&&(!/^\d+$/.test(rDays)||Number(rDays)<1||Number(rDays)>365)) return fail(`L2 item ${i+1} needs retention days after training (1–365).`);
+    assessments.push({name,type:type||null,pre:!!a.pre,post:!!a.post,passingScore:a.post?Number(score):null,...(a.retention&&a.post?{retention:true,retentionDays:Number(rDays)}:{})});
   }
   if(ec.l3.enabled) for(const [i,x] of ec.l3.items.entries()){
     const days=String(x.daysAfter??'').trim();
@@ -13726,6 +13738,10 @@ function renderTDCalendar(rows){
     if(!s.l3Required||s.l3CompletedAt||!s.l3DueDate) return;
     (l3ByDate[s.l3DueDate]=l3ByDate[s.l3DueDate]||[]).push(s);
   });
+  // v5.10 (2026-10-16, per Sandra): L2 retention-test reminders -- same marker layer as L3 (not a training day; no hours/KPIs).
+  // One marker per session + retention item, cleared once every attendee has a retention score.
+  const retByDate={};
+  _tdaRetentionMarkers(rows).forEach(m=>{ (retByDate[m.due]=retByDate[m.due]||[]).push(m); });
 
   const CHIP_CAP=2;
   const BAR_H=32; // px per stacked bar lane (room for program title + person/venue line)
@@ -13807,10 +13823,13 @@ function renderTDCalendar(rows){
       // Evaluation tab via _tdOpenL3.
       const l3Here=l3ByDate[dateStr]||[];
       const l3Html=l3Here.length?`<div style="${dimStyle}display:flex;flex-direction:column;gap:2px;margin-bottom:2px">${l3Here.map(s=>`<div onclick="event.stopPropagation();_tdOpenL3('${s.id}')" title="L3 Behavior Evaluation due — ${Utils.esc(s.trainingProgram||s.code||'')}" style="cursor:pointer;display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:600;color:#dc2626;background:#fef2f2;border-radius:4px;padding:1px 5px;white-space:normal;word-break:break-word">${_tdIconSvg('flag','#dc2626',9)}<span>L3 Due: ${Utils.esc(s.trainingProgram||s.code||'')}</span></div>`).join('')}</div>`:'';
+      const retHere=retByDate[dateStr]||[];
+      const retHtml=retHere.length?`<div style="${dimStyle}display:flex;flex-direction:column;gap:2px;margin-bottom:2px">${retHere.map(m=>{const nm=m.s.trainingProgram||m.s.code||'';const tip=`L2 Retention test due — ${m.a.name} · ${nm}${m.s.batchNo?' (Batch '+m.s.batchNo+')':''}${m.pending.total?` · ${m.pending.missing} of ${m.pending.total} scores pending`:''}`;return `<div onclick="event.stopPropagation();_tdOpenRetention('${m.s.id}')" title="${Utils.esc(tip)}" style="cursor:pointer;display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:600;color:#047857;background:#ecfdf5;border-radius:4px;padding:1px 5px;white-space:normal;word-break:break-word">${_tdIconSvg('flag','#059669',9)}<span>L2 Retention: ${Utils.esc(nm)}</span></div>`;}).join('')}</div>`:'';
       bodyCellsHtml+=`<div style="grid-row:${gridRow};grid-column:${gridCol};position:relative;background:${isOutOfMonth?'#f8fafc':'var(--white)'};border:1px solid var(--border);padding:5px;box-sizing:border-box;overflow:visible;${isToday?'box-shadow:inset 0 0 0 2px #4f46e5;':''}">
         <div style="font-size:11.5px;font-weight:600;color:${isToday?'#4f46e5':'var(--text3)'}">${cellDate.getDate()}</div>
         <div style="height:${barBand}px"></div>
         ${barsHereHtml}
+        ${retHtml}
         ${l3Html}
         <div style="${dimStyle}">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
       </div>`;
@@ -13821,11 +13840,13 @@ function renderTDCalendar(rows){
   // TD_TYPE_COLORS itself still keeps VILT for legacy record badge coloring, and the List view's
   // Type filter dropdown still legitimately offers VILT for filtering historical records.
   const legend=Object.entries(TD_TYPE_COLORS).filter(([k])=>k!=='VILT').map(([k,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:${c.dot};display:inline-block"></span>${k}</span>`).join('');
+  // v5.10: reminder markers in the legend (not sessions).
+  const markerLegend=`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:#047857;margin-right:14px">${_tdIconSvg('flag','#059669',10)}L2 Retention due</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:#dc2626;margin-right:14px">${_tdIconSvg('flag','#dc2626',10)}L3 due</span>`;
   wrap.innerHTML=`<div class="card" style="padding:14px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         ${_tdAddTrainingButtonHtml()}
-        <div>${legend}</div>
+        <div>${legend}${markerLegend}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <button class="btn btn-sm btn-secondary" onclick="tdCalPrev()">‹</button>
@@ -14374,6 +14395,11 @@ function openTrainingDetail(id){
 // L3-due reminder chip and the Training Dashboard's "L3 Evaluations due/overdue" row, so clicking
 // either one lands directly on the tab that needs action instead of the generic Overview tab
 // openTrainingDetail() always opens to.
+function _tdOpenRetention(id){ // v5.10
+  openTrainingDetail(id);
+  _tdDetailTab='assessments';
+  renderTrainingDetail();
+}
 function _tdOpenL3(id){
   openTrainingDetail(id);
   _tdDetailTab='l3eval';
@@ -14591,6 +14617,11 @@ async function tdDetailSave(){
   if(programSession&&Array.isArray(s.l4Results)&&s.l4Results.length){
     const anchor=_tdSessionEndDate(d);
     d.l4Results=s.l4Results.map(x=>({...x,dueDate:anchor&&Number(x.daysAfter)?_tdl3AddDays(anchor,Number(x.daysAfter)):null}));
+  }
+  // v5.10 (2026-10-16, per Sandra): L2 retention test due date = session end date + retentionDays; kept in sync on every save.
+  if(Array.isArray(d.assessments)&&d.assessments.some(a=>a&&a.retention)){
+    const anchor=_tdSessionEndDate(d);
+    d.assessments=d.assessments.map(a=>a&&a.retention?{...a,retentionDueDate:anchor&&Number(a.retentionDays)?_tdl3AddDays(anchor,Number(a.retentionDays)):null}:a);
   }
   // First successful save of a program-linked session assigns its permanent batch code. The
   // delivery year comes from the first scheduled delivery part/date. Existing batch codes are
@@ -15486,13 +15517,44 @@ function _tdaGetAssessments(s){
   return [];
 }
 function _tdaHasAssessment(s){ return _tdaGetAssessments(s).length>0; }
+/* v5.10 (2026-10-16, per Sandra): L2 retention test = the post-test re-taken N days after training.
+   Due date = stored retentionDueDate (set on session save) or, for sessions not re-saved yet, end date + retentionDays.
+   Retention scores stay editable after the session is tagged Complete (they arrive weeks later). */
+function _tdaRetentionItems(s){ return _tdaGetAssessments(s).filter(a=>a&&a.retention&&a.post); }
+function _tdaRetentionDue(s,a){
+  if(!a||!a.retention) return null;
+  if(a.retentionDueDate) return a.retentionDueDate;
+  const end=_tdSessionEndDate(s); const n=Number(a.retentionDays);
+  return end&&n?_tdl3AddDays(end,n):null;
+}
+// Attended (not fully absent) participants still missing a retention score for item a.
+function _tdaRetentionPending(s,a){
+  const rows=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id);
+  const days=_tdaDayList(s), multi=days.length>1;
+  const present=rows.filter(r=>!_tdaIsFullyAbsent(r,days,multi));
+  return {total:present.length, missing:present.filter(r=>_tdaGetNamedScore(r,'ret',a.name)==null).length};
+}
+// Open retention markers for the calendar / dashboards: one per session + item, until every attendee has a score.
+function _tdaRetentionMarkers(sessions){
+  const out=[];
+  (sessions||[]).forEach(s=>{
+    if(!s||s.status==='cancelled') return;
+    _tdaRetentionItems(s).forEach(a=>{
+      const due=_tdaRetentionDue(s,a); if(!due) return;
+      const pend=s.status==='completed'?_tdaRetentionPending(s,a):{total:0,missing:0};
+      if(s.status==='completed'&&pend.total&&!pend.missing) return; // all scores in -> marker clears
+      out.push({s,a,due,pending:pend});
+    });
+  });
+  return out;
+}
 function _tdaGetNamedScore(r,kind,name){
-  const bag=kind==='pre'?r.preTestScores:r.postTestScores;
+  const bag=kind==='pre'?r.preTestScores:kind==='ret'?r.retentionTestScores:r.postTestScores;
   const v=bag&&bag[name];
   return (v===undefined||v===null||v==='')?null:v;
 }
 function _tdaSetNamedScore(r,kind,name,value){
-  const field=kind==='pre'?'preTestScores':'postTestScores';
+  const field=kind==='pre'?'preTestScores':kind==='ret'?'retentionTestScores':'postTestScores';
   r[field]=r[field]?{...r[field]}:{};
   r[field][name]=(value===''||value===null||value===undefined)?null:Number(value);
 }
@@ -15656,7 +15718,7 @@ function _tdaClearAssessmentIfAbsent(r,s){
   const dayList=_tdaDayList(s), isMultiDay=dayList.length>1;
   if(!_tdaIsFullyAbsent(r,dayList,isMultiDay)) return false;
   const hadScore=Object.values(r.preTestScores||{}).some(v=>v!=null)||Object.values(r.postTestScores||{}).some(v=>v!=null)||r.preTestScore!=null||r.postTestScore!=null;
-  r.preTestScore=null; r.postTestScore=null; r.preTestScores={}; r.postTestScores={};
+  r.preTestScore=null; r.postTestScore=null; r.preTestScores={}; r.postTestScores={}; if(r.retentionTestScores) r.retentionTestScores={};
   return hadScore;
 }
 // Point value for one day's status -- Present=1, Absent/Pending=0, Late/Left Early get the
@@ -15976,6 +16038,8 @@ function _tdaRenderAssessmentsTab(s){
   const locked=s.status==='completed';
   const kpiColumns=_tdaAssessmentKpiHtml(s);
   const _tdaAssessments=_tdaGetAssessments(s);
+  // v5.10: retention column + its own save path once the session is Complete.
+  const _tdaRetItems=_tdaRetentionItems(s), _tdaRetOpts={disabled:s.status==='cancelled'};
 
   if(!_tdaAssessments.length){
     return `
@@ -16004,13 +16068,13 @@ function _tdaRenderAssessmentsTab(s){
   let thead;
   if(_tdaMultiAssess){
     const groupHeaderRow=_tdaAssessments.map((a,ai)=>{
-      const slots=_tdaAssessSlots(a);
+      const slots=_tdaAssessSlots(a,true);
       return `<th colspan="${slots.length}" style="background:${_tdaGroupBg(ai)};text-align:center">${Utils.esc(a.name)}</th>`;
     }).join('');
-    const subHeaderRow=_tdaAssessments.flatMap((a,ai)=>_tdaAssessSlots(a).map(slot=>`<th style="background:${_tdaGroupBg(ai)}">${_tdaAssessColLabel(a,slot,false)}</th>`)).join('');
+    const subHeaderRow=_tdaAssessments.flatMap((a,ai)=>_tdaAssessSlots(a,true).map(slot=>`<th style="background:${_tdaGroupBg(ai)}">${_tdaAssessColLabel(a,slot,false)}</th>`)).join('');
     thead=`<tr>${fixedCols.map(c=>`<th rowspan="2">${c}</th>`).join('')}${groupHeaderRow}</tr><tr>${subHeaderRow}</tr>`;
   }else{
-    const scoreHeaders=_tdaAssessments.flatMap(a=>_tdaAssessSlots(a).map(slot=>_tdaAssessColLabel(a,slot,false)));
+    const scoreHeaders=_tdaAssessments.flatMap(a=>_tdaAssessSlots(a,true).map(slot=>_tdaAssessColLabel(a,slot,false)));
     thead=`<tr>${[...fixedCols,...scoreHeaders].map(c=>`<th>${c}</th>`).join('')}</tr>`;
   }
 
@@ -16019,7 +16083,7 @@ function _tdaRenderAssessmentsTab(s){
   const bodyRows=rows.map((r,i)=>{
     const p=_tdaPersonInfo(r);
     const fullyAbsent=_tdaIsFullyAbsent(r,_tdaAssessDayList,_tdaAssessMultiDay);
-    const scoreCells=_tdaAssessments.map((a,ai)=>_tdaAssessCellsHtml(r,a,dis,fullyAbsent,_tdaMultiAssess?_tdaGroupBg(ai):null)).join('');
+    const scoreCells=_tdaAssessments.map((a,ai)=>_tdaAssessCellsHtml(r,a,dis,fullyAbsent,_tdaMultiAssess?_tdaGroupBg(ai):null,_tdaRetOpts)).join('');
     return `<tr data-row-id="${r.id}">
       <td style="color:var(--text3)">${i+1}</td>
       <td><span style="font-size:12.5px">${Utils.esc(p.employeeId)}</span></td>
@@ -16032,6 +16096,7 @@ function _tdaRenderAssessmentsTab(s){
 
   const legend=`<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);margin-top:10px">
       <span>Gain = Post-Test − Pre-Test</span>
+      ${_tdaRetItems.map(a=>{const due=_tdaRetentionDue(s,a);return `<span>Retention · ${Utils.esc(a.name)}: post-test re-taken ${Number(a.retentionDays)||'—'} days after training${due?` — due <b>${Utils.esc(Utils.formatDate(due))}</b>`:''} · passing ${a.passingScore??'—'}%</span>`;}).join('')}
       <span>A participant marked fully Absent on Attendance shows "Absent" here instead of an editable score.</span>
     </div>`;
 
@@ -16039,14 +16104,14 @@ function _tdaRenderAssessmentsTab(s){
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       <div style="font-weight:700;font-size:14.5px">Assessment Scores</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${locked?'<div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">🔒 Locked — session tagged Complete</div>':`
+        ${locked?`<div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">🔒 Locked — session tagged Complete${_tdaRetItems.length?' · Retention scores stay open':''}</div>`:`
         <button class="btn btn-sm btn-secondary" onclick="document.getElementById('tda-assess-csv-input').click()">⇪ Import Scores (CSV)</button>
         <input type="file" id="tda-assess-csv-input" accept=".csv" style="display:none" onchange="_tdaAssessHandleCSVFile(this.files[0])">
         <button class="btn btn-sm btn-ghost" onclick="_tdaAssessDownloadCSVTemplate()">⇩ Download Template</button>`}
       </div>
     </div>`;
 
-  const actionBar=locked?'':`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+  const actionBar=locked?(_tdaRetItems.length&&s.status!=='cancelled'?`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn btn-primary" onclick="_tdaSaveRetention()">Save Retention Scores</button></div>`:''):`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
       <button class="btn btn-secondary" onclick="_tdaSaveDraft()">Save Draft</button>
     </div>`;
 
@@ -16210,15 +16275,16 @@ function _tdaStatusSelectHtml(value,onchange,dis){
 // Post (if a.post is checked), Gain (only when BOTH are checked -- a Post-only assessment has
 // nothing to compute a gain from). 2026-09-14 redesign: replaces the old session-wide
 // assessmentType/preApplicable/postApplicable with per-assessment checkboxes.
-function _tdaAssessSlots(a){
+function _tdaAssessSlots(a,withRet=false){
   const slots=[];
   if(a.pre) slots.push('pre');
   if(a.post) slots.push('post');
   if(a.pre&&a.post) slots.push('gain');
+  if(withRet&&a.retention&&a.post) slots.push('ret'); // v5.10: only on the live Assessments tab
   return slots;
 }
 function _tdaAssessColLabel(a,slot,multi){
-  const base=slot==='pre'?'Pre-Test':slot==='post'?'Post-Test':'Gain';
+  const base=slot==='pre'?'Pre-Test':slot==='post'?'Post-Test':slot==='ret'?`Retention (Day ${Number(a.retentionDays)||'—'})`:'Gain';
   return multi?`${a.name} ${base}`:base;
 }
 // Alternating tint per assessment (2026-09-14, per Sandra: "clear distinction between different
@@ -16230,17 +16296,21 @@ function _tdaAssessColLabel(a,slot,multi){
 const _TDA_GROUP_BG=['transparent','var(--sky-lt)'];
 function _tdaGroupBg(idx){ return _TDA_GROUP_BG[idx%_TDA_GROUP_BG.length]; }
 // Builds the Pre/Post/Gain <td>(s) for ONE assessment row, honoring its own pre/post checkboxes.
-function _tdaAssessCellsHtml(r,a,dis,fullyAbsent,bg){
+function _tdaAssessCellsHtml(r,a,dis,fullyAbsent,bg,retOpts=null){
   const cellDis=(dis||fullyAbsent)?'disabled':'';
   const tdStyle=bg?` style="background:${bg}"`:'';
   const absentCell='<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">';
-  const scoreInput=(kind)=>{
+  const scoreInput=(kind,disAttr=cellDis)=>{
     const val=_tdaGetNamedScore(r,kind,a.name);
-    return fullyAbsent?absentCell:`<input type="number" class="form-control" ${cellDis} style="width:70px;padding:5px 8px;font-size:12.5px" value="${val??''}" placeholder="—" min="0" max="100" onblur="_tdaSetNamedField('${r.id}','${kind}','${Utils.esc(a.name)}',this.value)">`;
+    return fullyAbsent?absentCell:`<input type="number" class="form-control" ${disAttr} style="width:70px;padding:5px 8px;font-size:12.5px" value="${val??''}" placeholder="—" min="0" max="100" onblur="_tdaSetNamedField('${r.id}','${kind}','${Utils.esc(a.name)}',this.value)">`;
   };
-  return _tdaAssessSlots(a).map(slot=>{
+  return _tdaAssessSlots(a,!!retOpts).map(slot=>{
     if(slot==='pre') return `<td${tdStyle}>${scoreInput('pre')}</td>`;
     if(slot==='post') return `<td${tdStyle}>${scoreInput('post')}</td>`;
+    if(slot==='ret'){ // v5.10: editable even after the session is tagged Complete (not when cancelled)
+      const val=_tdaGetNamedScore(r,'ret',a.name), pass=a.passingScore!=null&&val!=null?Number(val)>=Number(a.passingScore):null;
+      return `<td${tdStyle}><div style="display:flex;align-items:center;gap:6px">${scoreInput('ret',(retOpts.disabled||fullyAbsent)?'disabled':'')}${pass===null?'':`<span title="Passing ${a.passingScore}%" style="font-size:11px;font-weight:700;color:${pass?'var(--green)':'var(--red)'}">${pass?'Pass':'Fail'}</span>`}</div></td>`;
+    }
     const preVal=_tdaGetNamedScore(r,'pre',a.name), postVal=_tdaGetNamedScore(r,'post',a.name);
     const gain=(preVal!=null&&postVal!=null)?Math.round((Number(postVal)-Number(preVal))*10)/10:null;
     const gainHtml=gain===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${gain>0?'var(--green)':gain<0?'var(--red)':'var(--text2)'};font-weight:600">${gain>0?'+':''}${gain}</span>`;
@@ -16601,6 +16671,7 @@ async function _tdaPersistRows(){
       // above -- both are written every time, but only one side is ever populated for a given
       // participant depending on whether their session is in multi-assessment mode.
       preTestScores:r.preTestScores||{}, postTestScores:r.postTestScores||{},
+      ...(_tdaSessForPersist&&_tdaRetentionItems(_tdaSessForPersist).length?{retentionTestScores:r.retentionTestScores||{}}:{}), // v5.10
       remarks:r.remarks||'', attended, notes:r.notes||'',
       // External Sessions build (2026-08-13): Training Bond Signed / Proof of Completion / Post
       // Training Survey / Proof of Knowledge Transfer checkboxes (replace Pre/Post/Gain for
@@ -16618,6 +16689,15 @@ async function _tdaPersistRows(){
   }
 }
 
+// v5.10 (2026-10-16, per Sandra): retention scores arrive after the session is tagged Complete -- save only that field.
+async function _tdaSaveRetention(){
+  const s=TrSessionDB.byId(_tdDetailId); if(!s||!_tdaRetentionItems(s).length) return;
+  try{
+    for(const r of _tdPartRows){ if(r._isNew) continue; const saved=await SessionParticipantsDB.update(r.id,{retentionTestScores:r.retentionTestScores||{}}); Object.assign(r,saved); }
+    renderTrainingDetail(); if(typeof renderTrainingDelivery==='function'&&document.getElementById('view-training-delivery')?.classList.contains('active')) renderTrainingDelivery();
+    toast('Retention scores saved.','success');
+  }catch(e){ /* surfaced by SessionParticipantsDB */ }
+}
 async function _tdaSaveDraft(){
   try{
     await _tdaPersistRows();
