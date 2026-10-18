@@ -1120,6 +1120,20 @@
     .lp-eval-summary{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid var(--border-lt);border-radius:12px;margin-bottom:14px}
     .lp-eval-chips{display:flex;gap:6px;align-items:center}
     .lp-lvl-chip{font-weight:700;font-size:11.5px;padding:3px 10px;border-radius:999px}
+    /* v5.11: grouped checkpoint timeline */
+    .lp-eval-summary:has(.lp-tl2){flex-direction:column;align-items:stretch;gap:10px}
+    .lp-eval-summary:has(.lp-tl2) .lp-eval-chips{order:0}
+    .lp-tl2-cap{font-size:11px;color:var(--text3);margin-top:-4px}
+    .lp-tl2{display:grid;gap:0;overflow-x:auto;padding-bottom:2px}
+    .lp-tl2-col{min-width:0;padding:0 12px 0 0;display:flex;flex-direction:column;gap:5px}
+    .lp-tl2-hd{position:relative;display:flex;align-items:center;gap:6px;padding:0 0 6px;border-bottom:2px solid #c7d2fe;margin-bottom:2px;font-size:12px}
+    .lp-tl2-hd b{font-weight:600;color:var(--text);white-space:nowrap}
+    .lp-tl2-hd small{margin-left:auto;font-size:10.5px;color:var(--text3);background:#eef2ff;border-radius:999px;padding:0 6px}
+    .lp-tl2-dot{width:8px;height:8px;border-radius:50%;background:#4f46e5;flex:none;position:absolute;left:0;bottom:-5px}
+    .lp-tl2-hd b{margin-left:0}
+    .lp-tl2-item{display:flex;align-items:center;gap:6px;font-size:11.5px;min-width:0;cursor:default}
+    .lp-tl2-lv{font-size:10px;font-weight:700;border-radius:4px;padding:0 5px;flex:none;line-height:16px}
+    .lp-tl2-tx{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
     .lp-tl{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 0;flex:1;min-width:0}
     .lp-tl li{display:flex;flex-direction:column;padding:0 16px;border-left:2px solid #c7d2fe;font-size:11.5px;line-height:1.4;min-width:0}
     .lp-tl li b{color:var(--text);font-weight:600}
@@ -5224,7 +5238,7 @@ function _ovMetrics(r){
   done.forEach(s=>{
     const asmts=_tdaGetAssessments(s); if(!asmts.length) return;
     const rows=SessionParticipantsDB.all().filter(x=>x.sessionId===s.id);
-    const names=asmts.map(a=>a.name);
+    const names=asmts.filter(a=>!_lpL2IsRating(a)).map(a=>a.name); // v5.11
     const graded=asmts.filter(a=>a.post&&a.passingScore!=null);
     const ar=rows.filter(x=>_tdaIsAssessed(x,s));
     if(graded.length&&ar.length){
@@ -5593,7 +5607,13 @@ function _lpTypes(){ return LP_TYPES.slice(); }
 const LP_ASSESS=['None','Pre-test','Post-test','Pre & Post'];
 const LP_TABS=[['overview','Overview'],['curriculum','Curriculum & Agenda'],['evals','Evaluations'],['impl','Implementations'],['audit','Audit Log']]; // v5.03 tabs
 // v5.03 (2026-10-14, per Sandra): evaluation option lists. Each select also offers "Other (specify)" free text.
-const LP_L2_TYPES=['Knowledge Test','Skills Demonstration','Practical Assessment','Observation Checklist','Case Analysis'];
+const LP_L2_TYPES=['Knowledge Test','Skills Demonstration','Practical Assessment','Observation Checklist','Case Analysis','Confidence Self-Assessment','Commitment / Action Plan'];
+/* v5.11 (2026-10-18, per Sandra): New World Kirkpatrick L2 = knowledge, skills, attitude, CONFIDENCE, COMMITMENT.
+   Rating types are self-ratings on a 1–5 scale: no passing %, excluded from knowledge score averages / pass rate. */
+const LP_L2_RATING_TYPES=['Confidence Self-Assessment','Commitment / Action Plan'];
+function _lpL2IsRating(a){ return !!a&&LP_L2_RATING_TYPES.includes(String(a.type||'').trim()); }
+/* v5.11: L3 baseline = observed/rated at the start of the session (stored as daysAfter 0, timing 'baseline'). */
+function _lpL3IsBaseline(x){ return !!x&&(x.timing==='baseline'||(x.daysAfter!==''&&x.daysAfter!=null&&Number(x.daysAfter)===0)); }
 const LP_L3_METHODS=['Supervisor Observation','Coaching Check-in','On-the-Job Application Assignment','Behavior Checklist','Follow-up Survey','Self-Assessment','360° Feedback','Work Sample Review'];
 const LP_L3_RESPONSIBLE=['Immediate Supervisor','Department Manager','Trainer','L&D Team','Participant (self)','HR Business Partner'];
 let _lpCollapsedParts=new Set(), _lpDragIdx=null;
@@ -6717,7 +6737,7 @@ function _lpDetailHtml(p){
       <td style="text-align:center">${edFull?`<input type="checkbox" ${a.pre?'checked':''} onchange="lpEditEvalItem('l2',${i},'pre',this.checked)">`:(a.pre?yes:no)}</td>
       <td style="text-align:center">${edFull?`<input type="checkbox" ${a.post?'checked':''} onchange="lpEditEvalItem('l2',${i},'post',this.checked)">`:(a.post?yes:no)}</td>
       <td>${edFull?`<div class="lp-ret-wrap"><input type="checkbox" title="${a.post?'Give the post-test again after training':'Tick Post first — a retention test re-uses the post-test'}" ${a.retention&&a.post?'checked':''} ${a.post?'':'disabled'} onchange="lpEditEvalItem('l2',${i},'retention',this.checked)">${a.retention&&a.post?`<input class="form-control lp-tin" type="number" min="1" max="365" step="1" value="${esc(String(a.retentionDays??''))}" placeholder="30" aria-label="Retention days after training" oninput="lpEditEvalItem('l2',${i},'retentionDays',this.value)"><span>days</span>`:''}</div>`:(a.retention?`${yes} <span class="lp-muted" style="font-size:11.5px">${esc(String(a.retentionDays||''))} days after</span>`:no)}</td>
-      <td>${edFull?`<input id="lp-pass-${i}" class="form-control lp-tin" type="number" min="0" max="100" step="1" value="${a.post?a.passingScore??'':''}" placeholder="${a.post?'Required %':'Pre only'}" ${a.post?'required':'disabled'} oninput="lpEditEvalItem('l2',${i},'passingScore',this.value)">`:(a.post&&a.passingScore!=null?a.passingScore+'%':'—')}</td>
+      <td>${_lpL2IsRating(a)?'<span class="lp-muted" style="font-size:11.5px" title="Self-rating on a 1–5 scale — no pass mark">Rating 1–5</span>':edFull?`<input id="lp-pass-${i}" class="form-control lp-tin" type="number" min="0" max="100" step="1" value="${a.post?a.passingScore??'':''}" placeholder="${a.post?'Required %':'Pre only'}" ${a.post?'required':'disabled'} oninput="lpEditEvalItem('l2',${i},'passingScore',this.value)">`:(a.post&&a.passingScore!=null?a.passingScore+'%':'—')}</td>
       <td style="text-align:right">${rm('l2',i)}</td></tr>`).join('');
   const level=(key,title,detail,enabled,body='',tone=['#eef2ff','#4f46e5'])=>`<section id="lp-eval-${key}" class="lp-eval-level${_lpDraftError&&_lpDraftError.startsWith(key.toUpperCase()+' ')?' lp-section-invalid':''}"><div class="lp-eval-level-hd"><span class="lp-lvl-ic" style="background:${tone[0]};color:${tone[1]}">${key.toUpperCase()}</span><div class="lp-eval-level-title"><b>${title}</b><small>${detail}</small></div>
     <label class="lp-switch" title="${enabled?'Disable':'Enable'} ${key} evaluation"><input type="checkbox" role="switch" aria-label="${key} evaluation" aria-checked="${enabled}" ${enabled?'checked':''} ${edFull?`onchange="lpSetEvalTag('${key}',this.checked)"`:'disabled'}><span class="lp-switch-track"></span></label><span class="lp-eval-state">${enabled?'Enabled':'Disabled'}</span></div>
@@ -6726,23 +6746,34 @@ function _lpDetailHtml(p){
   const emptyRow=(n,t)=>`<tr style="cursor:default"><td colspan="${n}" class="lp-muted" style="text-align:center;padding:16px">${t}</td></tr>`;
   const addBtn=(level,label)=>edFull?`<button type="button" class="lp-add-topic" style="margin-top:8px" onclick="lpEvalAdd('${level}')">+ ${label}</button>`:'';
   const l2Body=tbl('<th>Evaluation Item</th><th style="width:210px">Type</th><th style="width:60px;text-align:center">Pre</th><th style="width:60px;text-align:center">Post</th><th style="width:150px" title="Post-test given again N days after training (same passing %)">Retention</th><th style="width:110px">Passing %</th><th style="width:40px"></th>',asRows||emptyRow(7,'No L2 evaluation items yet.'))+addBtn('l2','Add Evaluation Item');
-  const l3Rows=ec.l3.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${choice('l3',i,'method',LP_L3_METHODS,x,'Specify method')}</td><td>${edFull?`<input class="form-control lp-tin" list="lp-l3-resp" type="text" maxlength="120" value="${esc(x.responsible||'')}" placeholder="e.g. Immediate Supervisor" oninput="lpEditEvalItem('l3',${i},'responsible',this.value)">`:(x.responsible?esc(x.responsible):no)}</td><td>${edFull?cell('l3',i,'daysAfter',x.daysAfter,'30','number','min="1" max="365" step="1"'):(x.daysAfter!=null&&x.daysAfter!==''?esc(String(x.daysAfter))+' days':no)}</td><td>${cell('l3',i,'notes',x.notes,'Optional','text','maxlength="300"')}</td><td style="text-align:right">${rm('l3',i)}</td></tr>`).join('');
-  const l3Body=tbl('<th style="width:34px">#</th><th style="width:240px">Follow-through Method</th><th style="width:190px">Responsible</th><th style="width:100px">Days After</th><th>Notes</th><th style="width:40px"></th>',l3Rows||emptyRow(6,'No L3 follow-through items yet.'))+addBtn('l3','Add L3 Item')+(edFull?`<datalist id="lp-l3-resp">${LP_L3_RESPONSIBLE.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:'');
+  const l3Rows=ec.l3.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${choice('l3',i,'method',LP_L3_METHODS,x,'Specify method')}</td><td>${edFull?`<input class="form-control lp-tin" list="lp-l3-resp" type="text" maxlength="120" value="${esc(x.responsible||'')}" placeholder="e.g. Immediate Supervisor" oninput="lpEditEvalItem('l3',${i},'responsible',this.value)">`:(x.responsible?esc(x.responsible):no)}</td><td>${edFull?`<div class="lp-ret-wrap"><select class="form-control lp-tin" style="width:auto" onchange="lpEditEvalItem('l3',${i},'timing',this.value)"><option value="followup"${_lpL3IsBaseline(x)?'':' selected'}>Follow-up</option><option value="baseline"${_lpL3IsBaseline(x)?' selected':''}>Baseline (start)</option></select>${_lpL3IsBaseline(x)?'':`<input class="form-control lp-tin" type="number" min="1" max="365" step="1" value="${esc(String(x.daysAfter??''))}" placeholder="30" aria-label="Days after training" oninput="lpEditEvalItem('l3',${i},'daysAfter',this.value)"><span>days</span>`}</div>`:(_lpL3IsBaseline(x)?'Baseline · start of session':(x.daysAfter!=null&&x.daysAfter!==''?esc(String(x.daysAfter))+' days after':no))}</td><td>${cell('l3',i,'notes',x.notes,'Optional','text','maxlength="300"')}</td><td style="text-align:right">${rm('l3',i)}</td></tr>`).join('');
+  const l3Body=tbl('<th style="width:34px">#</th><th style="width:240px">Follow-through Method</th><th style="width:190px">Responsible</th><th style="width:210px" title="Baseline = observed / rated at the start of the session, to compare against the follow-ups">Timing</th><th>Notes</th><th style="width:40px"></th>',l3Rows||emptyRow(6,'No L3 follow-through items yet.'))+addBtn('l3','Add L3 Item')+(edFull?`<datalist id="lp-l3-resp">${LP_L3_RESPONSIBLE.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:'');
   const l4Rows=ec.l4.items.map((x,i)=>`<tr style="cursor:default"><td>${i+1}</td><td>${cell('l4',i,'measure',x.measure,'e.g. Units per transaction','text','maxlength="200"')}</td><td>${cell('l4',i,'baseline',x.baseline,'e.g. 1.8')}</td><td>${cell('l4',i,'target',x.target,'e.g. 2.2')}</td><td>${cell('l4',i,'unit',x.unit,'e.g. units, %, PHP')}</td><td>${edFull?cell('l4',i,'daysAfter',x.daysAfter,'90','number','min="1" max="365" step="1"'):(x.daysAfter!=null&&x.daysAfter!==''?esc(String(x.daysAfter))+' days':no)}</td><td style="text-align:right">${rm('l4',i)}</td></tr>`).join('');
   const l4Body=tbl('<th style="width:34px">#</th><th>Measure / Behavior</th><th style="width:120px">Baseline</th><th style="width:120px">Target</th><th style="width:120px">Unit</th><th style="width:100px">Days After</th><th style="width:40px"></th>',l4Rows||emptyRow(7,'No L4 result items yet.'))+addBtn('l4','Add L4 Item');
   // Summary strip: enabled levels + when each evaluation happens (built from the configured days).
   const lvChip=(l,on,bg,fg)=>`<span class="lp-lvl-chip" style="background:${on?bg:'#f1f5f9'};color:${on?fg:'#94a3b8'}" title="${l} ${on?'enabled':'not enabled'}">${l}</span>`;
-  const tl=[];
-  if(ec.l2.enabled&&as.some(a=>a.pre)) tl.push(['Start of session','L2 pre-test']);
-  const endItems=[...(ec.l2.enabled&&as.some(a=>a.post)?['L2 post-test']:[]),...(ec.l1?['L1 post-training survey']:[])];
-  if(endItems.length) tl.push(['End of training',endItems.join(' · ')]);
-  [...(ec.l2.enabled?as.filter(a=>a.retention&&a.post).map(a=>({d:Number(a.retentionDays)||0,t:`L2 retention test · ${a.name||'Evaluation item'}`})):[]), // v5.10
-   ...(ec.l3.enabled?ec.l3.items.map(x=>({d:Number(x.daysAfter)||0,t:`L3 · ${x.method||'Follow-through'}${x.responsible?' ('+x.responsible+')':''}`})):[]),
-   ...(ec.l4.enabled?ec.l4.items.map(x=>({d:Number(x.daysAfter)||0,t:`L4 · ${x.measure||'Result measure'}`})):[])]
-    .sort((a,b)=>a.d-b.d).forEach(x=>tl.push([x.d?`${x.d} days after`:'After training',x.t]));
+  /* v5.11 (2026-10-18, per Sandra): timeline grouped by checkpoint -- one column per day (Start, End, After, Day N),
+     items stacked under it with a level badge; full names in the tooltip. Replaces one cell per item (got packed). */
+  const LV={L1:['#f5f3ff','#7c3aed'],L2:['#ecfdf5','#059669'],L3:['#fffbeb','#d97706'],L4:['#fef2f2','#dc2626']};
+  const cps=new Map(); const cp=(key,label,order)=>{ if(!cps.has(key)) cps.set(key,{label,order,items:[]}); return cps.get(key).items; };
+  const add=(key,label,order,lvl,text,tip)=>cp(key,label,order).push({lvl,text,tip:tip||text});
+  const rLbl=a=>String(a.type).startsWith('Confidence')?'Confidence rating':'Commitment rating'; // v5.11
+  if(ec.l2.enabled) as.filter(a=>a.pre).forEach(a=>add('start','Start of session',-2,'L2',_lpL2IsRating(a)?rLbl(a):'Pre-test',`L2 pre · ${a.name||'Evaluation item'}`));
+  if(ec.l2.enabled) as.filter(a=>a.post).forEach(a=>add('end','End of training',-1,'L2',_lpL2IsRating(a)?rLbl(a):'Post-test',`L2 post · ${a.name||'Evaluation item'}`));
+  if(ec.l1) add('end','End of training',-1,'L1','Post-training survey');
+  const dayKey=d=>d?['d'+d,`Day ${d}`,d]:['after','After training',0];
+  if(ec.l2.enabled) as.filter(a=>a.retention&&a.post).forEach(a=>{ const [k,l,o]=dayKey(Number(a.retentionDays)||0); add(k,l,o,'L2',_lpL2IsRating(a)?rLbl(a)+' re-check':'Retention test',`L2 retention · ${a.name||'Evaluation item'}`); });
+  if(ec.l3.enabled) ec.l3.items.forEach(x=>{ const [k,l,o]=_lpL3IsBaseline(x)?['start','Start of session',-2]:dayKey(Number(x.daysAfter)||0); add(k,l,o,'L3',_lpL3IsBaseline(x)?'Baseline · '+(x.method||'Follow-through'):x.method||'Follow-through',`L3 · ${x.method||'Follow-through'}${x.responsible?' — '+x.responsible:''}`); });
+  if(ec.l4.enabled) ec.l4.items.forEach(x=>{ const [k,l,o]=dayKey(Number(x.daysAfter)||0); add(k,l,o,'L4',x.measure||'Result measure',`L4 · ${x.measure||'Result measure'}${x.target?' — target '+x.target+(x.unit?' '+x.unit:''):''}`); });
+  const tlCols=[...cps.values()].sort((a,b)=>a.order-b.order).map(c=>{
+    // collapse duplicates within a checkpoint (e.g. 3 pre-tests -> "Pre-test ×3"); tooltip keeps every name
+    const g=new Map(); c.items.forEach(i=>{ const k=i.lvl+'|'+i.text; if(!g.has(k)) g.set(k,{...i,n:0,tips:[]}); const e=g.get(k); e.n++; e.tips.push(i.tip); });
+    return {...c,items:[...g.values()]};
+  });
+  const tlHtml=tlCols.length?`<div class="lp-tl2" style="grid-template-columns:repeat(${tlCols.length},minmax(150px,1fr))">${tlCols.map(c=>`<div class="lp-tl2-col"><div class="lp-tl2-hd"><span class="lp-tl2-dot"></span><b>${esc(c.label)}</b><small>${c.items.reduce((s,i)=>s+i.n,0)}</small></div>${c.items.map(i=>`<div class="lp-tl2-item" title="${esc(i.tips.join('\n'))}"><span class="lp-tl2-lv" style="background:${LV[i.lvl][0]};color:${LV[i.lvl][1]}">${i.lvl}</span><span class="lp-tl2-tx">${esc(i.text)}${i.n>1?` <span class="lp-muted">×${i.n}</span>`:''}</span></div>`).join('')}</div>`).join('')}</div>`:'<span class="lp-muted" style="font-size:12px">No evaluations enabled yet.</span>';
   const assessments=`<div class="card lp-card lp-evals-card"><div class="lp-card-hd"><div><span class="lp-card-t">Evaluations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Kirkpatrick L1–L4 requirements for this program. Sessions created from the program copy these settings.</div></div></div>
     <div class="lp-eval-summary"><div class="lp-eval-chips">${lvChip('L1',ec.l1,'#f5f3ff','#7c3aed')}${lvChip('L2',ec.l2.enabled,'#ecfdf5','#059669')}${lvChip('L3',ec.l3.enabled,'#fffbeb','#d97706')}${lvChip('L4',ec.l4.enabled,'#fef2f2','#dc2626')}</div>
-      ${tl.length?`<ol class="lp-tl">${tl.map(([w,t])=>`<li><b>${esc(w)}</b><span>${esc(t)}</span></li>`).join('')}</ol>`:'<span class="lp-muted" style="font-size:12px">No evaluations enabled yet.</span>'}</div>
+      <span class="lp-tl2-cap">Evaluation timeline · hover an item for details</span>${tlHtml}</div>
     ${level('l1','L1 · Reaction','Post-training survey: participants’ immediate feedback on the training experience.',ec.l1,draft?'<div class="lp-muted" style="font-size:12px">Targets can be set after the draft is first saved. Organisation defaults apply until then.</div>':`<div class="lp-team-h" style="margin-bottom:6px">Targets <span class="lp-muted" style="font-weight:400;font-size:11.5px">· program targets override the defaults for their dates; changes never create a new version</span></div>${_l1TargetsTableHtml(_lpFamilyId(p),can&&!archived&&!ed)}`,['#f5f3ff','#7c3aed'])}
     ${level('l2','L2 · Learning','Knowledge and skills gained. Pre / Post, optional Retention (post-test re-taken N days later, plotted on the Training Calendar) and passing % are set per item.',ec.l2.enabled,l2Body,['#ecfdf5','#059669'])}
     ${level('l3','L3 · Behavior','Application on the job: follow-through methods, who is responsible, and timing.',ec.l3.enabled,l3Body,['#fffbeb','#d97706'])}
@@ -6819,12 +6850,13 @@ function _lpActivationError(p){
   if(ec.l2.enabled) for(const [i,a] of (p.assessments||[]).entries()){
     const name=(a.name||'').trim();
     if(!name||(!a.pre&&!a.post)) return `L2 item ${i+1} needs a name and Pre, Post, or both.`;
-    if(a.post&&(a.passingScore===null||a.passingScore===undefined||String(a.passingScore).trim()===''||Number(a.passingScore)<0||Number(a.passingScore)>100)) return `L2 item ${i+1} needs a passing percentage from 0 to 100.`;
+    if(a.post&&!_lpL2IsRating(a)&&(a.passingScore===null||a.passingScore===undefined||String(a.passingScore).trim()===''||Number(a.passingScore)<0||Number(a.passingScore)>100)) return `L2 item ${i+1} needs a passing percentage from 0 to 100.`;
     if(a.retention){ const rd=Number(a.retentionDays); if(!a.post) return `L2 item ${i+1}: a retention test re-uses the post-test. Tick Post as well.`; if(!Number.isInteger(rd)||rd<1||rd>365) return `L2 item ${i+1} needs retention days after training (1–365).`; } // v5.10
   }
   if(ec.l3.enabled) for(const [i,x] of ec.l3.items.entries()){
     const days=Number(x.daysAfter);
-    if(!(x.method||'').trim()||!Number.isInteger(days)||days<1||days>365) return `L3 item ${i+1} needs a method and days after training (1–365).`;
+    if(!(x.method||'').trim()) return `L3 item ${i+1} needs a method.`;
+    if(!_lpL3IsBaseline(x)&&(!Number.isInteger(days)||days<1||days>365)) return `L3 item ${i+1} needs days after training (1–365), or set it as a Baseline.`; // v5.11
   }
   if(ec.l4.enabled) for(const [i,x] of ec.l4.items.entries()){
     const days=Number(x.daysAfter);
@@ -7003,9 +7035,10 @@ function lpEditEvalItem(level,i,field,value){
     if(field==='retention'&&value&&!p.assessments[i].retentionDays) p.assessments[i].retentionDays=30;
     if(field==='post'||field==='retention') renderLearningPrograms();
   }else if(level==='l3'||level==='l4'){
-    const allowed={l3:['method','responsible','daysAfter','notes'],l4:['measure','baseline','target','unit','daysAfter']}[level]; // v5.03
+    const allowed={l3:['method','responsible','daysAfter','notes','timing'],l4:['measure','baseline','target','unit','daysAfter']}[level]; // v5.03
     const ec=_lpEvalConfig(p); if(!ec[level].items[i]||!allowed.includes(field)) return;
     ec[level].items[i][field]=value; p.evaluationConfig=ec;
+    if(level==='l3'&&field==='timing'){ const it=ec.l3.items[i]; if(value==='baseline') it.daysAfter=0; else { it.timing='followup'; if(Number(it.daysAfter)===0) it.daysAfter=''; } renderLearningPrograms(); } // v5.11
   }
 }
 /* v5.03 (2026-10-14, per Sandra): option list + "Other (specify)" for L2 Type and L3 Method.
@@ -7018,6 +7051,7 @@ function lpEvalChoice(level,i,field,v){
   if(!item) return;
   if(v==='__other__'){ item['_other_'+field]=true; item[field]=''; }
   else { delete item['_other_'+field]; item[field]=v; }
+  if(level==='l2'&&field==='type'&&_lpL2IsRating(item)) item.passingScore=null; // v5.11
   renderLearningPrograms();
   if(v==='__other__') requestAnimationFrame(()=>document.querySelector(`input[oninput*="lpEditEvalItem('${level}',${i},'${field}'"]`)?.focus());
 }
@@ -7416,20 +7450,23 @@ async function lpSaveDraft(){
     const name=(a.name||'').trim(), score=a.passingScore;
     if(!name||(!a.pre&&!a.post)) return fail(`L2 item ${i+1} needs a name and Pre, Post, or both.`);
     if(assessments.some(x=>x.name.toLowerCase()===name.toLowerCase())) return fail(`L2 evaluation "${name}" is duplicated.`);
-    if(a.post&&(score===null||score===undefined||String(score).trim()==='')) return fail(`L2 item ${i+1} needs a passing percentage for its post-test.`);
-    if(a.post&&(!/^\d+(?:\.\d+)?$/.test(String(score).trim())||Number(score)<0||Number(score)>100)) return fail(`L2 item ${i+1} needs a passing percentage from 0 to 100.`);
+    const rating=_lpL2IsRating(a); // v5.11: rating types have no passing %
+    if(a.post&&!rating&&(score===null||score===undefined||String(score).trim()==='')) return fail(`L2 item ${i+1} needs a passing percentage for its post-test.`);
+    if(a.post&&!rating&&(!/^\d+(?:\.\d+)?$/.test(String(score).trim())||Number(score)<0||Number(score)>100)) return fail(`L2 item ${i+1} needs a passing percentage from 0 to 100.`);
     const type=(a.type||'').trim();
     if(a._other_type&&!type) return fail(`L2 item ${i+1} needs the Other type specified.`);
     // v5.10 (2026-10-16, per Sandra): retention test = the post-test given again N days after training (same passing %).
     const rDays=String(a.retentionDays??'').trim();
     if(a.retention&&!a.post) return fail(`L2 item ${i+1}: a retention test re-uses the post-test. Tick Post as well.`);
     if(a.retention&&(!/^\d+$/.test(rDays)||Number(rDays)<1||Number(rDays)>365)) return fail(`L2 item ${i+1} needs retention days after training (1–365).`);
-    assessments.push({name,type:type||null,pre:!!a.pre,post:!!a.post,passingScore:a.post?Number(score):null,...(a.retention&&a.post?{retention:true,retentionDays:Number(rDays)}:{})});
+    assessments.push({name,type:type||null,pre:!!a.pre,post:!!a.post,passingScore:a.post&&!rating?Number(score):null,...(a.retention&&a.post?{retention:true,retentionDays:Number(rDays)}:{})});
   }
   if(ec.l3.enabled) for(const [i,x] of ec.l3.items.entries()){
     const days=String(x.daysAfter??'').trim();
-    if(!(x.method||'').trim()||!/^\d+$/.test(days)||Number(days)<1||Number(days)>365) return fail(`L3 item ${i+1} needs a method and days after training (1–365).`);
-    ec.l3.items[i]={method:x.method.trim(),responsible:(x.responsible||'').trim()||null,daysAfter:Number(days),notes:(x.notes||'').trim()};
+    const base=_lpL3IsBaseline(x); // v5.11: baseline = start of session (daysAfter 0)
+    if(!(x.method||'').trim()) return fail(`L3 item ${i+1} needs a method.`);
+    if(!base&&(!/^\d+$/.test(days)||Number(days)<1||Number(days)>365)) return fail(`L3 item ${i+1} needs days after training (1–365), or set it as a Baseline.`);
+    ec.l3.items[i]={method:x.method.trim(),responsible:(x.responsible||'').trim()||null,daysAfter:base?0:Number(days),timing:base?'baseline':'followup',notes:(x.notes||'').trim()};
   }
   if(ec.l4.enabled) for(const [i,x] of ec.l4.items.entries()){
     const days=String(x.daysAfter??'').trim();
@@ -14611,8 +14648,9 @@ async function tdDetailSave(){
   // evaluation shouldn't silently reschedule itself) -- see _tdl3ComputeDueDate.
   if(programSession&&Array.isArray(s.l3Followups)&&s.l3Followups.length){
     const anchor=_tdSessionEndDate(d);
-    d.l3Followups=s.l3Followups.map(x=>({...x,dueDate:anchor?_tdl3AddDays(anchor,Number(x.daysAfter)||60):null}));
-    d.l3DueDate=d.l3Followups.filter(x=>!x.completedAt&&x.dueDate).map(x=>x.dueDate).sort()[0]||null;
+    // v5.11: a Baseline item is due on the session's first day (done during the session; no calendar marker).
+    d.l3Followups=s.l3Followups.map(x=>({...x,dueDate:_lpL3IsBaseline(x)?(d.trainingDate||null):(anchor?_tdl3AddDays(anchor,Number(x.daysAfter)||60):null)}));
+    d.l3DueDate=d.l3Followups.filter(x=>!x.completedAt&&x.dueDate&&!_lpL3IsBaseline(x)).map(x=>x.dueDate).sort()[0]||null;
   } else d.l3DueDate=d.l3Required?(s.l3CompletedAt?(s.l3DueDate||null):_tdl3ComputeDueDate(d)):null;
   if(programSession&&Array.isArray(s.l4Results)&&s.l4Results.length){
     const anchor=_tdSessionEndDate(d);
@@ -15823,7 +15861,7 @@ function _tdaKpiParts(s,forExport){
   // 2026-09-14: each participant is scored as the average of their OWN assessments first, THEN
   // those per-participant averages are averaged across the roster -- keeps a partially-absent
   // roster from skewing the session-level KPI the way a flat pool-all-scores average would.
-  const _tdaNames=_tdaAssessments.map(a=>a.name);
+  const _tdaNames=_tdaAssessments.filter(a=>!_lpL2IsRating(a)).map(a=>a.name); // v5.11: ratings excluded from score averages
   const _tdaParticipantPre=(r)=>_tdaNames.length?_tdaAvgNamedScore(r,'pre',_tdaNames):null;
   const _tdaParticipantPost=(r)=>_tdaNames.length?_tdaAvgNamedScore(r,'post',_tdaNames):null;
   const preRows=all.filter(r=>_tdaParticipantPre(r)!=null), postRows=all.filter(r=>_tdaParticipantPost(r)!=null);
@@ -16226,7 +16264,7 @@ function _tdl3ProgramTab(s){
   const rows=s.l3Followups||[];
   return `<div class="card" style="padding:18px 20px"><h3>L3 · Behavior follow-through</h3><p class="lp-muted">You can record draft evidence before the due date. An item can only be marked Done on or after its configured due date.</p>
     <div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>Method</th><th>Due</th><th>Rating</th><th>Evidence / observation</th><th>Done</th></tr>
-    ${rows.map((x,i)=>{const locked=!!x.completedAt,before=_tdFollowupBeforeDue(x.dueDate);return `<tr><td>${Utils.esc(x.method||'—')}<div class="lp-muted">${Utils.esc(String(x.daysAfter||''))} days after</div></td><td>${Utils.esc(x.dueDate||'—')}<div class="lp-muted">${Utils.esc(_tdFollowupDueText(x.dueDate))}</div></td><td><select class="form-control" id="tdl3p-rating-${i}" ${locked?'disabled':''}><option value="">— Select —</option>${['Significantly Improved','Improved','No Change','Declined'].map(v=>`<option ${x.rating===v?'selected':''}>${v}</option>`).join('')}</select></td><td><textarea class="form-control" id="tdl3p-notes-${i}" rows="2" ${locked?'disabled':''}>${Utils.esc(x.evidence||'')}</textarea></td><td><input type="checkbox" id="tdl3p-done-${i}" ${x.completedAt?'checked':''} ${before&&!locked?'disabled title="Completion opens on the due date"':''}>${locked?'<div class="lp-muted">Uncheck to reopen</div>':''}</td></tr>`}).join('')}</table></div>
+    ${rows.map((x,i)=>{const locked=!!x.completedAt,before=_tdFollowupBeforeDue(x.dueDate);return `<tr><td>${Utils.esc(x.method||'—')}<div class="lp-muted">${_lpL3IsBaseline(x)?'Baseline · start of session':Utils.esc(String(x.daysAfter||''))+' days after'}${x.responsible?' · '+Utils.esc(x.responsible):''}</div></td><td>${Utils.esc(x.dueDate||'—')}<div class="lp-muted">${Utils.esc(_tdFollowupDueText(x.dueDate))}</div></td><td><select class="form-control" id="tdl3p-rating-${i}" ${locked?'disabled':''}><option value="">— Select —</option>${['Significantly Improved','Improved','No Change','Declined'].map(v=>`<option ${x.rating===v?'selected':''}>${v}</option>`).join('')}</select></td><td><textarea class="form-control" id="tdl3p-notes-${i}" rows="2" ${locked?'disabled':''}>${Utils.esc(x.evidence||'')}</textarea></td><td><input type="checkbox" id="tdl3p-done-${i}" ${x.completedAt?'checked':''} ${before&&!locked?'disabled title="Completion opens on the due date"':''}>${locked?'<div class="lp-muted">Uncheck to reopen</div>':''}</td></tr>`}).join('')}</table></div>
     <div style="text-align:right;margin-top:14px"><button class="btn btn-primary" onclick="_tdl3ProgramSave()">Save L3 Follow-ups</button></div></div>`;
 }
 async function _tdl3ProgramSave(){
@@ -16238,7 +16276,7 @@ async function _tdl3ProgramSave(){
   });
   if(rows.some(x=>x.completedAt&&_tdFollowupBeforeDue(x.dueDate))){toast('L3 follow-through cannot be marked complete before its due date. Save draft evidence instead.','error');return;}
   if(rows.some(x=>x.completedAt&&!x.rating)){toast('Select a rating before marking an L3 item done.','error');return;}
-  try{await TrSessionDB.update(s.id,{l3Followups:rows,l3DueDate:rows.filter(x=>!x.completedAt&&x.dueDate).map(x=>x.dueDate).sort()[0]||null,l3CompletedAt:rows.every(x=>x.completedAt)?now:null,l3CompletedBy:rows.every(x=>x.completedAt)?Auth.user?.id||null:null});renderTrainingDetail();toast('L3 follow-ups saved.','success');}catch(e){}
+  try{await TrSessionDB.update(s.id,{l3Followups:rows,l3DueDate:rows.filter(x=>!x.completedAt&&x.dueDate&&!_lpL3IsBaseline(x)).map(x=>x.dueDate).sort()[0]||null,l3CompletedAt:rows.every(x=>x.completedAt)?now:null,l3CompletedBy:rows.every(x=>x.completedAt)?Auth.user?.id||null:null});renderTrainingDetail();toast('L3 follow-ups saved.','success');}catch(e){}
 }
 function _tdl4ProgramTab(s){
   return `<div class="card" style="padding:18px 20px"><h3>L4 · Results</h3><p class="lp-muted">You can prepare draft evidence before the due date. Final completion is available on or after the configured measurement date.</p>
@@ -16284,7 +16322,8 @@ function _tdaAssessSlots(a,withRet=false){
   return slots;
 }
 function _tdaAssessColLabel(a,slot,multi){
-  const base=slot==='pre'?'Pre-Test':slot==='post'?'Post-Test':slot==='ret'?`Retention (Day ${Number(a.retentionDays)||'—'})`:'Gain';
+  const r=_lpL2IsRating(a); // v5.11: confidence / commitment self-ratings (1–5)
+  const base=slot==='pre'?(r?'Pre Rating (1–5)':'Pre-Test'):slot==='post'?(r?'Post Rating (1–5)':'Post-Test'):slot==='ret'?`${r?'Re-check':'Retention'} (Day ${Number(a.retentionDays)||'—'})`:(r?'Change':'Gain');
   return multi?`${a.name} ${base}`:base;
 }
 // Alternating tint per assessment (2026-09-14, per Sandra: "clear distinction between different
@@ -16302,7 +16341,7 @@ function _tdaAssessCellsHtml(r,a,dis,fullyAbsent,bg,retOpts=null){
   const absentCell='<input type="text" class="form-control" disabled style="width:70px;padding:5px 8px;font-size:12.5px;color:var(--text3)" value="Absent" title="No score entered — participant was absent">';
   const scoreInput=(kind,disAttr=cellDis)=>{
     const val=_tdaGetNamedScore(r,kind,a.name);
-    return fullyAbsent?absentCell:`<input type="number" class="form-control" ${disAttr} style="width:70px;padding:5px 8px;font-size:12.5px" value="${val??''}" placeholder="—" min="0" max="100" onblur="_tdaSetNamedField('${r.id}','${kind}','${Utils.esc(a.name)}',this.value)">`;
+    return fullyAbsent?absentCell:`<input type="number" class="form-control" ${disAttr} style="width:70px;padding:5px 8px;font-size:12.5px" value="${val??''}" placeholder="${_lpL2IsRating(a)?'1–5':'—'}" ${_lpL2IsRating(a)?'min="1" max="5" step="0.5"':'min="0" max="100"'} onblur="_tdaSetNamedField('${r.id}','${kind}','${Utils.esc(a.name)}',this.value)">`;
   };
   return _tdaAssessSlots(a,!!retOpts).map(slot=>{
     if(slot==='pre') return `<td${tdStyle}>${scoreInput('pre')}</td>`;
@@ -17957,7 +17996,7 @@ function _tdProgramEvaluationSummary(s){
   return `<div style="font-size:12px;line-height:1.7;color:var(--text2)">
     <div><b>L1 · Reaction:</b> ${plan.l1?'Post-training survey':'No'}</div>
     <div><b>L2 · Learning:</b> ${plan.l2?.enabled?_tddAssessmentDisplay(s):'No'}</div>
-    <div><b>L3 · Behavior:</b> ${plan.l3?.enabled?(l3.map(x=>`${Utils.esc(x.method||'Follow-up')} · ${Utils.esc(String(x.daysAfter||''))} days after training`).join('; ')||'Configured'):'No'}</div>
+    <div><b>L3 · Behavior:</b> ${plan.l3?.enabled?(l3.map(x=>`${Utils.esc(x.method||'Follow-up')} · ${_lpL3IsBaseline(x)?'baseline (start of session)':Utils.esc(String(x.daysAfter||''))+' days after training'}`).join('; ')||'Configured'):'No'}</div>
     <div><b>L4 · Results:</b> ${plan.l4?.enabled?(l4.map(x=>`${Utils.esc(x.measure||'Measure')} · baseline ${Utils.esc(x.baseline||'—')} · target ${Utils.esc(x.target||'—')} · ${Utils.esc(String(x.daysAfter||''))} days after`).join('; ')||'Configured'):'No'}</div>
   </div>`;
 }
@@ -18167,7 +18206,7 @@ function _tdOverviewAttendanceAssessmentBlock(s){
   // 2026-09-14: each participant is scored as the average of their OWN assessments first, THEN
   // those per-participant averages are averaged across the roster -- keeps a partially-absent
   // roster from skewing the session-level KPI the way a flat pool-all-scores average would.
-  const _tdaNames=_tdaAssessments.map(a=>a.name);
+  const _tdaNames=_tdaAssessments.filter(a=>!_lpL2IsRating(a)).map(a=>a.name); // v5.11: ratings excluded from score averages
   const _tdaParticipantPre=(r)=>_tdaNames.length?_tdaAvgNamedScore(r,'pre',_tdaNames):null;
   const _tdaParticipantPost=(r)=>_tdaNames.length?_tdaAvgNamedScore(r,'post',_tdaNames):null;
   const preRows=all.filter(r=>_tdaParticipantPre(r)!=null), postRows=all.filter(r=>_tdaParticipantPost(r)!=null);
