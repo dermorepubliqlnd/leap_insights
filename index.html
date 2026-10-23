@@ -1949,7 +1949,7 @@
                   </div>
                   <div class="cqa-meta-item">
                     <label class="form-label">Deliverable Type <span style="color:#f87171">*</span></label>
-                    <select id="idqa-deliv-type" class="form-control">
+                    <select id="idqa-deliv-type" class="form-control" onchange="_idqaOnTypeChange()">
                       <option value="">— Select Type —</option>
                     </select>
                   </div>
@@ -3851,14 +3851,16 @@ const _FIELD_MAPS = {
     designerId:'designer_id', reviewerId:'reviewer_id', reviewDate:'review_date', targetDate:'target_date',
     actualDate:'actual_date', ratings:'ratings', remarks:'remarks', observations:'observations',
     designerNotes:'designer_notes', finalizedAt:'finalized_at', acknowledgedAt:'acknowledged_at',
-    createdAt:'created_at', updatedAt:'updated_at'
+    createdAt:'created_at', updatedAt:'updated_at',
+    criteriaVersion:'criteria_version' // v5.12 (2026-10-23, per Sandra): 1 = pre-v5.12 rules (frozen), 2 = v5.12 applicability matrix
   },
   cdqa_reviews:{
     id:'id', code:'code', status:'status', projectTitle:'project_title', contentType:'content_type',
     authorId:'author_id', reviewerId:'reviewer_id', reviewDate:'review_date', targetDate:'target_date',
     actualDate:'actual_date', ratings:'ratings', remarks:'remarks', observations:'observations',
     cdNotes:'cd_notes', finalizedAt:'finalized_at', acknowledgedAt:'acknowledged_at',
-    createdAt:'created_at', updatedAt:'updated_at'
+    createdAt:'created_at', updatedAt:'updated_at',
+    criteriaVersion:'criteria_version' // v5.12 (2026-10-23, per Sandra)
   },
   audit_log:{ id:'id', ts:'ts', actorId:'actor_id', action:'action', module:'module', entityId:'entity_id', summary:'summary' },
   // KPI Settings (Supervisor KPI Phase 1, 2026-09-22, per Sandra): single-row ('default') config,
@@ -5208,12 +5210,12 @@ function _ovMetrics(r){
   const m={};
   // Instructional Design
   const idRecs=_dashScopeIDQA().filter(x=>_ovSubmitted(x)&&_ovIn(x.reviewDate,r));
-  m.idqa=_ovAvg(idRecs.map(x=>_idqaScore(x.ratings||{}).pct));
+  m.idqa=_ovAvg(idRecs.map(x=>_idqaScore(x.ratings||{},x.delivType,x.criteriaVersion).pct));
   m.idTime=_ovOnTimePct(idRecs,_idqaTimeliness);
   m.idCount=idRecs.length;
   // Content Development
   const cdRecs=_dashScopeCQA().filter(x=>_ovSubmitted(x)&&_ovIn(x.reviewDate,r));
-  m.cdqa=_ovAvg(cdRecs.map(x=>_cqaScore(x.ratings||{},x.contentType).pct));
+  m.cdqa=_ovAvg(cdRecs.map(x=>_cqaScore(x.ratings||{},x.contentType,x.criteriaVersion).pct));
   m.cdTime=_ovOnTimePct(cdRecs,_cqaTimeliness);
   m.cdCount=cdRecs.length;
   // Learner (L1) survey results from submitted/approved training reports on completed sessions
@@ -7883,7 +7885,7 @@ function _dashRenderOverview(range,prevRange,key){
 
   // IDQA stats
   const idqaSub=idqaF.filter(r=>r.status==='completed'||r.status==='pending_ack');
-  const idqaScored=idqaSub.map(r=>_idqaScore(r.ratings||{})).filter(s=>s.pct!=null);
+  const idqaScored=idqaSub.map(r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion)).filter(s=>s.pct!=null);
   const idqaAvg=idqaScored.length?idqaScored.reduce((s,x)=>s+x.pct,0)/idqaScored.length:null;
   const idqaEnd=idqaScored.filter(s=>s.disposition==='Endorse').length;
   const idqaRev=idqaScored.filter(s=>s.disposition==='Revise & Resubmit').length;
@@ -7891,7 +7893,7 @@ function _dashRenderOverview(range,prevRange,key){
 
   // CQA stats
   const cqaSub=cqaF.filter(r=>r.status==='completed'||r.status==='pending_ack');
-  const cqaScored=cqaSub.map(r=>_cqaScore(r.ratings,r.contentType)).filter(s=>s.pct!=null);
+  const cqaScored=cqaSub.map(r=>_cqaScore(r.ratings,r.contentType,r.criteriaVersion)).filter(s=>s.pct!=null);
   const cqaAvg=cqaScored.length?cqaScored.reduce((s,x)=>s+x.pct,0)/cqaScored.length:null;
   const cqaEnd=cqaScored.filter(s=>s.disposition==='Endorse').length;
   const cqaRev=cqaScored.filter(s=>s.disposition==='Revise & Resubmit').length;
@@ -8209,8 +8211,8 @@ function _dashRenderIDQA(range,prevRange,key){
   const prev=prevRange.from?_dashFilterQA(all,prevRange):[];
   const currSub=curr.filter(r=>r.status==='completed'||r.status==='pending_ack');
   const prevSub=prev.filter(r=>r.status==='completed'||r.status==='pending_ack');
-  const currScored=currSub.map(r=>({r,sc:_idqaScore(r.ratings||{})})).filter(x=>x.sc.pct!=null);
-  const prevScored=prevSub.map(r=>({r,sc:_idqaScore(r.ratings||{})})).filter(x=>x.sc.pct!=null);
+  const currScored=currSub.map(r=>({r,sc:_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
+  const prevScored=prevSub.map(r=>({r,sc:_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
   const avg=currScored.length?currScored.reduce((s,x)=>s+x.sc.pct,0)/currScored.length:null;
   const prevAvg=prevScored.length?prevScored.reduce((s,x)=>s+x.sc.pct,0)/prevScored.length:null;
   const endorse=currScored.filter(x=>x.sc.disposition==='Endorse').length;
@@ -8282,8 +8284,8 @@ function _dashRenderCDQA(range,prevRange,key){
   const prev=prevRange.from?_dashFilterQA(all,prevRange):[];
   const currSub=curr.filter(r=>r.status==='completed'||r.status==='pending_ack');
   const prevSub=prev.filter(r=>r.status==='completed'||r.status==='pending_ack');
-  const currScored=currSub.map(r=>({r,sc:_cqaScore(r.ratings,r.contentType)})).filter(x=>x.sc.pct!=null);
-  const prevScored=prevSub.map(r=>({r,sc:_cqaScore(r.ratings,r.contentType)})).filter(x=>x.sc.pct!=null);
+  const currScored=currSub.map(r=>({r,sc:_cqaScore(r.ratings,r.contentType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
+  const prevScored=prevSub.map(r=>({r,sc:_cqaScore(r.ratings,r.contentType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
   const avg=currScored.length?currScored.reduce((s,x)=>s+x.sc.pct,0)/currScored.length:null;
   const prevAvg=prevScored.length?prevScored.reduce((s,x)=>s+x.sc.pct,0)/prevScored.length:null;
   const endorse=currScored.filter(x=>x.sc.disposition==='Endorse').length;
@@ -8464,7 +8466,7 @@ function _dashIDQATrendChart(rows,key,range){
   const isWeekly=_dashGran==='weekly';
   const buckets={};
   rows.filter(r=>r.reviewDate).forEach(r=>{
-    const sc=_idqaScore(r.ratings||{}); if(sc.pct==null) return;
+    const sc=_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion); if(sc.pct==null) return;
     const d=new Date(r.reviewDate+'T00:00:00');
     const k=isWeekly?r.reviewDate.substring(0,7)+'-W'+Math.ceil(d.getDate()/7):r.reviewDate.substring(0,7);
     if(!buckets[k]) buckets[k]={sum:0,cnt:0};
@@ -8524,7 +8526,7 @@ function _dashCQATrendChart(rows,key,range){
   const isWeekly=_dashGran==='weekly';
   const buckets={};
   rows.filter(r=>r.reviewDate).forEach(r=>{
-    const sc=_cqaScore(r.ratings,r.contentType); if(sc.pct==null) return;
+    const sc=_cqaScore(r.ratings,r.contentType,r.criteriaVersion); if(sc.pct==null) return;
     const d=new Date(r.reviewDate+'T00:00:00');
     const k=isWeekly?r.reviewDate.substring(0,7)+'-W'+Math.ceil(d.getDate()/7):r.reviewDate.substring(0,7);
     if(!buckets[k]) buckets[k]={sum:0,cnt:0};
@@ -21900,8 +21902,8 @@ function _rptPctColor(pct){ return pct>=85?'#16a34a':pct>=70?'#d97706':'#dc2626'
 function _renderIDQAReports(rows, body){
   if(!rows.length){ body.innerHTML='<div class="rpt-empty">No submitted ID QA reviews match the selected filters.</div>'; return; }
 
-  const avgPct=rows.reduce((s,r)=>s+(_idqaScore(r.ratings||{}).pct||0),0)/rows.length;
-  const endorsed=rows.filter(r=>_idqaScore(r.ratings||{}).disposition==='Endorse').length;
+  const avgPct=rows.reduce((s,r)=>s+(_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct||0),0)/rows.length;
+  const endorsed=rows.filter(r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).disposition==='Endorse').length;
   const designerIds=[...new Set(rows.map(r=>r.designerId))].filter(Boolean);
 
   // Build per-designer aggregates
@@ -21911,9 +21913,10 @@ function _renderIDQAReports(rows, body){
     if(!map[key]) map[key]={designer:DB.byId(r.designerId),reviews:[],scores:[],criSums:{},criCounts:{}};
     const m=map[key];
     m.reviews.push(r);
-    const sc=_idqaScore(r.ratings||{});
+    const sc=_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion);
     if(sc.pct!=null) m.scores.push({pct:sc.pct,date:r.reviewDate});
     IDA_CRITERIA.forEach(c=>{
+      if(!_idqaApplies(c,r.delivType,r.criteriaVersion)) return;
       const v=(r.ratings||{})[c.id];
       if(v!=null){m.criSums[c.id]=(m.criSums[c.id]||0)+v;m.criCounts[c.id]=(m.criCounts[c.id]||0)+1;}
     });
@@ -22055,7 +22058,7 @@ function _renderIDQALineItems(rows, container){
 function _renderIDQACriteriaSection(rows, container){
   // Per-criterion aggregates (0-2 scale, shown as %)
   const criData=IDA_CRITERIA.map(c=>{
-    const vals=rows.map(r=>(r.ratings||{})[c.id]).filter(v=>v!=null);
+    const vals=rows.map(r=>_idqaApplies(c,r.delivType,r.criteriaVersion)?(r.ratings||{})[c.id]:null).filter(v=>v!=null);
     const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
     const dist={0:0,1:0,2:0};
     vals.forEach(v=>{if(dist[v]!==undefined)dist[v]++;});
@@ -22073,7 +22076,7 @@ function _renderIDQACriteriaSection(rows, container){
     if(!r.reviewDate) return;
     const mo=r.reviewDate.slice(0,7);
     if(!monthlyMap[mo]) monthlyMap[mo]=[];
-    const sc=_idqaScore(r.ratings||{});
+    const sc=_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion);
     if(sc.pct!=null) monthlyMap[mo].push(sc.pct);
   });
   const months=Object.keys(monthlyMap).sort();
@@ -22150,7 +22153,7 @@ function _renderIDQACriteriaSection(rows, container){
 function _renderCQAReports(rows, body){
   if(!rows.length){ body.innerHTML='<div class="rpt-empty">No submitted CD QA reviews match the selected filters.</div>'; return; }
 
-  const scores=rows.map(r=>_cqaScore(r.ratings||{},r.contentType)).filter(s=>s.pct!=null);
+  const scores=rows.map(r=>_cqaScore(r.ratings||{},r.contentType,r.criteriaVersion)).filter(s=>s.pct!=null);
   const avgPct=scores.length?scores.reduce((s,x)=>s+x.pct,0)/scores.length:null;
   const endorsed=scores.filter(s=>s.disposition==='Endorse').length;
   const authorIds=[...new Set(rows.map(r=>r.authorId))].filter(Boolean);
@@ -22164,10 +22167,10 @@ function _renderCQAReports(rows, body){
     if(!map[key]) map[key]={author:DB.byId(r.authorId),reviews:[],scores:[],criSums:{},criCounts:{}};
     const m=map[key];
     m.reviews.push(r);
-    const sc=_cqaScore(r.ratings||{},r.contentType);
+    const sc=_cqaScore(r.ratings||{},r.contentType,r.criteriaVersion);
     if(sc.pct!=null) m.scores.push({pct:sc.pct,date:r.reviewDate});
     CQA_CRITERIA.forEach(c=>{
-      if(!_cqaApplies(c,r.contentType)) return;
+      if(!_cqaApplies(c,r.contentType,r.criteriaVersion)) return;
       const v=(r.ratings||{})[c.id];
       if(v!=null){m.criSums[c.id]=(m.criSums[c.id]||0)+v;m.criCounts[c.id]=(m.criCounts[c.id]||0)+1;}
     });
@@ -22271,7 +22274,7 @@ function _renderCQALineItems(rows, container){
     html+=`<div style="font-size:10px;color:${col}bb">${gc.length} criteria ▾</div></div>`;
     html+=`<div class="cqa-li-body" style="display:none">`;
     gc.forEach((c,i)=>{
-      const vals=rows.map(r=>_cqaApplies(c,r.contentType)?(r.ratings||{})[c.id]:null).filter(v=>v!=null);
+      const vals=rows.map(r=>_cqaApplies(c,r.contentType,r.criteriaVersion)?(r.ratings||{})[c.id]:null).filter(v=>v!=null);
       const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
       const pct=avg!=null?(avg/2)*100:null;
       const dist={0:0,1:0,2:0};
@@ -22315,7 +22318,7 @@ function _renderCQALineItems(rows, container){
 function _renderCQACriteriaSection(rows, container){
   // Only include criteria that appear in at least one review (N/A excluded)
   const criData=CQA_CRITERIA.map(c=>{
-    const vals=rows.map(r=>_cqaApplies(c,r.contentType)?(r.ratings||{})[c.id]:null).filter(v=>v!=null);
+    const vals=rows.map(r=>_cqaApplies(c,r.contentType,r.criteriaVersion)?(r.ratings||{})[c.id]:null).filter(v=>v!=null);
     const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
     const dist={0:0,1:0,2:0};
     vals.forEach(v=>{if(dist[v]!==undefined)dist[v]++;});
@@ -22333,7 +22336,7 @@ function _renderCQACriteriaSection(rows, container){
     if(!r.reviewDate) return;
     const mo=r.reviewDate.slice(0,7);
     if(!monthlyMap[mo]) monthlyMap[mo]=[];
-    const sc=_cqaScore(r.ratings||{},r.contentType);
+    const sc=_cqaScore(r.ratings||{},r.contentType,r.criteriaVersion);
     if(sc.pct!=null) monthlyMap[mo].push(sc.pct);
   });
   const months=Object.keys(monthlyMap).sort();
@@ -22442,14 +22445,14 @@ function exportIDQARptCSV(){
   rows.forEach(r=>{
     const designer=DB.byId(r.designerId);
     const reviewer=DB.byId(r.reviewerId);
-    const sc=_idqaScore(r.ratings||{});
+    const sc=_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion);
     const row=[
       r.code||'',
       designer?`${designer.firstName} ${designer.lastName}`:'',
       reviewer?`${reviewer.firstName} ${reviewer.lastName}`:'',
-      r.projectTitle||'',r.deliverableType||'',r.reviewDate||'',
+      r.projectTitle||'',r.delivType||'',r.reviewDate||'',
       sc.pct!=null?sc.pct.toFixed(1):'',sc.disposition||'',
-      ...IDA_CRITERIA.map(c=>(r.ratings||{})[c.id]??''),
+      ...IDA_CRITERIA.map(c=>_idqaApplies(c,r.delivType,r.criteriaVersion)?((r.ratings||{})[c.id]??''):'N/A'),
       (r.observations||'').replace(/"/g,'""'),
       r.submittedAt||'',
       r.finalizedAt?r.finalizedAt.slice(0,10):''
@@ -22470,14 +22473,14 @@ function exportCQARptCSV(){
   rows.forEach(r=>{
     const author=DB.byId(r.authorId);
     const reviewer=DB.byId(r.reviewerId);
-    const sc=_cqaScore(r.ratings||{},r.contentType);
+    const sc=_cqaScore(r.ratings||{},r.contentType,r.criteriaVersion);
     const row=[
       r.code||'',
       author?`${author.firstName} ${author.lastName}`:'',
       reviewer?`${reviewer.firstName} ${reviewer.lastName}`:'',
       r.projectTitle||'',r.contentType||'',r.reviewDate||'',
       sc.pct!=null?sc.pct.toFixed(1):'',sc.disposition||'',r.timeliness||'',
-      ...CQA_CRITERIA.map(c=>_cqaApplies(c,r.contentType)?(r.ratings||{})[c.id]??'':'N/A'),
+      ...CQA_CRITERIA.map(c=>_cqaApplies(c,r.contentType,r.criteriaVersion)?(r.ratings||{})[c.id]??'':'N/A'),
       (r.observations||'').replace(/"/g,'""'),
       r.submittedAt||'',
       r.finalizedAt?r.finalizedAt.slice(0,10):''
@@ -22616,6 +22619,33 @@ const IDA_CRITERIA=[
   {id:'I15',group:'Deliverable Completeness',     param:'HANDOFF READINESS',       text:'SME-validated content and stakeholder-approved objectives are reflected. The deliverable contains sufficient detail for a CD to build without needing to return to the ID for clarification.'},
 ];
 
+
+/* v5.12 (2026-10-23, per Sandra): criteria applicability by Deliverable Type.
+   criteriaVersion 1 = every review created before v5.12 -> all 15 criteria, original scoring (left exactly as stored).
+   criteriaVersion 2 = reviews created from v5.12 -> only the criteria mapped to the type below are shown/scored,
+   per "LEAP Insights - Criteria and Content Applicability.xlsx" + Sandra's 2026-10-23 decisions
+   (Handoff Readiness off for Training Project Scope & Needs Analysis; Objectives Measurability/Scope off for Needs Analysis).
+   Keys must match Settings -> Lists -> Deliverable Types names exactly. */
+const QA_CRITERIA_VERSION_CURRENT=2;
+const IDA_V2_BY_TYPE={
+  'Training Project Scope':     ['I1','I2','I3','I4','I5','I6','I7','I9','I10','I11','I12','I13'],
+  'Needs Analysis Document':    ['I3','I5','I6','I7','I8','I9','I10','I11','I12'],
+  'Training Design Document':   ['I1','I2','I3','I4','I5','I6','I7','I8','I9','I10','I11','I12','I13','I14','I15'],
+  'Assessment Blueprint':       ['I1','I2','I3','I4','I7','I9','I10','I11','I12','I13','I15'],
+  'Storyboard':                 ['I1','I2','I3','I4','I5','I7','I8','I9','I10','I11','I12','I13','I14','I15'],
+  'Facilitator Guide Outline':  ['I1','I2','I3','I5','I7','I8','I9','I10','I11','I12','I14','I15'],
+  'Training Collateral Outline':['I3','I5','I7','I8','I9','I10','I11','I12','I15'],
+  'Playbook Outline':           ['I3','I5','I7','I8','I9','I10','I11','I12','I15'],
+  'Content Development Guide':  ['I3','I4','I5','I7','I8','I9','I10','I11','I12','I14','I15'],
+};
+function _qaVer(v){ return Number(v)>=2?2:1; }
+function _idqaApplies(crit, delivType, ver){
+  if(_qaVer(ver)<2) return true;               // v1: all criteria, unchanged
+  const list=delivType&&IDA_V2_BY_TYPE[delivType];
+  return list?list.includes(crit.id):true;      // no/unknown type: show all until a type is picked
+}
+function _idqaCriteria(delivType, ver){ return IDA_CRITERIA.filter(c=>_idqaApplies(c,delivType,ver)); }
+
 const IDA_GROUP_COLORS={'Learning Design Quality':'#2563eb','Content Accuracy & Sourcing':'#0891b2','Writing Quality':'#7c3aed','Deliverable Completeness':'#d97706'};
 
 /* ── DATA LAYER ───────────────────── */
@@ -22644,6 +22674,12 @@ const IDQA_COLS=[
 ];
 let _idqaCols={};
 let _idqaLiveRatings={}, _idqaLiveRemarks={};
+let _idqaVer=QA_CRITERIA_VERSION_CURRENT; // v5.12: criteria version of the open form
+function _idqaFormType(){ return document.getElementById('idqa-deliv-type')?.value||''; }
+function _idqaOnTypeChange(){ // v5.12: re-render criteria for the chosen Deliverable Type
+  document.getElementById('idqa-criteria-body').innerHTML=_renderIDACriteria(null,false);
+  _idqaUpdateScoreBar();
+}
 let _idqaGroupCollapsed={};
 
 /* ── HELPERS ──────────────────────── */
@@ -22661,18 +22697,34 @@ function generateIDQACode(){
   return `${prefix}${String(next).padStart(3,'0')}`;
 }
 
-function _idqaScore(ratings){
-  const rated=IDA_CRITERIA.filter(c=>ratings&&ratings[c.id]!==undefined&&ratings[c.id]!==null&&ratings[c.id]!=='');
-  if(!rated.length) return {pct:null,count:0,total:IDA_CRITERIA.length,disposition:null,dispBg:'',dispColor:'',hasZero:false};
+function _idqaScore(ratings, delivType, ver){
+  // v5.12: v1 records keep the original calculation verbatim (incl. its disposition order) so past results never change.
+  if(_qaVer(ver)<2){
+    const rated=IDA_CRITERIA.filter(c=>ratings&&ratings[c.id]!==undefined&&ratings[c.id]!==null&&ratings[c.id]!=='');
+    if(!rated.length) return {pct:null,count:0,total:IDA_CRITERIA.length,disposition:null,dispBg:'',dispColor:'',hasZero:false};
+    const sum=rated.reduce((s,c)=>s+(Number(ratings[c.id])||0),0);
+    const maxScore=IDA_CRITERIA.length*2;
+    const pct=maxScore>0?(sum/maxScore*100):0;
+    const hasZero=rated.some(c=>Number(ratings[c.id])===0);
+    let disposition,dispBg,dispColor;
+    if(pct>=85&&!hasZero){disposition='Endorse';dispBg='#dcfce7';dispColor='#166534';}
+    else if(pct>=70||hasZero){disposition='Revise & Resubmit';dispBg='#fef9c3';dispColor='#854d0e';}
+    else{disposition='Major Revision';dispBg='#fee2e2';dispColor='#991b1b';}
+    return {pct,count:rated.length,total:IDA_CRITERIA.length,disposition,dispBg,dispColor,hasZero};
+  }
+  // v2: applicable criteria only; <70% is Major Revision even with a 0 (same order as CD QA).
+  const applicable=_idqaCriteria(delivType,ver);
+  const rated=applicable.filter(c=>ratings&&ratings[c.id]!==undefined&&ratings[c.id]!==null&&ratings[c.id]!=='');
+  if(!rated.length) return {pct:null,count:0,total:applicable.length,disposition:null,dispBg:'',dispColor:'',hasZero:false};
   const sum=rated.reduce((s,c)=>s+(Number(ratings[c.id])||0),0);
-  const maxScore=IDA_CRITERIA.length*2;
+  const maxScore=applicable.length*2;
   const pct=maxScore>0?(sum/maxScore*100):0;
   const hasZero=rated.some(c=>Number(ratings[c.id])===0);
   let disposition,dispBg,dispColor;
-  if(pct>=85&&!hasZero){disposition='Endorse';dispBg='#dcfce7';dispColor='#166534';}
-  else if(pct>=70||hasZero){disposition='Revise & Resubmit';dispBg='#fef9c3';dispColor='#854d0e';}
-  else{disposition='Major Revision';dispBg='#fee2e2';dispColor='#991b1b';}
-  return {pct,count:rated.length,total:IDA_CRITERIA.length,disposition,dispBg,dispColor,hasZero};
+  if(pct<70){disposition='Major Revision';dispBg='#fee2e2';dispColor='#991b1b';}
+  else if(pct<85||hasZero){disposition='Revise & Resubmit';dispBg='#fef9c3';dispColor='#854d0e';}
+  else{disposition='Endorse';dispBg='#dcfce7';dispColor='#166534';}
+  return {pct,count:rated.length,total:applicable.length,disposition,dispBg,dispColor,hasZero};
 }
 
 function _idqaStatusBadge(status){
@@ -22702,7 +22754,7 @@ function _updateIDQATimeliness(){
 }
 
 function _idqaUpdateScoreBar(){
-  const sc=_idqaScore(_idqaLiveRatings);
+  const sc=_idqaScore(_idqaLiveRatings,_idqaFormType(),_idqaVer);
   const pctEl=document.getElementById('idqa-score-pct');
   const dispEl=document.getElementById('idqa-score-disp');
   const barEl=document.getElementById('idqa-score-bar');
@@ -22714,17 +22766,17 @@ function _idqaUpdateScoreBar(){
 /* ── CONTENT TYPE / COLLAPSE ──────── */
 function toggleIDQAGroup(key){
   _idqaGroupCollapsed[key]=!_idqaGroupCollapsed[key];
-  const rec=_idqaId?IDQADB.byId(_idqaId):null;
+  const rec=(_idqaId&&_idqaReadOnly)?IDQADB.byId(_idqaId):null; // v5.12: editable drafts render from live form state
   document.getElementById('idqa-criteria-body').innerHTML=_renderIDACriteria(rec,_idqaReadOnly);
 }
 function idqaExpandAll(){
   _idqaGroupCollapsed={};
-  const rec=_idqaId?IDQADB.byId(_idqaId):null;
+  const rec=(_idqaId&&_idqaReadOnly)?IDQADB.byId(_idqaId):null; // v5.12: editable drafts render from live form state
   document.getElementById('idqa-criteria-body').innerHTML=_renderIDACriteria(rec,_idqaReadOnly);
 }
 function idqaCollapseAll(){
   [...new Set(IDA_CRITERIA.map(c=>c.group))].forEach(g=>{_idqaGroupCollapsed[g.replace(/\s+/g,'_')]=true;});
-  const rec=_idqaId?IDQADB.byId(_idqaId):null;
+  const rec=(_idqaId&&_idqaReadOnly)?IDQADB.byId(_idqaId):null; // v5.12: editable drafts render from live form state
   document.getElementById('idqa-criteria-body').innerHTML=_renderIDACriteria(rec,_idqaReadOnly);
 }
 
@@ -22732,6 +22784,8 @@ function idqaCollapseAll(){
 function _renderIDACriteria(rec, readOnly){
   const ratings=rec?.ratings||_idqaLiveRatings;
   const remarks=rec?.remarks||_idqaLiveRemarks;
+  const _dt=rec?(rec.delivType||''):_idqaFormType();
+  const _ver=rec?rec.criteriaVersion:_idqaVer;
   let n=0, lastGroup='', html='';
 
   html+=`<div class="cqa-grid-table">
@@ -22741,6 +22795,7 @@ function _renderIDACriteria(rec, readOnly){
     <div class="cqa-grid-hdr-cell" style="border-radius:0 var(--r-md) 0 0">Remarks</div>`;
 
   IDA_CRITERIA.forEach(crit=>{
+    if(!_idqaApplies(crit,_dt,_ver)) return; // v5.12: hide non-applicable (v2 only)
     n++;
     const _grpKey=crit.group.replace(/\s+/g,'_');
     const _grpCollapsed=!!_idqaGroupCollapsed[_grpKey];
@@ -22839,7 +22894,7 @@ function _populateIDQADropdowns(rec){
   // Deliverable Type dropdown — from store (isID:true)
   const dtSel=document.getElementById('idqa-deliv-type');
   if(dtSel){
-    const types=Sel.all(Store.DELIVERABLES).filter(d=>d.isID&&d.isActive).sort((a,b)=>a.name.localeCompare(b.name));
+    const types=Sel.all(Store.DELIVERABLES).filter(d=>d.isID&&(d.isActive||(rec&&rec.delivType===d.name))).sort((a,b)=>a.name.localeCompare(b.name)); // v5.12: retired type still shows on its own past records
     dtSel.innerHTML='<option value="">— Select Type —</option>'+types.map(d=>`<option value="${Utils.esc(d.name)}"${rec&&rec.delivType===d.name?' selected':''}>${Utils.esc(d.name)}</option>`).join('');
   }
 }
@@ -22853,7 +22908,7 @@ function showIDQASubview(v){
 }
 
 function openNewIDQA(){
-  _idqaId=null; _idqaReadOnly=false; _idqaGroupCollapsed={};
+  _idqaId=null; _idqaReadOnly=false; _idqaGroupCollapsed={}; _idqaVer=QA_CRITERIA_VERSION_CURRENT;
   _idqaLiveRatings={}; _idqaLiveRemarks={};
   const me=Auth.user;
   document.getElementById('idqa-form-title').textContent='New ID QA Review';
@@ -22883,7 +22938,7 @@ function openNewIDQA(){
 
 function openIDQA(id){
   const rec=IDQADB.byId(id); if(!rec) return;
-  _idqaId=id; _idqaGroupCollapsed={};
+  _idqaId=id; _idqaGroupCollapsed={}; _idqaVer=_qaVer(rec.criteriaVersion);
   _idqaLiveRatings={...rec.ratings||{}}; _idqaLiveRemarks={...rec.remarks||{}};
   const isPendingAck=rec.status==='pending_ack';
   const isCompleted=rec.status==='completed';
@@ -22904,7 +22959,7 @@ function openIDQA(id){
     const el=document.getElementById(eid); if(el) el.disabled=rdOnly;
   });
   const dSel=document.getElementById('idqa-designer'); if(dSel) dSel.disabled=rdOnly;
-  document.getElementById('idqa-criteria-body').innerHTML=_renderIDACriteria(rec,rdOnly);
+  document.getElementById('idqa-criteria-body').innerHTML=_renderIDACriteria(rdOnly?rec:null,rdOnly);
   const obsEl=document.getElementById('idqa-observations');
   if(obsEl){obsEl.innerHTML=rec.observations||'';obsEl.contentEditable=rdOnly?'false':'true';}
   _idqaUpdateScoreBar();
@@ -22943,14 +22998,17 @@ function openIDQA(id){
 
 /* ── FORM DATA + VALIDATION ────────── */
 function _getIDQAFormData(){
+  const _dt=_idqaFormType();
   const ratings={...(_idqaLiveRatings||{})};
   const remarks={};
   IDA_CRITERIA.forEach(c=>{
+    if(!_idqaApplies(c,_dt,_idqaVer)){ delete ratings[c.id]; return; } // v5.12: v2 keeps only applicable criteria
     const ta=document.getElementById(`idqa-rmk-${c.id}`);
     if(ta) remarks[c.id]=ta.value.trim();
     else if(_idqaLiveRemarks[c.id]) remarks[c.id]=_idqaLiveRemarks[c.id];
   });
   return{
+    criteriaVersion:_idqaVer,
     reviewerId:Auth.user?.id,
     designerId:document.getElementById('idqa-designer')?.value||'',
     delivType:document.getElementById('idqa-deliv-type')?.value||'',
@@ -22975,9 +23033,10 @@ function _validateIDQA(forSubmit){
   if(!d.actualDate)   return show('Actual completion date is required.');
   if(!d.delivType)    return show('Deliverable type is required.');
   if(forSubmit){
-    const unrated=IDA_CRITERIA.filter(c=>d.ratings[c.id]===undefined||d.ratings[c.id]===null||d.ratings[c.id]==='');
+    const _app=_idqaCriteria(d.delivType,_idqaVer);
+    const unrated=_app.filter(c=>d.ratings[c.id]===undefined||d.ratings[c.id]===null||d.ratings[c.id]==='');
     if(unrated.length) return show(`${unrated.length} criterion/criteria still need a rating before submitting.`);
-    const missingRmk=IDA_CRITERIA.filter(c=>{
+    const missingRmk=_app.filter(c=>{
       const v=Number(d.ratings[c.id]);
       return (v===0||v===1)&&!(d.remarks[c.id]||'').trim();
     });
@@ -23121,8 +23180,8 @@ function renderIDQASummary(rows){
   const pending=rows.filter(r=>r.status==='pending_ack').length;
   const completed=rows.filter(r=>r.status==='completed').length;
   const cur=(document.getElementById('idqa-filter-status')||{}).value||'all';
-  const avgRows=rows.filter(r=>{ const sc=_idqaScore(r.ratings||{}); return sc.pct!=null; });
-  const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_idqaScore(r.ratings||{}).pct,0)/avgRows.length).toFixed(1):null;
+  const avgRows=rows.filter(r=>{ const sc=_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion); return sc.pct!=null; });
+  const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct,0)/avgRows.length).toFixed(1):null;
   bar.innerHTML=`<div class="eval-summary-strip">
     <div class="esc ec-total${cur==='all'?' active':''}" onclick="document.getElementById('idqa-filter-status').value='all';renderIDQA()">
       <div class="esc-icon">📐</div>
@@ -23175,7 +23234,7 @@ function exportIDQACSV(){
   const rows=[headers.map(esc).join(',')];
   _lastIDQAVisible.forEach(r=>{
     const des=DB.byId(r.designerId), rev=DB.byId(r.reviewerId);
-    const sc=_idqaScore(r.ratings||{});
+    const sc=_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion);
     const tl=_idqaTimeliness(r);
     const vals=visCols.map(col=>{
       if(col.id==='code')      return r.code||'';
@@ -23272,7 +23331,7 @@ function renderIDQA(){
   visible=[...visible].sort((a,b)=>{
     let va,vb;
     if(col==='date'){va=a.reviewDate||'';vb=b.reviewDate||'';}
-    else if(col==='score'){va=_idqaScore(a.ratings||{}).pct||0;vb=_idqaScore(b.ratings||{}).pct||0;}
+    else if(col==='score'){va=_idqaScore(a.ratings||{},a.delivType,a.criteriaVersion).pct||0;vb=_idqaScore(b.ratings||{},b.delivType,b.criteriaVersion).pct||0;}
     else if(col==='designer'){const u=DB.byId(a.designerId),v=DB.byId(b.designerId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:''; }
     else if(col==='reviewer'){const u=DB.byId(a.reviewerId),v=DB.byId(b.reviewerId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:''; }
     else if(col==='title'){va=a.projectTitle||'';vb=b.projectTitle||'';}
@@ -23328,7 +23387,7 @@ function renderIDQA(){
     const des=DB.byId(r.designerId), rev=DB.byId(r.reviewerId);
     const desName=des?`${des.firstName} ${des.lastName}`:'—';
     const revName=rev?`${rev.firstName} ${rev.lastName}`:'—';
-    const sc=_idqaScore(r.ratings||{});
+    const sc=_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion);
     const tl=_idqaTimeliness(r);
     const canEdit=r.status==='draft'&&(me.isAdmin||r.reviewerId===me.id);
     const canView=true;
@@ -23339,8 +23398,8 @@ function renderIDQA(){
     let html='';
     Object.entries(groups).forEach(([key,rows])=>{
       const collapsed=!!_idqaGroupRowCollapsed[key];
-      const avgRows=rows.filter(r=>_idqaScore(r.ratings||{}).pct!=null);
-      const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_idqaScore(r.ratings||{}).pct,0)/avgRows.length).toFixed(1):null;
+      const avgRows=rows.filter(r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct!=null);
+      const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct,0)/avgRows.length).toFixed(1):null;
       html+=`<div style="margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
         <div class="eval-group-hdr" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:${collapsed?'none':'1px solid var(--border)'}" onclick="toggleIDQAGroupRow('${key}')">
           <div style="display:flex;align-items:center;gap:10px">
@@ -23425,7 +23484,7 @@ function _buildIDQAHTML(rec){
   const reviewer=DB.byId(rec.reviewerId), designer=DB.byId(rec.designerId);
   const rName=reviewer?`${reviewer.firstName} ${reviewer.lastName}`:'—';
   const dName=designer?`${designer.firstName} ${designer.lastName}`:'—';
-  const sc=_idqaScore(rec.ratings||{});
+  const sc=_idqaScore(rec.ratings||{},rec.delivType,rec.criteriaVersion);
   const tl=_idqaTimeliness(rec);
   const tlColor=_idqaTimelinessColor(tl);
   const hasRatings=Object.values(rec.ratings||{}).some(v=>v!==undefined&&v!==null&&v!=='');
@@ -23436,7 +23495,7 @@ function _buildIDQAHTML(rec){
 
   const groupOrder=['Learning Design Quality','Content Accuracy & Sourcing','Writing Quality','Deliverable Completeness'];
   const groupMap={};
-  IDA_CRITERIA.forEach(c=>{ if(!groupMap[c.group]) groupMap[c.group]=[]; groupMap[c.group].push(c); });
+  IDA_CRITERIA.forEach(c=>{ if(!_idqaApplies(c,rec.delivType,rec.criteriaVersion)) return; if(!groupMap[c.group]) groupMap[c.group]=[]; groupMap[c.group].push(c); });
 
   let criteriaHtml='';
   let n=0;
@@ -23526,17 +23585,37 @@ const CQA_CRITERIA=[
 ];
 const CQA_GROUP_COLORS={'Design Fidelity':'#2563eb','Content Quality':'#0891b2','Visual Quality':'#7c3aed','Audio & Video Quality':'#d97706','Interactivity & Navigation':'#ea580c','Accessibility':'#059669','Brand Alignment':'#e11d48'};
 
-function _cqaApplies(crit, contentType){
+
+/* v5.12 (2026-10-23, per Sandra): CD criteria applicability v2 (workbook + 2026-10-23 decisions:
+   C15 on for Infographic/Graphics/Slide Deck/Handout; C7 off for LMS Setup (thumbnails reviewed as Graphics);
+   C1 on for Infographic, off for Graphics; C14 = StoryLine/Rise/LMS Setup only; C12 kept on LMS Setup).
+   Retired for new reviews: Job Aid, Worksheet, Assessment, Survey. v1 (pre-v5.12 records) keeps the rules above, unchanged. */
+const CQA_V2_BY_TYPE={
+  'StoryLine':        ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15','C16','C17'],
+  'Rise':             ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15','C16','C17'],
+  'Video':            ['C1','C4','C5','C6','C7','C8','C9','C10','C11','C15','C16','C17'],
+  'Slide Deck':       ['C1','C2','C3','C4','C5','C6','C7','C8','C13','C15','C16','C17'],
+  'Handout':          ['C1','C4','C5','C6','C7','C15','C16','C17'],
+  'Activity':         ['C1','C3','C4','C5','C6','C7','C12','C13','C16','C17'],
+  'Audio':            ['C1','C4','C9','C15','C17'],
+  'Infographic':      ['C1','C4','C5','C6','C7','C15','C16','C17'],
+  'Graphics':         ['C6','C7','C15','C16','C17'],
+  'Facilitator Guide':['C1','C2','C4','C5','C6','C7','C13','C16','C17'],
+  'Playbook':         ['C1','C3','C4','C5','C6','C7','C13','C16','C17'],
+  'LMS Setup':        ['C2','C3','C12','C13','C14','C16','C17'],
+};
+function _cqaApplies(crit, contentType, ver){
   if(!contentType) return true;
+  if(_qaVer(ver)>=2){ const l=CQA_V2_BY_TYPE[contentType]; return l?l.includes(crit.id):true; } // v5.12
   if(crit.applies==='all') return true;
   if(crit.applies==='all_except_audio') return contentType!=='Audio';
   return crit.applies.includes(contentType);
 }
 
-function _buildCQAGroups(contentType){
+function _buildCQAGroups(contentType, ver){
   const map={};
   CQA_CRITERIA.forEach(c=>{
-    if(!_cqaApplies(c,contentType)) return;
+    if(!_cqaApplies(c,contentType,ver)) return;
     if(!map[c.group]) map[c.group]=[];
     map[c.group].push(c);
   });
@@ -23550,6 +23629,7 @@ const ContentQADB=_makeRecordDB('cdqa_reviews','CD QA',r=>r?.code||r?.id||'');
 let _cqaId=null, _cqaReadOnly=false, _cqaTab='my';
 let _cqaContentType='';
 let _cqaLiveRatings={}, _cqaLiveRemarks={};
+let _cqaVer=QA_CRITERIA_VERSION_CURRENT; // v5.12: criteria version of the open form
 let _cqaGroupCollapsed={};
 let _cqaSort={col:'date',dir:'desc'};
 let _cqaGroupMode='none';
@@ -23586,8 +23666,8 @@ function generateCQACode(){
   return `${prefix}${String(next).padStart(3,'0')}`;
 }
 
-function _cqaScore(ratings, contentType){
-  const applicable=CQA_CRITERIA.filter(c=>_cqaApplies(c,contentType));
+function _cqaScore(ratings, contentType, ver){
+  const applicable=CQA_CRITERIA.filter(c=>_cqaApplies(c,contentType,ver));
   const rated=applicable.filter(c=>ratings&&ratings[c.id]!==undefined&&ratings[c.id]!==null&&ratings[c.id]!=='');
   if(!rated.length) return {pct:null,count:0,total:applicable.length,disposition:null,dispBg:'',dispColor:'',hasZero:false};
   const sum=rated.reduce((s,c)=>s+(Number(ratings[c.id])||0),0);
@@ -23654,7 +23734,7 @@ function clearCQAFilters(){
 /* ── LIVE SCORE BAR ───────────────── */
 function _cqaUpdateScoreBar(){
   const ct=_cqaContentType;
-  const sc=_cqaScore(_cqaLiveRatings,ct);
+  const sc=_cqaScore(_cqaLiveRatings,ct,_cqaVer);
   const valEl=document.getElementById('cqa-score-val');
   const fillEl=document.getElementById('cqa-score-fill');
   const ratedEl=document.getElementById('cqa-score-rated');
@@ -23717,7 +23797,7 @@ function cqaExpandAll(){
 }
 function cqaCollapseAll(){
   const ct=_cqaContentType;
-  [...new Set(CQA_CRITERIA.filter(c=>_cqaApplies(c,ct)).map(c=>c.group))]
+  [...new Set(CQA_CRITERIA.filter(c=>_cqaApplies(c,ct,_cqaVer)).map(c=>c.group))]
     .forEach(g=>{_cqaGroupCollapsed[g.replace(/\s+/g,'_')]=true;});
   const rec=_cqaId?ContentQADB.byId(_cqaId):null;
   document.getElementById('cqa-criteria-body').innerHTML=_renderCQACriteria(rec,_cqaReadOnly);
@@ -23743,7 +23823,7 @@ function _renderCQACriteria(rec, readOnly){
     <div class="cqa-grid-hdr-cell" style="border-radius:0 var(--r-md) 0 0">Remarks</div>`;
 
   CQA_CRITERIA.forEach(crit=>{
-    const applies=_cqaApplies(crit,ct);
+    const applies=_cqaApplies(crit,ct,rec?rec.criteriaVersion:_cqaVer);
     if(!applies) return; // hide non-applicable
     n++;
     const _grpKey=crit.group.replace(/\s+/g,'_');
@@ -23844,8 +23924,8 @@ function renderCQASummary(rows){
   const pending=rows.filter(r=>r.status==='pending_ack').length;
   const completed=rows.filter(r=>r.status==='completed').length;
   const cur=(document.getElementById('cqa-filter-status')||{}).value||'all';
-  const avgRows=rows.filter(r=>{ const sc=_cqaScore(r.ratings,r.contentType); return sc.pct!=null; });
-  const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_cqaScore(r.ratings,r.contentType).pct,0)/avgRows.length).toFixed(1):null;
+  const avgRows=rows.filter(r=>{ const sc=_cqaScore(r.ratings,r.contentType,r.criteriaVersion); return sc.pct!=null; });
+  const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_cqaScore(r.ratings,r.contentType,r.criteriaVersion).pct,0)/avgRows.length).toFixed(1):null;
   bar.innerHTML=`<div class="eval-summary-strip">
     <div class="esc ec-total${cur==='all'?' active':''}" onclick="document.getElementById('cqa-filter-status').value='all';renderContentQA()">
       <div class="esc-icon">✦</div>
@@ -23963,7 +24043,7 @@ function renderContentQA(){
   rows=[...rows].sort((a,b)=>{
     let va,vb;
     if(col==='date'){va=a.reviewDate||'';vb=b.reviewDate||'';}
-    else if(col==='score'){va=_cqaScore(a.ratings,a.contentType).pct||0;vb=_cqaScore(b.ratings,b.contentType).pct||0;}
+    else if(col==='score'){va=_cqaScore(a.ratings,a.contentType,a.criteriaVersion).pct||0;vb=_cqaScore(b.ratings,b.contentType,b.criteriaVersion).pct||0;}
     else if(col==='author'){const u=DB.byId(a.authorId),v=DB.byId(b.authorId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:''; }
     else if(col==='reviewer'){const u=DB.byId(a.reviewerId),v=DB.byId(b.reviewerId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:''; }
     else if(col==='title'){va=a.projectTitle||'';vb=b.projectTitle||'';}
@@ -24019,7 +24099,7 @@ function renderContentQA(){
     const author=DB.byId(r.authorId), reviewer=DB.byId(r.reviewerId);
     const authorName=author?`${author.firstName} ${author.lastName}`:'—';
     const revName=reviewer?`${reviewer.firstName} ${reviewer.lastName}`:'—';
-    const sc=_cqaScore(r.ratings,r.contentType);
+    const sc=_cqaScore(r.ratings,r.contentType,r.criteriaVersion);
     const tl=_cqaTimeliness(r);
     return `<tr style="cursor:pointer" onclick="openCQA('${r.id}')" title="Click to open">${visCols.map(col=>cqaCellFor(col.id,r,authorName,revName,sc,tl)).join('')}</tr>`;
   }
@@ -24027,8 +24107,8 @@ function renderContentQA(){
     let html='';
     Object.entries(groups).forEach(([key,rows])=>{
       const collapsed=!!_cqaGroupRowCollapsed[key];
-      const avgRows=rows.filter(r=>_cqaScore(r.ratings,r.contentType).pct!=null);
-      const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_cqaScore(r.ratings,r.contentType).pct,0)/avgRows.length).toFixed(1):null;
+      const avgRows=rows.filter(r=>_cqaScore(r.ratings,r.contentType,r.criteriaVersion).pct!=null);
+      const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_cqaScore(r.ratings,r.contentType,r.criteriaVersion).pct,0)/avgRows.length).toFixed(1):null;
       html+=`<div style="margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
         <div class="eval-group-hdr" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:${collapsed?'none':'1px solid var(--border)'}" onclick="toggleCQAGroupRow('${key}')">
           <div style="display:flex;align-items:center;gap:10px">
@@ -24099,7 +24179,7 @@ function _populateCQADropdowns(rec){
   // Content Type dropdown
   const ctSel=document.getElementById('cqa-content-type');
   if(ctSel){
-    const cdTypes=Sel.all(Store.DELIVERABLES).filter(d=>d.isCD&&d.isActive).sort((a,b)=>a.name.localeCompare(b.name));
+    const cdTypes=Sel.all(Store.DELIVERABLES).filter(d=>d.isCD&&(d.isActive||(rec&&rec.contentType===d.name))).sort((a,b)=>a.name.localeCompare(b.name)); // v5.12: retired type still shows on its own past records
     ctSel.innerHTML='<option value="">— Select Content Type —</option>'+cdTypes.map(d=>`<option value="${Utils.esc(d.name)}"${rec&&rec.contentType===d.name?' selected':''}>${Utils.esc(d.name)}</option>`).join('');
   }
 }
@@ -24107,7 +24187,7 @@ function _populateCQADropdowns(rec){
 /* ── FORM OPEN ─────────────────────── */
 function openNewCQA(){
   _cqaId=null; _cqaReadOnly=false; _cqaGroupCollapsed={};
-  _cqaContentType=''; _cqaLiveRatings={}; _cqaLiveRemarks={};
+  _cqaContentType=''; _cqaLiveRatings={}; _cqaLiveRemarks={}; _cqaVer=QA_CRITERIA_VERSION_CURRENT;
   const me=Auth.user;
   document.getElementById('cqa-form-title').textContent='New Content QA Review';
   document.getElementById('cqa-form-status-badge').innerHTML='';
@@ -24139,7 +24219,7 @@ function openNewCQA(){
 
 function openCQA(id){
   const rec=ContentQADB.byId(id); if(!rec) return;
-  _cqaId=id; _cqaGroupCollapsed={}; _cqaContentType=rec.contentType||'';
+  _cqaId=id; _cqaGroupCollapsed={}; _cqaContentType=rec.contentType||''; _cqaVer=_qaVer(rec.criteriaVersion);
   _cqaLiveRatings={...rec.ratings||{}}; _cqaLiveRemarks={...rec.remarks||{}};
   const isPendingAck=rec.status==='pending_ack';
   const isCompleted=rec.status==='completed';
@@ -24206,13 +24286,14 @@ function _getCQAFormData(){
   const ratings={...(_cqaLiveRatings||{})};
   const remarks={};
   CQA_CRITERIA.forEach(c=>{
-    if(_cqaApplies(c,_cqaContentType)){
+    if(_cqaApplies(c,_cqaContentType,_cqaVer)){
       const ta=document.getElementById(`cqa-rmk-${c.id}`);
       if(ta) remarks[c.id]=ta.value.trim();
       else if(_cqaLiveRemarks[c.id]) remarks[c.id]=_cqaLiveRemarks[c.id];
     }
   });
   return{
+    criteriaVersion:_cqaVer,
     reviewerId:Auth.user?.id,
     authorId:document.getElementById('cqa-author')?.value||'',
     projectTitle:document.getElementById('cqa-project')?.value.trim()||'',
@@ -24237,7 +24318,7 @@ function _validateCQA(forSubmit){
   if(!d.actualDate)  return show('Actual completion date is required.');
   if(!d.contentType) return show('Content type is required. Please select one above.');
   if(forSubmit){
-    const applicable=CQA_CRITERIA.filter(c=>_cqaApplies(c,d.contentType));
+    const applicable=CQA_CRITERIA.filter(c=>_cqaApplies(c,d.contentType,_cqaVer));
     const unrated=applicable.filter(c=>d.ratings[c.id]===undefined||d.ratings[c.id]===null||d.ratings[c.id]==='');
     if(unrated.length) return show(`${unrated.length} criterion/criteria still need a rating before submitting.`);
     const missingRmk=applicable.filter(c=>{
@@ -24333,7 +24414,7 @@ function exportCQACSV(){
   const lines=[headers.join(',')];
   rows.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).forEach(r=>{
     const author=DB.byId(r.authorId), reviewer=DB.byId(r.reviewerId);
-    const sc=_cqaScore(r.ratings,r.contentType);
+    const sc=_cqaScore(r.ratings,r.contentType,r.criteriaVersion);
     const tl=_cqaTimeliness(r);
     const row=[
       r.code||'',r.projectTitle||'',
@@ -24571,7 +24652,7 @@ function _buildCQAHTML(rec){
   const reviewer=DB.byId(rec.reviewerId), author=DB.byId(rec.authorId);
   const rName=reviewer?`${reviewer.firstName} ${reviewer.lastName}`:'—';
   const aName=author?`${author.firstName} ${author.lastName}`:'—';
-  const sc=_cqaScore(rec.ratings,rec.contentType);
+  const sc=_cqaScore(rec.ratings,rec.contentType,rec.criteriaVersion);
   const tl=_cqaTimeliness(rec);
   const tlColor=_cqaTimelinessColor(tl);
   const hasRatings=Object.values(rec.ratings||{}).some(v=>v!==undefined&&v!==null&&v!=='');
@@ -24581,7 +24662,7 @@ function _buildCQAHTML(rec){
     ?`<div class="doc-score"><div class="doc-score-big">${sc.pct.toFixed(1)}%</div><div class="doc-score-sub">QA Score</div>${sc.disposition?`<div class="doc-disp" style="background:${sc.dispBg};color:${sc.dispColor}">${sc.disposition}</div>`:''}</div>`
     :'';
 
-  const groups=_buildCQAGroups(rec.contentType);
+  const groups=_buildCQAGroups(rec.contentType,rec.criteriaVersion);
   let criteriaHtml='';
   let n=0;
   groups.forEach(g=>{
