@@ -13235,41 +13235,77 @@ function renderTDList(rows){
   </table></div>${pager}</div>`;
 }
 
-// Export saved session fields, independent of visible columns and pagination. Keep raw database
-// field names for re-import/reconciliation, plus readable labels and a version reference.
-function _tdExportValue(value){
-  if(value===null||value===undefined) return '';
-  return typeof value==='object'?JSON.stringify(value):value;
+// v5.13 (2026-10-27, per Sandra): user-friendly Training Calendar export. Replaces the raw
+// database dump (every column, ids, JSON) with one readable sheet: codes users recognise, real
+// Excel dates (End Date = Start Date for single-day sessions), and the Training Report SLA
+// (due date, when it was sent, working days taken, On time / Late / Overdue / Pending).
+// SLA rule is the same as the List view's Report SLA column: 2 working days (Mon-Fri) after the
+// session's END date, measured against the report's current submittedAt.
+function _tdExportDate(str){
+  if(!str) return '';
+  const d=new Date(String(str).slice(0,10)+'T00:00:00');
+  return isNaN(d.getTime())?'':d;
+}
+function _tdAddWorkingDays(dateStr,n){
+  if(!dateStr) return '';
+  const d=new Date(String(dateStr).slice(0,10)+'T00:00:00');
+  if(isNaN(d.getTime())) return '';
+  let added=0;
+  while(added<n){ d.setDate(d.getDate()+1); const w=d.getDay(); if(w!==0&&w!==6) added++; }
+  return d;
+}
+function _tdExportSLA(s,today){
+  const blank={due:'',sent:'',days:'',result:'N/A'};
+  if(_tdHasNoReportRequirement(s)||s.status==='cancelled') return blank;
+  const end=_tdSessionEndDate(s);
+  const due=_tdAddWorkingDays(end,2);
+  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  if(rep&&rep.submittedAt){
+    const days=_tdBusinessDaysBetween(end,rep.submittedAt);
+    const sent=new Date(rep.submittedAt);
+    return {due,sent:isNaN(sent.getTime())?'':sent,days:days??'',result:days==null?'':(days<=2?'On time':'Late')};
+  }
+  const overdue=due&&today>due;
+  return {due,sent:'',days:'',result:overdue?'Overdue – not submitted':(end&&_tdExportDate(end)<=today?'Pending – within SLA':'Not yet due')};
 }
 function _tdExportData(rows){
-  const restricted=new Set(['facilitationHoursApplied','facilitatorRateApplied','coFacilitatorRateApplied','facilitationCostApplied','facilitationCostLockedAt']);
-  const fields=Object.entries(_FIELD_MAPS[Store.TRSESSIONS]).filter(([key])=>Perms.canView('cost-analysis')||!restricted.has(key));
-  const extra=['program_code','program_version','trainer_name','co_facilitator_name','owner_name','ld_owner_name','venue_name','modality_name','checklist_template_title','created_by_name'];
-  const header=[...fields.map(([,column])=>column),...extra];
-  const name=id=>id&&DB.byId(id)?_lpName(id):'';
-  const sessions=rows.map(s=>{
-    const program=s.programId?LearningProgramDB.byId(s.programId):null;
-    return [...fields.map(([key])=>_tdExportValue(s[key])),
-      program?.code||'',program?.version||'',name(s.trainerId)||s.guestTrainerName||'',
-      name(s.coFacilitatorId)||s.coFacilitatorGuestName||'',name(s.ownerId),name(s.ldOwnerId),
-      s.venueOtherName||Sel.nameOf(Store.VENUES,s.venueId)||'',Sel.nameOf(Store.MODALITIES,s.modalityId)||'',
-      ChecklistTemplateDB.byId(s.checklistTemplateId)?.title||'',name(s.createdBy)];
+  const header=['Session ID','Learning Program ID','Version','Batch','Program Title','Delivery Type','Trainer / Owner',
+    'Start Date','End Date','Session Status','Post-Delivery Status','Report Due Date','Report Sent On','Working Days to Submit','Report SLA'];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const statusLabel=st=>st==='Completed'?'Delivery Complete':st;
+  const body=rows.map(s=>{
+    const p=s.programId?LearningProgramDB.byId(s.programId):null;
+    const start=s.trainingDate||'';
+    const end=_tdSessionEndDate(s)||start;
+    const sla=_tdExportSLA(s,today);
+    return [s.code||'',p?.code||'',p?.version||'',s.batchNo||'',s.trainingProgram||'',s.deliveryType||'',
+      (_tdPersonName(s)||'').replace(/^—$/,''),_tdExportDate(start),_tdExportDate(end),
+      statusLabel(_tdStatus(s)),_tdDocStatusText(s),sla.due,sla.sent,sla.days,sla.result];
   });
-  const assessmentHeader=['session_id','session_code','delivery_type','program_code','program_version','evaluation_name','pre_test','post_test','passing_score'];
-  const assessments=rows.flatMap(s=>{
-    const program=s.programId?LearningProgramDB.byId(s.programId):null;
-    return _tdaGetAssessments(s).map(a=>[s.id,s.code||'',s.deliveryType||'',program?.code||'',program?.version||'',a.name||'',!!a.pre,!!a.post,a.passingScore??'']);
-  });
-  return {sessions:[header,...sessions],assessments:[assessmentHeader,...assessments]};
+  return {header,body};
+}
+function _tdExportSheet(data){
+  // Dates are written as Excel serial numbers from the user's LOCAL date/time (PH), so Excel
+  // never shifts them by a timezone offset; they stay sortable/filterable as real dates.
+  const serial=d=>(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),d.getMinutes(),d.getSeconds())-Date.UTC(1899,11,30))/86400000;
+  const body=data.body.map(row=>row.map(v=>v instanceof Date?serial(v):v));
+  const ws=XLSX.utils.aoa_to_sheet([data.header,...body]);
+  const fmt={7:'mmm d, yyyy',8:'mmm d, yyyy',11:'mmm d, yyyy',12:'mmm d, yyyy h:mm AM/PM'};
+  data.body.forEach((row,i)=>Object.keys(fmt).forEach(c=>{
+    if(!(row[c] instanceof Date)) return;
+    const cell=ws[XLSX.utils.encode_cell({r:i+1,c:+c})]; if(cell){ cell.t='n'; cell.z=fmt[c]; }
+  }));
+  ws['!cols']=[12,18,8,10,40,12,24,14,14,16,20,15,22,12,24].map(wch=>({wch}));
+  ws['!autofilter']={ref:ws['!ref']};
+  return ws;
 }
 function tdExportExcel(){
   const rows=_tdFilteredRows();
   if(!rows.length) return toast('There are no sessions to export for these filters.','error');
   if(typeof XLSX==='undefined') return toast('Excel export is unavailable. Reload the page and try again.','error');
   try{
-    const data=_tdExportData(rows), book=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(data.sessions),'Sessions');
-    XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(data.assessments),'Evaluations');
+    const book=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book,_tdExportSheet(_tdExportData(rows)),'Training Sessions');
     XLSX.writeFile(book,`LEAP_Training_Calendar_${_todayStr()}.xlsx`);
     toast(`Exported ${rows.length} session${rows.length===1?'':'s'} across all filtered pages.`,'success');
   }catch(error){ console.error('Training Calendar export failed',error); toast('Excel export failed. Please try again.','error'); }
