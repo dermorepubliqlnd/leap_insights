@@ -4189,7 +4189,7 @@ function _tdBondEndDate(anchorDateStr,months){
   const d=new Date(anchorDateStr+'T00:00:00');
   if(isNaN(d.getTime())) return null;
   d.setMonth(d.getMonth()+Number(months));
-  return d.toISOString().slice(0,10);
+  return _isoLocal(d);
 }
 // Live-updates the read-only "Training Bond End Date" preview field whenever the Start/End Date
 // or Bond Period dropdown changes, for both the quick Add modal ('td') and full edit form ('tdd').
@@ -4377,7 +4377,7 @@ function _dashNewEvalBtnHtml(){
    existing icon/color convention (◉ green Trainer, ◈ purple ID QA, ✦ blue CD QA -- same glyphs
    used on the Dashboard Overview cards) rather than introducing new icons or emoji, per
    [[feedback-leap-insights-ui-conventions]]. ───────────────────────────────────────────────── */
-let _dashKpiSel=new Date().toISOString().slice(0,7);
+let _dashKpiSel=_mnlDateOf(new Date()).slice(0,7);
 function _dashKpiMonthOptionsHtml(){
   const now=new Date(); const opts=[];
   for(let i=0;i<12;i++){
@@ -4986,7 +4986,8 @@ function _dashFilter(evals,{from,to}){
 }
 
 function _dashAvg(evals){
-  const rated=evals.filter(e=>e.overallScore!=null);
+  // v5.14 (2026-10-29, per Sandra): finalized evaluations only (completed or awaiting acknowledgement) -- drafts excluded.
+  const rated=evals.filter(e=>e.overallScore!=null&&(e.status==='completed'||e.status==='pending_ack'));
   if(!rated.length) return null;
   return rated.reduce((s,e)=>s+e.overallScore,0)/rated.length;
 }
@@ -5225,17 +5226,17 @@ function _ovMetrics(r){
   m.cdCount=cdRecs.length;
   // Learner (L1) survey results from submitted/approved training reports on completed sessions
   const done=_ovCompletedByEnd(r);
-  const reps=done.map(s=>({s,rep:TrainingReportsDB.all().find(x=>x.sessionId===s.id&&(x.status==='submitted'||x.status==='approved'))})).filter(x=>x.rep);
-  const ilt=reps.filter(x=>x.s.deliveryType==='ILT'||x.s.deliveryType==='VILT').map(x=>x.rep.content||{});
-  const slt=reps.filter(x=>x.s.deliveryType==='Self-led').map(x=>x.rep.content||{});
+  const reps=done.map(s=>({s,rep:_l1ReportFor(s)})).filter(x=>x.rep);
+  const iltG=reps.filter(x=>x.s.deliveryType==='ILT'||x.s.deliveryType==='VILT'), sltG=reps.filter(x=>x.s.deliveryType==='Self-led');
   const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
   // Learning Content / Material Rating: placeholders until their data source is created (Sandra,
   // 2026-09-25) -- intentionally NOT derived from learner L1 ratings.
   m.idContent=null;
   m.cdMaterial=null;
-  m.facil=_ovAvg(ilt.map(c=>num(c.facilitationRating)));
-  m.csat=_ovAvg([...ilt.map(c=>num(c.csat)),...slt.map(c=>num(c.learnerSatisfaction))]);
-  m.nps=_ovAvg([...ilt,...slt].map(c=>num(c.nps)));
+  // v5.14 (2026-10-29, per Sandra): weighted by responses (fallback attendees), same helper as the Training Dashboard.
+  m.facil=_l1WAvg(iltG,c=>num(c.facilitationRating));
+  m.csat=_l1WAvg([...iltG.map(x=>({...x,_csat:'csat'})),...sltG.map(x=>({...x,_csat:'learnerSatisfaction'}))].map(x=>({s:x.s,rep:{content:{v:(x.rep.content||{})[x._csat],responses:(x.rep.content||{}).responses}}})),c=>num(c.v));
+  m.nps=_l1WAvg([...iltG,...sltG],c=>num(c.nps));
   m.surveyCount=reps.length;
   // Trainer observation (Trainer Evaluation overall score, 1-5)
   const evs=_dashScopeEvals().filter(e=>_ovSubmitted(e)&&e.overallScore!=null&&_ovIn(e.trainingDate,r));
@@ -5281,10 +5282,7 @@ function _ovDelivery(r){
   const comp=sess.filter(s=>_tdStatus(s)==='Completed');
   const sched=_tdashComputeHoursRange(sess,r.start,r.end).forecastedHrs||0;
   const deliv=_tdashComputeHoursRange(comp,r.start,r.end).forecastedHrs||0;
-  const iltIds=new Set(sess.filter(s=>s.deliveryType==='ILT'||s.deliveryType==='VILT').map(s=>s.id));
-  const learners=new Set();
-  SessionParticipantsDB.all().forEach(x=>{ if(iltIds.has(x.sessionId)) learners.add(x.profileId||('ext:'+x.id)); });
-  return {impl:sess.length,completed:comp.length,pct:sess.length?comp.length/sess.length*100:null,sched,deliv,learners:learners.size};
+  return {impl:sess.length,completed:comp.length,pct:sess.length?comp.length/sess.length*100:null,sched,deliv,learners:_learnersReached(sess)}; // v5.14 (2026-10-29, per Sandra)
 }
 
 // Live attention items (current state, not period-bound -- except observations below target,
@@ -5309,9 +5307,12 @@ function _ovAttention(r){
   items.push({sev:'amber',n:{delivery:ackEv,id:ackId,cd:ackCd},label:'QA acknowledgements overdue',teams:['delivery','id','cd'],go:ackGo});
   const l3=TrSessionDB.all().filter(s=>s.l3Required&&!s.l3CompletedAt&&s.status!=='cancelled');
   const l3Over=l3.filter(s=>_tdl3Status(s)==='overdue').length;
-  const l3Soon=l3.filter(s=>{ const d=_tdl3DaysUntil(s); return d!=null&&d>=0&&d<=7; }).length;
+  const l3Soon=l3.filter(s=>{ const d=_tdl3DaysUntil(s); return d!=null&&d>=0&&d<=L3_DUE_WINDOW_DAYS; }).length; // v5.14 (2026-10-29, per Sandra): shared 14-day window
   items.push({sev:'red',n:l3Over,label:`L3 validation${l3Over!==1?'s':''} overdue`,teams:['delivery'],go:"showView('training-delivery')"});
-  items.push({sev:'amber',n:l3Soon,label:`L3 validation${l3Soon!==1?'s':''} due within 7 days`,teams:['delivery'],go:"showView('training-delivery')"});
+  items.push({sev:'amber',n:l3Soon,label:`L3 validation${l3Soon!==1?'s':''} due within ${L3_DUE_WINDOW_DAYS} days`,teams:['delivery'],go:"showView('training-delivery')"});
+  // v5.14 (2026-10-29, per Sandra): past sessions never marked complete (External excluded -- tracked for bonds).
+  const stale=TrSessionDB.all().filter(_isStaleInProgress).length;
+  items.push({sev:'amber',n:stale,label:`Past session${stale!==1?'s':''} still In Progress`,teams:['delivery'],go:"showView('training-delivery')"});
   const obsLow=_dashScopeEvals().filter(e=>_ovSubmitted(e)&&e.overallScore!=null&&e.overallScore<_ovT('obs')&&_ovIn(e.trainingDate,r)).length;
   items.push({sev:'red',n:obsLow,label:`Trainer observation${obsLow!==1?'s':''} below target`,teams:['delivery'],go:"showView('evaluations')"});
   const ckl=TrSessionDB.all().filter(s=>{
@@ -5343,7 +5344,7 @@ function _ovStatus(v,t,kind){
   if(v>=t) return 'ok';
   return v>=t-(kind==='pct'?5:0.2)?'watch':'below';
 }
-const _OV_STATUS={ok:['On Track','ov-pill-ok'],watch:['Watch','ov-pill-watch'],below:['Below Target','ov-pill-below'],nodata:['No Data','ov-pill-none'],pending:['Data Pending','ov-pill-none']};
+const _OV_STATUS={ok:['On Track','ov-pill-ok'],watch:['Watch','ov-pill-watch'],below:['Below Target','ov-pill-below'],nodata:['Not measured','ov-pill-none'],pending:['Not measured','ov-pill-none']}; // v5.14 (2026-10-29, per Sandra)
 function _ovPill(st){ const [l,c]=_OV_STATUS[st]; return `<span class="ov-pill ${c}">${l}</span>`; }
 function _ovDelta(v,p,kind){
   if(v==null||p==null) return '<span class="ov-delta ov-delta-flat">—</span>';
@@ -5359,7 +5360,8 @@ function _ovKpiCard(title,color,lt,icon,rows,m,pm){
   const sts=rows.map(k=>k.pending?'pending':_ovStatus(m[k.source||k.key],_ovT(k.key),k.kind));
   const withData=sts.filter(s=>s!=='nodata'&&s!=='pending');
   const onTrack=sts.filter(s=>s==='ok').length;
-  const sub=withData.length?`${onTrack} of ${rows.length} KPIs on track`:'No data for this period';
+  // v5.14 (2026-10-29, per Sandra): KPIs without data are "Not measured" and don't count as misses.
+  const sub=withData.length?`${onTrack} of ${withData.length} measured KPI${withData.length!==1?'s':''} on track${withData.length<rows.length?` · ${rows.length-withData.length} not measured`:''}`:'Not measured this period';
   const body=rows.map((k,i)=>{
     const source=k.source||k.key, v=m[source], w=v==null?0:Math.max(0,Math.min(100,k.kind==='pct'?v:v/5*100));
     return `<tr>
@@ -5375,7 +5377,9 @@ function _ovKpiCard(title,color,lt,icon,rows,m,pm){
   const measured=active.filter(r=>r.dataSource!=='pending'&&m[r.dataSource]!=null&&Number(r.target)>0);
   const covered=measured.reduce((n,r)=>n+Number(r.weight||0),0);
   const score=measured.reduce((n,r)=>n+Math.min(1,Math.max(0,Number(m[r.dataSource])/Number(r.target)))*Number(r.weight||0),0);
-  const scoreText=active.length?`<div class="lp-muted" style="font-size:11.5px;margin:10px 0 0">Weighted attainment: ${score.toFixed(1)} / 100 · ${covered.toFixed(1)}% weight measured${Math.abs(weights-100)>.05?' · weights total '+weights.toFixed(1)+'%':''}</div>`:'';
+  // v5.14: attainment is re-based on the KPIs that have data (unmeasured weight no longer drags it down).
+  const attain=covered>0?score/covered*100:null;
+  const scoreText=active.length?`<div class="lp-muted" style="font-size:11.5px;margin:10px 0 0">Weighted attainment: ${attain!=null?attain.toFixed(1)+'%':'—'} of target · based on ${measured.length} of ${active.length} KPI${active.length!==1?'s':''} (${covered.toFixed(0)}% of weight)${Math.abs(weights-100)>.05?' · weights total '+weights.toFixed(1)+'%':''}</div>`:'';
   return `<div class="ov-card">
     <div class="ov-card-hd">
       <span class="ov-ic" style="background:${lt};color:${color}">${_ovSvg(icon)}</span>
@@ -5435,11 +5439,12 @@ function _ovAttentionHtml(items){
       <span class="ov-att-chev">${_ovSvg(_OV_IC.chev,14)}</span>
     </button>`).join('')
     :`<div class="ov-att-empty"><span style="color:var(--green)">${_ovSvg(_OV_IC.check,28)}</span><div>Nothing needs attention right now.</div></div>`;
-  const red=items.filter(i=>i.sev==='red').length;
+  const red=items.filter(i=>i.sev==='red').reduce((n,i)=>n+i.n,0); // v5.14 (2026-10-29, per Sandra): count items, not categories
+  const total=items.reduce((n,i)=>n+i.n,0);
   return `<div class="ov-card ov-att">
     <div class="ov-card-hd">
       <span class="ov-ic" style="background:#fef2f2;color:#dc2626">${_ovSvg(_OV_IC.alert)}</span>
-      <div><div class="ov-card-title">Attention Required</div><div class="ov-card-sub">${items.length?`${items.length} item${items.length!==1?'s':''}${red?` · ${red} critical`:''}`:'All clear'}</div></div>
+      <div><div class="ov-card-title">Attention Required</div><div class="ov-card-sub">${items.length?`${total} item${total!==1?'s':''}${red?` · ${red} critical`:''}`:'All clear'}</div></div>
     </div>
     <div class="ov-att-list">${list}</div>
   </div>`;
@@ -7222,7 +7227,7 @@ function lpToggleStatus(id){
   document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
   if(p.status==='draft') return lpPublishVersion(id);
   const next=new Date(_todayStr()+'T12:00:00'); next.setDate(next.getDate()+1);
-  const nextDay=next.toISOString().slice(0,10);
+  const nextDay=_isoLocal(next);
   const futureCount=_lpMappedSessions(id).filter(s=>s.trainingDate&&s.trainingDate>=_todayStr()).length;
   confirm$('Close program version',`<p>Choose what happens to <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b>. Existing sessions remain linked to this version.${futureCount?` Review ${futureCount} linked upcoming session${futureCount===1?'':'s'} after the transition.`:''}</p>
     <label style="display:block;margin:10px 0"><input type="radio" name="lp-close-type" value="replace" checked onchange="document.getElementById('lp-next-start').disabled=false;document.getElementById('lp-copy-content').disabled=false"> Create a new draft version with the same Program ID</label>
@@ -7831,7 +7836,7 @@ function _dashPendingTable(all){
 function _dashFilterQA(rows,range){
   return rows.filter(r=>{
     const d=r.reviewDate||r.trainingDate;
-    if(!d) return true;
+    if(!d) return !range.from&&!range.to; // v5.14 (2026-10-29, per Sandra): undated records only show under All Time
     const dt=new Date(d+'T00:00:00');
     if(range.from&&dt<range.from) return false;
     if(range.to&&dt>range.to) return false;
@@ -7912,7 +7917,7 @@ function _dashRenderOverview(range,prevRange,key){
   const evalTotal=evalF.length;
   const evalCompRate=evalTotal>0?((evalComp.length/evalTotal)*100).toFixed(0)+'%':'—';
   // Combined totals across all 3 forms
-  const allTotal=idqaF.length+cqaF.length+evalF.length;
+  const allTotal=[...idqaF,...cqaF,...evalF].filter(r=>r.status!=='draft').length; // v5.14 (2026-10-29, per Sandra): drafts not "submitted"
   const allComp=idqaF.filter(r=>r.status==='completed').length+cqaF.filter(r=>r.status==='completed').length+evalComp.length;
   const allPend=idqaF.filter(r=>r.status==='pending_ack').length+cqaF.filter(r=>r.status==='pending_ack').length+evalPend.length;
   const allDraft=idqaF.filter(r=>r.status==='draft').length+cqaF.filter(r=>r.status==='draft').length+evalDraft.length;
@@ -8003,7 +8008,7 @@ function _dashRenderOverview(range,prevRange,key){
             <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
               <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Avg Rating</div>
               <div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.2;margin-top:2px">${evalAvg!=null?evalAvg.toFixed(1)+'/5':'—'}</div>
-              <div style="font-size:10.5px;color:var(--text3)">Completed only</div>
+              <div style="font-size:10.5px;color:var(--text3)">Finalized only</div>
             </div>
           </div>
           ${evalComp.length>0?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px">Rating Distribution <span style="font-weight:400;text-transform:none;font-size:10px">(${evalComp.length} of ${evalF.length} completed)</span></div>
@@ -8227,7 +8232,7 @@ function _dashRenderIDQA(range,prevRange,key){
   const tlMap={};
   currSub.forEach(r=>{const tl=_idqaTimeliness(r);tlMap[tl]=(tlMap[tl]||0)+1;});
   const onTime=tlMap['On Time']||0,early=tlMap['Early']||0,late=tlMap['Late']||0;
-  const onTimeRate=currSub.length?(onTime+early)/currSub.length*100:0;
+  const _tlN=onTime+early+late; const onTimeRate=_tlN?(onTime+early)/_tlN*100:0; // v5.14 (2026-10-29, per Sandra): only reviews with target + actual dates
 
   const idqaCurrPend=curr.filter(r=>r.status==='pending_ack');
   const idqaCurrDraft=curr.filter(r=>r.status==='draft');
@@ -8240,7 +8245,7 @@ function _dashRenderIDQA(range,prevRange,key){
     {icon:'✏️',bg:'#ffedd5',color:'#d97706',label:'Drafts',val:idqaCurrDraft.length,sub:`In progress`,trend:_dashTrendHtml(idqaCurrDraft.length,prevDraft.length)},
     {icon:'📊',bg:'#eff6ff',color:'#2563eb',label:'Avg Score',val:avg!=null?avg.toFixed(1)+'%':'—',sub:'Submitted only',trend:avg!=null&&prevAvg!=null?_dashTrendHtml(avg,prevAvg):''},
     {icon:'⭐',bg:'#f0fdf4',color:'#16a34a',label:'Endorse Rate',val:endorseRate,sub:`${endorse} of ${currScored.length} reviewed`,trend:''},
-    {icon:'🕐',bg:'#f0f9ff',color:'#0891b2',label:'On-Time / Early',val:currSub.length?onTimeRate.toFixed(0)+'%':'—',sub:`${onTime} on-time · ${early} early`,trend:''},
+    {icon:'🕐',bg:'#f0f9ff',color:'#0891b2',label:'On-Time / Early',val:(onTime+early+late)?onTimeRate.toFixed(0)+'%':'—',sub:`${onTime} on-time · ${early} early`,trend:''},
   ];
 
   el.innerHTML=`
@@ -8300,7 +8305,7 @@ function _dashRenderCDQA(range,prevRange,key){
   const tlMap={};
   currSub.forEach(r=>{const tl=_cqaTimeliness(r);tlMap[tl]=(tlMap[tl]||0)+1;});
   const onTime=tlMap['On Time']||0,early=tlMap['Early']||0,late=tlMap['Late']||0;
-  const onTimeRate=currSub.length?(onTime+early)/currSub.length*100:0;
+  const _tlN=onTime+early+late; const onTimeRate=_tlN?(onTime+early)/_tlN*100:0; // v5.14 (2026-10-29, per Sandra): only reviews with target + actual dates
 
   const cqaCurrPend=curr.filter(r=>r.status==='pending_ack');
   const cqaCurrDraft=curr.filter(r=>r.status==='draft');
@@ -8313,7 +8318,7 @@ function _dashRenderCDQA(range,prevRange,key){
     {icon:'✏️',bg:'#ffedd5',color:'#d97706',label:'Drafts',val:cqaCurrDraft.length,sub:`In progress`,trend:_dashTrendHtml(cqaCurrDraft.length,cqaPrevDraft.length)},
     {icon:'📊',bg:'#fef9c3',color:'#d97706',label:'Avg Score',val:avg!=null?avg.toFixed(1)+'%':'—',sub:'Submitted only',trend:avg!=null&&prevAvg!=null?_dashTrendHtml(avg,prevAvg):''},
     {icon:'⭐',bg:'#f0fdf4',color:'#16a34a',label:'Endorse Rate',val:endorseRate,sub:`${endorse} of ${currScored.length} reviewed`,trend:''},
-    {icon:'🕐',bg:'#f0f9ff',color:'#0891b2',label:'On-Time / Early',val:currSub.length?onTimeRate.toFixed(0)+'%':'—',sub:`${onTime} on-time · ${early} early`,trend:''},
+    {icon:'🕐',bg:'#f0f9ff',color:'#0891b2',label:'On-Time / Early',val:(onTime+early+late)?onTimeRate.toFixed(0)+'%':'—',sub:`${onTime} on-time · ${early} early`,trend:''},
   ];
 
   el.innerHTML=`
@@ -8377,7 +8382,7 @@ function _dashRenderTrainer(range,prevRange,key){
     {icon:'✅',bg:'#dcfce7',color:'#16a34a',label:'Completed',val:completed.length,sub:`${curr.length>0?(completed.length/curr.length*100).toFixed(1):0}% of total`,trend:_dashTrendHtml(completed.length,prevCompleted.length)},
     {icon:'⏳',bg:'#ede9fe',color:'#7c3aed',label:'Pending Ack.',val:pending.length,sub:`${curr.length>0?(pending.length/curr.length*100).toFixed(1):0}% of total`,trend:_dashTrendHtml(pending.length,prev.filter(e=>e.status==='pending_ack').length)},
     {icon:'✏️',bg:'#ffedd5',color:'#d97706',label:'Drafts',val:drafts.length,sub:`${curr.length>0?(drafts.length/curr.length*100).toFixed(1):0}% of total`,trend:_dashTrendHtml(drafts.length,prev.filter(e=>e.status==='draft').length)},
-    {icon:'⭐',bg:'#fef9c3',color:avgScore!=null?_dashScoreColor(avgScore):'var(--text3)',label:'Avg. Rating',val:avgScore!=null?avgScore.toFixed(2)+' /5':'—',sub:'Completed evals only',trend:avgScore!=null&&prevAvg!=null?_dashTrendHtml(avgScore,prevAvg):''},
+    {icon:'⭐',bg:'#fef9c3',color:avgScore!=null?_dashScoreColor(avgScore):'var(--text3)',label:'Avg. Rating',val:avgScore!=null?avgScore.toFixed(2)+' /5':'—',sub:'Finalized evals only',trend:avgScore!=null&&prevAvg!=null?_dashTrendHtml(avgScore,prevAvg):''},
     {icon:'📈',bg:'#cffafe',color:'#0891b2',label:'Completion Rate',val:compRate.toFixed(1)+'%',sub:'Completed vs total',trend:_dashTrendHtml(compRate,prevCompRate),donut:true},
   ];
 
@@ -8831,7 +8836,7 @@ async function saveUser(){
       // retroactively show whatever % this person happens to have TODAY, which is wrong for trend
       // reporting (e.g. "60% last quarter, 50% now" needs last quarter's view to still say 60%).
       if(oldPct!==workloadAllocationPct){
-        try{ await WorkloadPctHistoryDB.record(id,workloadAllocationPct,new Date().toISOString().slice(0,10)); }
+        try{ await WorkloadPctHistoryDB.record(id,workloadAllocationPct,_todayStr()); }
         catch(e){ /* error already surfaced by record() */ }
       }
       if(id===Auth.user.id){Auth.refresh();setupNav();}
@@ -9023,7 +9028,7 @@ function _downloadImportResultsCSV(){
   _importResults.forEach(r=>{ rows.push([r.name,r.email,r.password||'',r.error||''].map(esc).join(',')); });
   const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_UserImport_Passwords_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`LEAP_UserImport_Passwords_${_todayStr()}.csv`; a.click();
 }
 
 /* ── CHANGE PASSWORD ──────────────── */
@@ -9379,7 +9384,7 @@ function _kpiEligibleByPosition(posId,month){
 }
 function _kpiRecordQualifiesForMonth(rec,month){
   if(!rec||!rec.finalizedAt||rec.status==='draft') return false;
-  return rec.finalizedAt.slice(0,7)===month;
+  return _mnlDateOf(rec.finalizedAt).slice(0,7)===month; // v5.14 (2026-10-29, per Sandra): Manila month
 }
 function _kpiTrainerCoverageRows(month){
   const eligible=_kpiEligibleByPosition('pos_6',month);
@@ -9481,7 +9486,7 @@ async function kpiUnlockMonth(month){
 
 // Monthly Lock card (Phase 2): a minimal admin-facing way to preview live figures and lock/unlock
 // a month, ahead of the full Dashboard snapshot UI (Phase 3). Lives in the same KPI Settings pane.
-let _kpiLockMonthSel=new Date().toISOString().slice(0,7);
+let _kpiLockMonthSel=_mnlDateOf(new Date()).slice(0,7);
 function _kpiMonthlyLockCardHtml(){
   const month=_kpiLockMonthSel;
   const d=kpiDataFor(month);
@@ -9812,7 +9817,7 @@ function _tdcklRenderBackfillPane(){
       <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">Month</label>
-          <input type="month" id="cktpl-backfill-month" class="form-control" style="width:160px" value="${new Date().toISOString().slice(0,7)}">
+          <input type="month" id="cktpl-backfill-month" class="form-control" style="width:160px" value="${_todayStr().slice(0,7)}">
         </div>
         <button class="btn btn-sm btn-primary" onclick="_tdcklBackfillUnlockMonth()">🔓 Unlock Month for Backfill</button>
       </div>
@@ -11560,12 +11565,7 @@ function renderTrainingDashboardKpis(){
     // session (equivalent to the old check for 'range' mode sessions).
     return _tdSessionDayList(s).some(d=>d>=range.start&&d<=range.end);
   });
-  const sessionIds=new Set(sessionsInPeriod.map(s=>s.id));
-  const learners=new Set();
-  SessionParticipantsDB.all().forEach(r=>{
-    if(!sessionIds.has(r.sessionId)) return;
-    learners.add(r.profileId||('ext:'+r.id));
-  });
+  const learnersReached=_learnersReached(sessionsInPeriod); // v5.14 (2026-10-29, per Sandra): attended + completed only
 
   // Completion % (Phase R, 2026-08-12, per Sandra): soft sub-text on the Completed Hours card
   // showing what share of Scheduled Hours has actually been delivered.
@@ -11575,7 +11575,8 @@ function renderTrainingDashboardKpis(){
   // current filters, regardless of status -- placed before Completed Trainings so the row reads
   // as "whole pool, then how much of it's upcoming vs. done", mirroring the Training Calendar's
   // own "Total Implementations" card.
-  const allImplementations=rows.length;
+  // v5.14 (2026-10-29, per Sandra): period-filtered, cancelled + tentative excluded (was every session ever).
+  const allImplementations=rows.filter(s=>_isImplementation(s)&&s.trainingDate&&_tdSessionDayList(s).some(d=>d>=range.start&&d<=range.end)).length;
 
   // Active External Training Bonds (2026-08-13, per Sandra): a current-state count, not scoped
   // to the Period filter above -- a bond signed months ago can still be active today, so tying it
@@ -11592,19 +11593,18 @@ function renderTrainingDashboardKpis(){
   // anything due within the next 30 days OR already overdue (a 31-day-old overdue item is more
   // urgent than one due tomorrow, not less, so it belongs in this count too) -- excludes sessions
   // not requiring L3 and ones already marked complete.
-  const l3Due30=TrSessionDB.all().filter(s=>s.status!=='cancelled'&&s.l3Required&&!s.l3CompletedAt&&s.l3DueDate)
-    .filter(s=>s.l3DueDate<=_tdl3AddDays(_todayStr(),30));
+  const l3Due30=TrSessionDB.all().filter(_l3DueSoonOrOverdue); // v5.14 (2026-10-29, per Sandra): shared 14-day rule
   const l3Due30Overdue=l3Due30.filter(s=>_tdl3Status(s)==='overdue').length;
 
   document.getElementById('tdash-kpis').innerHTML=`
     ${_tdaKpiCard('calendar','#2563eb','Upcoming Trainings',upcoming,'Next 30 days')}
-    ${_tdaKpiCard('clipboard','#0369a1','All Implementations',allImplementations,range.label)}
+    ${_tdaKpiCard('clipboard','#0369a1','Implementations',allImplementations,range.label)}
     ${_tdaKpiCard('check','var(--green)','Completed Trainings',completed,range.label)}
     ${_tdaKpiCard('clock','#7c3aed','Scheduled Training Hours',hrs.forecastedHrs.toFixed(1)+' hrs',range.label)}
     ${_tdaKpiCard('filecheck','#0f766e','Completed Hours',completedHrs.forecastedHrs.toFixed(1)+' hrs',(completionPct!=null?completionPct+'% of scheduled':range.label))}
-    ${_tdaKpiCard('user','#c2410c','Learners Reached',learners.size,'ILT/VILT · '+range.label)}
+    ${_tdaKpiCard('user','#c2410c','Learners Reached',learnersReached,'Attended · '+range.label)}
     ${_tdaKpiCard('clock','#0369a1','Active External Training Bonds',activeBondSessions.length,'End date today or later')}
-    ${_tdaKpiCard('flag','#dc2626','L3 Evaluations Due',l3Due30.length,'Next 30 days'+(l3Due30Overdue?` · ${l3Due30Overdue} overdue`:''),l3Due30.length>0?'var(--red)':undefined,l3Due30.length>0?'var(--red)':undefined)}
+    ${_tdaKpiCard('flag','#dc2626','L3 Evaluations Due',l3Due30.length,'Next '+L3_DUE_WINDOW_DAYS+' days'+(l3Due30Overdue?` · ${l3Due30Overdue} overdue`:''),l3Due30.length>0?'var(--red)':undefined,l3Due30.length>0?'var(--red)':undefined)}
   `;
 
   // Passes the SAME rows/hrs/completedHrs already computed above so the By Delivery Type table's
@@ -11849,6 +11849,21 @@ function _tdashAvg(arr){
   const v=arr.filter(x=>x!=null&&x!=='').map(Number).filter(n=>!isNaN(n));
   return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;
 }
+/* ── v5.14 (2026-10-29, per Sandra): ONE definition per metric, reused by every screen ──────────
+   Implementation  = a session that is not Cancelled or Tentative.
+   Learners Reached = unique people marked present (present/late/left early) in COMPLETED ILT/VILT sessions.
+   L1 results      = submitted (or approved) reports on Completed sessions, anchored on the session END date,
+                     averaged WEIGHTED by responses (fallback: attendees) so a 40-person class outweighs a 3-person one.
+   L3 due          = due within the next 14 days or already overdue.                                       */
+function _isImplementation(s){ return !!s && s.status!=='cancelled' && s.status!=='tentative'; }
+function _l1ReportFor(s){ return TrainingReportsDB.all().find(r=>r.sessionId===s.id&&(r.status==='submitted'||r.status==='approved')); }
+function _l1Weight(s,rep){ const n=Number(rep&&rep.content&&rep.content.responses); if(n>0) return n; const a=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id&&_lpAttended(r,s)).length; return a>0?a:1; }
+function _l1WAvg(group,pick){ let w=0,t=0; (group||[]).forEach(({s,rep})=>{ const v=pick(rep&&rep.content||{}); if(v===''||v==null||isNaN(Number(v))) return; const wt=_l1Weight(s,rep); t+=Number(v)*wt; w+=wt; }); return w?t/w:null; }
+function _learnersReached(sessions){ const set=new Set(); const ids=new Set((sessions||[]).filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&_tdStatus(s)==='Completed').map(s=>s.id)); SessionParticipantsDB.all().forEach(r=>{ if(!ids.has(r.sessionId)) return; const s=TrSessionDB.all().find(x=>x.id===r.sessionId); if(_lpAttended(r,s)) set.add(r.profileId||('ext:'+r.id)); }); return set.size; }
+const L3_DUE_WINDOW_DAYS=14;
+function _l3DueSoonOrOverdue(s){ return !!s && s.status!=='cancelled' && s.l3Required && !s.l3CompletedAt && s.l3DueDate && s.l3DueDate<=_addDaysStr(_todayStr(),L3_DUE_WINDOW_DAYS); }
+function _isReportPending(s){ const st=_tdStatus(s); if(st!=='Completed'&&st!=='In Progress') return false; if(_tdHasNoReportRequirement(s)) return false; const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id); return !(rep&&(rep.status==='submitted'||rep.status==='approved')); }
+function _isStaleInProgress(s){ return !!s && _tdStatus(s)==='In Progress' && s.deliveryType!=='External' && (_tdSessionEndDate(s)||'')<_todayStr(); }
 // NPS (2026-08-12, per Sandra): just a color-coded number plus its word rating -- no gradient
 // bar here. `_tdrNpsLabel` is the SAME word-rating function already used everywhere else in the
 // app (Training Report tab, Overview tab), so this card's wording can never drift from those.
@@ -11883,13 +11898,11 @@ function _tdashScoreGradientBarHtml(avg,max){
 // response-rate concept to blend in for SLT without misrepresenting it.
 function _tdashRenderResultsKpis(iltGroup,sltGroup,range){
   const lbl=document.getElementById('tdash-results-period-label'); if(lbl) lbl.textContent='– '+range.label;
-  const allCsat=[
-    ...iltGroup.map(({rep})=>(rep.content||{}).csat),
-    ...sltGroup.map(({rep})=>(rep.content||{}).learnerSatisfaction)
-  ];
-  const allNps=[...iltGroup,...sltGroup].map(({rep})=>(rep.content||{}).nps);
-  const overallCsat=_tdashAvg(allCsat);
-  const overallNps=_tdashAvg(allNps);
+  // v5.14 (2026-10-29, per Sandra): weighted by responses (fallback attendees).
+  const csatGroup=[...iltGroup.map(x=>({...x,_k:'csat'})),...sltGroup.map(x=>({...x,_k:'learnerSatisfaction'}))];
+  let cw=0,ct=0; csatGroup.forEach(x=>{ const v=(x.rep.content||{})[x._k]; if(v===''||v==null||isNaN(Number(v))) return; const wt=_l1Weight(x.s,x.rep); ct+=Number(v)*wt; cw+=wt; });
+  const overallCsat=cw?ct/cw:null;
+  const overallNps=_l1WAvg([...iltGroup,...sltGroup],c=>c.nps);
 
   const totalResponses=iltGroup.reduce((n,{rep})=>n+(Number(rep.content?.responses)||0),0);
   const totalParticipants=iltGroup.reduce((n,{s})=>n+SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length,0);
@@ -11911,12 +11924,13 @@ function _tdashRenderResultsKpis(iltGroup,sltGroup,range){
 }
 
 function renderTrainingDashboardResultsSection(rows,range){
-  const submittedReportFor=s=>TrainingReportsDB.all().find(r=>r.sessionId===s.id && r.status==='submitted');
+  // v5.14 (2026-10-29, per Sandra): same report rule + END-date anchor as the L&D Performance Overview.
   const buildGroup=(deliveryTypes)=>rows.filter(s=>{
     if(!deliveryTypes.includes(s.deliveryType)) return false;
     if(_tdStatus(s)!=='Completed' || !s.trainingDate) return false;
-    return s.trainingDate>=range.start && s.trainingDate<=range.end;
-  }).map(s=>({s, rep:submittedReportFor(s)})).filter(x=>!!x.rep);
+    const end=_tdSessionEndDate(s)||s.trainingDate;
+    return end>=range.start && end<=range.end;
+  }).map(s=>({s, rep:_l1ReportFor(s)})).filter(x=>!!x.rep);
 
   const iltGroup=buildGroup(['ILT','VILT']);
   const sltGroup=buildGroup(['Self-led']);
@@ -11946,8 +11960,8 @@ function _tdashRenderResultsCard(prefix,group,metricDefs){
   if(countEl) countEl.textContent=group.length?`(from ${group.length} completed implementation${group.length!==1?'s':''})`:'(no completed implementations yet)';
 
   const csatField=metricDefs[metricDefs.length-1].key;
-  const avgCsat=_tdashAvg(group.map(({rep})=>(rep.content||{})[csatField]));
-  const avgNps=_tdashAvg(group.map(({rep})=>(rep.content||{}).nps));
+  const avgCsat=_l1WAvg(group,c=>c[csatField]); // v5.14 (2026-10-29, per Sandra): weighted
+  const avgNps=_l1WAvg(group,c=>c.nps);
 
   const csatEl=document.getElementById(`tdash-${prefix}-csat`);
   if(csatEl) csatEl.textContent=avgCsat!=null?avgCsat.toFixed(1)+' / 5':'—';
@@ -11963,7 +11977,7 @@ function _tdashRenderResultsCard(prefix,group,metricDefs){
   const metricsEl=document.getElementById(`tdash-${prefix}-metrics`);
   if(metricsEl){
     const rowsHtml=metricDefs.map(m=>{
-      const avg=group.length?_tdashAvg(group.map(({rep})=>(rep.content||{})[m.key])):null;
+      const avg=group.length?_l1WAvg(group,c=>c[m.key]):null;
       return `<div style="display:flex;align-items:center;gap:10px;font-size:12.5px">
         <span style="color:var(--text2);min-width:150px;flex-shrink:0">${m.label}</span>
         ${_tdashScoreGradientBarHtml(avg,5)}
@@ -11985,8 +11999,8 @@ function _tdashRenderResultsCard(prefix,group,metricDefs){
 // section further below.
 
 function _tdaUpcomingTrainingsRows(){
-  const today=new Date().toISOString().slice(0,10);
-  const weekOut=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  const today=_todayStr();
+  const weekOut=_addDaysStr(today,7);
   return tdashFilteredRows().filter(s=>{
     if(s.status==='cancelled') return false;
     if(!s.trainingDate) return false;
@@ -12042,11 +12056,8 @@ function _tdaAttentionItems(){
 
   // External Sessions build (2026-08-13, per Sandra): External has no Training Report tab at
   // all now -- a report can never be submitted, so it must not be counted as "pending" forever.
-  const reportsPendingIds=liveRows.filter(s=>{
-    if(s.deliveryType==='External') return false;
-    const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
-    return !(rep&&rep.status==='submitted');
-  }).map(s=>s.id);
+  const reportsPendingIds=liveRows.filter(_isReportPending).map(s=>s.id); // v5.14 (2026-10-29, per Sandra): same rule as the Calendar card
+  const staleIds=TrSessionDB.all().filter(_isStaleInProgress).map(s=>s.id);
 
   const attendanceIncompleteIds=liveRows.filter(s=>{
     const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
@@ -12082,6 +12093,7 @@ function _tdaAttentionItems(){
     {icon:'alert-triangle',color:'#c2410c',label:'Recordings not uploaded',count:recordingsMissingIds.length,ids:recordingsMissingIds},
     {icon:'award',color:'#7c3aed',label:'Trainer evaluations ready',count:evalsReadyIds.length,ids:evalsReadyIds},
     {icon:'flag',color:'#dc2626',label:'L3 Evaluations due / overdue',count:l3DueIds.length,ids:l3DueIds},
+    {icon:'alert-triangle',color:'#d97706',label:'Past sessions still In Progress',count:staleIds.length,ids:staleIds},
     {icon:'flag',color:'#2563eb',label:'Pending requests (reopens / approvals)',count:pendingRequests,ids:null,goPending:true}
   ];
 }
@@ -12128,7 +12140,7 @@ function _workingDaysBetween(startStr,endStr,excludeHolidays){
   let n=0; const cur=new Date(start);
   while(cur<=end){
     const dow=cur.getDay();
-    const iso=cur.toISOString().slice(0,10);
+    const iso=_isoLocal(cur);
     if(dow!==0&&dow!==6&&!(exclHol&&PhHolidaysDB.isHoliday(iso))) n++;
     cur.setDate(cur.getDate()+1);
   }
@@ -12141,8 +12153,8 @@ function _workingDaysBetween(startStr,endStr,excludeHolidays){
 function _workloadEffectiveRange(range,rows){
   let start=range.start, end=range.end;
   const dates=rows.map(s=>s.trainingDate).filter(Boolean);
-  if(start<'2000-01-01') start=dates.length?dates.reduce((a,b)=>a<b?a:b):new Date(Date.now()-90*864e5).toISOString().slice(0,10);
-  if(end>'2099-01-01') end=dates.length?dates.reduce((a,b)=>a>b?a:b):new Date().toISOString().slice(0,10);
+  if(start<'2000-01-01') start=dates.length?dates.reduce((a,b)=>a<b?a:b):_addDaysStr(_todayStr(),-90);
+  if(end>'2099-01-01') end=dates.length?dates.reduce((a,b)=>a>b?a:b):_todayStr();
   if(end<start) end=start;
   return {start,end};
 }
@@ -12164,8 +12176,8 @@ function _tdaHeavyWeek(sessions){
       const dow=dt.getDay(); const mondayOffset=dow===0?-6:1-dow;
       const monday=new Date(dt); monday.setDate(dt.getDate()+mondayOffset);
       const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
-      const key=monday.toISOString().slice(0,10);
-      const entry=weekTotals.get(key)||{hrs:0,start:key,end:sunday.toISOString().slice(0,10)};
+      const key=_isoLocal(monday);
+      const entry=weekTotals.get(key)||{hrs:0,start:key,end:_isoLocal(sunday)};
       entry.hrs+=hrs; weekTotals.set(key,entry);
     });
   });
@@ -12307,7 +12319,7 @@ function _tdSessionDayList(s){
   if(isNaN(startD.getTime())||isNaN(endD.getTime())||endD<startD) return [start];
   const days=[];
   const cur=new Date(startD);
-  while(cur<=endD){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  while(cur<=endD){ days.push(_isoLocal(cur)); cur.setDate(cur.getDate()+1); }
   return days;
 }
 // Mode-aware "last day this session covers" -- the correct replacement for the old `s.endDate||
@@ -12436,7 +12448,7 @@ function _tdStatus(s){
   // Duration, no trainer/venue/etc yet -- it stays "Tentative" (not date-derived) until someone
   // flips Status to Scheduled, at which point the full required-field validation kicks in.
   if(s.status==='tentative') return 'Tentative';
-  const today=new Date().toISOString().slice(0,10);
+  const today=_todayStr();
   const start=s.trainingDate||'';
   const end=_tdSessionEndDate(s);
   if(start && today<start) return 'Upcoming';
@@ -12772,12 +12784,7 @@ function renderTDMetrics(){
     return diff>=0 && diff<=30;
   }).length;
   const completed=rows.filter(s=>s.status==='completed').length;
-  const reportPending=rows.filter(s=>{
-    const st=_tdStatus(s);
-    if(st!=='Completed' && st!=='In Progress') return false;
-    const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
-    return !rep || rep.status!=='approved';
-  }).length;
+  const reportPending=rows.filter(_isReportPending).length; // v5.14 (2026-10-29, per Sandra): shared rule (submitted = done)
   const range=tdPeriodRange(tdF.period);
   const mh=_tdashComputeHoursRange(rows,range.start,range.end);
   const hoursTotal=Math.max(0,Number(mh.forecastedHrs)||0);
@@ -13741,7 +13748,7 @@ function renderTDCalendar(rows){
   const daysInMonth=new Date(year,month+1,0).getDate();
   const numWeeks=Math.ceil((firstDow+daysInMonth)/7);
   const monthStart=new Date(year,month,1);
-  const todayStr=new Date().toISOString().slice(0,10);
+  const todayStr=_todayStr();
 
   // Split into single-day chips (rendered per day cell, cap 2 + "N more") vs genuine multi-day
   // date-range entries (rendered as an overlay bar across their week rows). Specific Dates
@@ -14086,7 +14093,7 @@ function _tdRenderHoursCalendar(rows){
   const firstDow=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
   const numWeeks=Math.ceil((firstDow+daysInMonth)/7);
-  const todayStr=new Date().toISOString().slice(0,10);
+  const todayStr=_todayStr();
   const pad=n=>String(n).padStart(2,'0');
 
   const dayStats={};
@@ -20349,7 +20356,7 @@ function exportEvalCSV(){
   });
   const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_Evaluations_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`LEAP_Evaluations_${_todayStr()}.csv`; a.click();
   toast(`Exported ${_lastEvalVisible.length} record${_lastEvalVisible.length!==1?'s':''}.`,'success');
 }
 
@@ -20487,7 +20494,12 @@ function _setEvalFormReadOnly(readOnly){
   });
 }
 
-function _todayStr(){ return new Date().toISOString().split('T')[0]; }
+// v5.14 (2026-10-29, per Sandra): all "today" / calendar-date strings use Manila time. toISOString() is UTC, which gave
+// yesterday's date before 8am and shifted multi-day sessions one day early.
+function _isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _mnlDateOf(ts){ const d=ts instanceof Date?ts:new Date(ts); if(isNaN(d.getTime())) return ''; try{ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(d); }catch(e){ return _isoLocal(d); } }
+function _todayStr(){ return _mnlDateOf(new Date()); }
+function _addDaysStr(dateStr,n){ const [y,mo,d]=dateStr.split('-').map(Number); const dt=new Date(Date.UTC(y,mo-1,d)); dt.setUTCDate(dt.getUTCDate()+n); return dt.toISOString().slice(0,10); }
 
 function openEvalView(id){
   const ev=EvalDB.byId(id); if(!ev) return;
@@ -21679,7 +21691,7 @@ function exportAuditLogCSV(){
   });
   const blob=new Blob([lines.join('\n')],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_Audit_Log_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`LEAP_Audit_Log_${_todayStr()}.csv`; a.click();
 }
 
 /* ── EXECUTIVE SUMMARY ── */
@@ -21943,7 +21955,9 @@ function _rptPctColor(pct){ return pct>=85?'#16a34a':pct>=70?'#d97706':'#dc2626'
 function _renderIDQAReports(rows, body){
   if(!rows.length){ body.innerHTML='<div class="rpt-empty">No submitted ID QA reviews match the selected filters.</div>'; return; }
 
-  const avgPct=rows.reduce((s,r)=>s+(_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct||0),0)/rows.length;
+  // v5.14 (2026-10-29, per Sandra): unscored reviews no longer count as 0%.
+  const _scoredPcts=rows.map(r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct).filter(v=>v!=null&&!isNaN(v));
+  const avgPct=_scoredPcts.length?_scoredPcts.reduce((s,v)=>s+v,0)/_scoredPcts.length:0;
   const endorsed=rows.filter(r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).disposition==='Endorse').length;
   const designerIds=[...new Set(rows.map(r=>r.designerId))].filter(Boolean);
 
@@ -22502,7 +22516,7 @@ function exportIDQARptCSV(){
   });
   const blob=new Blob([lines.join('\n')],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_IDQA_Reviews_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`LEAP_IDQA_Reviews_${_todayStr()}.csv`; a.click();
 }
 
 /* ── CD QA REPORTS CSV EXPORT ── */
@@ -22530,7 +22544,7 @@ function exportCQARptCSV(){
   });
   const blob=new Blob([lines.join('\n')],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_CDQA_Reviews_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`LEAP_CDQA_Reviews_${_todayStr()}.csv`; a.click();
 }
 
 
@@ -22561,7 +22575,7 @@ function exportRptCSV(){
   });
   const blob=new Blob([lines.join('\n')],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_Trainer_Evals_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`LEAP_Trainer_Evals_${_todayStr()}.csv`; a.click();
 }
 
 /* ── REPORTS PDF ── */
@@ -22955,7 +22969,7 @@ function openNewIDQA(){
   document.getElementById('idqa-form-title').textContent='New ID QA Review';
   document.getElementById('idqa-form-status-badge').innerHTML='';
   document.getElementById('idqa-project').value='';
-  document.getElementById('idqa-review-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('idqa-review-date').value=_todayStr();
   document.getElementById('idqa-target-date').value='';
   document.getElementById('idqa-actual-date').value='';
   document.getElementById('idqa-timeliness-display').textContent='—';
@@ -23294,7 +23308,7 @@ function exportIDQACSV(){
   });
   const blob=new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_IDQA_Reviews_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`LEAP_IDQA_Reviews_${_todayStr()}.csv`; a.click();
   toast(`Exported ${_lastIDQAVisible.length} record${_lastIDQAVisible.length!==1?'s':''}.`,'success');
 }
 
@@ -24235,7 +24249,7 @@ function openNewCQA(){
   const _rvd=document.getElementById('cqa-reviewer-display');if(_rvd)_rvd.textContent=me?`${me.firstName} ${me.lastName}`:'—';
   document.getElementById('cqa-signoff-reviewer').textContent=me?`${me.firstName} ${me.lastName}`:'—';
   document.getElementById('cqa-project').value='';
-  document.getElementById('cqa-review-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('cqa-review-date').value=_todayStr();
   document.getElementById('cqa-target-date').value='';
   document.getElementById('cqa-actual-date').value='';
   document.getElementById('cqa-timeliness-display').textContent='—';
@@ -24472,7 +24486,7 @@ function exportCQACSV(){
   });
   const blob=new Blob([lines.join('\n')],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`LEAP_CQA_Reviews_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  a.download=`LEAP_CQA_Reviews_${_todayStr()}.csv`;a.click();
 }
 
 
