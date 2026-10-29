@@ -4986,8 +4986,8 @@ function _dashFilter(evals,{from,to}){
 }
 
 function _dashAvg(evals){
-  // v5.14 (2026-10-29, per Sandra): finalized evaluations only (completed or awaiting acknowledgement) -- drafts excluded.
-  const rated=evals.filter(e=>e.overallScore!=null&&(e.status==='completed'||e.status==='pending_ack'));
+  // v5.14 (2026-10-29, per Sandra): acknowledged (completed) evaluations only -- drafts and pending acknowledgement excluded.
+  const rated=evals.filter(e=>e.overallScore!=null&&e.status==='completed'); // acknowledged only
   if(!rated.length) return null;
   return rated.reduce((s,e)=>s+e.overallScore,0)/rated.length;
 }
@@ -5198,7 +5198,9 @@ function _ovPeriod(key,prev){
   return prev?null:{start:'0000-01-01',end:'9999-12-31',label:'All time'};
 }
 const _ovIn=(d,r)=>{ if(!d||!r) return false; const x=String(d).slice(0,10); return x>=r.start&&x<=r.end; };
-const _ovSubmitted=x=>x.status==='completed'||x.status==='pending_ack';
+// v5.14 (2026-10-29, per Sandra): only ACKNOWLEDGED (completed) evaluations/reviews count toward published scores -- drafts and
+// those still awaiting the evaluatee's acknowledgement are left out until acknowledged.
+const _ovSubmitted=x=>x.status==='completed';
 const _ovAvg=a=>{ const v=a.filter(x=>x!=null&&!isNaN(x)); return v.length?v.reduce((p,c)=>p+Number(c),0)/v.length:null; };
 const _ovOnTimePct=(recs,fn)=>{ const t=recs.map(fn).filter(v=>v&&v!=='—'); return t.length?t.filter(v=>v!=='Late').length/t.length*100:null; };
 
@@ -7869,7 +7871,7 @@ function _dashOverviewCard(icon,color,bg,title,total,pending,avg,endorse,revise,
       <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Avg Score</div>
         <div style="font-size:20px;font-weight:800;color:${color};line-height:1.2;margin-top:2px">${avgStr}</div>
-        <div style="font-size:10.5px;color:var(--text3)">Submitted only</div>
+        <div style="font-size:10.5px;color:var(--text3)">Acknowledged only</div>
       </div>
     </div>
     ${scored>0?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px">Disposition <span style="font-weight:400;text-transform:none;font-size:10px">(${scored} of ${total} scored)</span></div>
@@ -7894,7 +7896,7 @@ function _dashRenderOverview(range,prevRange,key){
   const evalF=_dashFilter(evalAll,range);
 
   // IDQA stats
-  const idqaSub=idqaF.filter(r=>r.status==='completed'||r.status==='pending_ack');
+  const idqaSub=idqaF.filter(r=>r.status==='completed'); // v5.14 (2026-10-29, per Sandra): acknowledged only
   const idqaScored=idqaSub.map(r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion)).filter(s=>s.pct!=null);
   const idqaAvg=idqaScored.length?idqaScored.reduce((s,x)=>s+x.pct,0)/idqaScored.length:null;
   const idqaEnd=idqaScored.filter(s=>s.disposition==='Endorse').length;
@@ -7902,7 +7904,7 @@ function _dashRenderOverview(range,prevRange,key){
   const idqaMaj=idqaScored.filter(s=>s.disposition==='Major Revision').length;
 
   // CQA stats
-  const cqaSub=cqaF.filter(r=>r.status==='completed'||r.status==='pending_ack');
+  const cqaSub=cqaF.filter(r=>r.status==='completed'); // v5.14 (2026-10-29, per Sandra): acknowledged only
   const cqaScored=cqaSub.map(r=>_cqaScore(r.ratings,r.contentType,r.criteriaVersion)).filter(s=>s.pct!=null);
   const cqaAvg=cqaScored.length?cqaScored.reduce((s,x)=>s+x.pct,0)/cqaScored.length:null;
   const cqaEnd=cqaScored.filter(s=>s.disposition==='Endorse').length;
@@ -8008,7 +8010,7 @@ function _dashRenderOverview(range,prevRange,key){
             <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
               <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:700">Avg Rating</div>
               <div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.2;margin-top:2px">${evalAvg!=null?evalAvg.toFixed(1)+'/5':'—'}</div>
-              <div style="font-size:10.5px;color:var(--text3)">Finalized only</div>
+              <div style="font-size:10.5px;color:var(--text3)">Acknowledged only</div>
             </div>
           </div>
           ${evalComp.length>0?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px">Rating Distribution <span style="font-weight:400;text-transform:none;font-size:10px">(${evalComp.length} of ${evalF.length} completed)</span></div>
@@ -8219,8 +8221,8 @@ function _dashRenderIDQA(range,prevRange,key){
   const all=_dashScopeIDQA();
   const curr=_dashFilterQA(all,range);
   const prev=prevRange.from?_dashFilterQA(all,prevRange):[];
-  const currSub=curr.filter(r=>r.status==='completed'||r.status==='pending_ack');
-  const prevSub=prev.filter(r=>r.status==='completed'||r.status==='pending_ack');
+  const currSub=curr.filter(r=>r.status==='completed'); // v5.14 (2026-10-29, per Sandra): acknowledged only
+  const prevSub=prev.filter(r=>r.status==='completed');
   const currScored=currSub.map(r=>({r,sc:_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
   const prevScored=prevSub.map(r=>({r,sc:_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
   const avg=currScored.length?currScored.reduce((s,x)=>s+x.sc.pct,0)/currScored.length:null;
@@ -8243,7 +8245,7 @@ function _dashRenderIDQA(range,prevRange,key){
     {icon:'✅',bg:'#dcfce7',color:'#16a34a',label:'Submitted',val:currSub.length,sub:`${curr.length>0?(currSub.length/curr.length*100).toFixed(0):0}% of total`,trend:_dashTrendHtml(currSub.length,prevSub.length)},
     {icon:'⏳',bg:'#ede9fe',color:'#7c3aed',label:'Pending Ack.',val:idqaCurrPend.length,sub:`Awaiting acknowledgement`,trend:_dashTrendHtml(idqaCurrPend.length,prevPend.length)},
     {icon:'✏️',bg:'#ffedd5',color:'#d97706',label:'Drafts',val:idqaCurrDraft.length,sub:`In progress`,trend:_dashTrendHtml(idqaCurrDraft.length,prevDraft.length)},
-    {icon:'📊',bg:'#eff6ff',color:'#2563eb',label:'Avg Score',val:avg!=null?avg.toFixed(1)+'%':'—',sub:'Submitted only',trend:avg!=null&&prevAvg!=null?_dashTrendHtml(avg,prevAvg):''},
+    {icon:'📊',bg:'#eff6ff',color:'#2563eb',label:'Avg Score',val:avg!=null?avg.toFixed(1)+'%':'—',sub:'Acknowledged only',trend:avg!=null&&prevAvg!=null?_dashTrendHtml(avg,prevAvg):''},
     {icon:'⭐',bg:'#f0fdf4',color:'#16a34a',label:'Endorse Rate',val:endorseRate,sub:`${endorse} of ${currScored.length} reviewed`,trend:''},
     {icon:'🕐',bg:'#f0f9ff',color:'#0891b2',label:'On-Time / Early',val:(onTime+early+late)?onTimeRate.toFixed(0)+'%':'—',sub:`${onTime} on-time · ${early} early`,trend:''},
   ];
@@ -8292,8 +8294,8 @@ function _dashRenderCDQA(range,prevRange,key){
   const all=_dashScopeCQA();
   const curr=_dashFilterQA(all,range);
   const prev=prevRange.from?_dashFilterQA(all,prevRange):[];
-  const currSub=curr.filter(r=>r.status==='completed'||r.status==='pending_ack');
-  const prevSub=prev.filter(r=>r.status==='completed'||r.status==='pending_ack');
+  const currSub=curr.filter(r=>r.status==='completed'); // v5.14 (2026-10-29, per Sandra): acknowledged only
+  const prevSub=prev.filter(r=>r.status==='completed');
   const currScored=currSub.map(r=>({r,sc:_cqaScore(r.ratings,r.contentType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
   const prevScored=prevSub.map(r=>({r,sc:_cqaScore(r.ratings,r.contentType,r.criteriaVersion)})).filter(x=>x.sc.pct!=null);
   const avg=currScored.length?currScored.reduce((s,x)=>s+x.sc.pct,0)/currScored.length:null;
@@ -8316,7 +8318,7 @@ function _dashRenderCDQA(range,prevRange,key){
     {icon:'✅',bg:'#dcfce7',color:'#16a34a',label:'Submitted',val:currSub.length,sub:`${curr.length>0?(currSub.length/curr.length*100).toFixed(0):0}% of total`,trend:_dashTrendHtml(currSub.length,prevSub.length)},
     {icon:'⏳',bg:'#ede9fe',color:'#7c3aed',label:'Pending Ack.',val:cqaCurrPend.length,sub:`Awaiting acknowledgement`,trend:_dashTrendHtml(cqaCurrPend.length,cqaPrevPend.length)},
     {icon:'✏️',bg:'#ffedd5',color:'#d97706',label:'Drafts',val:cqaCurrDraft.length,sub:`In progress`,trend:_dashTrendHtml(cqaCurrDraft.length,cqaPrevDraft.length)},
-    {icon:'📊',bg:'#fef9c3',color:'#d97706',label:'Avg Score',val:avg!=null?avg.toFixed(1)+'%':'—',sub:'Submitted only',trend:avg!=null&&prevAvg!=null?_dashTrendHtml(avg,prevAvg):''},
+    {icon:'📊',bg:'#fef9c3',color:'#d97706',label:'Avg Score',val:avg!=null?avg.toFixed(1)+'%':'—',sub:'Acknowledged only',trend:avg!=null&&prevAvg!=null?_dashTrendHtml(avg,prevAvg):''},
     {icon:'⭐',bg:'#f0fdf4',color:'#16a34a',label:'Endorse Rate',val:endorseRate,sub:`${endorse} of ${currScored.length} reviewed`,trend:''},
     {icon:'🕐',bg:'#f0f9ff',color:'#0891b2',label:'On-Time / Early',val:(onTime+early+late)?onTimeRate.toFixed(0)+'%':'—',sub:`${onTime} on-time · ${early} early`,trend:''},
   ];
@@ -8382,7 +8384,7 @@ function _dashRenderTrainer(range,prevRange,key){
     {icon:'✅',bg:'#dcfce7',color:'#16a34a',label:'Completed',val:completed.length,sub:`${curr.length>0?(completed.length/curr.length*100).toFixed(1):0}% of total`,trend:_dashTrendHtml(completed.length,prevCompleted.length)},
     {icon:'⏳',bg:'#ede9fe',color:'#7c3aed',label:'Pending Ack.',val:pending.length,sub:`${curr.length>0?(pending.length/curr.length*100).toFixed(1):0}% of total`,trend:_dashTrendHtml(pending.length,prev.filter(e=>e.status==='pending_ack').length)},
     {icon:'✏️',bg:'#ffedd5',color:'#d97706',label:'Drafts',val:drafts.length,sub:`${curr.length>0?(drafts.length/curr.length*100).toFixed(1):0}% of total`,trend:_dashTrendHtml(drafts.length,prev.filter(e=>e.status==='draft').length)},
-    {icon:'⭐',bg:'#fef9c3',color:avgScore!=null?_dashScoreColor(avgScore):'var(--text3)',label:'Avg. Rating',val:avgScore!=null?avgScore.toFixed(2)+' /5':'—',sub:'Finalized evals only',trend:avgScore!=null&&prevAvg!=null?_dashTrendHtml(avgScore,prevAvg):''},
+    {icon:'⭐',bg:'#fef9c3',color:avgScore!=null?_dashScoreColor(avgScore):'var(--text3)',label:'Avg. Rating',val:avgScore!=null?avgScore.toFixed(2)+' /5':'—',sub:'Acknowledged evals only',trend:avgScore!=null&&prevAvg!=null?_dashTrendHtml(avgScore,prevAvg):''},
     {icon:'📈',bg:'#cffafe',color:'#0891b2',label:'Completion Rate',val:compRate.toFixed(1)+'%',sub:'Completed vs total',trend:_dashTrendHtml(compRate,prevCompRate),donut:true},
   ];
 
