@@ -5132,10 +5132,10 @@ const OV_TARGETS={idqa:85,idContent:4.5,idTime:90,cdqa:85,cdMaterial:4.5,cdTime:
 // placeholder until its data source exists (Sandra, 2026-09-25: Learning Content / Material Rating).
 const OV_KPI_CATALOG=[
   {role:'id',key:'idqa',label:'ID QA Score',kind:'pct'},
-  {role:'id',key:'idContent',label:'Learning Content Rating',kind:'r5',pending:true},
+  {role:'id',key:'idContent',label:'Learning Content Rating',kind:'r5'},
   {role:'id',key:'idTime',label:'Timeliness',kind:'pct'},
   {role:'cd',key:'cdqa',label:'CD QA Score',kind:'pct'},
-  {role:'cd',key:'cdMaterial',label:'Learning Material Rating',kind:'r5',pending:true},
+  {role:'cd',key:'cdMaterial',label:'Learning Material Rating',kind:'r5'},
   {role:'cd',key:'cdTime',label:'Timeliness',kind:'pct'},
   {role:'delivery',key:'facil',label:'Facilitator Effectiveness',kind:'r5'},
   {role:'delivery',key:'pass',label:'Assessment Pass Rate',kind:'pct'},
@@ -5231,10 +5231,10 @@ function _ovMetrics(r){
   const reps=done.map(s=>({s,rep:_l1ReportFor(s)})).filter(x=>x.rep);
   const iltG=reps.filter(x=>x.s.deliveryType==='ILT'||x.s.deliveryType==='VILT'), sltG=reps.filter(x=>x.s.deliveryType==='Self-led');
   const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
-  // Learning Content / Material Rating: placeholders until their data source is created (Sandra,
-  // 2026-09-25) -- intentionally NOT derived from learner L1 ratings.
-  m.idContent=null;
-  m.cdMaterial=null;
+  // v5.14 (2026-10-29, per Sandra): Learning Content / Material Rating come from the learners' report ratings on sessions of
+  // programs where someone tagged ID work / Development was assigned on the session date (each session once).
+  m.idContent=_l1WAvg(iltG.filter(x=>_lpWorkCredited(x.s,'design').length),c=>num(c.contentRating));
+  m.cdMaterial=_l1WAvg(iltG.filter(x=>_lpWorkCredited(x.s,'development').length),c=>num(c.materialsRating));
   // v5.14 (2026-10-29, per Sandra): weighted by responses (fallback attendees), same helper as the Training Dashboard.
   m.facil=_l1WAvg(iltG,c=>num(c.facilitationRating));
   m.csat=_l1WAvg([...iltG.map(x=>({...x,_csat:'csat'})),...sltG.map(x=>({...x,_csat:'learnerSatisfaction'}))].map(x=>({s:x.s,rep:{content:{v:(x.rep.content||{})[x._csat],responses:(x.rep.content||{}).responses}}})),c=>num(c.v));
@@ -5459,8 +5459,8 @@ function _ovQualityHtml(m){
     {k:'idqa',l:'ID QA',kind:'pct',teams:['id']},
     {k:'cdqa',l:'CD QA',kind:'pct',teams:['cd']},
     {k:'obs',l:'Trainer Observation',kind:'r5',teams:['delivery']},
-    {k:'idContent',l:'Content Rating',kind:'r5',teams:['id'],pending:true},
-    {k:'cdMaterial',l:'Material Rating',kind:'r5',teams:['cd'],pending:true},
+    {k:'idContent',l:'Content Rating',kind:'r5',teams:['id']},
+    {k:'cdMaterial',l:'Material Rating',kind:'r5',teams:['cd']},
     {k:'facil',l:'Facilitator Rating',kind:'r5',teams:['delivery']},
     {k:'csat',l:'CSAT',kind:'r5',teams:['delivery']},
     {k:'nps',l:'NPS',kind:'nps',teams:['delivery']}
@@ -5779,6 +5779,26 @@ function _lpCreditedContributors(s){
 function _lpNewAssignment(u,startDate,primary){
   const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
   return {id,profileId:u.id,role:_lpRoleOf(u),primary:!!primary,startDate,endDate:null,addedAt:new Date().toISOString()};
+}
+// v5.14 (2026-10-29, per Sandra): contributor WORK tags -- what the person actually did on this program, independent of
+// their job title (e.g. a Content Developer who also did the ID work). Default from job role until
+// someone tags it. Learning Content Rating credits 'design'; Learning Material Rating credits 'development'.
+// Several people can share a work type; each gets the full rating.
+const LP_WORK=[['design','ID work'],['development','Development']];
+function _lpContribWork(c){ if(c&&Array.isArray(c.work)) return c.work; const r=(c&&c.role)||''; return r==='Instructional Designer'?['design']:(r==='Content Developer'?['development']:[]); }
+function _lpWorkCredited(s,k){ return _lpCreditedContributors(s).filter(c=>_lpContribWork(c).includes(k)); }
+function _lpWorkChips(c,manage){
+  return LP_WORK.map(([k,l])=>{ const on=_lpContribWork(c).includes(k);
+    if(!manage) return on?`<span class="badge" style="background:#eef2ff;color:#4338ca;font-size:10.5px">${l}</span>`:'';
+    return `<button type="button" class="badge" title="${on?'Untag':'Tag'} ${l}" onclick="lpContribToggleWork('${Utils.esc(c.id)}','${k}')" style="cursor:pointer;border:1px solid ${on?'#6366f1':'#cbd5e1'};background:${on?'#eef2ff':'#fff'};color:${on?'#4338ca':'#64748b'};font-size:10.5px">${on?'✓ ':'+ '}${l}</button>`;
+  }).join(' ');
+}
+async function lpContribToggleWork(cid,k){
+  const p=_lpCur(); if(!_lpCanManageContrib(p)) return;
+  const list=_lpContribList(p), t=list.find(c=>c.id===cid); if(!t) return;
+  const w=new Set(_lpContribWork(t)); if(w.has(k)) w.delete(k); else w.add(k);
+  t.work=LP_WORK.map(x=>x[0]).filter(x=>w.has(x));
+  if(await _lpPersist(p.id,{contributors:list})){ _lpAudit('update','Learning Program',p.id,`Work tags for ${_lpName(t.profileId)} on ${p.code||p.title}: ${t.work.map(x=>LP_WORK.find(y=>y[0]===x)[1]).join(' + ')||'none'}`); renderLearningPrograms(); }
 }
 function _lpAddedToday(c){ if(!c?.addedAt) return false; const d=new Date(c.addedAt); return !isNaN(d)&&d.toLocaleDateString('en-CA',{timeZone:'Asia/Manila'})===new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'}); }
 function _lpAssignmentDates(c){
@@ -6676,11 +6696,11 @@ function _lpDetailHtml(p){
       Auth.isAdmin&&used?`<button class="btn btn-ghost btn-xs" title="Correct assignment dates (admin)" onclick="lpContribDates('${esc(c.id)}')">Dates</button>`:'',
       canRemove?`<button class="lp-icon-btn" title="Remove (added by mistake)" onclick="lpContribRemove('${esc(c.id)}')">${_lpIc(LP_IC.x)}</button>`:''
     ].join(''):'';
-    return `<div class="lp-crow"${current?'':' style="opacity:.75"'}>${_lpAva(c.profileId,c.role)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(_lpName(c.profileId))}</div><div class="lp-crole">${esc(c.role||'')}${_lpAssignmentDates(c)?' · '+esc(_lpAssignmentDates(c)):''}</div></div>
+    return `<div class="lp-crow"${current?'':' style="opacity:.75"'}>${_lpAva(c.profileId,c.role)}<div style="flex:1;min-width:0"><div class="lp-person-n" style="font-size:13px">${esc(_lpName(c.profileId))}</div><div class="lp-crole">${esc(c.role||'')}${_lpAssignmentDates(c)?' · '+esc(_lpAssignmentDates(c)):''}</div>${(()=>{const ch=_lpWorkChips(c,manage);return ch.trim()?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">${ch}</div>`:'';})()}</div>
       ${current&&c.primary?'<span class="badge" style="background:#dcfce7;color:#15803d">Main</span>':''}${current?'':'<span class="badge" style="background:#f1f5f9;color:#64748b">Ended</span>'}<span style="display:flex;gap:4px;align-items:center">${acts}</span></div>`;
   };
   const defStart=used?_lpToday():(p.effectiveFrom||_lpToday());
-  const contrib=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Program Contributors ${helpTip('Each person is credited for sessions delivered while their assignment is active. Use End for handovers so past credit is kept.')}</span></div>
+  const contrib=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Program Contributors ${helpTip('Tag what each person did on this program: ID work and/or Development (one person can have both; several people can share one). Learning Content Rating credits ID work; Learning Material Rating credits Development. Each person is credited for sessions delivered while their assignment is active. Use End for handovers so past credit is kept.')}</span></div>
     ${csCur.length?csCur.map(c=>cRow(c,true)).join(''):'<div class="lp-muted" style="padding:6px 0 10px;font-size:12.5px">No current contributors.</div>'}
     ${csPast.length?`<button class="lp-link-btn" onclick="_lpShowPastContrib=!_lpShowPastContrib;renderLearningPrograms()">${_lpShowPastContrib?'Hide':'Show'} past contributors (${csPast.length})</button>`:''}
     ${_lpShowPastContrib&&csPast.length?`<div class="lp-muted" style="font-size:11px;font-weight:600;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em">Past contributors</div>${csPast.map(c=>cRow(c,false)).join('')}`:''}
@@ -9231,7 +9251,8 @@ const KT_SOURCES=[
   ['cdqa','CD QA reviews · score','pct'],['cdTime','CD QA reviews · timeliness','pct'],
   ['facil','Training reports · facilitation rating','r5'],['csat','Training reports · CSAT','r5'],
   ['pass','Session assessments · pass rate','pct'],['obs','Trainer evaluations · observation','r5'],
-  ['report','Training reports · on-time submission','pct']
+  ['report','Training reports · on-time submission','pct'],
+  ['idContent','Training reports · content rating (ID work contributors)','r5'],['cdMaterial','Training reports · materials rating (Development contributors)','r5'] // v5.14 (2026-10-29, per Sandra)
 ];
 let _ktDraft=null;
 function _ktSource(key){ return KT_SOURCES.find(x=>x[0]===key); }
