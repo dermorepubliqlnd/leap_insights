@@ -502,6 +502,9 @@ function getArticles(){
     kb.articles=seedArticles();
     saveKB(kb);
   }
+  // v5.15a (2026-10-30): add any new built-in articles to a KB already saved in this browser
+  const have=new Set(kb.articles.map(a=>a.id)); const add=seedArticles().filter(a=>!have.has(a.id));
+  if(add.length){ kb.articles=kb.articles.concat(add); saveKB(kb); }
   return kb.articles;
 }
 
@@ -1239,6 +1242,31 @@ Evaluation lists have a <strong>CSV Export</strong> button (visible in the list 
 <p><strong>Q: The app shows a blank screen or isn't loading. What do I do?</strong><br>
 Try refreshing the page. If the issue persists, try opening the file in a different browser (Chrome is recommended). If still not working, raise a RICA ticket.</p>`,
     },
+    {
+      id:'kb-rd-005',category:'reports-support',icon:'🎯',status:'active',
+      title:'My Performance: scorecards, ratings and KPI definitions',
+      createdAt:now,updatedAt:now,
+      content:`<p>From <strong>1 October 2026</strong> every L&D role has a scorecard in <strong>My Performance</strong>. Each KPI's result is turned into a <strong>1–5 rating</strong> with the L&D rating scales (the target band = 3), then weighted into one overall score. Leaders see their team in <strong>Team Performance</strong>.</p>
+<h4>How scores work</h4>
+<ul>
+<li><strong>Only acknowledged</strong> evaluations and QA reviews count. Acknowledge yours so they are included.</li>
+<li>KPIs with no rating (Pending data, Awaiting acknowledgement, No activity, Rated quarterly, In progress) are left out and the rest re-weighted; the score shows as <strong>Provisional</strong> until the period closes.</li>
+<li><strong>Month</strong> = progress check. <strong>Quarter</strong> = formal review; it pools the whole quarter's data and rates PDP, EEI and LEI.</li>
+<li>Overall bands: 4.50–5.00 Outstanding · 3.50–4.49 Exceeds Expectations · 2.50–3.49 Meets Expectations · 1.50–2.49 Needs Improvement · 1.00–1.49 Unsatisfactory.</li>
+</ul>
+<h4>Rating scales</h4>
+<ul>
+<li><strong>L&D Percentage (R-0004):</strong> 98%+ = 5 · 94–97.99% = 4 · 90–93.99% = 3 · 85–89.99% = 2 · below 85% = 1</li>
+<li><strong>L&D Points (R-0005):</strong> 4.50+ = 5 · 4.00–4.49 = 4 · 3.50–3.99 = 3 · 3.00–3.49 = 2 · below 3.00 = 1</li>
+<li><strong>Completions:</strong> Trainer Obs. (R-0001) 4+ = 5 · 3 = 4 · 2 = 3 · 1 = 2 — IDQA (R-0002) 7+ = 5 · 5–6 = 4 · 4 = 3 · 3 = 2 — CQA (R-0003) 9+ = 5 · 6–8 = 4 · 5 = 3 · 4 = 2</li>
+<li><strong>PDP (R-0006):</strong> 3 = 5 · 2 = 4 · 1 = 3 · 0 at quarter end = 1</li>
+<li><strong>KR Achievement (R-0007):</strong> 95%+ = 5 · 88–94.99% = 4 · 80–87.99% = 3 · 70–79.99% = 2 · below 70% = 1</li>
+</ul>
+<h4>KPI definitions</h4>
+<table style="width:100%;border-collapse:collapse;font-size:13px"><tbody><tr><td><strong>ID / Content QA Score</strong></td><td>Average score of your acknowledged ID QA reviews in the period (reviews where you are the designer). Drafts and reviews waiting for your acknowledgement are not counted.</td></tr><tr><td><strong>Learning Content Effectiveness</strong></td><td>Learners' Content Rating (1–5) from the post-training survey, on sessions of programs where you are tagged "ID work" on the session date. Weighted by number of responses.</td></tr><tr><td><strong>Learning Material Effectiveness</strong></td><td>Learners' Materials Rating (1–5) from the post-training survey, on sessions of programs where you are tagged "Development" on the session date. Weighted by number of responses.</td></tr><tr><td><strong>Timeliness of Deliverables (ID / CD)</strong></td><td>Share of your acknowledged ID QA reviews delivered on or before the target date (actual completion vs target completion).</td></tr><tr><td><strong>Facilitator Effectiveness</strong></td><td>Learners' Facilitation Rating (1–5) from the post-training survey on completed ILT/VILT sessions you trained or co-facilitated. Weighted by number of responses.</td></tr><tr><td><strong>Average Assessment Score</strong></td><td>Average of learners' final (post-test) scores on graded assessments in completed sessions you trained or co-facilitated. Confidence and commitment self-ratings are not included.</td></tr><tr><td><strong>Trainer Observation Score</strong></td><td>Average overall score (1–5) of your acknowledged trainer observations (live sit-in or recording) for sessions in the period.</td></tr><tr><td><strong>Timeliness of Deliverables (Trainer report SLA)</strong></td><td>Share of your training reports submitted within 2 business days after the session ended. Reports still missing after 2 business days count as late.</td></tr><tr><td><strong>PDP</strong></td><td>Personal development plan items verified by your supervisor in the quarter. Target: 1 per quarter. Counts once verified; shows In progress until the quarter ends.</td></tr><tr><td><strong>Team roll-up</strong></td><td>Average overall score of everyone below you in the reporting line (User Management) for the same period.</td></tr><tr><td><strong>Trainer Evaluation Completion</strong></td><td>Trainer evaluations you finalized in the period. Target: 2 per month (in the Quarter view: the monthly average).</td></tr><tr><td><strong>ID Assurance Completion</strong></td><td>ID QA reviews you finalized as reviewer in the period. Target: 4 per month (Quarter view: monthly average).</td></tr><tr><td><strong>Content QA Completion</strong></td><td>CD QA reviews you finalized as reviewer in the period. Target: 5 per month (Quarter view: monthly average).</td></tr><tr><td><strong>EEI</strong></td><td>Employee Engagement Index rating (1–5) from the HR survey, entered at quarter end.</td></tr><tr><td><strong>LEI</strong></td><td>Leadership Effectiveness Index rating (1–5) from the HR survey, entered at quarter end.</td></tr><tr><td><strong>KR Achievement (Director)</strong></td><td>Key Result achievement % for the quarter (from Tempo and LEAP), entered at quarter end. Target 80% = rating 3.</td></tr></tbody></table>
+<h4>Development plan (PDP)</h4>
+<p>Add your PDP in My Performance → Planned → Ongoing → Mark complete with a proof link (DermoU record, certificate or file) → your supervisor verifies it. It counts once verified. Target: 1 per quarter.</p>`
+    }
   ];
 }
 </script>

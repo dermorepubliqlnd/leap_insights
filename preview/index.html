@@ -1605,6 +1605,7 @@
             .mp-qa{display:flex;gap:10px;align-items:center;width:100%;border:1px solid var(--border);background:#fff;border-radius:8px;padding:9px 10px;margin-bottom:8px;font-size:13px;cursor:pointer;text-align:left}.mp-qa:hover{background:#f1f5f9}
             .mp-scale{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px}
             @media print{body.mp-printing .sidebar,body.mp-printing .topbar,body.mp-printing .mp-as,body.mp-printing .mp-qa,body.mp-printing .mp-seg,body.mp-printing .mp-sel{display:none!important}body.mp-printing .main{margin:0!important}}
+            .mp-info{display:inline-flex;width:14px;height:14px;border-radius:50%;font-size:10px;color:var(--text3);cursor:help;align-items:center;justify-content:center}
             .mp-team{display:flex;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px}.mp-team:hover{background:var(--surface-1,#f8fafc)}
           </style>
           <div id="mp-root"></div>
@@ -24599,6 +24600,7 @@ const SC_SCALES={ // [rating, minimum] high → low; anything below the last min
   'R-0004':{label:'L&D Percentage',unit:'%',steps:[[5,98],[4,94],[3,90],[2,85]]},
   'R-0005':{label:'L&D Points Rating',unit:'points',steps:[[5,4.5],[4,4],[3,3.5],[2,3]]},
   'R-0006':{label:'PDP',unit:'count',steps:[[5,3],[4,2],[3,1]]},
+  'R-0007':{label:'KR Achievement',unit:'%',steps:[[5,95],[4,88],[3,80],[2,70]]}, // Director KR (Sandra 2026-10-30: 80% = target)
   'DIRECT':{label:'Direct 1–5 rating',unit:'rating',steps:null}
 };
 const SC_BANDS=[[4.5,'Outstanding','success'],[3.5,'Exceeds Expectations','success'],[2.5,'Meets Expectations','accent'],[1.5,'Needs Improvement','warning'],[1,'Unsatisfactory','danger']];
@@ -24615,9 +24617,15 @@ const SC_ROLES={
     {code:'L&D-0015',key:'pdp',name:'PDP',w:5,scale:'R-0006',target:'1 per quarter',quarterly:true}]},
   trainer:{label:'Learning & Development Trainer',kpis:[
     {code:'L&D-0006',key:'facil',name:'Facilitator Effectiveness Rating',w:25,scale:'R-0005',target:'3.50 – 3.99'},
-    {code:'L&D-0007',key:'pass',name:'Assessment Pass Rate',w:25,scale:'R-0004',target:'90% – 93.99%'},
+    {code:'L&D-0007',key:'asmt',name:'Average Assessment Score',w:25,scale:'R-0004',target:'90% – 93.99%'}, // Sandra 2026-10-30: was Assessment Pass Rate
     {code:'L&D-0008',key:'obs',name:'Trainer Observation Score',w:25,scale:'R-0005',target:'3.50 – 3.99'},
     {code:'L&D-0003',key:'report',name:'Timeliness of Deliverables (report SLA)',w:20,scale:'R-0004',target:'90% – 93.99%'},
+    {code:'L&D-0015',key:'pdp',name:'PDP',w:5,scale:'R-0006',target:'1 per quarter',quarterly:true}]},
+  director:{label:'L&D Director',kpis:[ // Sandra 2026-10-30: all quarterly
+    {code:'DIR-KR',key:'kr',name:'KR Achievement',w:60,scale:'R-0007',target:'80%',quarterly:true},
+    {code:'DIR-ROLLUP',key:'rollup',name:'Team roll-up (average of everyone under you)',w:20,scale:'DIRECT',target:'2.50 – 3.49',quarterly:true},
+    {code:'SUP-LEI',key:'lei',name:'LEI (HR survey)',w:10,scale:'DIRECT',target:'3',quarterly:true},
+    {code:'SUP-EEI',key:'eei',name:'EEI (HR survey)',w:5,scale:'DIRECT',target:'3',quarterly:true},
     {code:'L&D-0015',key:'pdp',name:'PDP',w:5,scale:'R-0006',target:'1 per quarter',quarterly:true}]},
   supervisor:{label:'Learning & Development Supervisor',kpis:[
     {code:'SUP-ROLLUP',key:'rollup',name:'Team roll-up (average of everyone under you)',w:50,scale:'DIRECT',target:'2.50 – 3.49'},
@@ -24628,12 +24636,15 @@ const SC_ROLES={
     {code:'SUP-IDC',key:'idc',name:'Instructional Design Assurance Completion',w:10,scale:'R-0002',target:'4 per month'},
     {code:'SUP-CQC',key:'cqc',name:'Content Quality Assurance Completion',w:10,scale:'R-0003',target:'5 per month'}]}
 };
+// v5.15a (2026-10-30, per Sandra): KPI definitions -- shown on hover in My Performance and in the Knowledge Base.
+const SC_DEFS={"idqa": "Average score of your acknowledged ID QA reviews in the period (reviews where you are the designer). Drafts and reviews waiting for your acknowledgement are not counted.", "cdqa": "Average score of your acknowledged CD QA reviews in the period (reviews where you are the author). Drafts and reviews waiting for acknowledgement are not counted.", "idContent": "Learners' Content Rating (1–5) from the post-training survey, on sessions of programs where you are tagged \"ID work\" on the session date. Weighted by number of responses.", "cdMaterial": "Learners' Materials Rating (1–5) from the post-training survey, on sessions of programs where you are tagged \"Development\" on the session date. Weighted by number of responses.", "idTime": "Share of your acknowledged ID QA reviews delivered on or before the target date (actual completion vs target completion).", "cdTime": "Share of your acknowledged CD QA reviews delivered on or before the target date (actual completion vs target completion).", "facil": "Learners' Facilitation Rating (1–5) from the post-training survey on completed ILT/VILT sessions you trained or co-facilitated. Weighted by number of responses.", "asmt": "Average of learners' final (post-test) scores on graded assessments in completed sessions you trained or co-facilitated. Confidence and commitment self-ratings are not included.", "obs": "Average overall score (1–5) of your acknowledged trainer observations (live sit-in or recording) for sessions in the period.", "report": "Share of your training reports submitted within 2 business days after the session ended. Reports still missing after 2 business days count as late.", "pdp": "Personal development plan items verified by your supervisor in the quarter. Target: 1 per quarter. Counts once verified; shows In progress until the quarter ends.", "rollup": "Average overall score of everyone below you in the reporting line (User Management) for the same period.", "eei": "Employee Engagement Index rating (1–5) from the HR survey, entered at quarter end.", "lei": "Leadership Effectiveness Index rating (1–5) from the HR survey, entered at quarter end.", "tec": "Trainer evaluations you finalized in the period. Target: 2 per month (in the Quarter view: the monthly average).", "idc": "ID QA reviews you finalized as reviewer in the period. Target: 4 per month (Quarter view: monthly average).", "cqc": "CD QA reviews you finalized as reviewer in the period. Target: 5 per month (Quarter view: monthly average).", "kr": "Key Result achievement % for the quarter (from Tempo and LEAP), entered at quarter end. Target 80% = rating 3."};
 function _scRoleOf(u){
   if(!u) return null;
   if(u.positionId==='pos_4') return 'id';
   if(u.positionId==='pos_5') return 'cd';
   if(u.positionId==='pos_6') return 'trainer';
   if(u.positionId==='pos_7') return 'supervisor';
+  if(u.positionId==='pos_2') return 'director';
   return null;
 }
 function _scRate(scale,v){
@@ -24697,6 +24708,12 @@ function _scActual(key,pid,r,kind,depth){
       passed+=ar.filter(x=>graded.every(a=>{ const v=_tdaGetNamedScore(x,'post',a.name); return v!=null&&Number(v)>=a.passingScore; })).length; });
     return {v:pct(passed,assessed),n:assessed,detail:`${passed} of ${assessed} learners passed (${sess} session${sess!==1?'s':''})`};
   }
+  if(key==='asmt'){ // average of learners' final (post-test) scores on graded assessments
+    const sc=[]; let sess=0;
+    _scSessionsFor(pid,r).forEach(s=>{ const graded=_tdaGetAssessments(s).filter(a=>!_lpL2IsRating(a)&&a.post); if(!graded.length) return; let any=false;
+      SessionParticipantsDB.all().filter(x=>x.sessionId===s.id&&_tdaIsAssessed(x,s)).forEach(x=>graded.forEach(a=>{ const v=_tdaGetNamedScore(x,'post',a.name); if(v!=null&&!isNaN(Number(v))){ sc.push(Number(v)); any=true; } })); if(any) sess++; });
+    return {v:sc.length?sc.reduce((a,b)=>a+b,0)/sc.length:null,n:sc.length,detail:`${sc.length} final score${sc.length!==1?'s':''} (${sess} session${sess!==1?'s':''})`};
+  }
   if(key==='obs'){
     const e=EvalDB.all().filter(x=>x.trainerId===pid&&x.status==='completed'&&x.overallScore!=null&&_scIn(x.trainingDate,r));
     return {v:e.length?e.reduce((a,b)=>a+Number(b.overallScore),0)/e.length:null,n:e.length,detail:`${e.length} acknowledged evaluation${e.length!==1?'s':''}`};
@@ -24714,6 +24731,10 @@ function _scActual(key,pid,r,kind,depth){
     if(kind==='month') return {v:null,n:c,quarterlyOnly:true,detail:`${c} verified in Q${q.slice(6)} so far`};
     if(!ended&&c===0) return {v:null,n:0,ongoing:true,detail:'Quarter in progress — none verified yet'};
     return {v:c,n:c,detail:`${c} verified this quarter`};
+  }
+  if(key==='kr'){
+    const inp=_scInput(pid,'KR',r.quarter);
+    return inp?{v:Number(inp.value),n:1,detail:'Entered at quarter end (Tempo + LEAP)'}:{v:null,ongoing:_todayStr()<=_scPeriodRange('quarter',r.quarter).end,detail:'Entered at quarter end'};
   }
   if(key==='eei'||key==='lei'){
     const inp=_scInput(pid,key.toUpperCase(),r.quarter);
@@ -24737,7 +24758,7 @@ function _scScorecard(pid,kind,key,depth){
   const u=DB.byId(pid); const role=_scRoleOf(u); if(!role) return {role:null};
   const r={..._scPeriodRange(kind,key),key};
   if(r.end<SC_EFFECTIVE_FROM) return {role,before:true,rows:[],overall:null};
-  const rows=SC_ROLES[role].kpis.map(k=>{ const a=_scActual(k.key,pid,r,kind,depth); const rating=a.v==null?null:_scRate(k.scale,a.v); return {...k,actual:a,rating}; });
+  const rows=SC_ROLES[role].kpis.map(k=>{ const a=(kind==='month'&&k.quarterly&&!['pdp','eei','lei'].includes(k.key))?{v:null,quarterlyOnly:true,detail:'Rated in the Quarter view'}:_scActual(k.key,pid,r,kind,depth); const rating=a.v==null?null:_scRate(k.scale,a.v); return {...k,actual:a,rating}; });
   const meas=rows.filter(x=>x.rating!=null); const w=meas.reduce((a,b)=>a+b.w,0);
   const overall=w?meas.reduce((a,b)=>a+b.rating*b.w,0)/w:null;
   return {role,rows,overall,measured:meas.length,total:rows.length,weightMeasured:w,range:r};
@@ -24816,9 +24837,9 @@ function renderMyPerformance(){
     <div class="mp-c"><div class="mp-ch"><span>Key Highlights</span></div>${highs.length?highs.map(k=>`<div class="mp-hl">${_tdIconSvg('check','#16a34a',16)}<span>${esc(k.name)} — ${esc(_scFmtActual(k))}</span></div>`).join(''):'<div class="mp-sub">Highlights appear when a KPI is rated 4 or 5.</div>'}</div>
     <div class="mp-c"><div class="mp-ch"><span>Needs Attention</span></div><div class="mp-big">${att.length}<span> item${att.length!==1?'s':''}</span></div>${att.slice(0,2).map(a=>`<div class="mp-hl">${attIcon(a.tone)}<span>${esc(a.t)}</span></div>`).join('')||'<div class="mp-sub">Nothing waiting.</div>'}</div></div>`;
   /* scorecard */
-  const scaleBox=_mpShowScale?`<div class="mp-scale">${['R-0004','R-0005','R-0001','R-0002','R-0003','R-0006'].map(c=>{const s=SC_SCALES[c]; return `<div><b>${esc(s.label)}</b> <span class="mp-sub">(${c})</span><div class="mp-sub">${s.steps.map(([rt,min])=>`${rt} = ${s.unit==='%'?min+'%+':min+'+'}`).join(' · ')} · below = ${c==='R-0006'?'1 (quarter end)':'1'}</div></div>`;}).join('')}<div><b>Overall bands</b><div class="mp-sub">4.50+ Outstanding · 3.50–4.49 Exceeds · 2.50–3.49 Meets · 1.50–2.49 Needs Improvement · below 1.50 Unsatisfactory</div></div></div>`:'';
+  const scaleBox=_mpShowScale?`<div class="mp-scale">${['R-0004','R-0005','R-0001','R-0002','R-0003','R-0006','R-0007'].map(c=>{const s=SC_SCALES[c]; return `<div><b>${esc(s.label)}</b> <span class="mp-sub">(${c})</span><div class="mp-sub">${s.steps.map(([rt,min])=>`${rt} = ${s.unit==='%'?min+'%+':min+'+'}`).join(' · ')} · below = ${c==='R-0006'?'1 (quarter end)':'1'}</div></div>`;}).join('')}<div><b>Overall bands</b><div class="mp-sub">4.50+ Outstanding · 3.50–4.49 Exceeds · 2.50–3.49 Meets · 1.50–2.49 Needs Improvement · below 1.50 Unsatisfactory</div></div></div>`:'';
   const table=`<div class="mp-c"><div class="mp-ch" style="margin-bottom:8px"><span style="font-size:14px">${_mpKind==='month'?'Monthly':'Quarterly'} Scorecard · ${esc(SC_ROLES[role].label)} · ${esc(r.label)}</span><a class="mp-link" onclick="mpToggle('scale')">${_mpShowScale?'Hide':'View'} rating scale</a></div>${scaleBox}
-    <table class="mp-tbl"><thead><tr><th>KPI</th><th>Weight</th><th>Actual</th><th>Target</th><th>Rating</th><th>Status</th></tr></thead><tbody>${sc.rows.map((k,i)=>`<tr><td><div style="font-weight:600">${esc(k.name)}</div><div class="mp-sub">${esc(k.actual.detail||'')}</div></td><td>${k.w}%</td><td>${esc(_scFmtActual(k))}</td><td class="mp-sub" style="font-size:12.5px">${esc(k.target)}</td><td>${k.rating!=null?`<span class="mp-rt mp-rt-${_mpRatingTone(k.rating)}">${k.rating%1?k.rating.toFixed(2):k.rating}</span>`:'—'}</td><td>${_mpChip(states[i][0],states[i][1])}</td></tr>`).join('')}</tbody></table>
+    <table class="mp-tbl"><thead><tr><th>KPI</th><th>Weight</th><th>Actual</th><th>Target</th><th>Rating</th><th>Status</th></tr></thead><tbody>${sc.rows.map((k,i)=>`<tr><td><div style="font-weight:600" title="${esc(SC_DEFS[k.key]||'')}">${esc(k.name)} <span class="mp-info" title="${esc(SC_DEFS[k.key]||'')}">ⓘ</span></div><div class="mp-sub">${esc(k.actual.detail||'')}</div></td><td>${k.w}%</td><td>${esc(_scFmtActual(k))}</td><td class="mp-sub" style="font-size:12.5px">${esc(k.target)}</td><td>${k.rating!=null?`<span class="mp-rt mp-rt-${_mpRatingTone(k.rating)}">${k.rating%1?k.rating.toFixed(2):k.rating}</span>`:'—'}</td><td>${_mpChip(states[i][0],states[i][1])}</td></tr>`).join('')}</tbody></table>
     <div class="mp-sub" style="margin-top:8px">Target = rating 3 on the L&D scale. KPIs without a rating are left out of the overall score. ${_mpKind==='month'?'Month = progress check; PDP'+(role==='supervisor'?', EEI and LEI':'')+' are rated in the Quarter view.':'Quarter = formal review; pools the whole quarter’s data.'}</div></div>`;
   /* trend */
   // Month view: last 6 months. Quarter view: the quarter's 3 months (future months left blank), like Sandra's mockup.
@@ -24849,8 +24870,9 @@ function renderMyPerformance(){
     const dist=SC_BANDS.map(b=>[b[1],tsc.filter(x=>x.s.overall!=null&&_scBand(x.s.overall).label===b[1]).length,b[2]]);
     teamBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Team · ${esc(r.label)}</span><span class="mp-sub">${dist.filter(d=>d[1]).map(d=>`${d[1]} ${d[0]}`).join(' · ')||'No scores yet'}</span></div>${tsc.map(({u,s})=>{ const b=_scBand(s.overall); const low=(s.rows||[]).filter(k=>k.rating!=null&&k.rating<3).length; return `<div class="mp-team" onclick="mpSet('person','${u.id}')"><span style="flex:1;min-width:0"><b>${esc(name(u))}</b><span class="mp-sub"> · ${esc(SC_ROLES[_scRoleOf(u)].label)}${low?` · ${low} KPI${low!==1?'s':''} below target`:''}</span></span><span style="font-weight:700;min-width:40px;text-align:right">${s.overall!=null?s.overall.toFixed(2):'—'}</span>${b?_mpChip(b.label,b.tone):_mpChip('Not rated')}</div>`; }).join('')||'<div class="mp-sub">No one reports to this supervisor yet.</div>'}</div>`; }
   let inputsBox='';
-  if(role==='supervisor'&&_mpKind==='quarter'&&canVerify){ const v=c=>_scInput(_mpPerson,c,q)?.value??'';
-    inputsBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quarter-end ratings · Q${q.slice(6)} ${q.slice(0,4)}</span></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end"><label style="font-size:12px">EEI (1–5)<input id="mp-eei" type="number" min="1" max="5" step="0.01" class="form-control" style="width:110px" value="${v('EEI')}"></label><label style="font-size:12px">LEI (1–5)<input id="mp-lei" type="number" min="1" max="5" step="0.01" class="form-control" style="width:110px" value="${v('LEI')}"></label><button class="btn btn-secondary btn-sm" onclick="mpSaveInputs('${q}')">Save ratings</button></div><div class="mp-note">From the HR survey results, entered at quarter end by the Director or this supervisor's manager.</div></div>`; }
+  const canEnterInputs=(role==='supervisor'&&canVerify)||(role==='director'&&(canVerify||(isOwner&&viewer.isAdmin&&!_mpAs)));
+  if((role==='supervisor'||role==='director')&&_mpKind==='quarter'&&canEnterInputs){ const v=c=>_scInput(_mpPerson,c,q)?.value??'';
+    inputsBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quarter-end ratings · Q${q.slice(6)} ${q.slice(0,4)}</span></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">${role==='director'?`<label style="font-size:12px">KR Achievement %<input id="mp-kr" type="number" min="0" max="200" step="0.1" class="form-control" style="width:120px" value="${v('KR')}"></label>`:''}<label style="font-size:12px">EEI (1–5)<input id="mp-eei" type="number" min="1" max="5" step="0.01" class="form-control" style="width:110px" value="${v('EEI')}"></label><label style="font-size:12px">LEI (1–5)<input id="mp-lei" type="number" min="1" max="5" step="0.01" class="form-control" style="width:110px" value="${v('LEI')}"></label><button class="btn btn-secondary btn-sm" onclick="mpSaveInputs('${q}')">Save ratings</button></div><div class="mp-note">${role==='director'?'KR Achievement from Tempo and LEAP; EEI and LEI from the HR survey. Entered at quarter end.':"From the HR survey results, entered at quarter end by the Director or this supervisor's manager."}</div></div>`; }
   root.innerHTML=`${head}${row1}<div class="mp-r2">${table}${trend}</div>${teamBox}${inputsBox}<div class="mp-r3">${pdpBox}${attBox}${quick}</div>`;
   /* chart */
   try{ if(_mpChart){ _mpChart.destroy(); _mpChart=null; } const el=document.getElementById('mp-trend');
@@ -24981,9 +25003,9 @@ function mpPdpDelete(id){ if(_mpRO()) return;
   });
 }
 async function mpSaveInputs(quarter){ if(_mpRO()) return;
-  for(const code of ['EEI','LEI']){
+  for(const code of ['KR','EEI','LEI']){
     const raw=document.getElementById('mp-'+code.toLowerCase())?.value; if(raw===''||raw==null) continue;
-    const val=Number(raw); if(!(val>=1&&val<=5)){ toast(`${code} must be between 1 and 5.`,'error'); return; }
+    const val=Number(raw); if(code==='KR'?!(val>=0&&val<=200):!(val>=1&&val<=5)){ toast(code==='KR'?'KR Achievement must be a % from 0 to 200.':`${code} must be between 1 and 5.`,'error'); return; }
     const ex=_scInput(_mpPerson,code,quarter);
     const q=ex?sb.from('scorecard_inputs').update({value:val,entered_by:Auth.user.id,entered_at:new Date().toISOString()}).eq('id',ex.id):sb.from('scorecard_inputs').insert(patchToSnake('scorecard_inputs',{profileId:_mpPerson,kpiCode:code,quarter,value:val}));
     const {data,error}=await q.select().single(); if(error){ _surfaceDbError(error,'Save '+code); return; }
