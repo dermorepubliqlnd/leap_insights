@@ -1508,7 +1508,7 @@
         <!-- v5.15b (2026-10-30, per Sandra): My Performance (everyone) · Team Performance (leaders) · L&D Performance (department; Department Head + authorised) -->
         <div class="nav-item" data-view="my-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span> My Performance</div>
         <div class="nav-item js-team-view hidden" data-view="team-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="17" cy="9.5" r="2.3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.5 14.6c2.6-.4 4.9.9 5.7 3.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Team Performance</div>
-        <div class="nav-item js-dept-view hidden" data-view="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> L&amp;D Performance</div>
+        <div class="nav-item js-dept-view hidden" data-view="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Department Performance</div>
         <div class="nav-sec js-qa-sec hidden">Quality Assurance</div>
         <div class="nav-item js-id-qa hidden" data-view="id-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Instructional Design</div>
         <div class="nav-item js-content-qa hidden" data-view="content-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M10 8.3l6 3.7-6 3.7V8.3Z" fill="currentColor" stroke="none"/></svg></span> Content Development</div>
@@ -1619,6 +1619,16 @@
             .tp-bar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin-bottom:10px}.tp-bar span{color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;min-width:28px}
             .tp-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px}.tp-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
             .tp-ava{width:28px;height:28px;border-radius:50%;background:#e0e7ff;color:#3730a3;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+            /* v5.16 Department Performance */
+            .dp-main{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr);gap:14px;margin-top:14px}.dp-side{display:flex;flex-direction:column;gap:14px}.dp-main .mp-c{margin:0}
+            @media(max-width:1100px){.dp-main{grid-template-columns:1fr}}
+            .dp-tbl td{vertical-align:middle}.dp-grp td{background:#f1f5f9;font-weight:700;font-size:12.5px;color:#334155}
+            .dp-bar{position:relative;height:8px;border-radius:99px;background:#e2e8f0;margin:8px 0 6px}.dp-bar span{display:block;height:100%;border-radius:99px;background:#2563eb}.dp-bar b{position:absolute;top:-3px;width:2px;height:14px;background:#64748b}
+            .dp-dots{display:flex;gap:4px;margin:8px 0 6px}.dp-dots i{flex:1;height:7px;border-radius:99px;background:#e2e8f0}.dp-dots i.on{background:#16a34a}
+            .dp-pp{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:6px}.dp-pp b{display:block;font-size:22px}.dp-pp span{font-size:11.5px;color:var(--text3)}
+            .dp-soon{border-style:dashed;background:#f8fafc}.dp-sec{font-weight:700;font-size:13px;color:#334155;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+            .dp-scroll{max-height:360px;overflow:auto}.dp-legacy{margin-top:16px}.dp-legacy>summary{cursor:pointer;font-weight:600;font-size:13px;color:#334155;padding:10px 0}
+            #view-dashboard .mp-r1,#view-dashboard .mp-r2{margin-bottom:14px}
             .tp-qas{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tp-qa{display:flex;gap:8px;align-items:flex-start;text-align:left;border:1px solid var(--border);background:#fff;border-radius:8px;padding:10px;font-size:12.5px;cursor:pointer}.tp-qa:hover{background:#f1f5f9}
           </style>
           <div id="tp-root"></div>
@@ -3768,6 +3778,7 @@ const _FIELD_MAPS = {
     // free-text "duration" HH:MM column above, which the original Training Sessions module
     // still owns -- kept separate to avoid format collisions), and a training category.
     durationHours:'duration_hours', durationBasis:'duration_basis', deliveryPlan:'delivery_plan', deliveryPartDates:'delivery_part_dates', programInfoSnapshot:'program_info_snapshot', evaluationPlan:'evaluation_plan', l3Followups:'l3_followups', l4Results:'l4_results', category:'category',
+    cancelReason:'cancel_reason', cancelNote:'cancel_note', // v5.16 (2026-10-30, per Sandra): why a session was cancelled (Session Delivery Rate)
     // External Facilitator/Provider split (2026-07-31): free-text fields used only when
     // deliveryType==='External' (replaces sharing the Owner field with Self-led).
     facilitatorName:'facilitator_name', trainingProvider:'training_provider',
@@ -3927,8 +3938,11 @@ const _FIELD_MAPS = {
   // Dashboard KPI Targets (2026-09-25, per Sandra): one row per role + KPI + effectivity window,
   // so a target change applies from its Effective From date without rewriting history.
   kpi_targets:{
-    id:'id', role:'role', kpiKey:'kpi_key', kpiName:'kpi_name', dataSource:'data_source', weight:'weight', target:'target', effectiveFrom:'effective_from', effectiveTo:'effective_to', createdAt:'created_at', updatedAt:'updated_at'
+    id:'id', role:'role', kpiKey:'kpi_key', kpiName:'kpi_name', dataSource:'data_source', weight:'weight', target:'target', effectiveFrom:'effective_from', effectiveTo:'effective_to', createdAt:'created_at', updatedAt:'updated_at',
+    // v5.16 (2026-10-30, per Sandra): department KPI fields (NULL on individual rows)
+    kpiLevel:'kpi_level', tier:'tier', dimension:'dimension', scored:'scored', frequency:'frequency', targetMax:'target_max', ratingScale:'rating_scale', ownerId:'owner_id', sortOrder:'sort_order'
   },
+  department_kpi_snapshots:{ id:'id', periodKey:'period_key', results:'results', status:'status', finalizedAt:'finalized_at', finalizedBy:'finalized_by', reopenedAt:'reopened_at', reopenedBy:'reopened_by', reopenReason:'reopen_reason' },
   // Learning Programs (2026-09-25, per Sandra): program library. contributors/components are jsonb.
   learning_programs:{
     id:'id', code:'code', title:'title', categoryId:'category_id', deliveryType:'delivery_type', version:'version', durationHours:'duration_hours', durationMinutes:'duration_minutes', status:'status',
@@ -3991,9 +4005,9 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[], department_kpi_snapshots:[] },
   // v5.02: tables added by a migration that may not be applied yet -- a load error here must not block the app.
-  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines']),
+  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines','department_kpi_snapshots']),
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -4787,10 +4801,10 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'L&D Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={dashboard:'Department Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
-  dashboard:'Department view: L&D KPIs, quality, effectiveness and operational health (Department Head and authorised management)',
+  dashboard:'L&D department KPIs against the strategic plan: targets, results, coverage and the evidence behind each',
   'my-performance':'Your own scorecard, development plan and what needs your action',
   'team-performance':'Scorecards and development of the people in your reporting line',
   evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
@@ -4827,7 +4841,7 @@ function showView(id){
   // Dashboard's single "+ New Evaluation" dropdown (2026-09-22, per Sandra: replaces the old
   // 3-button "Quick Actions" strip in dash-body) lives in the shared topbar-acts slot -- cleared
   // for every other view so it doesn't linger when navigating away.
-  document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_ovFiltersHtml()+_dashNewEvalBtnHtml()):(id==='learning-programs'?_lpTopbarHtml():'');
+  document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_dpTopbarHtml()+_dashNewEvalBtnHtml()):(id==='learning-programs'?_lpTopbarHtml():'');
   if(id==='dashboard')   renderDashboard();
   if(id==='my-performance'){ _mpHost='mp'; renderMyPerformance(); }
   if(id==='team-performance'){ _tpPerson=null; _mpHost='mp'; renderTeamPerformance(); }
@@ -5091,10 +5105,14 @@ function renderDashboard(){
   const tier=Perms.dashTier(Auth.user);
   const _dfa=Auth.formAccess(Auth.user);
   const me2=Auth.user; const _showAllTabs=(tier==='admin'||me2.isReportsViewer);
+  // v5.16 (2026-10-30, per Sandra): Department Performance = five tabs. The previous dashboard (supervisor snapshot +
+  // QA/eval breakdowns) is kept, collapsed, at the bottom of Quality & Operations.
+  if(!DASH_MAIN_TABS.some(t=>t.id===_dashMainTab)) _dashMainTab='overview';
+  const _hid=id=>_dashMainTab===id?'':' class="hidden"';
   document.getElementById('dash-body').innerHTML=`
     <div class="dmain-tabs">${DASH_MAIN_TABS.map(t=>`<button id="dmtab-${t.id}" class="eval-tab${t.id===_dashMainTab?' active':''}" onclick="setDashMainTab('${t.id}')">${t.icon}${t.label}</button>`).join('')}</div>
-    <div id="dash-main-overview"${_dashMainTab==='overview'?'':' class="hidden"'}><div id="ov-root"></div></div>
-    <div id="dash-main-legacy"${_dashMainTab==='team'?'':' class="hidden"'}>
+    ${DASH_MAIN_TABS.map(t=>t.id==='quality'?`<div id="dash-main-quality"${_hid('quality')}><div id="dp-quality"></div><details class="dp-legacy" ontoggle="if(this.open){_dashUpdate();_dashRenderKpiSnapshot();}"><summary>Detailed QA &amp; evaluation breakdowns (previous dashboard)</summary>
+    <div id="dash-main-legacy">
     <div class="ov-legacy-note">Department-level detail: Supervisor Performance Snapshot and the ID QA, Content Dev QA and Trainer Eval breakdowns. Individual and team scorecards now live in My Performance and Team Performance. This tab keeps its own date range for now.</div>
     <div class="dash-topbar">
       <div></div>
@@ -5124,25 +5142,23 @@ function renderDashboard(){
     </div>
     <div id="dash-tab-content"></div>
     </div>
-    <div id="dash-main-placeholder"${(_dashMainTab==='overview'||_dashMainTab==='team')?' class="hidden"':''}>${_dashMainPlaceholderHtml(_dashMainTab)}</div>
+    </details></div>`:`<div id="dash-main-${t.id}"${_hid(t.id)}><div id="dp-${t.id}"></div></div>`).join('')}
   `;
   _dashTab='overview';
-  _dashUpdate();
-  _dashRenderKpiSnapshot();
-  _ovRender();
+  _dpCache=null;
+  renderDepartmentPerformance();
 }
 
 // L&D Performance main tabs (2026-09-25, per Sandra's mockup). Overview = the executive overview
 // (_ovRender). Team Performance temporarily hosts the previous dashboard (#dash-main-legacy) until
 // its real build. The other four show an "in development" placeholder for now.
 const _DMI=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-const DASH_MAIN_TABS=[
+const DASH_MAIN_TABS=[ // v5.16 (2026-10-30, per Sandra's mockup)
   {id:'overview',label:'Overview',icon:_DMI('<rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/>')},
-  {id:'team',label:'QA & Evaluation Detail',icon:_DMI('<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5v-.8a4.2 4.2 0 0 1 4.2-4.2h2.6a4.2 4.2 0 0 1 4.2 4.2v.8"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M17.5 14.6a3.6 3.6 0 0 1 3 3.5v.9"/>')},
-  {id:'ops',label:'Training Operations',icon:_DMI('<rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>')},
-  {id:'quality',label:'Quality & Learner Experience',icon:_DMI('<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>')},
-  {id:'effectiveness',label:'Learning Effectiveness',icon:_DMI('<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5"/>')},
-  {id:'attention',label:'Attention Required',icon:_DMI('<path d="M10.3 4.2 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5M12 17.2v.1"/>')}
+  {id:'delivery',label:'Delivery & Commitments',icon:_DMI('<rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>')},
+  {id:'outcomes',label:'Learning Outcomes',icon:_DMI('<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5"/>')},
+  {id:'quality',label:'Quality & Operations',icon:_DMI('<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>')},
+  {id:'capability',label:'Capability & People',icon:_DMI('<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5v-.8a4.2 4.2 0 0 1 4.2-4.2h2.6a4.2 4.2 0 0 1 4.2 4.2v.8"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M17.5 14.6a3.6 3.6 0 0 1 3 3.5v.9"/>')}
 ];
 let _dashMainTab='overview';
 function _dashMainPlaceholderHtml(id){
@@ -5155,16 +5171,8 @@ function _dashMainPlaceholderHtml(id){
 }
 function setDashMainTab(id){
   _dashMainTab=id;
-  DASH_MAIN_TABS.forEach(t=>document.getElementById(`dmtab-${t.id}`)?.classList.toggle('active',t.id===id));
-  const ov=document.getElementById('dash-main-overview'), lg=document.getElementById('dash-main-legacy'), ph=document.getElementById('dash-main-placeholder');
-  const isPh=id!=='overview'&&id!=='team';
-  ov?.classList.toggle('hidden',id!=='overview');
-  lg?.classList.toggle('hidden',id!=='team');
-  ph?.classList.toggle('hidden',!isPh);
-  if(ph&&isPh) ph.innerHTML=_dashMainPlaceholderHtml(id);
-  // Charts can't size themselves while hidden -- redraw whichever pane just became visible.
-  if(id==='overview') _ovRender();
-  if(id==='team') _dashUpdate();
+  DASH_MAIN_TABS.forEach(t=>{ document.getElementById(`dmtab-${t.id}`)?.classList.toggle('active',t.id===id); document.getElementById(`dash-main-${t.id}`)?.classList.toggle('hidden',t.id!==id); });
+  renderDepartmentPerformance(); // v5.16
 }
 function setDashTab(tab){
   _dashTab=tab;
@@ -9367,7 +9375,51 @@ function renderKpiTargetsPane(){
         <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-secondary btn-sm" onclick="ktAdd('${role}',null)">+ Custom KPI Template</button>${rows.length?`<select class="form-control" id="kt-period-${role}" aria-label="KPI for new target period" style="max-width:190px">${Array.from(new Map(rows.map(x=>[x.kpiKey,x])).values()).map(x=>`<option value="${esc(x.kpiKey)}">${esc(x.kpiName||x.kpiKey)}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="ktAddPeriod('${role}')">+ New target period</button>`:''}</div>
         <p class="lp-muted" style="font-size:11.5px;margin:8px 0 0">Weighted attainment uses actual ÷ target, capped at 100% for each KPI. Missing source data is shown separately and receives no measured score.</p>
       </div>`;
-    }).join('')}`;
+    }).join('')}${_ktDeptCardHtml()}`;
+}
+/* v5.16 (2026-10-30, per Sandra): Department KPIs (role 'department') in the same registry. Editing a row changes it
+   for its whole window; "New period" ends it the day before and starts a copy, so past quarters keep their rules. */
+function _ktDeptCardHtml(){
+  const esc=Utils.esc, all=(Cache.data[Store.KPI_TARGETS]||[]).filter(r=>r.role==='department').sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)||(b.effectiveFrom||'').localeCompare(a.effectiveFrom||''));
+  if(!all.length) return '';
+  const active=_dpRows(), tot=t=>active.filter(r=>r.scored!==false&&(!t||r.tier===t)).reduce((a,b)=>a+Number(b.weight||0),0);
+  const sel=(id,opts,v)=>`<select class="form-control" id="${id}" style="min-width:110px">${opts.map(o=>`<option value="${o}"${o===v?' selected':''}>${o[0].toUpperCase()+o.slice(1)}</option>`).join('')}</select>`;
+  const row=r=>{ const k=esc(r.id), cur=active.some(a=>a.id===r.id); return `<tr${cur?'':' style="opacity:.6"'}><td><b>${esc(r.kpiName)}</b><div class="lp-muted" style="font-size:11px">${esc(r.kpiKey)}${cur?'':' · not in effect today'}</div></td>
+    <td>${sel('dk-tier-'+k,['strategic','operational'],r.tier)}</td><td>${sel('dk-dim-'+k,['execution','quality','effectiveness','capability','growth'],r.dimension)}</td>
+    <td style="text-align:center"><input type="checkbox" id="dk-scored-${k}" ${r.scored!==false?'checked':''} title="Scored (unticked = supporting, shown but not in the rating)"></td>
+    <td><input type="number" class="form-control" id="dk-target-${k}" step="0.1" value="${esc(String(r.target??''))}" style="width:80px">${r.ratingScale==='band'?`<input type="number" class="form-control" id="dk-tmax-${k}" step="0.1" value="${esc(String(r.targetMax??''))}" style="width:80px;margin-top:4px" title="Upper end of the target band">`:''}</td>
+    <td><input type="number" class="form-control" id="dk-weight-${k}" step="0.5" min="0" max="100" value="${esc(String(r.weight??0))}" style="width:75px"></td>
+    <td>${sel('dk-freq-'+k,['monthly','quarterly'],r.frequency)}</td>
+    <td><input type="date" class="form-control" id="dk-from-${k}" value="${esc(r.effectiveFrom||'')}"></td><td><input type="date" class="form-control" id="dk-to-${k}" value="${esc(r.effectiveTo||'')}"></td>
+    <td style="white-space:nowrap"><button class="btn btn-primary btn-xs" onclick="ktDeptSave('${k}')">Save</button> ${cur?`<button class="btn btn-ghost btn-xs" onclick="ktDeptNewPeriod('${k}')" title="End this row yesterday and start a copy from today">New period</button>`:''}</td></tr>`; };
+  return `<div class="card" style="padding:16px 18px;margin-bottom:16px;overflow-x:auto"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:6px"><strong>Department KPIs (Department Performance)</strong><span style="font-size:12px;color:${Math.abs(tot()-100)<.05?'var(--green)':'var(--red)'}">Scored weight in effect: ${tot()}% (Strategic ${tot('strategic')}% · Operational ${tot('operational')}%)</span></div>
+    <p class="lp-muted" style="font-size:11.5px;margin:0 0 10px">Department KPIs are defined on their own, not averaged from people. Saving a row changes it for its whole date window; use <b>New period</b> to change a target or weight from today while past quarters keep their rules. Weights are never redistributed automatically.</p>
+    <table class="dash-tbl" style="width:100%;min-width:1100px"><thead><tr><th>KPI</th><th>Tier</th><th>Dimension</th><th>Scored</th><th>Target</th><th>Weight (%)</th><th>Frequency</th><th>Effective from</th><th>Effective to</th><th></th></tr></thead><tbody>${all.map(row).join('')}</tbody></table>
+    <div id="kt-error-department" class="modal-err hidden" role="alert" style="margin-top:8px"></div></div>`;
+}
+function _ktDeptRead(id){ const g=x=>document.getElementById(x+id); const r=(Cache.data[Store.KPI_TARGETS]||[]).find(x=>x.id===id);
+  return {r,tier:g('dk-tier-').value,dimension:g('dk-dim-').value,scored:g('dk-scored-').checked,target:Number(g('dk-target-').value),targetMax:g('dk-tmax-')?Number(g('dk-tmax-').value):null,weight:Number(g('dk-weight-').value),frequency:g('dk-freq-').value,effectiveFrom:g('dk-from-').value,effectiveTo:g('dk-to-').value||null}; }
+async function _ktDeptWrite(q,msg){ const {data,error}=await q.select().single(); if(error){ _surfaceDbError(error,'Save department KPI'); return null; }
+  const saved=rowToCamel(Store.KPI_TARGETS,data), arr=Cache.data[Store.KPI_TARGETS], i=arr.findIndex(x=>x.id===saved.id); if(i>=0) arr[i]=saved; else arr.push(saved);
+  await AuditLog.record('admin_change','Settings',saved.id,msg(saved)); return saved; }
+async function ktDeptSave(id){
+  const err=document.getElementById('kt-error-department'), fail=m=>{ err.textContent=m; err.classList.remove('hidden'); };
+  const v=_ktDeptRead(id); if(!v.r) return;
+  if(!Number.isFinite(v.target)) return fail('Enter a target.'); if(v.r.ratingScale==='band'&&!(v.targetMax>v.target)) return fail('The upper end of the band must be above the lower end.');
+  if(!Number.isFinite(v.weight)||v.weight<0||v.weight>100) return fail('Weight must be between 0 and 100%.'); if(!v.effectiveFrom||(v.effectiveTo&&v.effectiveTo<v.effectiveFrom)) return fail('Check the effective dates.');
+  const clash=(Cache.data[Store.KPI_TARGETS]||[]).find(x=>x.role==='department'&&x.kpiKey===v.r.kpiKey&&x.id!==id&&x.effectiveFrom<=(v.effectiveTo||'9999-12-31')&&(x.effectiveTo||'9999-12-31')>=v.effectiveFrom); if(clash) return fail('Another window of this KPI overlaps these dates.');
+  const patch={tier:v.tier,dimension:v.dimension,scored:v.scored,target:v.target,targetMax:v.targetMax,weight:v.weight,frequency:v.frequency,effectiveFrom:v.effectiveFrom,effectiveTo:v.effectiveTo,updatedAt:new Date().toISOString()};
+  const s=await _ktDeptWrite(sb.from(Store.KPI_TARGETS).update(patchToSnake(Store.KPI_TARGETS,patch)).eq('id',id),x=>`Department KPI ${x.kpiName}: target ${x.target}${x.targetMax!=null?'–'+x.targetMax:''}, weight ${x.weight}%, ${x.tier}/${x.dimension}, ${x.scored?'scored':'supporting'}, ${x.frequency}, ${x.effectiveFrom} to ${x.effectiveTo||'open'}`);
+  if(s){ _dpCache=null; renderKpiTargetsPane(); toast('Department KPI saved.','success'); }
+}
+async function ktDeptNewPeriod(id){
+  const v=_ktDeptRead(id); if(!v.r) return; const today=_todayStr(), y=_addDaysStr(today,-1);
+  if(v.r.effectiveFrom>=today) return toast('This row already starts today — edit it and Save instead.','info');
+  confirm$('New target period',`End <b>${Utils.esc(v.r.kpiName)}</b> on ${Utils.formatDate(y)} and start a new row from ${Utils.formatDate(today)} with the values shown?`,'Create',async()=>{
+    const ended=await _ktDeptWrite(sb.from(Store.KPI_TARGETS).update({effective_to:y,updated_at:new Date().toISOString()}).eq('id',id),x=>`Department KPI ${x.kpiName}: window ended ${y}`); if(!ended) return;
+    const base={role:'department',kpiKey:v.r.kpiKey,kpiName:v.r.kpiName,dataSource:v.r.dataSource,ratingScale:v.r.ratingScale,ownerId:v.r.ownerId,sortOrder:v.r.sortOrder,kpiLevel:'department',tier:v.tier,dimension:v.dimension,scored:v.scored,target:v.target,targetMax:v.targetMax,weight:v.weight,frequency:v.frequency,effectiveFrom:today,effectiveTo:null};
+    const s=await _ktDeptWrite(sb.from(Store.KPI_TARGETS).insert(patchToSnake(Store.KPI_TARGETS,base)),x=>`Department KPI ${x.kpiName}: new period from ${today}, target ${x.target}, weight ${x.weight}%`);
+    if(s){ _dpCache=null; renderKpiTargetsPane(); toast('New period created.','success'); } });
 }
 function ktAdd(role,key){
   const def=OV_KPI_CATALOG.find(k=>k.key===key);
@@ -14823,6 +14875,13 @@ async function tdDetailSave(){
     d.batchNo=await _tdNextProgramBatchNo(s.programId,deliveryYear,s.id);
   }
   const errs=[];
+  // v5.16 (2026-10-30, per Sandra): a reason is required when a session is cancelled (kept for older cancellations without one)
+  if(d.status==='cancelled'){
+    const cr=document.getElementById('tdd-cancel-reason')?.value||'', cn=document.getElementById('tdd-cancel-note')?.value.trim()||'';
+    if(!cr&&s.status!=='cancelled') errs.push('Choose a cancellation reason.');
+    if(cr==='other'&&!cn) errs.push('Specify the cancellation reason.');
+    d.cancelReason=cr||s.cancelReason||null; d.cancelNote=cr==='other'?cn:null;
+  } else { d.cancelReason=null; d.cancelNote=null; }
   if(programSession){
     if(deliveryPartDates.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date))) errs.push('Assign a date to every delivery part.');
     if(new Set(deliveryPartDates.map(x=>x.date)).size!==deliveryPartDates.length) errs.push('Delivery parts need distinct dates.');
@@ -19135,7 +19194,7 @@ function _tdLinkedSessionInfoCard(s,editing){
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px">
       ${field('Session ID',`<input class="form-control" style="${small};background:#f1f5f9" value="${Utils.esc(s.code||s.id||'')}" readonly>`)}
       ${field('Batch',`<input class="form-control" style="${small};background:#f1f5f9" value="${Utils.esc(s.batchNo||'Assigned when saved')}" readonly title="Generated automatically as YYYY-### per Learning Program and delivery year"><div style="font-size:10px;color:var(--text3);margin-top:4px">Auto-generated per program and delivery year.</div>`)}
-      ${field('Status',`<select id="tdd-status" class="form-control" style="${small}" onchange="_tddStatusChanged()"><option value="tentative" ${statusVal==='tentative'?'selected':''}>Tentative</option><option value="scheduled" ${statusVal==='scheduled'?'selected':''}>Scheduled</option>${statusVal==='completed'?'<option value="completed" selected>Completed</option>':''}<option value="cancelled" ${statusVal==='cancelled'?'selected':''}>Cancelled</option></select>`)}
+      ${field('Status',`<select id="tdd-status" class="form-control" style="${small}" onchange="_tddStatusChanged()"><option value="tentative" ${statusVal==='tentative'?'selected':''}>Tentative</option><option value="scheduled" ${statusVal==='scheduled'?'selected':''}>Scheduled</option>${statusVal==='completed'?'<option value="completed" selected>Completed</option>':''}<option value="cancelled" ${statusVal==='cancelled'?'selected':''}>Cancelled</option></select>${_tdCancelReasonHtml({...s,status:statusVal},`style="${small}"`)}`)}
       ${field('Delivery Method',`<select id="tdd-modalityid" class="form-control" style="${small}"><option value="">— Select —</option></select>`)}
       ${field('Venue / Location',`<select id="tdd-venue" class="form-control" style="${small}" onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" style="${small}" value="${Utils.esc(s.venueOtherName||'')}" placeholder="Enter venue name"></div>`)}
       ${field('Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],small))}
@@ -19732,7 +19791,7 @@ function _tddSessionInfoEditContent(s,ownerType){
         <option value="scheduled" ${s.status==='scheduled'?'selected':''}>${grp==='adhoc'?'Not Completed':'Scheduled'}</option>
         ${directCompletable?`<option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>`:(s.status==='completed'?`<option value="completed" selected>Completed</option>`:'')}
         ${grp==='adhoc'?'':`<option value="cancelled" ${s.status==='cancelled'?'selected':''}>Cancelled</option>`}
-      </select>`);
+      </select>${grp==='adhoc'?'':_tdCancelReasonHtml(s,smallInput)}`);
 
   // Section-group labels + collapsible wrapper (2026-08-19, per Sandra): "Who & Where" and
   // "Assessment & Compliance" group everything that ISN'T required for a Tentative booking.
@@ -20074,8 +20133,18 @@ function _tddToggleConfirmSection(){
   const sec=document.getElementById('tdd-confirm-section');
   _tddSetConfirmSectionVisible(!!(sec&&sec.classList.contains('hidden')));
 }
+/* v5.16 (2026-10-30, per Sandra): cancellation reason. Only L&D-controllable reasons count as a missed
+   session in the department Session Delivery Rate; rescheduled / business / low enrolment do not. */
+const TD_CANCEL_REASONS=[['rescheduled','Rescheduled',false],['business','Business request',false],['low_enrolment','Low enrolment / no-show',false],['trainer','Trainer unavailable',true],['content','Content not ready',true],['logistics','Logistics / venue',true],['other','Other (specify)',true]];
+const _tdCancelIsMiss=code=>!!(TD_CANCEL_REASONS.find(r=>r[0]===code)||[])[2];
+const _tdCancelLabel=code=>(TD_CANCEL_REASONS.find(r=>r[0]===code)||[null,'Reason not recorded'])[1];
+function _tdCancelReasonHtml(s,styleAttr){
+  const show=s.status==='cancelled';
+  return `<div id="tdd-cancel-wrap" style="margin-top:6px;${show?'':'display:none'}"><select id="tdd-cancel-reason" class="form-control" ${styleAttr||''} onchange="document.getElementById('tdd-cancel-note').style.display=this.value==='other'?'':'none'"><option value="">— Cancellation reason —</option>${TD_CANCEL_REASONS.map(([v,l])=>`<option value="${v}"${s.cancelReason===v?' selected':''}>${l}</option>`).join('')}</select><input id="tdd-cancel-note" class="form-control" ${styleAttr||''} placeholder="Specify the reason" value="${Utils.esc(s.cancelNote||'')}" style="margin-top:4px;${s.cancelReason==='other'?'':'display:none'}"></div>`;
+}
 function _tddStatusChanged(){
   const val=document.getElementById('tdd-status')?.value;
+  const cw=document.getElementById('tdd-cancel-wrap'); if(cw) cw.style.display=val==='cancelled'?'':'none'; // v5.16
   const link=document.getElementById('tdd-confirm-toggle-link');
   if(val && val!=='tentative'){
     // No longer optional -- force the section open and remove the toggle entirely.
@@ -24922,6 +24991,266 @@ function renderMyPerformance(){
   try{ if(_mpChart){ _mpChart.destroy(); _mpChart=null; } const el=document.getElementById('mp-trend');
     if(el&&typeof Chart!=='undefined'){ const labels=tKeys.map(k=>new Date(Number(k.slice(0,4)),Number(k.slice(5,7))-1,1).toLocaleDateString('en-US',{month:'short'}));
       _mpChart=new Chart(el,{type:'line',data:{labels,datasets:[{label:'Overall score',data:tVals,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',fill:true,tension:.25,pointRadius:4,spanGaps:true},{label:'Target (rating 3)',data:labels.map(()=>3),borderColor:'#94a3b8',borderDash:[5,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},scales:{y:{min:0,max:5,ticks:{stepSize:1}}}}}); } }catch(e){ console.warn('mp chart',e); }
+}
+
+/* ══ v5.16 (2026-10-30, per Sandra's mockup + framework doc "L&D Department KPI Framework"): DEPARTMENT PERFORMANCE ══
+   Department KPIs are defined on their own (kpi_targets rows with role 'department', keys dp_*), not averaged from people.
+   Two tiers: Strategic (70%) and Operational Health (30%). Each KPI -> 1–5 rating (target = 3). Department rating =
+   weighted average of measured scored KPIs; shown only when >= DP_MIN_COVERAGE % of scored weight is measured
+   ("Insufficient Data" otherwise). Quarter results can be frozen (department_kpi_snapshots) = Final. */
+const DP_MIN_COVERAGE=60;
+const DP_PHASE={dp_ppd:'Phase 3 — Committed Projects tracker',dp_gain:'Phase 2 — Knowledge Gain',dp_l3:'Phase 5 — learner-level L3',dp_cert:'Phase 4 — Certification tracker'};
+const DP_SRC={dp_ppd:'Committed Projects',dp_csat:'Training Reports',dp_gain:'L2 Assessments',dp_l3:'L3 Follow-ups',dp_cert:'Certification Tracker',dp_sdr:'Training Calendar',dp_util:'Trainer Capacity',dp_nps:'Training Reports',dp_qae:'ID / CD QA',dp_otd:'ID / CD QA',dp_sla:'Training Reports'};
+const DP_TAB={dp_ppd:'delivery',dp_csat:'outcomes',dp_gain:'outcomes',dp_l3:'outcomes',dp_cert:'capability',dp_sdr:'delivery',dp_util:'delivery',dp_nps:'outcomes',dp_qae:'quality',dp_otd:'quality',dp_sla:'quality'};
+const DP_DEFS={
+  dp_ppd:'Delivered approved commitments ÷ total approved commitments × 100. Delivered = agreed completion criteria met.',
+  dp_csat:'Response-weighted average CSAT (1–5) from post-training surveys on sessions that ended in the period.',
+  dp_gain:'Normalised gain per matched learner pre/post pair: (post − pre) ÷ (100 − pre) × 100, pooled across the department.',
+  dp_l3:'Learners meeting the program’s L3 criteria ÷ valid learner-level L3 evaluations × 100, with coverage shown.',
+  dp_cert:'Certified ÷ candidates with a final decision × 100. Completion rate shown separately.',
+  dp_sdr:'ILT/VILT sessions delivered ÷ (delivered + sessions cancelled for an L&D-controllable reason). Rescheduled, business-request and low-enrolment cancellations are listed but not counted.',
+  dp_util:'Scheduled live facilitation hours (ILT, VILT, Ad-hoc) ÷ trainer capacity (working days × 7.5 h × allocation %). Target band 65–85%; above 85% is flagged as overload.',
+  dp_nps:'Response-weighted Net Promoter Score (−100 to +100) from post-training surveys.',
+  dp_qae:'Acknowledged ID and CD QA reviews with an Endorse disposition (≥85%, no 0s) ÷ all acknowledged reviews.',
+  dp_otd:'ID and CD deliverables completed on or before their target date ÷ deliverables with both dates recorded.',
+  dp_sla:'Training reports submitted within 2 business days of session end ÷ reports due in the period (missing reports past 2 days count as late).'
+};
+let _dpKind='quarter', _dpKey=null, _dpChart=null, _dpCache=null;
+function _dpRange(kind,key){ return {..._scPeriodRange(kind,key),kind,key}; }
+function _dpQKey(r){ return r.kind==='quarter'?r.key:null; }
+function _dpRows(asOf){ const d=asOf||_todayStr();
+  const rows=(Cache.data[Store.KPI_TARGETS]||[]).filter(r=>r.role==='department'&&r.effectiveFrom<=d&&(!r.effectiveTo||r.effectiveTo>=d));
+  return rows.sort((a,b)=>b.effectiveFrom.localeCompare(a.effectiveFrom)).filter((r,i,all)=>all.findIndex(x=>x.kpiKey===r.kpiKey)===i).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)); }
+/* ratings (target = 3) */
+function _dpRate(row,v){
+  if(v==null||isNaN(v)) return null; const T=Number(row.target), s=row.ratingScale||'pct_target';
+  if(s==='band'){ const lo=T, hi=Number(row.targetMax??T); if(v>100) return 2; if(v>hi) return 3; if(v>=(lo+hi)/2) return 4; if(v>=lo) return 3; if(v>=lo-10) return 2; return 1; }
+  const max=s==='r5_target'?5:100, low=s==='r5_target'?0.5:10, span=max-T;
+  if(v>=T+span*0.67) return 5; if(v>=T+span*0.33) return 4; if(v>=T) return 3; if(v>=T-low) return 2; return 1;
+}
+function _dpScaleText(row){ const T=Number(row.target), s=row.ratingScale||'pct_target';
+  if(s==='band'){ const hi=Number(row.targetMax??T); return `${(T+hi)/2}–${hi}% = 4 · ${T}–${(T+hi)/2}% = 3 · above ${hi}% = 3 (overload flag) · ${T-10}–${T}% = 2 · lower = 1`; }
+  const max=s==='r5_target'?5:100, low=s==='r5_target'?0.5:10, span=max-T, f=x=>s==='r5_target'?x.toFixed(2):(Math.round(x*10)/10);
+  return `${f(T+span*0.67)}+ = 5 · ${f(T+span*0.33)}+ = 4 · ${f(T)}+ = 3 (target) · ${f(T-low)}+ = 2 · lower = 1`; }
+function _dpFmt(key,v){ if(v==null||isNaN(v)) return '—'; if(key==='dp_csat') return Number(v).toFixed(2)+' / 5'; if(key==='dp_nps') return (v>=0?'+':'')+Math.round(v); return (Math.round(v*10)/10)+'%'; }
+function _dpFmtTarget(row){ if(row.ratingScale==='band') return `${Number(row.target)}–${Number(row.targetMax)}%`; if(row.kpiKey==='dp_csat') return '≥ '+Number(row.target).toFixed(1)+' / 5'; if(row.kpiKey==='dp_nps') return '≥ +'+Number(row.target); return '≥ '+Number(row.target)+'%'; }
+/* ── calculations (all reuse existing LEAP definitions) ── */
+function _dpSdr(r){
+  const inR=s=>s.trainingDate&&_tdSessionDayList(s).some(d=>d>=r.start&&d<=r.end);
+  const rows=TrSessionDB.all().filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&s.status!=='tentative'&&inR(s));
+  const out={delivered:[],missed:[],excluded:[],open:[]};
+  rows.forEach(s=>{ if(s.status==='cancelled'){ if(_tdCancelIsMiss(s.cancelReason)) out.missed.push(s); else out.excluded.push(s); } else if(_tdStatus(s)==='Completed') out.delivered.push(s); else out.open.push(s); });
+  const den=out.delivered.length+out.missed.length; out.v=den?out.delivered.length/den*100:null; out.n=den; return out;
+}
+function _dpUtil(r){
+  const cfg=_workloadSettings(), daily=cfg.standardWeeklyHours/5, wd=_workingDaysBetween(r.start,r.end);
+  const live=TrSessionDB.all().filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT'||s.deliveryType==='Ad-hoc')&&s.status!=='cancelled'&&s.status!=='tentative'&&s.trainingDate&&_tdSessionDayList(s).some(d=>d>=r.start&&d<=r.end));
+  const ids=new Set(DB.all().filter(u=>u.isActive!==false&&u.positionId==='pos_6').map(u=>u.id)); live.forEach(s=>{ if(s.trainerId) ids.add(s.trainerId); if(s.coFacilitatorId) ids.add(s.coFacilitatorId); });
+  const people=[...ids].map(id=>{ const u=DB.byId(id); if(!u) return null; const pct=WorkloadPctHistoryDB.resolveAsOf(id,r.end); const cap=daily*wd*(pct/100);
+    const hrs=_tdashComputeHoursRange(live.filter(s=>s.trainerId===id||s.coFacilitatorId===id),r.start,r.end).forecastedHrs||0; return {u,pct,cap,hrs,util:cap>0?hrs/cap*100:null}; }).filter(Boolean).sort((a,b)=>b.hrs-a.hrs);
+  const cap=people.reduce((a,b)=>a+b.cap,0), hrs=people.reduce((a,b)=>a+b.hrs,0);
+  return {people,cap,hrs,v:cap>0?hrs/cap*100:null,n:people.length,wd};
+}
+function _dpQa(r){
+  const id=IDQADB.all().filter(x=>x.status==='completed'&&_scIn(x.reviewDate,r)).map(x=>({x,type:'ID',sc:_idqaScore(x.ratings||{},x.delivType,x.criteriaVersion),tl:_idqaTimeliness(x),person:x.designerId}));
+  const cd=ContentQADB.all().filter(x=>x.status==='completed'&&_scIn(x.reviewDate,r)).map(x=>({x,type:'CD',sc:_cqaScore(x.ratings,x.contentType,x.criteriaVersion),tl:_cqaTimeliness(x),person:x.authorId}));
+  const all=[...id,...cd], scored=all.filter(a=>a.sc&&a.sc.disposition), endorse=scored.filter(a=>a.sc.disposition==='Endorse').length;
+  const timed=all.filter(a=>a.tl&&a.tl!=='—'), late=timed.filter(a=>a.tl==='Late');
+  return {all,scored,endorse,qae:scored.length?endorse/scored.length*100:null,timed,late,otd:timed.length?(timed.length-late.length)/timed.length*100:null};
+}
+function _dpSla(r){
+  const today=_todayStr(), rows=[];
+  TrSessionDB.all().forEach(s=>{ if(s.status==='cancelled'||s.status==='tentative'||_tdHasNoReportRequirement(s)||!s.trainingDate) return;
+    const end=_tdSessionEndDate(s); if(!end||end>=today||!_scIn(end,r)) return; const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+    if(rep&&rep.submittedAt){ const bd=_tdBusinessDaysBetween(end,rep.submittedAt)||0; rows.push({s,end,state:bd<=2?'On time':'Late',bd}); }
+    else { const bd=_tdBusinessDaysBetween(end,today)||0; rows.push({s,end,state:bd>2?'Missing (late)':'Due',bd}); } });
+  const counted=rows.filter(x=>x.state!=='Due'), ok=counted.filter(x=>x.state==='On time').length;
+  return {rows,counted,ok,v:counted.length?ok/counted.length*100:null,avgDays:counted.length?counted.reduce((a,b)=>a+b.bd,0)/counted.length:null};
+}
+function _dpL1(r){
+  const reps=TrSessionDB.all().filter(s=>_tdStatus(s)==='Completed'&&_scIn(_tdSessionEndDate(s),r)).map(s=>({s,rep:_l1ReportFor(s)}));
+  const withRep=reps.filter(x=>x.rep), live=withRep.filter(x=>x.s.deliveryType==='ILT'||x.s.deliveryType==='VILT'), slt=withRep.filter(x=>x.s.deliveryType==='Self-led');
+  const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
+  const csatG=[...live.map(x=>({s:x.s,rep:{content:{v:(x.rep.content||{}).csat,responses:(x.rep.content||{}).responses}}})),...slt.map(x=>({s:x.s,rep:{content:{v:(x.rep.content||{}).learnerSatisfaction,responses:(x.rep.content||{}).responses}}}))];
+  const eligible=reps.filter(x=>['ILT','VILT','Self-led'].includes(x.s.deliveryType)&&!_tdHasNoReportRequirement(x.s));
+  const rated=csatG.filter(x=>num(x.rep.content.v)!=null);
+  return {reps:withRep,eligible,csat:_l1WAvg(csatG,c=>num(c.v)),csatN:rated.length,nps:_l1WAvg([...live,...slt],c=>num(c.nps)),npsN:[...live,...slt].filter(x=>num((x.rep.content||{}).nps)!=null).length,
+    content:_l1WAvg(live,c=>num(c.contentRating)),material:_l1WAvg(live,c=>num(c.materialsRating)),facil:_l1WAvg(live,c=>num(c.facilitationRating)),
+    responses:withRep.reduce((a,x)=>a+(Number((x.rep.content||{}).responses)||0),0)};
+}
+function _dpCalc(key,r){
+  const C=_dpCache||(_dpCache={}); const ck=key+'|'+r.start+'|'+r.end; if(C[ck]) return C[ck];
+  let o;
+  if(DP_PHASE[key]) o={notConnected:true,detail:'Not connected yet · '+DP_PHASE[key]};
+  else if(key==='dp_csat'){ const l=_dpL1(r); o={v:l.csat,n:l.csatN,detail:`${l.csatN} session${l.csatN!==1?'s':''} with learner ratings`,cov:l.eligible.length?Math.round(l.csatN/l.eligible.length*100):null}; }
+  else if(key==='dp_nps'){ const l=_dpL1(r); o={v:l.nps,n:l.npsN,detail:`${l.npsN} session${l.npsN!==1?'s':''} with NPS`,cov:l.eligible.length?Math.round(l.npsN/l.eligible.length*100):null}; }
+  else if(key==='dp_sdr'){ const x=_dpSdr(r); o={v:x.v,n:x.n,detail:`${x.delivered.length} delivered · ${x.missed.length} missed · ${x.excluded.length} cancellation${x.excluded.length!==1?'s':''} not counted`}; }
+  else if(key==='dp_util'){ const x=_dpUtil(r); o={v:x.v,n:x.n,detail:`${Math.round(x.hrs*10)/10} h of ${Math.round(x.cap)} h capacity · ${x.n} facilitator${x.n!==1?'s':''}`,overload:x.v!=null&&x.v>85}; }
+  else if(key==='dp_qae'){ const x=_dpQa(r); o={v:x.qae,n:x.scored.length,detail:`${x.endorse} of ${x.scored.length} acknowledged review${x.scored.length!==1?'s':''} endorsed`}; }
+  else if(key==='dp_otd'){ const x=_dpQa(r); o={v:x.otd,n:x.timed.length,detail:`${x.timed.length-x.late.length} of ${x.timed.length} on time`}; }
+  else if(key==='dp_sla'){ const x=_dpSla(r); o={v:x.v,n:x.counted.length,detail:`${x.ok} of ${x.counted.length} within 2 business days${x.avgDays!=null?` · avg ${x.avgDays.toFixed(1)} days`:''}`}; }
+  else o={v:null,detail:''};
+  return (C[ck]=o);
+}
+/* full scorecard for a period (or the frozen snapshot) */
+function _dpSnapshot(r){ const k=_dpQKey(r); return k?(Cache.data.department_kpi_snapshots||[]).find(x=>x.periodKey===k&&x.status==='final')||null:null; }
+function _dpScorecard(r,noSnap){
+  const snap=noSnap?null:_dpSnapshot(r);
+  if(snap&&snap.results) return {...snap.results,final:true,snap};
+  const asOf=r.end<_todayStr()?r.end:_todayStr(), open=r.end>=_todayStr();
+  const rows=_dpRows(asOf).map(row=>{ const a=_dpCalc(row.kpiKey,r); const rating=a.notConnected?null:_dpRate(row,a.v);
+    let st; if(a.notConnected) st=['Not connected yet','neutral']; else if(rating==null) st=open?['Pending data','neutral']:['Insufficient data','neutral']; else if(a.overload) st=['Over capacity','warning']; else st=rating>=3?['On target','success']:['Below target','danger'];
+    return {key:row.kpiKey,name:row.kpiName,tier:row.tier,dim:row.dimension,w:Number(row.weight||0),scored:row.scored!==false,target:_dpFmtTarget(row),scale:_dpScaleText(row),actual:a.v??null,actualTxt:_dpFmt(row.kpiKey,a.v),n:a.n??null,cov:a.cov??null,detail:a.detail||'',rating,status:st}; });
+  const sc=rows.filter(x=>x.scored), tw=sc.reduce((a,b)=>a+b.w,0), meas=sc.filter(x=>x.rating!=null), mw=meas.reduce((a,b)=>a+b.w,0);
+  const cov=tw?mw/tw*100:0, overall=mw?meas.reduce((a,b)=>a+b.rating*b.w,0)/mw:null;
+  const tierSum=t=>{ const tr=rows.filter(x=>x.tier===t); return {total:tr.length,on:tr.filter(x=>x.rating!=null&&x.rating>=3).length,measured:tr.filter(x=>x.rating!=null).length}; };
+  return {rows,overall,coverage:cov,measured:meas.length,scoredCount:sc.length,sufficient:cov>=DP_MIN_COVERAGE,open,strategic:tierSum('strategic'),operational:tierSum('operational'),label:r.label,computedAt:new Date().toISOString()};
+}
+function _dpMonthsBack(n,endKey){ const out=[]; const [y,m]=endKey.split('-').map(Number); for(let i=n-1;i>=0;i--){ const d=new Date(y,m-1-i,1); out.push(_isoLocal(d).slice(0,7)); } return out; }
+function _dpSpark(vals){ const pts=vals.map((x,i)=>x==null?null:[i,x]).filter(Boolean); if(pts.length<2) return '<span class="mp-sub">—</span>';
+  const ys=pts.map(p=>p[1]), lo=Math.min(...ys), hi=Math.max(...ys), W=64,H=20,n=vals.length-1||1, sc=v=>hi===lo?H/2:H-((v-lo)/(hi-lo))*(H-2)-1;
+  const up=pts[pts.length-1][1]>=pts[0][1];
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline points="${pts.map(([i,v])=>`${(i/n*W).toFixed(1)},${sc(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${up?'#16a34a':'#dc2626'}" stroke-width="1.6"/></svg>`; }
+/* attention + people */
+function _dpAttention(sc,r){
+  const items=[];
+  sc.rows.filter(x=>x.rating!=null&&x.rating<3).forEach(x=>items.push({sev:'danger',t:`${x.name} below target`,d:`${x.actualTxt} vs ${x.target} · ${x.detail}`,go:`dpSetTab('${DP_TAB[x.key]}')`}));
+  sc.rows.filter(x=>x.status[0]==='Over capacity').forEach(x=>items.push({sev:'warning',t:'Trainer utilisation above 85%',d:x.detail,go:"dpSetTab('delivery')"}));
+  const nc=sc.rows.filter(x=>x.status[0]==='Not connected yet'); if(nc.length) items.push({sev:'neutral',t:`${nc.length} strategic KPI${nc.length!==1?'s':''} not connected yet`,d:nc.map(x=>x.name).join(', '),go:''});
+  const saved=_ovF.team; _ovF.team='all'; let ov=[]; try{ ov=_ovAttention(r); }catch(e){} _ovF.team=saved;
+  ov.forEach(a=>items.push({sev:a.sev==='red'?'danger':'warning',t:`${a.n} ${a.label}`,d:'Data quality — affects KPI evidence',go:a.go}));
+  return items;
+}
+function _dpPeople(kind,key){
+  const team=DB.all().filter(u=>u.isActive!==false&&_scRoleOf(u)&&_scRoleOf(u)!=='director');
+  const s=team.map(u=>({u,sc:_scScorecard(u.id,kind,key)}));
+  const scored=s.filter(x=>x.sc.overall!=null), at=scored.filter(x=>x.sc.overall>=2.5), need=s.filter(x=>(x.sc.rows||[]).some(k=>k.rating!=null&&k.rating<3)||(x.sc.overall!=null&&x.sc.overall<2.5));
+  return {total:team.length,scored:scored.length,at:at.length,need:need.length,notYet:team.length-scored.length,list:s};
+}
+/* ── controls ── */
+function dpSet(f,v){ if(f==='kind'){ _dpKind=v; _dpKey=null; } if(f==='key') _dpKey=v; _dpCache=null; renderDepartmentPerformance(); }
+function dpSetTab(id){ setDashMainTab(id); }
+function _dpTopbarHtml(){
+  const periods=_scPeriods(_dpKind); if(!_dpKey||!periods.includes(_dpKey)) _dpKey=periods[0];
+  return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="mp-seg">${['month','quarter'].map(k=>`<button class="${_dpKind===k?'on':''}" onclick="dpSet('kind','${k}')">${k==='month'?'Month':'Quarter'}</button>`).join('')}</div><select class="mp-sel" onchange="dpSet('key',this.value)">${periods.map(p=>`<option value="${p}"${p===_dpKey?' selected':''}>${Utils.esc(_scPeriodRange(_dpKind,p).label)}</option>`).join('')}</select><button class="btn btn-secondary btn-sm" onclick="dpExport()">Export</button></div>`;
+}
+/* ── page ── */
+function renderDepartmentPerformance(){
+  const tab=_dashMainTab; const host=document.getElementById('dp-'+tab); if(!host) return;
+  const periods=_scPeriods(_dpKind); if(!_dpKey||!periods.includes(_dpKey)) _dpKey=periods[0];
+  const ta=document.getElementById('topbar-acts'); if(ta&&document.getElementById('view-dashboard')&&!document.getElementById('view-dashboard').classList.contains('hidden')) ta.innerHTML=_dpTopbarHtml()+_dashNewEvalBtnHtml();
+  const r=_dpRange(_dpKind,_dpKey);
+  try{ host.innerHTML=({overview:_dpOverviewHtml,delivery:_dpDeliveryHtml,outcomes:_dpOutcomesHtml,quality:_dpQualityHtml,capability:_dpCapabilityHtml}[tab]||(()=>''))(r); }catch(e){ console.error('dept performance',e); host.innerHTML=`<div class="mp-c">Something went wrong building this view: ${Utils.esc(e.message)}</div>`; }
+  if(tab==='overview') _dpDrawTrend(r);
+}
+const _dpHead=(title,sub)=>`<div class="mp-ch" style="margin-bottom:8px"><span style="font-size:14px">${title}</span>${sub?`<span class="mp-sub">${sub}</span>`:''}</div>`;
+const _dpDots=(on,total)=>`<div class="dp-dots">${Array.from({length:total},(_,i)=>`<i class="${i<on?'on':''}"></i>`).join('')}</div>`;
+function _dpOverviewHtml(r){
+  const esc=Utils.esc, sc=_dpScorecard(r), band=_scBand(sc.overall);
+  const state=sc.final?['Final','success']:(!sc.sufficient?['Insufficient data','neutral']:['Provisional','warning']);
+  const cards=`<div class="mp-r1">
+    <div class="mp-c"><div class="mp-ch"><span>Overall Department Rating</span>${_mpChip(state[0],state[1])}</div>${sc.sufficient&&sc.overall!=null?`<div class="mp-big">${sc.overall.toFixed(2)}<span> / 5</span></div>${band?_mpChip(band.label,band.tone):''}`:`<div class="mp-big" style="color:var(--text3)">—</div><div class="mp-sub">Shown once ${DP_MIN_COVERAGE}% of KPI weight has data</div>`}<div class="mp-sub" style="margin-top:6px">Based on ${sc.measured} of ${sc.scoredCount} weighted KPIs</div></div>
+    <div class="mp-c"><div class="mp-ch"><span>Weighted KPI Coverage</span></div><div class="mp-big">${Math.round(sc.coverage)}%</div><div class="dp-bar"><span style="width:${Math.min(100,sc.coverage)}%"></span><b style="left:${DP_MIN_COVERAGE}%"></b></div><div class="mp-sub">${sc.measured} of ${sc.scoredCount} KPIs with data · rating shown from ${DP_MIN_COVERAGE}%</div></div>
+    <div class="mp-c"><div class="mp-ch"><span>Strategic KPI Achievement</span></div><div class="mp-big">${sc.strategic.on} of ${sc.strategic.total}</div>${_dpDots(sc.strategic.on,sc.strategic.total)}<div class="mp-sub">on target · ${sc.strategic.total-sc.strategic.measured} not measured yet</div></div>
+    <div class="mp-c"><div class="mp-ch"><span>Operational Health</span></div><div class="mp-big">${sc.operational.on} of ${sc.operational.total}</div>${_dpDots(sc.operational.on,sc.operational.total)}<div class="mp-sub">on target · ${sc.operational.total-sc.operational.measured} not measured</div></div></div>`;
+  const months=_dpMonthsBack(6,r.end.slice(0,7));
+  const spark=key=>DP_PHASE[key]?'<span class="mp-sub">—</span>':_dpSpark(months.map(m=>_dpCalc(key,_dpRange('month',m)).v));
+  const grp=(t,label)=>{ const rs=sc.rows.filter(x=>x.tier===t); return `<tr class="dp-grp"><td colspan="7">${label} (${rs.length}) · ${rs.reduce((a,b)=>a+b.w,0)}% of score</td></tr>`+rs.map(x=>`<tr${x.scored?'':' style="opacity:.75"'}><td><div style="font-weight:600">${esc(x.name)} <span class="mp-info" title="${esc(DP_DEFS[x.key]||'')}&#10;Rating: ${esc(x.scale)}">ⓘ</span></div><div class="mp-sub">${esc(x.dim?x.dim[0].toUpperCase()+x.dim.slice(1):'')} · ${x.w}%${x.scored?'':' · supporting'} · ${esc(x.detail)}</div></td><td><b>${esc(x.actualTxt)}</b></td><td class="mp-sub">${esc(x.target)}</td><td>${x.rating!=null?`<span class="mp-rt mp-rt-${_mpRatingTone(x.rating)}">${x.rating}</span> `:''}${_mpChip(x.status[0],x.status[1])}</td><td class="mp-sub">${x.cov!=null?x.cov+'%':(x.n!=null?x.n+' rec.':'—')}</td><td>${sc.final?'':spark(x.key)}</td><td><a class="mp-link" onclick="dpSetTab('${DP_TAB[x.key]}')">${esc(DP_SRC[x.key]||'')} ›</a></td></tr>`).join(''); };
+  const table=`<div class="mp-c">${_dpHead('Department KPI Scorecard · '+esc(r.label),sc.final?`Final — frozen ${Utils.formatDate(sc.snap.finalizedAt)}`:'')}<div style="overflow-x:auto"><table class="mp-tbl dp-tbl"><thead><tr><th>KPI</th><th>Actual</th><th>Target</th><th>Status</th><th>Coverage</th><th>Trend (6 mo)</th><th>Source</th></tr></thead><tbody>${grp('strategic','Strategic KPIs')}${grp('operational','Operational Health KPIs')}</tbody></table></div>
+    <div class="mp-sub" style="margin-top:8px">Ratings use the department scale (target = 3). KPIs without data are left out of the rating; the coverage card shows how much of the weight is measured. Hover ⓘ for the formula and rating scale.</div>${_dpFinalizeHtml(r,sc)}</div>`;
+  const att=_dpAttention(sc,r);
+  const attBox=`<div class="mp-c">${_dpHead(`Management Attention ${att.length?`<span class="mp-count">${att.length}</span>`:''}`)}${att.length?att.slice(0,8).map(a=>`<div class="mp-att"${a.go?` onclick="${a.go}" style="cursor:pointer"`:''}><span class="mp-dot mp-dot-${a.sev==='neutral'?'accent':a.sev}">!</span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${esc(a.t)}</div><div class="mp-sub">${esc(a.d)}</div></div>${a.go?'<span class="mp-sub">›</span>':''}</div>`).join(''):'<div class="mp-sub">Nothing needs attention.</div>'}</div>`;
+  const pp=_dpPeople(_dpKind,_dpKey);
+  const people=`<div class="mp-c">${_dpHead('People Performance Snapshot','not part of the department score')}<div class="dp-pp"><div><b>${pp.scored}</b><span>Scored</span></div><div><b style="color:#16a34a">${pp.at}</b><span>Meets or above</span></div><div><b style="color:#d97706">${pp.need}</b><span>Needs attention</span></div><div><b style="color:var(--text3)">${pp.notYet}</b><span>Not yet scored</span></div></div><button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px" onclick="showView('team-performance')">View Team Performance ›</button></div>`;
+  const trend=`<div class="mp-c">${_dpHead('Department Rating Trend','monthly · from Oct 2026')}<div style="position:relative;height:170px"><canvas id="dp-trend"></canvas></div><div class="mp-note" id="dp-trend-note"></div></div>`;
+  return `${cards}<div class="dp-main"><div>${table}</div><div class="dp-side">${attBox}${people}${trend}</div></div>`;
+}
+function _dpDrawTrend(r){
+  try{ if(_dpChart){ _dpChart.destroy(); _dpChart=null; } const el=document.getElementById('dp-trend'); if(!el||typeof Chart==='undefined') return;
+    const keys=_scPeriods('month').slice(0,6).reverse(); const vals=keys.map(k=>{ const s=_dpScorecard(_dpRange('month',k)); return s.sufficient&&s.overall!=null?+s.overall.toFixed(2):null; });
+    const note=document.getElementById('dp-trend-note'); if(note) note.textContent=vals.filter(v=>v!=null).length<2?'The trend fills in as months close with enough KPI coverage (60% of weight).':'';
+    _dpChart=new Chart(el,{type:'line',data:{labels:keys.map(k=>new Date(Number(k.slice(0,4)),Number(k.slice(5,7))-1,1).toLocaleDateString('en-US',{month:'short'})),datasets:[{label:'Department rating',data:vals,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',fill:true,tension:.25,pointRadius:4,spanGaps:true},{label:'Target (3)',data:keys.map(()=>3),borderColor:'#94a3b8',borderDash:[5,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},scales:{y:{min:1,max:5,ticks:{stepSize:1}}}}});
+  }catch(e){ console.warn('dp trend',e); }
+}
+/* finalize / reopen (admin, quarter view, quarter ended) */
+function _dpFinalizeHtml(r,sc){
+  if(!Auth.isAdmin||r.kind!=='quarter') return '';
+  if(sc.final) return `<div style="margin-top:10px;display:flex;justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="dpReopen('${r.key}')">Re-open ${Utils.esc(r.label)}</button></div>`;
+  if(r.end>=_todayStr()) return `<div class="mp-sub" style="margin-top:10px;text-align:right">${Utils.esc(r.label)} can be finalized after ${Utils.formatDate(r.end)}.</div>`;
+  return `<div style="margin-top:10px;display:flex;justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="dpFinalize('${r.key}')">Finalize ${Utils.esc(r.label)}</button></div>`;
+}
+async function dpFinalize(qkey){
+  if(!Auth.isAdmin) return; const r=_dpRange('quarter',qkey); _dpCache=null; const sc=_dpScorecard(r,true); delete sc.snap;
+  confirm$('Finalize quarter',`Freeze the department results for <b>${Utils.esc(r.label)}</b>? Later data changes won't alter them unless the quarter is re-opened (logged).`,'Finalize',async()=>{
+    const ex=(Cache.data.department_kpi_snapshots||[]).find(x=>x.periodKey===qkey);
+    const patch={period_key:qkey,results:sc,status:'final',finalized_at:new Date().toISOString(),finalized_by:Auth.user.id,reopened_at:null,reopened_by:null,reopen_reason:null};
+    const q=ex?sb.from('department_kpi_snapshots').update(patch).eq('id',ex.id):sb.from('department_kpi_snapshots').insert(patch);
+    const {data,error}=await q.select().single(); if(error){ _surfaceDbError(error,'Finalize quarter'); return; }
+    const row=rowToCamel('department_kpi_snapshots',data), a=Cache.data.department_kpi_snapshots||(Cache.data.department_kpi_snapshots=[]); const i=a.findIndex(x=>x.id===row.id); if(i>=0) a[i]=row; else a.push(row);
+    await AuditLog.record('admin_change','Department Performance',row.id,`Finalized ${r.label}: rating ${sc.overall!=null&&sc.sufficient?sc.overall.toFixed(2):'insufficient data'}, coverage ${Math.round(sc.coverage)}%`);
+    toast(`${r.label} finalized.`,'success'); renderDepartmentPerformance(); });
+}
+function dpReopen(qkey){
+  if(!Auth.isAdmin) return; const ex=(Cache.data.department_kpi_snapshots||[]).find(x=>x.periodKey===qkey&&x.status==='final'); if(!ex) return;
+  const reason=prompt('Why is this quarter being re-opened? (recorded in the Audit Log)'); if(!reason||!reason.trim()) return;
+  (async()=>{ const {data,error}=await sb.from('department_kpi_snapshots').update({status:'reopened',reopened_at:new Date().toISOString(),reopened_by:Auth.user.id,reopen_reason:reason.trim()}).eq('id',ex.id).select().single();
+    if(error){ _surfaceDbError(error,'Re-open quarter'); return; } const row=rowToCamel('department_kpi_snapshots',data), a=Cache.data.department_kpi_snapshots; a[a.findIndex(x=>x.id===row.id)]=row;
+    await AuditLog.record('admin_change','Department Performance',row.id,`Re-opened ${qkey}: ${reason.trim()}`); _dpCache=null; toast('Quarter re-opened.','success'); renderDepartmentPerformance(); })();
+}
+/* ── tabs ── */
+const _dpCard=(label,val,sub)=>`<div class="mp-c"><div class="mp-ch"><span>${label}</span></div><div class="mp-big">${val}</div>${sub?`<div class="mp-sub">${sub}</div>`:''}</div>`;
+const _dpSoon=(title,phase,text)=>`<div class="mp-c dp-soon">${_dpHead(title,_mpChip(phase,'neutral'))}<div class="mp-sub">${text}</div></div>`;
+const _dpSessName=s=>s.trainingProgram||s.programInfoSnapshot?.title||'(untitled)';
+function _dpDeliveryHtml(r){
+  const esc=Utils.esc, x=_dpSdr(r), u=_dpUtil(r), d=_ovDelivery(r);
+  const byType={}; _ovDeliverySessions(r).forEach(s=>{ const k=s.deliveryType||'—'; byType[k]=byType[k]||{n:0,c:0}; byType[k].n++; if(_tdStatus(s)==='Completed') byType[k].c++; });
+  const sessRow=(s,counted)=>`<tr><td>${esc(s.code||'')}</td><td>${esc(_dpSessName(s))}</td><td>${Utils.formatDate(s.trainingDate)}</td><td>${esc(s.deliveryType||'')}</td><td>${s.status==='cancelled'?esc(_tdCancelLabel(s.cancelReason))+(s.cancelNote?` — ${esc(s.cancelNote)}`:''):'Delivered'}</td><td>${counted}</td></tr>`;
+  return `${_dpSoon('Committed Projects','Phase 3','Planned Program Delivery (18% of the department score) will be tracked here: approved commitments per quarter, insertions and deferrals with approval history, and delivery evidence linked to each Learning Program.')}
+  <div class="mp-r1">${_dpCard('Session Delivery Rate',_dpFmt('dp_sdr',x.v),`${x.delivered.length} delivered · ${x.missed.length} missed`)}${_dpCard('Training Hours',`${Math.round(d.deliv*10)/10} h`,`delivered of ${Math.round(d.sched*10)/10} h scheduled`)}${_dpCard('Trainer Utilisation',_dpFmt('dp_util',u.v),`${Math.round(u.hrs*10)/10} h of ${Math.round(u.cap)} h capacity · ${u.wd} working days`)}${_dpCard('Learners Reached',d.learners,`unique people in ${d.completed} completed session${d.completed!==1?'s':''}`)}</div>
+  <div class="mp-r2" style="grid-template-columns:1.4fr 1fr"><div class="mp-c">${_dpHead('Sessions counted for delivery · '+esc(r.label),'ILT and VILT')}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Code</th><th>Session</th><th>Date</th><th>Type</th><th>Outcome</th><th>In rate</th></tr></thead><tbody>${[...x.missed.map(s=>sessRow(s,'Missed')),...x.excluded.map(s=>sessRow(s,'Not counted')),...x.delivered.map(s=>sessRow(s,'Delivered'))].join('')||'<tr><td colspan="6" class="mp-sub">No sessions in this period.</td></tr>'}</tbody></table></div><div class="mp-note">${x.open.length} session${x.open.length!==1?'s':''} still upcoming or in progress are not counted yet. Cancelled sessions without a reason show "Reason not recorded" and are not counted.</div></div>
+  <div class="mp-c">${_dpHead('Trainer utilisation','target band 65–85%')}<table class="mp-tbl"><thead><tr><th>Facilitator</th><th>Alloc.</th><th>Hours</th><th>Capacity</th><th>Util.</th></tr></thead><tbody>${u.people.map(p=>`<tr><td>${esc(p.u.firstName+' '+p.u.lastName)}</td><td>${p.pct}%</td><td>${Math.round(p.hrs*10)/10}</td><td>${Math.round(p.cap*10)/10}</td><td>${p.util!=null?`<b style="color:${p.util>85?'#d97706':(p.util<65?'#64748b':'#16a34a')}">${Math.round(p.util)}%</b>`:'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="mp-sub">No facilitators.</td></tr>'}</tbody></table>
+  ${_dpHead('By delivery type')}<table class="mp-tbl"><thead><tr><th>Type</th><th>Sessions</th><th>Completed</th></tr></thead><tbody>${Object.entries(byType).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n}</td><td>${v.c}</td></tr>`).join('')||'<tr><td colspan="3" class="mp-sub">—</td></tr>'}</tbody></table></div></div>`;
+}
+function _dpOutcomesHtml(r){
+  const esc=Utils.esc, l=_dpL1(r), f=v=>v==null?'—':Number(v).toFixed(2);
+  const byProg={}; l.reps.forEach(x=>{ const k=x.s.programId?(LearningProgramDB.byId(x.s.programId)?.title||_dpSessName(x.s)):_dpSessName(x.s); (byProg[k]=byProg[k]||[]).push(x); });
+  const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
+  const progRows=Object.entries(byProg).map(([k,g])=>{ const live=g.filter(x=>x.s.deliveryType!=='Self-led'); const cs=_l1WAvg(g.map(x=>({s:x.s,rep:{content:{v:x.s.deliveryType==='Self-led'?(x.rep.content||{}).learnerSatisfaction:(x.rep.content||{}).csat,responses:(x.rep.content||{}).responses}}})),c=>num(c.v));
+    return `<tr><td>${esc(k)}</td><td>${g.length}</td><td>${g.reduce((a,x)=>a+(Number((x.rep.content||{}).responses)||0),0)||'—'}</td><td>${f(cs)}</td><td>${(v=>v==null?'—':(v>=0?'+':'')+Math.round(v))(_l1WAvg(g,c=>num(c.nps)))}</td><td>${f(_l1WAvg(live,c=>num(c.contentRating)))}</td><td>${f(_l1WAvg(live,c=>num(c.materialsRating)))}</td><td>${f(_l1WAvg(live,c=>num(c.facilitationRating)))}</td></tr>`; }).join('');
+  // supporting L2: average final score + pass rate (same rules as the trainer scorecard)
+  const sc=[]; let assessed=0,passed=0; TrSessionDB.all().filter(s=>_tdStatus(s)==='Completed'&&_scIn(_tdSessionEndDate(s),r)).forEach(s=>{ const g=_tdaGetAssessments(s).filter(a=>!_lpL2IsRating(a)&&a.post); if(!g.length) return; const ar=SessionParticipantsDB.all().filter(x=>x.sessionId===s.id&&_tdaIsAssessed(x,s));
+    ar.forEach(x=>g.forEach(a=>{ const v=_tdaGetNamedScore(x,'post',a.name); if(v!=null&&!isNaN(Number(v))) sc.push(Number(v)); })); const gr=g.filter(a=>a.passingScore!=null); if(gr.length&&ar.length){ assessed+=ar.length; passed+=ar.filter(x=>gr.every(a=>{ const v=_tdaGetNamedScore(x,'post',a.name); return v!=null&&Number(v)>=a.passingScore; })).length; } });
+  const l3done=TrSessionDB.all().filter(s=>s.l3Required&&s.l3CompletedAt&&_scIn(_mnlDateOf(s.l3CompletedAt),r)).length, l3over=TrSessionDB.all().filter(s=>s.l3Required&&!s.l3CompletedAt&&s.status!=='cancelled'&&_tdl3Status(s)==='overdue').length;
+  return `<div class="dp-sec">L1 · Learner Experience</div><div class="mp-r1" style="grid-template-columns:repeat(5,minmax(0,1fr))">${_dpCard('Learner Satisfaction (CSAT)',f(l.csat)+'<span> / 5</span>',`target ≥ 4.2 · ${l.csatN} sessions`)}${_dpCard('NPS',l.nps==null?'—':(l.nps>=0?'+':'')+Math.round(l.nps),'target ≥ +85')}${_dpCard('Learning Content',f(l.content),'supporting · 1–5')}${_dpCard('Learning Material',f(l.material),'supporting · 1–5')}${_dpCard('Facilitator',f(l.facil),'supporting · 1–5')}</div>
+  <div class="mp-c">${_dpHead('L1 deep dive by program · '+esc(r.label),`${l.reps.length} session${l.reps.length!==1?'s':''} with reports · ${l.responses} responses · response-weighted`)}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Program</th><th>Sessions</th><th>Responses</th><th>CSAT</th><th>NPS</th><th>Content</th><th>Material</th><th>Facilitator</th></tr></thead><tbody>${progRows||'<tr><td colspan="8" class="mp-sub">No submitted training reports for sessions that ended in this period.</td></tr>'}</tbody></table></div></div>
+  <div class="dp-sec">L2 · Knowledge Gain</div><div class="mp-r2" style="grid-template-columns:2fr 1fr 1fr">${_dpSoon('Normalised Knowledge Gain','Phase 2','Matched learner pre/post pairs per assessment: (post − pre) ÷ (100 − pre). Program statuses Evaluated · Partial Data · Not Yet Evaluated · Not Applicable, with pairs used and excluded.')}${_dpCard('Average final score',sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1)+'%':'—',`supporting · ${sc.length} scores`)}${_dpCard('Pass rate',assessed?Math.round(passed/assessed*100)+'%':'—',`supporting · ${assessed} learners assessed`)}</div>
+  <div class="dp-sec">L3 · Behavioural Effectiveness</div><div class="mp-r2" style="grid-template-columns:2fr 1fr 1fr">${_dpSoon('Behavioural Effectiveness','Phase 5','Learner-level L3 results against each program’s behavioural criteria, with L3 coverage beside the rate. Until then this KPI shows Not connected rather than a session-level figure.')}${_dpCard('L3 follow-ups completed',l3done,'supporting · in this period')}${_dpCard('L3 overdue',l3over,'supporting · open now')}</div>`;
+}
+function _dpQualityHtml(r){
+  const esc=Utils.esc, q=_dpQa(r), s=_dpSla(r), nm=id=>{ const u=DB.byId(id); return u?u.firstName+' '+u.lastName:'—'; };
+  const disp=t=>{ const g=q.scored.filter(a=>a.type===t); return ['Endorse','Revise & Resubmit','Major Revision'].map(d=>g.filter(a=>a.sc.disposition===d).length); };
+  const [ie,ir,im]=disp('ID'), [ce,cr,cm]=disp('CD');
+  return `<div class="mp-r1" style="grid-template-columns:repeat(3,minmax(0,1fr))">${_dpCard('QA Endorse Rate',_dpFmt('dp_qae',q.qae),`${q.endorse} of ${q.scored.length} acknowledged reviews · target ≥ 80%`)}${_dpCard('On-time Deliverables',_dpFmt('dp_otd',q.otd),`${q.timed.length-q.late.length} of ${q.timed.length} on time · target ≥ 90%`)}${_dpCard('Training Report SLA',_dpFmt('dp_sla',s.v),`${s.ok} of ${s.counted.length} within 2 business days${s.avgDays!=null?` · avg ${s.avgDays.toFixed(1)} days`:''}`)}</div>
+  <div class="mp-r2" style="grid-template-columns:1fr 1fr"><div class="mp-c">${_dpHead('QA dispositions · '+esc(r.label),'acknowledged reviews only')}<table class="mp-tbl"><thead><tr><th></th><th>Endorse</th><th>Revise &amp; Resubmit</th><th>Major Revision</th></tr></thead><tbody><tr><td>Instructional Design</td><td>${ie}</td><td>${ir}</td><td>${im}</td></tr><tr><td>Content Development</td><td>${ce}</td><td>${cr}</td><td>${cm}</td></tr></tbody></table>
+    ${_dpHead('Late deliverables')}<table class="mp-tbl"><thead><tr><th>Review</th><th>Deliverable</th><th>Owner</th><th>Target</th><th>Actual</th></tr></thead><tbody>${q.late.map(a=>`<tr><td>${esc(a.x.code||'')}</td><td>${esc(a.x.projectTitle||'')}</td><td>${esc(nm(a.person))}</td><td>${Utils.formatDate(a.x.targetDate)}</td><td>${Utils.formatDate(a.x.actualDate)}</td></tr>`).join('')||'<tr><td colspan="5" class="mp-sub">None late.</td></tr>'}</tbody></table></div>
+  <div class="mp-c">${_dpHead('Training reports · '+esc(r.label))}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Session</th><th>Ended</th><th>Trainer</th><th>Status</th><th>Bus. days</th></tr></thead><tbody>${s.rows.sort((a,b)=>(a.state==='On time')-(b.state==='On time')).map(x=>`<tr><td>${esc(x.s.code||'')} ${esc(_dpSessName(x.s))}</td><td>${Utils.formatDate(x.end)}</td><td>${esc(nm(x.s.trainerId))}</td><td>${_mpChip(x.state,x.state==='On time'?'success':(x.state==='Due'?'neutral':'danger'))}</td><td>${x.bd}</td></tr>`).join('')||'<tr><td colspan="5" class="mp-sub">No reports due in this period.</td></tr>'}</tbody></table></div></div></div>`;
+}
+function _dpCapabilityHtml(r){
+  const esc=Utils.esc, pp=_dpPeople(_dpKind,_dpKey), q=r.quarter, qr=_scPeriodRange('quarter',q);
+  const pdp=pp.list.map(({u})=>{ const items=_scPdps(u.id).filter(x=>x.quarter===q); const ver=items.filter(x=>x.status==='verified').length; return {u,items,ver,sub:items.filter(x=>x.status==='submitted').length}; });
+  const withV=pdp.filter(x=>x.ver>0).length;
+  const dist=SC_BANDS.map(b=>[b[1],pp.list.filter(x=>x.sc.overall!=null&&_scBand(x.sc.overall).label===b[1]).length]);
+  return `${_dpSoon('Coaching Certification','Phase 4','Certification Tracker for coaching (and later other) certification cohorts: candidates (LEAP users or not), requirements such as practicum logs and recorded coaching, final decisions and dates. Pass rate = certified ÷ candidates with a final decision.')}
+  <div class="mp-r2" style="grid-template-columns:1fr 1fr"><div class="mp-c">${_dpHead('PDP compliance · Q'+q.slice(6)+' '+q.slice(0,4),'supporting')}<div class="mp-big">${withV} of ${pdp.length}<span> with a verified PDP</span></div><table class="mp-tbl" style="margin-top:8px"><thead><tr><th>Person</th><th>PDPs</th><th>Submitted</th><th>Verified</th></tr></thead><tbody>${pdp.map(x=>`<tr><td>${esc(x.u.firstName+' '+x.u.lastName)}</td><td>${x.items.length}</td><td>${x.sub}</td><td>${x.ver?_mpChip(String(x.ver),'success'):'—'}</td></tr>`).join('')}</tbody></table><div class="mp-note">Due by ${Utils.formatDate(qr.end)}. PDP is scored on each person's own scorecard, not here.</div></div>
+  <div class="mp-c">${_dpHead('People performance · '+esc(r.label),'not part of the department score')}<table class="mp-tbl"><tbody>${dist.map(d=>`<tr><td>${esc(d[0])}</td><td style="text-align:right"><b>${d[1]}</b></td></tr>`).join('')}<tr><td>Not yet scored</td><td style="text-align:right"><b>${pp.notYet}</b></td></tr></tbody></table><button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px" onclick="showView('team-performance')">View Team Performance ›</button></div></div>`;
+}
+/* export: Excel of the scorecard (+ print for PDF) */
+function dpExport(){
+  const r=_dpRange(_dpKind,_dpKey), sc=_dpScorecard(r);
+  try{ const rows=sc.rows.map(x=>({Tier:x.tier,Dimension:x.dim,KPI:x.name,Weight:x.w,Actual:x.actualTxt,Target:x.target,Rating:x.rating??'',Status:x.status[0],Detail:x.detail}));
+    rows.push({}); rows.push({KPI:'Department rating',Actual:sc.sufficient&&sc.overall!=null?sc.overall.toFixed(2):'Insufficient data',Detail:`Coverage ${Math.round(sc.coverage)}% · ${sc.final?'Final':'Provisional'}`});
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Department Scorecard'); XLSX.writeFile(wb,`Department_Performance_${r.key}.xlsx`);
+  }catch(e){ toast('Export failed: '+e.message,'error'); }
 }
 
 /* ══ v5.15a (2026-10-30, per Sandra's mockup): TEAM PERFORMANCE — leaders' view ══════════════
