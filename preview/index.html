@@ -12415,19 +12415,26 @@ function _tdSessionEndDate(s){
 // multi-day sessions need a manual reopen/re-complete (or a one-off data fix) to pick up the
 // corrected total, which is a separate remediation step, not something code alone can retroactively
 // apply to already-written snapshot columns.
+// v5.15a (2026-10-30, per Sandra): a Date RANGE counts only working days for hours -- weekends and
+// PH holidays inside the range are skipped. Sessions that really run on weekends use "Specific dates"
+// (or program part dates), which are counted exactly as picked. Day lists for attendance are unchanged.
+function _tdIsRangeSession(s){ return !(s.programLinkOrigin==='program_selection'&&Array.isArray(s.deliveryPartDates)&&s.deliveryPartDates.length)&&s.dateMode!=='specific'&&!!s.endDate&&s.endDate!==s.trainingDate; }
+function _tdIsWorkDay(d){ const dow=new Date(d+'T00:00:00').getDay(); return dow!==0&&dow!==6&&!(typeof PhHolidaysDB!=='undefined'&&PhHolidaysDB.isHoliday(d)); }
+function _tdWorkDayList(s){ const all=_tdSessionDayList(s); if(!_tdIsRangeSession(s)) return all; const w=all.filter(_tdIsWorkDay); return w.length?w:all; }
 function _tdSessionTotalHours(s){
   const perDay=_tdHoursPerDay(s);
-  const days=_tdSessionDayList(s).length;
+  const days=_tdWorkDayList(s).length;
   return s.durationBasis==='total'?(Number(s.durationHours)||0):perDay*days;
 }
 function _tdHoursPerDay(s){
   const hours=Number(s.durationHours)||0;
-  return s.durationBasis==='total'?hours/Math.max(1,_tdSessionDayList(s).length):hours;
+  return s.durationBasis==='total'?hours/Math.max(1,_tdWorkDayList(s).length):hours;
 }
 function _tdHoursForDate(s,date){
   if(s.durationBasis==='total'&&Array.isArray(s.deliveryPlan)&&Array.isArray(s.deliveryPartDates)&&s.deliveryPlan.length===s.deliveryPartDates.length&&s.deliveryPlan.length){
     return s.deliveryPlan.reduce((sum,part,i)=>sum+(s.deliveryPartDates[i]?.date===date?Number(part.minutes||0)/60:0),0);
   }
+  if(_tdIsRangeSession(s)&&!_tdWorkDayList(s).includes(date)) return 0; // v5.15a: weekend/holiday inside a range
   return _tdHoursPerDay(s);
 }
 function _tdDurationLabel(s){
