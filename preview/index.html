@@ -1507,6 +1507,7 @@
         <div class="nav-sec">Performance</div>
         <div class="nav-item" data-view="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> L&amp;D Performance</div>
         <div class="nav-item" data-view="my-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span> My Performance</div>
+        <div class="nav-item js-team-view hidden" data-view="team-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="17" cy="9.5" r="2.3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.5 14.6c2.6-.4 4.9.9 5.7 3.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Team Performance</div>
         <div class="nav-sec js-qa-sec hidden">Quality Assurance</div>
         <div class="nav-item js-id-qa hidden" data-view="id-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Instructional Design</div>
         <div class="nav-item js-content-qa hidden" data-view="content-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M10 8.3l6 3.7-6 3.7V8.3Z" fill="currentColor" stroke="none"/></svg></span> Content Development</div>
@@ -1607,6 +1608,18 @@
             .mp-team{display:flex;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px}.mp-team:hover{background:var(--surface-1,#f8fafc)}
           </style>
           <div id="mp-root"></div>
+        </div>
+
+        <div id="view-team-performance" class="hidden">
+          <!-- v5.15a (2026-10-30, per Sandra): leaders' Team Performance view -->
+          <style>
+            #view-team-performance{--mp-neutral-bg:#f1f5f9;--mp-neutral-fg:#475569;--mp-success-bg:#dcfce7;--mp-success-fg:#15803d;--mp-accent-bg:#dbeafe;--mp-accent-fg:#1d4ed8;--mp-warning-bg:#fef3c7;--mp-warning-fg:#b45309;--mp-danger-bg:#fee2e2;--mp-danger-fg:#b91c1c}
+            .tp-bar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin-bottom:10px}.tp-bar span{color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;min-width:28px}
+            .tp-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px}.tp-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+            .tp-ava{width:28px;height:28px;border-radius:50%;background:#e0e7ff;color:#3730a3;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+            .tp-qas{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tp-qa{display:flex;gap:8px;align-items:flex-start;text-align:left;border:1px solid var(--border);background:#fff;border-radius:8px;padding:10px;font-size:12.5px;cursor:pointer}.tp-qa:hover{background:#f1f5f9}
+          </style>
+          <div id="tp-root"></div>
         </div>
 
         <div id="view-dashboard" class="hidden">
@@ -4328,7 +4341,7 @@ const Auth = {
 const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
-  canView(v){ if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
+  canView(v){ if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user)); if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
   isSupervisor(u){
     if(!u) return false;
     return DB.all().some(x=>x.isActive&&x.supervisorId===u.id);
@@ -4763,11 +4776,12 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'L&D Performance Dashboard','my-performance':'My Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={dashboard:'L&D Performance Dashboard','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   dashboard:'Overall performance, quality, effectiveness, and operational health across L&D',
   'my-performance':'Your scorecard, development plan and what needs your action',
+  'team-performance':'Your team\'s scorecards, development plans and what needs attention',
   evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
   'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment',
@@ -4804,6 +4818,7 @@ function showView(id){
   document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_ovFiltersHtml()+_dashNewEvalBtnHtml()):(id==='learning-programs'?_lpTopbarHtml():'');
   if(id==='dashboard')   renderDashboard();
   if(id==='my-performance') renderMyPerformance();
+  if(id==='team-performance') renderTeamPerformance();
   if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
   if(id==='evaluations') renderEvaluations();
   if(id==='reports')     renderReports();
@@ -4902,7 +4917,7 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['dashboard','my-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+    const validViews=['dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     showView(view);
     if(view==='evaluations'){
@@ -4946,6 +4961,7 @@ function setupNav(){
   document.querySelectorAll('.js-qa-sec').forEach(el=>el.classList.toggle('hidden',!(_idqaAccess||_cqaAccess||_trainerAccess||Auth.canViewReports)));
   document.querySelectorAll('.js-cost-manage').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-settings')));
   document.querySelectorAll('.js-cost-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-analysis')));
+  document.querySelectorAll('.js-team-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('team-performance'))); // v5.15a
   const name=`${u.firstName} ${u.lastName}`;
   const ava=document.getElementById('sb-ava'); ava.textContent=Utils.initials(name); ava.setAttribute('style',Utils.avatarBg(u.isAdmin));
   document.getElementById('sb-name').textContent=name;
@@ -24835,6 +24851,92 @@ function renderMyPerformance(){
       _mpChart=new Chart(el,{type:'line',data:{labels,datasets:[{label:'Overall score',data:tVals,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',fill:true,tension:.25,pointRadius:4,spanGaps:true},{label:'Target (rating 3)',data:labels.map(()=>3),borderColor:'#94a3b8',borderDash:[5,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},scales:{y:{min:0,max:5,ticks:{stepSize:1}}}}}); } }catch(e){ console.warn('mp chart',e); }
 }
 
+/* ══ v5.15a (2026-10-30, per Sandra's mockup): TEAM PERFORMANCE — leaders' view ══════════════
+   For anyone with people under them (reporting line) and admins. Same scorecard engine as My
+   Performance; the team = everyone below the leader with a scorecard role. */
+let _tpAs=null, _tpKind='month', _tpKey=null, _tpScope='all', _tpQ='', _tpCharts={};
+function _tpViewer(){ return (Auth.isAdmin&&_tpAs)?DB.byId(_tpAs):Auth.user; }
+function tpSet(f,v){ if(f==='as'){ _tpAs=v||null; _tpScope='all'; } if(f==='kind'){ _tpKind=v; _tpKey=null; } if(f==='key') _tpKey=v; if(f==='scope') _tpScope=v; if(f==='q'){ _tpQ=v; } renderTeamPerformance(f==='q'); }
+function tpOpenPerson(pid){ if(Auth.isAdmin){ _mpAs=_tpAs; } _mpPerson=pid; _mpKind=_tpKind; _mpKey=_tpKey; showView('my-performance'); }
+function _tpAlerts(pid,sc){
+  const out={below:0,pending:0,items:[]};
+  (sc.rows||[]).forEach(k=>{ if(k.rating!=null&&k.rating<3){ out.below++; out.items.push(`${k.name} below target`); } });
+  const ack=[...EvalDB.all().filter(x=>x.trainerId===pid&&x.status==='pending_ack'),...IDQADB.all().filter(x=>x.designerId===pid&&x.status==='pending_ack'),...ContentQADB.all().filter(x=>x.authorId===pid&&x.status==='pending_ack')].length;
+  if(ack){ out.pending++; out.items.push(`${ack} item${ack!==1?'s':''} awaiting acknowledgement`); }
+  const curQ=_scQuarterOf(_todayStr());
+  if(!_scPdps(pid).some(x=>x.quarter===curQ)){ out.pending++; out.items.push(`No PDP for Q${curQ.slice(6)}`); out.noPdp=true; }
+  const sub=_scPdps(pid).filter(x=>x.status==='submitted').length; if(sub) out.items.push(`${sub} PDP${sub!==1?'s':''} to verify`);
+  return out;
+}
+function _tpSpark(vals){
+  const v=vals.map(x=>x==null?null:x); const pts=v.map((x,i)=>x==null?null:[i,x]).filter(Boolean);
+  if(pts.length<2) return '<span class="mp-sub">—</span>';
+  const W=70,H=22,n=v.length-1||1; const P=pts.map(([i,x])=>`${(i/n*W).toFixed(1)},${(H-((x-1)/4)*H).toFixed(1)}`).join(' ');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline points="${P}" fill="none" stroke="#2563eb" stroke-width="1.6"/></svg>`;
+}
+function renderTeamPerformance(keepFocus){
+  const root=document.getElementById('tp-root'); if(!root) return;
+  const esc=Utils.esc, viewer=_tpViewer(); if(!viewer){ root.innerHTML=''; return; }
+  const name=u=>u?`${u.firstName} ${u.lastName}`:'—', ini=u=>((u?.firstName||'?')[0]+(u?.lastName||'')[0]).toUpperCase();
+  // scope options: everyone under the viewer (admin without preview-as = whole L&D), direct reports, or one sub-team
+  const base=(Auth.isAdmin&&!_tpAs)?DB.all().filter(u=>u.isActive!==false&&u.id!==viewer.id):_scDownline(viewer.id);
+  const leaders=base.filter(u=>DB.all().some(x=>x.isActive!==false&&x.supervisorId===u.id));
+  let pool=base;
+  if(_tpScope==='direct') pool=base.filter(u=>u.supervisorId===viewer.id);
+  else if(_tpScope.startsWith('lead:')){ const lid=_tpScope.slice(5); pool=_scDownline(lid); }
+  const team=pool.filter(u=>_scRoleOf(u)).sort((a,b)=>name(a).localeCompare(name(b)));
+  const periods=_scPeriods(_tpKind); if(!_tpKey||!periods.includes(_tpKey)) _tpKey=periods[0];
+  const asBar=Auth.isAdmin?`<div class="mp-as"><label>Preview as</label><select onchange="tpSet('as',this.value)"><option value="">Myself (admin)</option>${DB.all().filter(u=>u.isActive!==false&&u.id!==Auth.user.id&&Perms.isSupervisor(u)).map(u=>`<option value="${u.id}"${_tpAs===u.id?' selected':''}>${esc(name(u))}</option>`).join('')}</select>${_tpAs?'<span>View-only — you see exactly what this leader sees.</span>':''}</div>`:'';
+  const scopeSel=`<select class="mp-sel" onchange="tpSet('scope',this.value)"><option value="all"${_tpScope==='all'?' selected':''}>${(Auth.isAdmin&&!_tpAs)?'All L&D':'My team'} (${base.filter(u=>_scRoleOf(u)).length})</option><option value="direct"${_tpScope==='direct'?' selected':''}>Direct reports (${base.filter(u=>u.supervisorId===viewer.id&&_scRoleOf(u)).length})</option>${leaders.map(l=>`<option value="lead:${l.id}"${_tpScope==='lead:'+l.id?' selected':''}>${esc(name(l))}'s team (${_scDownline(l.id).filter(u=>_scRoleOf(u)).length})</option>`).join('')}</select>`;
+  const head=`${asBar}<div class="mp-head"><div><div class="mp-title" style="font-size:18px">Team Performance</div><div class="mp-sub" style="font-size:13px">Monitor your team's performance, spot what needs attention, and act.${_tpAs?' · Viewing as '+esc(name(viewer)):''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${scopeSel}<div class="mp-seg">${['month','quarter'].map(k=>`<button class="${_tpKind===k?'on':''}" onclick="tpSet('kind','${k}')">${k==='month'?'Month':'Quarter'}</button>`).join('')}</div><select class="mp-sel" onchange="tpSet('key',this.value)">${periods.map(p=>`<option value="${p}"${p===_tpKey?' selected':''}>${esc(_scPeriodRange(_tpKind,p).label)}</option>`).join('')}</select></div></div>`;
+  if(!team.length){ root.innerHTML=head+`<div class="mp-c" style="text-align:center;color:var(--text3);padding:28px">No one with a scorecard reports to ${_tpAs?esc(name(viewer)):'you'} in this view.</div>`; return; }
+  /* compute */
+  const rows=team.map(u=>{ const sc=_scScorecard(u.id,_tpKind,_tpKey); const tw=(sc.rows||[]).reduce((a,b)=>a+b.w,0); return {u,sc,cov:tw?Math.round(sc.weightMeasured/tw*100):0,al:_tpAlerts(u.id,sc)}; });
+  const scored=rows.filter(x=>x.sc.overall!=null);
+  const avg=scored.length?scored.reduce((a,b)=>a+b.sc.overall,0)/scored.length:null;
+  const prevKey=periods[periods.indexOf(_tpKey)+1];
+  const prevAvg=(()=>{ if(!prevKey) return null; const p=team.map(u=>_scScorecard(u.id,_tpKind,prevKey).overall).filter(v=>v!=null); return p.length?p.reduce((a,b)=>a+b,0)/p.length:null; })();
+  const band=_scBand(avg);
+  const kpiRated=rows.reduce((a,b)=>a+(b.sc.measured||0),0), kpiTotal=rows.reduce((a,b)=>a+(b.sc.total||0),0);
+  const cov=rows.length?Math.round(rows.reduce((a,b)=>a+b.cov,0)/rows.length):0;
+  const dist=SC_BANDS.map(b=>({label:b[1],tone:b[2],n:scored.filter(x=>_scBand(x.sc.overall).label===b[1]).length}));
+  const needEmp=rows.filter(x=>x.al.below||x.al.pending);
+  const withBelow=rows.filter(x=>x.al.below).length, withPending=rows.filter(x=>x.al.pending).length;
+  const donut=(p,color)=>{ const c=2*Math.PI*30,o=c*(1-p/100); return `<svg width="76" height="76" viewBox="0 0 76 76"><circle cx="38" cy="38" r="30" fill="none" stroke="#e2e8f0" stroke-width="8"/><circle cx="38" cy="38" r="30" fill="none" stroke="${color}" stroke-width="8" stroke-dasharray="${c}" stroke-dashoffset="${o}" stroke-linecap="round" transform="rotate(-90 38 38)"/><text x="38" y="43" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor">${p}%</text></svg>`; };
+  const distColors={success:'#22c55e',accent:'#3b82f6',warning:'#f59e0b',danger:'#ef4444'};
+  const distBar=scored.length?`<div class="tp-bar">${dist.filter(d=>d.n).map((d,i)=>`<span style="flex:${d.n};background:${['#22c55e','#3b82f6','#facc15','#f59e0b','#ef4444'][SC_BANDS.findIndex(b=>b[1]===d.label)]}">${Math.round(d.n/scored.length*100)}%</span>`).join('')}</div>`:'<div class="mp-sub">No scores yet.</div>';
+  const row1=`<div class="mp-r1">
+    <div class="mp-c"><div class="mp-ch"><span>Team Average Score</span></div><div class="mp-big">${avg!=null?avg.toFixed(2):'—'}<span> / 5</span></div>${band?_mpChip(band.label,band.tone):_mpChip('Not rated yet')}<div class="mp-sub" style="margin-top:8px">${avg!=null&&prevAvg!=null?`${avg-prevAvg>=0?'↑':'↓'} ${Math.abs(avg-prevAvg).toFixed(2)} vs previous ${_tpKind}`:'First scorecard period'} · ${scored.length} of ${rows.length} people scored</div></div>
+    <div class="mp-c"><div class="mp-ch"><span>Team KPI Completion</span></div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div class="mp-big">${cov}%</div><div class="mp-sub">${kpiRated} of ${kpiTotal} KPIs rated</div><div class="mp-sub" style="margin-top:8px"><span style="color:#16a34a">●</span> Rated (${cov}%)<br><span style="color:#cbd5e1">●</span> Not yet rated (${100-cov}%)</div></div>${donut(cov,'#16a34a')}</div></div>
+    <div class="mp-c"><div class="mp-ch"><span>Team Distribution</span></div>${distBar}<div class="tp-legend">${dist.slice(0,4).map((d,i)=>`<span><i style="background:${['#22c55e','#3b82f6','#facc15','#f59e0b'][i]}"></i>${esc(d.label)} (${d.n})</span>`).join('')}</div></div>
+    <div class="mp-c"><div class="mp-ch"><span>Team Needs Attention</span></div><div class="mp-big">${needEmp.length}<span> employee${needEmp.length!==1?'s':''}</span></div>${withBelow?`<div class="mp-hl"><span class="mp-dot mp-dot-danger">!</span><span>${withBelow} with a KPI below target</span></div>`:''}${withPending?`<div class="mp-hl"><span class="mp-dot mp-dot-warning">!</span><span>${withPending} with pending requirements</span></div>`:''}${needEmp.length?'':'<div class="mp-sub">Everyone is on track.</div>'}</div></div>`;
+  /* table */
+  const trendKeys=_scPeriods('month').slice(0,6).reverse();
+  const filtered=rows.filter(x=>!_tpQ||name(x.u).toLowerCase().includes(_tpQ.toLowerCase()));
+  const table=`<div class="mp-c"><div class="mp-ch" style="margin-bottom:8px"><span style="font-size:14px">Team Scorecard · ${esc(_scPeriodRange(_tpKind,_tpKey).label)}</span><input id="tp-q" class="mp-sel" style="width:200px" placeholder="Search team members…" value="${esc(_tpQ)}" oninput="tpSet('q',this.value)"></div>
+    <table class="mp-tbl"><thead><tr><th>Employee</th><th>Role</th><th>Overall score</th><th>KPI completion</th><th>Key alerts</th><th>Trend</th><th></th></tr></thead><tbody>${filtered.map(x=>{ const b=_scBand(x.sc.overall); const n=x.al.items.length; const spark=_tpSpark(trendKeys.map(k=>_scScorecard(x.u.id,'month',k).overall));
+      return `<tr><td><div style="display:flex;gap:8px;align-items:center"><span class="tp-ava">${esc(ini(x.u))}</span><b>${esc(name(x.u))}</b></div></td><td class="mp-sub">${esc(SC_ROLES[_scRoleOf(x.u)].label.replace('Learning & Development ',''))}</td><td><div style="display:flex;gap:6px;align-items:center"><b>${x.sc.overall!=null?x.sc.overall.toFixed(2):'—'}</b>${b?_mpChip(b.label,b.tone):''}</div></td><td>${x.sc.measured} / ${x.sc.total} (${x.cov}%)</td><td title="${esc(x.al.items.join('\n'))}">${n?`<span class="mp-dot ${x.al.below?'mp-dot-danger':'mp-dot-warning'}">!</span> ${n}`:'—'}</td><td>${spark}</td><td><button class="btn btn-secondary btn-xs" onclick="tpOpenPerson('${x.u.id}')">View</button></td></tr>`; }).join('')||'<tr><td colspan="7" class="mp-sub">No one matches.</td></tr>'}</tbody></table></div>`;
+  /* trend charts */
+  const trendAvg=trendKeys.map(k=>{ const v=team.map(u=>_scScorecard(u.id,'month',k).overall).filter(v=>v!=null); return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2):null; });
+  const trendCov=trendKeys.map(k=>{ const v=team.map(u=>{ const s=_scScorecard(u.id,'month',k); const tw=(s.rows||[]).reduce((a,b)=>a+b.w,0); return tw?s.weightMeasured/tw*100:null; }).filter(v=>v!=null); return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null; });
+  const charts=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Performance Trend</span><span class="mp-sub">Team average · last 6 months</span></div><div style="position:relative;height:160px"><canvas id="tp-trend"></canvas></div><div class="mp-ch" style="margin-top:12px"><span style="font-size:14px">KPI Completion Trend</span><span class="mp-sub">% of KPI weight rated</span></div><div style="position:relative;height:130px"><canvas id="tp-cov"></canvas></div>${trendKeys.length<2?`<div class="mp-note">Trends fill in as months are completed. Scorecards started ${Utils.formatDate(SC_EFFECTIVE_FROM)}.</div>`:''}</div>`;
+  /* bottom */
+  const attList=needEmp.filter(x=>!x.al.noPdp||x.al.below||x.al.items.length>1).slice(0,5).map(x=>`<div class="mp-att" style="cursor:pointer" onclick="tpOpenPerson('${x.u.id}')"><span class="tp-ava">${esc(ini(x.u))}</span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${esc(name(x.u))}</div><div class="mp-sub">${x.sc.overall!=null?'Score '+x.sc.overall.toFixed(2)+' · ':''}${esc(x.al.items.filter(t=>!t.startsWith('No PDP')).join(' · ')||x.al.items.join(' · '))}</div></div><span class="mp-sub">›</span></div>`).join('');
+  const noPdp=rows.filter(x=>x.al.noPdp).length;
+  const attBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Team Needs Attention ${needEmp.length?`<span class="mp-count">${needEmp.length}</span>`:''}</span></div>${attList}${noPdp?`<div class="mp-att">${_tdIconSvg('users','#475569',18)}<div style="flex:1"><div style="font-weight:600;font-size:13px">${noPdp} employee${noPdp!==1?'s':''} with no PDP yet</div><div class="mp-sub">Create and submit a development plan for Q${_scQuarterOf(_todayStr()).slice(6)}.</div></div></div>`:''}${(!attList&&!noPdp)?'<div class="mp-sub">Nothing needs attention.</div>':''}</div>`;
+  const curQ=_scQuarterOf(_todayStr()); const withPdp=rows.filter(x=>_scPdps(x.u.id).some(p=>p.quarter===curQ)).length; const verified=rows.filter(x=>_scPdps(x.u.id).some(p=>p.quarter===curQ&&p.status==='verified')).length; const toVerify=rows.reduce((a,x)=>a+_scPdps(x.u.id).filter(p=>p.status==='submitted').length,0);
+  const pdpPct=rows.length?Math.round(withPdp/rows.length*100):0;
+  const pdpBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Development Plan Progress · Q${curQ.slice(6)}</span></div><div style="display:flex;gap:16px;align-items:center">${donut(pdpPct,'#16a34a')}<div><div class="mp-big" style="font-size:20px">${withPdp} of ${rows.length}</div><div class="mp-sub">employees with a PDP</div><div class="mp-sub" style="margin-top:6px"><span style="color:#16a34a">●</span> With PDP (${withPdp}) · <span style="color:#cbd5e1">●</span> No PDP (${rows.length-withPdp})<br>${verified} verified · ${toVerify} waiting for verification</div></div></div></div>`;
+  const qa=(icon,t,d,on)=>`<button class="tp-qa" onclick="${on}">${_tdIconSvg(icon,'#2563eb',18)}<span><b>${t}</b><br><span class="mp-sub">${d}</span></span></button>`;
+  const quick=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quick Actions</span></div><div class="tp-qas">${qa('list','View team scorecards','Detailed KPI breakdown',"document.getElementById('tp-q')?.scrollIntoView({behavior:'smooth',block:'center'})")}${qa('users','Manage team PDP','Verify and track plans',`tpOpenPerson('${(rows.find(x=>_scPdps(x.u.id).some(p=>p.status==='submitted'))||rows[0]).u.id}')`)}${qa('award','View evaluations','Training, ID and CD QA',"showView(Auth.canViewReports?'reports':'evaluations')")}${qa('calendar','Open Training Calendar','Upcoming sessions',"showView('training-delivery')")}</div></div>`;
+  root.innerHTML=`${head}${row1}<div class="mp-r2">${table}${charts}</div><div class="mp-r3">${attBox}${pdpBox}${quick}</div>`;
+  if(keepFocus){ const q=document.getElementById('tp-q'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }
+  try{ Object.values(_tpCharts).forEach(c=>c&&c.destroy()); _tpCharts={}; const labels=trendKeys.map(k=>new Date(Number(k.slice(0,4)),Number(k.slice(5,7))-1,1).toLocaleDateString('en-US',{month:'short'}));
+    if(typeof Chart!=='undefined'){ const t=document.getElementById('tp-trend'), c=document.getElementById('tp-cov');
+      if(t) _tpCharts.t=new Chart(t,{type:'line',data:{labels,datasets:[{label:'Team average',data:trendAvg,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',fill:true,tension:.25,pointRadius:4,spanGaps:true},{label:'Target (rating 3)',data:labels.map(()=>3),borderColor:'#94a3b8',borderDash:[5,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},scales:{y:{min:0,max:5,ticks:{stepSize:1}}}}});
+      if(c) _tpCharts.c=new Chart(c,{type:'bar',data:{labels,datasets:[{label:'% rated',data:trendCov,backgroundColor:'#4ade80',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}}); } }catch(e){ console.warn('tp charts',e); }
+}
+
 /* ── PDP actions (owner / supervisor) ── */
 // "Preview as" is look-only: an admin sees exactly what that person sees but can't act as them.
 function _mpRO(){ if(_mpAs){ toast('Preview as is view-only. Switch back to "Myself" to make changes.','info'); return true; } return false; }
@@ -25021,7 +25123,7 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const validViews=['dashboard','my-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+  const validViews=['dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
   if(location.hash && location.hash.length>1){
     _restoreFromHash(location.hash);
   } else {
