@@ -1627,7 +1627,7 @@
             .dp-dots{display:flex;gap:4px;margin:8px 0 6px}.dp-dots i{flex:1;height:7px;border-radius:99px;background:#e2e8f0}.dp-dots i.on{background:#16a34a}
             .dp-pp{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:6px}.dp-pp b{display:block;font-size:22px}.dp-pp span{font-size:11.5px;color:var(--text3)}
             .dp-soon{border-style:dashed;background:#f8fafc}.dp-sec{font-weight:700;font-size:13px;color:#334155;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
-            .dp-scroll{max-height:360px;overflow:auto}.dp-legacy{margin-top:16px}.dp-legacy>summary{cursor:pointer;font-weight:600;font-size:13px;color:#334155;padding:10px 0}
+            .dp-scroll{max-height:420px;overflow:auto}.dp-x{cursor:pointer}.dp-x:hover td{background:#f8fafc}.dp-sub td{background:#fbfcfe;font-size:12.5px}.dp-sub td:first-child{padding-left:22px}.dp-sub2 td{font-size:12px;color:#475569}.dp-sub2 td:first-child{padding-left:40px}.dp-legacy{margin-top:16px}.dp-legacy>summary{cursor:pointer;font-weight:600;font-size:13px;color:#334155;padding:10px 0}
             #view-dashboard .mp-r1,#view-dashboard .mp-r2{margin-bottom:14px}
             .tp-qas{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tp-qa{display:flex;gap:8px;align-items:flex-start;text-align:left;border:1px solid var(--border);background:#fff;border-radius:8px;padding:10px;font-size:12.5px;cursor:pointer}.tp-qa:hover{background:#f1f5f9}
           </style>
@@ -24999,13 +24999,13 @@ function renderMyPerformance(){
    weighted average of measured scored KPIs; shown only when >= DP_MIN_COVERAGE % of scored weight is measured
    ("Insufficient Data" otherwise). Quarter results can be frozen (department_kpi_snapshots) = Final. */
 const DP_MIN_COVERAGE=60;
-const DP_PHASE={dp_ppd:'Phase 3 — Committed Projects tracker',dp_gain:'Phase 2 — Knowledge Gain',dp_l3:'Phase 5 — learner-level L3',dp_cert:'Phase 4 — Certification tracker'};
+const DP_PHASE={dp_ppd:'Phase 3 — Committed Projects tracker',dp_l3:'Phase 5 — learner-level L3',dp_cert:'Phase 4 — Certification tracker'}; // v5.16b: dp_gain connected
 const DP_SRC={dp_ppd:'Committed Projects',dp_csat:'Training Reports',dp_gain:'L2 Assessments',dp_l3:'L3 Follow-ups',dp_cert:'Certification Tracker',dp_sdr:'Training Calendar',dp_util:'Trainer Capacity',dp_nps:'Training Reports',dp_qae:'ID / CD QA',dp_otd:'ID / CD QA',dp_sla:'Training Reports'};
 const DP_TAB={dp_ppd:'delivery',dp_csat:'outcomes',dp_gain:'outcomes',dp_l3:'outcomes',dp_cert:'capability',dp_sdr:'delivery',dp_util:'delivery',dp_nps:'outcomes',dp_qae:'quality',dp_otd:'quality',dp_sla:'quality'};
 const DP_DEFS={
   dp_ppd:'Delivered approved commitments ÷ total approved commitments × 100. Delivered = agreed completion criteria met.',
   dp_csat:'Response-weighted average CSAT (1–5) from post-training surveys on sessions that ended in the period.',
-  dp_gain:'Normalised gain per matched learner pre/post pair: (post − pre) ÷ (100 − pre) × 100, pooled across the department.',
+  dp_gain:'Normalised gain per matched learner pre/post pair: (post − pre) ÷ (100 − pre) × 100, averaged over all valid pairs in the department (not program averages). Pairs = same learner, same assessment, or the session’s pre-test item paired with its post-test item. Pre-test of 100% excluded (counted); negative gains kept; unmatched results excluded (counted).',
   dp_l3:'Learners meeting the program’s L3 criteria ÷ valid learner-level L3 evaluations × 100, with coverage shown.',
   dp_cert:'Certified ÷ candidates with a final decision × 100. Completion rate shown separately.',
   dp_sdr:'ILT/VILT sessions delivered ÷ (delivered + sessions cancelled for an L&D-controllable reason). Rescheduled, business-request and low-enrolment cancellations are listed but not counted.',
@@ -25069,6 +25069,36 @@ function _dpSla(r){
   const counted=rows.filter(x=>x.state!=='Due'), ok=counted.filter(x=>x.state==='On time').length;
   return {rows,counted,ok,v:counted.length?ok/counted.length*100:null,avgDays:counted.length?counted.reduce((a,b)=>a+b.bd,0)/counted.length:null};
 }
+/* v5.16b (2026-10-30, per Sandra): Knowledge Gain. Pairs per learner: an assessment with both pre and post, else the
+   session's pre-only item matched to its post-only item by name (ignoring the words pre/post), else the single pre-only
+   item with the single post-only item. Scores are percentages (0–100). */
+function _dpKgSession(s){
+  const a=_tdaGetAssessments(s).filter(x=>x&&!_lpL2IsRating(x));
+  const strip=n=>String(n||'').toLowerCase().replace(/\b(pre|post)(-?test)?\b/g,'').replace(/[^a-z0-9]/g,'');
+  const map=a.filter(x=>x.pre&&x.post).map(x=>[x.name,x.name]);
+  const preOnly=a.filter(x=>x.pre&&!x.post), postOnly=a.filter(x=>!x.pre&&x.post), used=new Set();
+  preOnly.forEach(p=>{ const m=postOnly.find(q=>!used.has(q.name)&&strip(q.name)===strip(p.name)); if(m){ used.add(m.name); map.push([p.name,m.name]); } });
+  const lp=preOnly.filter(p=>!map.some(m=>m[0]===p.name)), lq=postOnly.filter(q=>!used.has(q.name));
+  if(lp.length===1&&lq.length===1) map.push([lp[0].name,lq[0].name]);
+  const out={s,pairs:[],pre100:0,unmatched:0,invalid:0,assessed:0,hasPre:a.some(x=>x.pre)};
+  if(!map.length){ out.status=out.hasPre?'Partial data':'Not applicable'; return out; }
+  const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
+  SessionParticipantsDB.all().filter(x=>x.sessionId===s.id&&_tdaIsAssessed(x,s)).forEach((r,i)=>{ out.assessed++;
+    map.forEach(([pn,qn])=>{ const pre=num(_tdaGetNamedScore(r,'pre',pn)), post=num(_tdaGetNamedScore(r,'post',qn));
+      if(pre==null||post==null){ if(pre!=null||post!=null) out.unmatched++; return; }
+      if(pre<0||pre>100||post<0||post>100){ out.invalid++; return; }
+      if(pre>=100){ out.pre100++; return; }
+      out.pairs.push({learner:`Learner ${i+1}`,dept:r.departmentId?(Sel.nameOf(Store.DEPARTMENTS,r.departmentId)||''):'',item:pn===qn?pn:`${pn} → ${qn}`,pre,post,g:(post-pre)/(100-pre)*100}); }); });
+  out.status=out.pairs.length?(out.unmatched||out.invalid?'Partial data':'Evaluated'):'Not yet evaluated';
+  return out;
+}
+function _dpKg(r){
+  const sess=TrSessionDB.all().filter(s=>_tdStatus(s)==='Completed'&&_scIn(_tdSessionEndDate(s),r)&&['ILT','VILT','Self-led'].includes(s.deliveryType)).map(_dpKgSession);
+  const pairs=sess.flatMap(x=>x.pairs), sum=k=>sess.reduce((a,b)=>a+b[k],0);
+  const elig=sess.filter(x=>x.status!=='Not applicable');
+  return {sess,pairs,v:pairs.length?pairs.reduce((a,b)=>a+b.g,0)/pairs.length:null,pre100:sum('pre100'),unmatched:sum('unmatched'),invalid:sum('invalid'),
+    eligibleSessions:elig.length,evaluatedSessions:elig.filter(x=>x.pairs.length).length,avgPre:pairs.length?pairs.reduce((a,b)=>a+b.pre,0)/pairs.length:null,avgPost:pairs.length?pairs.reduce((a,b)=>a+b.post,0)/pairs.length:null};
+}
 function _dpL1(r){
   const reps=TrSessionDB.all().filter(s=>_tdStatus(s)==='Completed'&&_scIn(_tdSessionEndDate(s),r)).map(s=>({s,rep:_l1ReportFor(s)}));
   const withRep=reps.filter(x=>x.rep), live=withRep.filter(x=>x.s.deliveryType==='ILT'||x.s.deliveryType==='VILT'), slt=withRep.filter(x=>x.s.deliveryType==='Self-led');
@@ -25086,6 +25116,7 @@ function _dpCalc(key,r){
   if(DP_PHASE[key]) o={notConnected:true,detail:'Not connected yet · '+DP_PHASE[key]};
   else if(key==='dp_csat'){ const l=_dpL1(r); o={v:l.csat,n:l.csatN,detail:`${l.csatN} session${l.csatN!==1?'s':''} with learner ratings`,cov:l.eligible.length?Math.round(l.csatN/l.eligible.length*100):null}; }
   else if(key==='dp_nps'){ const l=_dpL1(r); o={v:l.nps,n:l.npsN,detail:`${l.npsN} session${l.npsN!==1?'s':''} with NPS`,cov:l.eligible.length?Math.round(l.npsN/l.eligible.length*100):null}; }
+  else if(key==='dp_gain'){ const k=_dpKg(r); o={v:k.v,n:k.pairs.length,detail:`${k.pairs.length} valid learner pair${k.pairs.length!==1?'s':''} · ${k.evaluatedSessions} of ${k.eligibleSessions} session${k.eligibleSessions!==1?'s':''} with pre-tests`,cov:k.eligibleSessions?Math.round(k.evaluatedSessions/k.eligibleSessions*100):null}; }
   else if(key==='dp_sdr'){ const x=_dpSdr(r); o={v:x.v,n:x.n,detail:`${x.delivered.length} delivered · ${x.missed.length} missed · ${x.excluded.length} cancellation${x.excluded.length!==1?'s':''} not counted`}; }
   else if(key==='dp_util'){ const x=_dpUtil(r); o={v:x.v,n:x.n,detail:`${Math.round(x.hrs*10)/10} h of ${Math.round(x.cap)} h capacity · ${x.n} facilitator${x.n!==1?'s':''}`,overload:x.v!=null&&x.v>85}; }
   else if(key==='dp_qae'){ const x=_dpQa(r); o={v:x.qae,n:x.scored.length,detail:`${x.endorse} of ${x.scored.length} acknowledged review${x.scored.length!==1?'s':''} endorsed`}; }
@@ -25100,8 +25131,9 @@ function _dpScorecard(r,noSnap){
   const snap=noSnap?null:_dpSnapshot(r);
   if(snap&&snap.results) return {...snap.results,final:true,snap};
   const asOf=r.end<_todayStr()?r.end:_todayStr(), open=r.end>=_todayStr();
-  const rows=_dpRows(asOf).map(row=>{ const a=_dpCalc(row.kpiKey,r); const rating=a.notConnected?null:_dpRate(row,a.v);
-    let st; if(a.notConnected) st=['Not connected yet','neutral']; else if(rating==null) st=open?['Pending data','neutral']:['Insufficient data','neutral']; else if(a.overload) st=['Over capacity','warning']; else st=rating>=3?['On target','success']:['Below target','danger'];
+  const rows=_dpRows(asOf).map(row=>{ const a=_dpCalc(row.kpiKey,r); const qOnly=row.frequency==='quarterly'&&r.kind==='month'; // v5.16b: quarterly KPIs are rated in the Quarter view
+    const rating=(a.notConnected||qOnly)?null:_dpRate(row,a.v);
+    let st; if(a.notConnected) st=['Not connected yet','neutral']; else if(qOnly) st=['Rated quarterly','neutral']; else if(rating==null) st=open?['Pending data','neutral']:['Insufficient data','neutral']; else if(a.overload) st=['Over capacity','warning']; else st=rating>=3?['On target','success']:['Below target','danger'];
     return {key:row.kpiKey,name:row.kpiName,tier:row.tier,dim:row.dimension,w:Number(row.weight||0),scored:row.scored!==false,target:_dpFmtTarget(row),scale:_dpScaleText(row),actual:a.v??null,actualTxt:_dpFmt(row.kpiKey,a.v),n:a.n??null,cov:a.cov??null,detail:a.detail||'',rating,status:st}; });
   const sc=rows.filter(x=>x.scored), tw=sc.reduce((a,b)=>a+b.w,0), meas=sc.filter(x=>x.rating!=null), mw=meas.reduce((a,b)=>a+b.w,0);
   const cov=tw?mw/tw*100:0, overall=mw?meas.reduce((a,b)=>a+b.rating*b.w,0)/mw:null;
@@ -25213,19 +25245,50 @@ function _dpDeliveryHtml(r){
   <div class="mp-c">${_dpHead('Trainer utilisation','target band 65–85%')}<table class="mp-tbl"><thead><tr><th>Facilitator</th><th>Alloc.</th><th>Hours</th><th>Capacity</th><th>Util.</th></tr></thead><tbody>${u.people.map(p=>`<tr><td>${esc(p.u.firstName+' '+p.u.lastName)}</td><td>${p.pct}%</td><td>${Math.round(p.hrs*10)/10}</td><td>${Math.round(p.cap*10)/10}</td><td>${p.util!=null?`<b style="color:${p.util>85?'#d97706':(p.util<65?'#64748b':'#16a34a')}">${Math.round(p.util)}%</b>`:'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="mp-sub">No facilitators.</td></tr>'}</tbody></table>
   ${_dpHead('By delivery type')}<table class="mp-tbl"><thead><tr><th>Type</th><th>Sessions</th><th>Completed</th></tr></thead><tbody>${Object.entries(byType).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n}</td><td>${v.c}</td></tr>`).join('')||'<tr><td colspan="3" class="mp-sub">—</td></tr>'}</tbody></table></div></div>`;
 }
+/* v5.16b (2026-10-30, per Sandra): Learning Outcomes = L1 deep dive (Department → Program → Session → results) and
+   L2 Knowledge Gain (Program → Implementation → matched pairs). Rows expand in place (_dpOpen). */
+let _dpOpen=new Set();
+function dpToggle(k){ if(_dpOpen.has(k)) _dpOpen.delete(k); else _dpOpen.add(k); renderDepartmentPerformance(); }
+function dpOpenSession(id){ showView('training-delivery'); setTimeout(()=>openTrainingDetail(id),50); }
+function _dpProgKey(s){ return s.programId?(LearningProgramDB.byId(s.programId)?.code||s.programId):'t:'+_dpSessName(s); }
+function _dpProgName(s){ const p=s.programId?LearningProgramDB.byId(s.programId):null; return p?`${p.code} · ${p.title}`:_dpSessName(s); }
 function _dpOutcomesHtml(r){
-  const esc=Utils.esc, l=_dpL1(r), f=v=>v==null?'—':Number(v).toFixed(2);
-  const byProg={}; l.reps.forEach(x=>{ const k=x.s.programId?(LearningProgramDB.byId(x.s.programId)?.title||_dpSessName(x.s)):_dpSessName(x.s); (byProg[k]=byProg[k]||[]).push(x); });
+  const esc=Utils.esc, l=_dpL1(r), f=v=>v==null?'—':Number(v).toFixed(2), fn=v=>v==null?'—':(v>=0?'+':'')+Math.round(v), pc=v=>v==null?'—':(Math.round(v*10)/10)+'%';
   const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
-  const progRows=Object.entries(byProg).map(([k,g])=>{ const live=g.filter(x=>x.s.deliveryType!=='Self-led'); const cs=_l1WAvg(g.map(x=>({s:x.s,rep:{content:{v:x.s.deliveryType==='Self-led'?(x.rep.content||{}).learnerSatisfaction:(x.rep.content||{}).csat,responses:(x.rep.content||{}).responses}}})),c=>num(c.v));
-    return `<tr><td>${esc(k)}</td><td>${g.length}</td><td>${g.reduce((a,x)=>a+(Number((x.rep.content||{}).responses)||0),0)||'—'}</td><td>${f(cs)}</td><td>${(v=>v==null?'—':(v>=0?'+':'')+Math.round(v))(_l1WAvg(g,c=>num(c.nps)))}</td><td>${f(_l1WAvg(live,c=>num(c.contentRating)))}</td><td>${f(_l1WAvg(live,c=>num(c.materialsRating)))}</td><td>${f(_l1WAvg(live,c=>num(c.facilitationRating)))}</td></tr>`; }).join('');
-  // supporting L2: average final score + pass rate (same rules as the trainer scorecard)
+  const csatOf=g=>_l1WAvg(g.map(x=>({s:x.s,rep:{content:{v:x.s.deliveryType==='Self-led'?(x.rep.content||{}).learnerSatisfaction:(x.rep.content||{}).csat,responses:(x.rep.content||{}).responses}}})),c=>num(c.v));
+  const resp=g=>g.reduce((a,x)=>a+(Number((x.rep.content||{}).responses)||0),0);
+  const T=Number((_dpRows().find(x=>x.kpiKey==='dp_csat')||{}).target||4.2);
+  /* L1 by program, expandable to sessions */
+  const byProg={}; l.reps.forEach(x=>{ const k=_dpProgKey(x.s); (byProg[k]=byProg[k]||{name:_dpProgName(x.s),g:[]}).g.push(x); });
+  const l1Rows=Object.entries(byProg).sort((a,b)=>b[1].g.length-a[1].g.length).map(([k,p])=>{ const live=p.g.filter(x=>x.s.deliveryType!=='Self-led'), cs=csatOf(p.g), open=_dpOpen.has('l1:'+k);
+    const main=`<tr class="dp-x" onclick="dpToggle('l1:${esc(k)}')"><td>${open?'▾':'▸'} ${esc(p.name)}</td><td>${p.g.length}</td><td>${resp(p.g)||'—'}</td><td><b style="color:${cs==null?'inherit':(cs>=T?'#16a34a':'#dc2626')}">${f(cs)}</b></td><td>${fn(_l1WAvg(p.g,c=>num(c.nps)))}</td><td>${f(_l1WAvg(live,c=>num(c.contentRating)))}</td><td>${f(_l1WAvg(live,c=>num(c.materialsRating)))}</td><td>${f(_l1WAvg(live,c=>num(c.facilitationRating)))}</td></tr>`;
+    const sub=open?p.g.sort((a,b)=>String(b.s.trainingDate).localeCompare(String(a.s.trainingDate))).map(x=>{ const c=x.rep.content||{}, u=DB.byId(x.s.trainerId); return `<tr class="dp-sub"><td><a class="mp-link" onclick="dpOpenSession('${x.s.id}')">${esc(x.s.code||'')}</a> · ${Utils.formatDate(_tdSessionEndDate(x.s))} · ${esc(x.s.deliveryType||'')}${u?' · '+esc(u.firstName+' '+u.lastName):''}</td><td></td><td>${num(c.responses)??'—'}</td><td>${f(x.s.deliveryType==='Self-led'?num(c.learnerSatisfaction):num(c.csat))}</td><td>${fn(num(c.nps))}</td><td>${f(num(c.contentRating))}</td><td>${f(num(c.materialsRating))}</td><td>${f(num(c.facilitationRating))}</td></tr>`; }).join(''):'';
+    return main+sub; }).join('');
+  const noRep=l.eligible.filter(x=>!x.rep);
+  /* L2 knowledge gain by program → implementation → pairs */
+  const k=_dpKg(r), KT=Number((_dpRows().find(x=>x.kpiKey==='dp_gain')||{}).target||20);
+  const kp={}; k.sess.forEach(x=>{ const key=_dpProgKey(x.s); (kp[key]=kp[key]||{name:_dpProgName(x.s),sess:[]}).sess.push(x); });
+  const progStatus=ss=>{ const e=ss.filter(x=>x.status!=='Not applicable'); if(!e.length) return 'Not applicable'; if(e.every(x=>x.status==='Evaluated')) return 'Evaluated'; return e.some(x=>x.pairs.length)?'Partial data':'Not yet evaluated'; };
+  const stTone={'Evaluated':'success','Partial data':'warning','Not yet evaluated':'danger','Not applicable':'neutral'};
+  const avg=(a,key)=>a.length?a.reduce((s,x)=>s+x[key],0)/a.length:null;
+  const l2Rows=Object.entries(kp).sort((a,b)=>b[1].sess.length-a[1].sess.length).map(([key,p])=>{ const pairs=p.sess.flatMap(x=>x.pairs), st=progStatus(p.sess), g=avg(pairs,'g'), open=_dpOpen.has('l2:'+key);
+    const excl=p.sess.reduce((a,x)=>a+x.unmatched+x.pre100+x.invalid,0);
+    const main=`<tr class="dp-x" onclick="dpToggle('l2:${esc(key)}')"><td>${open?'▾':'▸'} ${esc(p.name)}</td><td>${_mpChip(st,stTone[st])}</td><td>${p.sess.length}</td><td>${pairs.length}</td><td>${excl||'—'}</td><td>${pc(avg(pairs,'pre'))}</td><td>${pc(avg(pairs,'post'))}</td><td><b style="color:${g==null?'inherit':(g>=KT?'#16a34a':'#dc2626')}">${pc(g)}</b></td></tr>`;
+    const sub=open?p.sess.map(x=>{ const sk='l2s:'+x.s.id, so=_dpOpen.has(sk), sg=avg(x.pairs,'g');
+      const head=`<tr class="dp-sub dp-x" onclick="event.stopPropagation();dpToggle('${sk}')"><td>${so?'▾':'▸'} <a class="mp-link" onclick="event.stopPropagation();dpOpenSession('${x.s.id}')">${esc(x.s.code||'')}</a> · ${Utils.formatDate(_tdSessionEndDate(x.s))}</td><td>${_mpChip(x.status,stTone[x.status])}</td><td>${x.assessed} assessed</td><td>${x.pairs.length}</td><td>${[x.unmatched?x.unmatched+' unmatched':'',x.pre100?x.pre100+' pre 100%':'',x.invalid?x.invalid+' invalid':''].filter(Boolean).join(' · ')||'—'}</td><td>${pc(avg(x.pairs,'pre'))}</td><td>${pc(avg(x.pairs,'post'))}</td><td>${pc(sg)}</td></tr>`;
+      const lines=so?x.pairs.map(pr=>`<tr class="dp-sub2"><td>${esc(pr.learner)}${pr.dept?' · '+esc(pr.dept):''} <span class="mp-sub">${esc(pr.item)}</span></td><td></td><td></td><td></td><td></td><td>${pr.pre}%</td><td>${pr.post}%</td><td style="color:${pr.g<0?'#dc2626':'inherit'}">${pc(pr.g)}</td></tr>`).join('')||`<tr class="dp-sub2"><td colspan="8" class="mp-sub">No valid pairs in this session.</td></tr>`:'';
+      return head+lines; }).join(''):'';
+    return main+sub; }).join('');
+  /* supporting L2: average final score + pass rate (same rules as the trainer scorecard) */
   const sc=[]; let assessed=0,passed=0; TrSessionDB.all().filter(s=>_tdStatus(s)==='Completed'&&_scIn(_tdSessionEndDate(s),r)).forEach(s=>{ const g=_tdaGetAssessments(s).filter(a=>!_lpL2IsRating(a)&&a.post); if(!g.length) return; const ar=SessionParticipantsDB.all().filter(x=>x.sessionId===s.id&&_tdaIsAssessed(x,s));
     ar.forEach(x=>g.forEach(a=>{ const v=_tdaGetNamedScore(x,'post',a.name); if(v!=null&&!isNaN(Number(v))) sc.push(Number(v)); })); const gr=g.filter(a=>a.passingScore!=null); if(gr.length&&ar.length){ assessed+=ar.length; passed+=ar.filter(x=>gr.every(a=>{ const v=_tdaGetNamedScore(x,'post',a.name); return v!=null&&Number(v)>=a.passingScore; })).length; } });
   const l3done=TrSessionDB.all().filter(s=>s.l3Required&&s.l3CompletedAt&&_scIn(_mnlDateOf(s.l3CompletedAt),r)).length, l3over=TrSessionDB.all().filter(s=>s.l3Required&&!s.l3CompletedAt&&s.status!=='cancelled'&&_tdl3Status(s)==='overdue').length;
-  return `<div class="dp-sec">L1 · Learner Experience</div><div class="mp-r1" style="grid-template-columns:repeat(5,minmax(0,1fr))">${_dpCard('Learner Satisfaction (CSAT)',f(l.csat)+'<span> / 5</span>',`target ≥ 4.2 · ${l.csatN} sessions`)}${_dpCard('NPS',l.nps==null?'—':(l.nps>=0?'+':'')+Math.round(l.nps),'target ≥ +85')}${_dpCard('Learning Content',f(l.content),'supporting · 1–5')}${_dpCard('Learning Material',f(l.material),'supporting · 1–5')}${_dpCard('Facilitator',f(l.facil),'supporting · 1–5')}</div>
-  <div class="mp-c">${_dpHead('L1 deep dive by program · '+esc(r.label),`${l.reps.length} session${l.reps.length!==1?'s':''} with reports · ${l.responses} responses · response-weighted`)}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Program</th><th>Sessions</th><th>Responses</th><th>CSAT</th><th>NPS</th><th>Content</th><th>Material</th><th>Facilitator</th></tr></thead><tbody>${progRows||'<tr><td colspan="8" class="mp-sub">No submitted training reports for sessions that ended in this period.</td></tr>'}</tbody></table></div></div>
-  <div class="dp-sec">L2 · Knowledge Gain</div><div class="mp-r2" style="grid-template-columns:2fr 1fr 1fr">${_dpSoon('Normalised Knowledge Gain','Phase 2','Matched learner pre/post pairs per assessment: (post − pre) ÷ (100 − pre). Program statuses Evaluated · Partial Data · Not Yet Evaluated · Not Applicable, with pairs used and excluded.')}${_dpCard('Average final score',sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1)+'%':'—',`supporting · ${sc.length} scores`)}${_dpCard('Pass rate',assessed?Math.round(passed/assessed*100)+'%':'—',`supporting · ${assessed} learners assessed`)}</div>
+  return `<div class="dp-sec">L1 · Learner Experience</div><div class="mp-r1" style="grid-template-columns:repeat(5,minmax(0,1fr))">${_dpCard('Learner Satisfaction (CSAT)',f(l.csat)+'<span> / 5</span>',`target ≥ ${T} · ${l.csatN} session${l.csatN!==1?'s':''}`)}${_dpCard('NPS',fn(l.nps),'target ≥ +85')}${_dpCard('Learning Content',f(l.content),'supporting · 1–5')}${_dpCard('Learning Material',f(l.material),'supporting · 1–5')}${_dpCard('Facilitator',f(l.facil),'supporting · 1–5')}</div>
+  <div class="mp-c">${_dpHead('L1 deep dive · '+esc(r.label),`${l.reps.length} session${l.reps.length!==1?'s':''} with reports · ${l.responses} responses · response-weighted · click a program for its sessions`)}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Program / session</th><th>Sessions</th><th>Responses</th><th>CSAT</th><th>NPS</th><th>Content</th><th>Material</th><th>Facilitator</th></tr></thead><tbody>${l1Rows||'<tr><td colspan="8" class="mp-sub">No submitted training reports for sessions that ended in this period.</td></tr>'}</tbody></table></div>${noRep.length?`<div class="mp-note">${noRep.length} completed session${noRep.length!==1?'s':''} without a submitted report yet: ${noRep.map(x=>esc(x.s.code||'')).join(', ')}.</div>`:''}</div>
+  <div class="dp-sec">L2 · Knowledge Gain</div><div class="mp-r1" style="grid-template-columns:repeat(4,minmax(0,1fr))">${_dpCard('Normalised Knowledge Gain',pc(k.v),`target ≥ ${KT}% · ${k.pairs.length} valid learner pair${k.pairs.length!==1?'s':''}`)}${_dpCard('Coverage',`${k.evaluatedSessions} of ${k.eligibleSessions}`,'sessions with pre-tests that have valid pairs')}${_dpCard('Excluded',k.unmatched+k.pre100+k.invalid,`${k.unmatched} unmatched · ${k.pre100} pre-test 100% · ${k.invalid} invalid`)}${_dpCard('Average pre → post',`${pc(k.avgPre)} → ${pc(k.avgPost)}`,'valid pairs only')}</div>
+  <div class="mp-c">${_dpHead('Knowledge Gain by program · '+esc(r.label),'click a program for implementations, then a session for its pairs')}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Program / implementation</th><th>Status</th><th>Sessions</th><th>Valid pairs</th><th>Excluded</th><th>Avg pre</th><th>Avg post</th><th>Gain</th></tr></thead><tbody>${l2Rows||'<tr><td colspan="8" class="mp-sub">No completed sessions in this period.</td></tr>'}</tbody></table></div>
+    <div class="mp-note">Gain per learner = (post − pre) ÷ (100 − pre). Department result = average over all valid pairs. Evaluated = every result paired · Partial data = some unmatched or invalid · Not yet evaluated = pre-test set up but no valid pairs · Not applicable = no pre-test on the session.</div></div>
+  <div class="mp-r2" style="grid-template-columns:1fr 1fr">${_dpCard('Average final score',sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1)+'%':'—',`supporting · ${sc.length} post-test scores`)}${_dpCard('Pass rate',assessed?Math.round(passed/assessed*100)+'%':'—',`supporting · ${assessed} learners assessed`)}</div>
   <div class="dp-sec">L3 · Behavioural Effectiveness</div><div class="mp-r2" style="grid-template-columns:2fr 1fr 1fr">${_dpSoon('Behavioural Effectiveness','Phase 5','Learner-level L3 results against each program’s behavioural criteria, with L3 coverage beside the rate. Until then this KPI shows Not connected rather than a session-level figure.')}${_dpCard('L3 follow-ups completed',l3done,'supporting · in this period')}${_dpCard('L3 overdue',l3over,'supporting · open now')}</div>`;
 }
 function _dpQualityHtml(r){
