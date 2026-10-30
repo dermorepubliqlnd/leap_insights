@@ -1505,9 +1505,10 @@
       </div>
       <nav class="sb-nav">
         <div class="nav-sec">Performance</div>
-        <div class="nav-item" data-view="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> L&amp;D Performance</div>
+        <!-- v5.15b (2026-10-30, per Sandra): My Performance (everyone) · Team Performance (leaders) · L&D Performance (department; Department Head + authorised) -->
         <div class="nav-item" data-view="my-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span> My Performance</div>
         <div class="nav-item js-team-view hidden" data-view="team-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="17" cy="9.5" r="2.3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.5 14.6c2.6-.4 4.9.9 5.7 3.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Team Performance</div>
+        <div class="nav-item js-dept-view hidden" data-view="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> L&amp;D Performance</div>
         <div class="nav-sec js-qa-sec hidden">Quality Assurance</div>
         <div class="nav-item js-id-qa hidden" data-view="id-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Instructional Design</div>
         <div class="nav-item js-content-qa hidden" data-view="content-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M10 8.3l6 3.7-6 3.7V8.3Z" fill="currentColor" stroke="none"/></svg></span> Content Development</div>
@@ -3038,6 +3039,9 @@
               <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Supervisor</label>
                 <select id="mu-supervisor" class="form-control"><option value="">— None —</option></select>
+                <!-- v5.15b: dated reporting lines -->
+                <div id="mu-sup-eff-wrap" style="margin-top:6px;font-size:12px;color:var(--text3)">Effective from <input type="date" id="mu-sup-eff" class="form-control" style="display:inline-block;width:auto;padding:2px 6px;font-size:12px"> <span title="Used only when the supervisor changes. Leave blank for today. Team Performance and roll-ups use the reporting line in effect for each period.">ⓘ</span></div>
+                <div id="mu-sup-hist" style="margin-top:4px;font-size:11.5px;color:var(--text3)"></div>
               </div>
             </div>
             <div class="form-row" style="margin-top:12px">
@@ -3943,6 +3947,7 @@ const _FIELD_MAPS = {
   // v5.15a (2026-10-30, per Sandra): PDP + quarter-end scorecard inputs (EEI / LEI)
   pdp_items:{ id:'id', profileId:'profile_id', title:'title', provider:'provider', quarter:'quarter', targetDate:'target_date', status:'status', completedOn:'completed_on', proofUrl:'proof_url', notes:'notes', returnReason:'return_reason', verifiedBy:'verified_by', verifiedAt:'verified_at', createdBy:'created_by', createdAt:'created_at', updatedAt:'updated_at' },
   scorecard_inputs:{ id:'id', profileId:'profile_id', kpiCode:'kpi_code', quarter:'quarter', value:'value', notes:'notes', enteredBy:'entered_by', enteredAt:'entered_at' },
+  reporting_lines:{ id:'id', profileId:'profile_id', supervisorId:'supervisor_id', effectiveFrom:'effective_from', effectiveTo:'effective_to', notes:'notes', createdBy:'created_by', createdAt:'created_at' }, // v5.15b
   lp_prerequisites:{ id:'id', name:'name', isActive:'is_active' },
   lnd_contacts:{ id:'id', fullName:'full_name', organization:'organization', contactType:'contact_type', email:'email', position:'position', isActive:'is_active', notes:'notes', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by' },
   learning_program_people:{ id:'id', programFamilyId:'program_family_id', role:'role', profileId:'profile_id', contactId:'contact_id', accreditationStatus:'accreditation_status', accreditedOn:'accredited_on', expiresOn:'expires_on', notes:'notes', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by' }
@@ -3986,9 +3991,9 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[] },
   // v5.02: tables added by a migration that may not be applied yet -- a load error here must not block the app.
-  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs']),
+  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines']),
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -4344,7 +4349,10 @@ const Auth = {
 const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
-  canView(v){ if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user)); if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
+  canView(v){ if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
+    // v5.15b (2026-10-30, per Sandra): L&D Performance = department view — Department Head (admin) and authorised
+    // management only (Reports Viewer or Dashboard Access = Full View). Everyone else lands on My Performance.
+    if(v==='dashboard') return !!(Auth.isAdmin||(Auth.user&&(Auth.user.isReportsViewer||Auth.user.dashScope==='full'))); if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
   isSupervisor(u){
     if(!u) return false;
     return DB.all().some(x=>x.isActive&&x.supervisorId===u.id);
@@ -4779,12 +4787,12 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'L&D Performance Dashboard','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={dashboard:'L&D Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
-  dashboard:'Overall performance, quality, effectiveness, and operational health across L&D',
-  'my-performance':'Your scorecard, development plan and what needs your action',
-  'team-performance':'Your team\'s scorecards, development plans and what needs attention',
+  dashboard:'Department view: L&D KPIs, quality, effectiveness and operational health (Department Head and authorised management)',
+  'my-performance':'Your own scorecard, development plan and what needs your action',
+  'team-performance':'Scorecards and development of the people in your reporting line',
   evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
   'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment',
@@ -4796,6 +4804,7 @@ const PAGE_SUBTITLES={
   'cost-analysis':'Overview of facilitation labor cost for live ILT/VILT trainings. Costs are calculated based on facilitator rates and actual/scheduled facilitation hours.'
 };
 function showView(id){
+  if(id==='dashboard'&&!Perms.canView('dashboard')) id='my-performance'; // v5.15b: default landing for non-department users
   if(!Perms.canView(id)){ toast('You do not have access to that section.','error'); return; }
   localStorage.setItem('leap_view',id);
   if(id==='evaluations'){ const t=localStorage.getItem('leap_eval_tab'); if(t) _evalTab=t; }
@@ -4820,8 +4829,8 @@ function showView(id){
   // for every other view so it doesn't linger when navigating away.
   document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_ovFiltersHtml()+_dashNewEvalBtnHtml()):(id==='learning-programs'?_lpTopbarHtml():'');
   if(id==='dashboard')   renderDashboard();
-  if(id==='my-performance') renderMyPerformance();
-  if(id==='team-performance') renderTeamPerformance();
+  if(id==='my-performance'){ _mpHost='mp'; renderMyPerformance(); }
+  if(id==='team-performance'){ _tpPerson=null; _mpHost='mp'; renderTeamPerformance(); }
   if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
   if(id==='evaluations') renderEvaluations();
   if(id==='reports')     renderReports();
@@ -4965,6 +4974,7 @@ function setupNav(){
   document.querySelectorAll('.js-cost-manage').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-settings')));
   document.querySelectorAll('.js-cost-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-analysis')));
   document.querySelectorAll('.js-team-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('team-performance'))); // v5.15a
+  document.querySelectorAll('.js-dept-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('dashboard'))); // v5.15b
   const name=`${u.firstName} ${u.lastName}`;
   const ava=document.getElementById('sb-ava'); ava.textContent=Utils.initials(name); ava.setAttribute('style',Utils.avatarBg(u.isAdmin));
   document.getElementById('sb-name').textContent=name;
@@ -5085,7 +5095,7 @@ function renderDashboard(){
     <div class="dmain-tabs">${DASH_MAIN_TABS.map(t=>`<button id="dmtab-${t.id}" class="eval-tab${t.id===_dashMainTab?' active':''}" onclick="setDashMainTab('${t.id}')">${t.icon}${t.label}</button>`).join('')}</div>
     <div id="dash-main-overview"${_dashMainTab==='overview'?'':' class="hidden"'}><div id="ov-root"></div></div>
     <div id="dash-main-legacy"${_dashMainTab==='team'?'':' class="hidden"'}>
-    <div class="ov-legacy-note">Interim view: the previous dashboard (Supervisor Performance Snapshot and the ID QA, Content Dev QA and Trainer Eval breakdowns) sits here until Team Performance is built. It keeps its own date range for now.</div>
+    <div class="ov-legacy-note">Department-level detail: Supervisor Performance Snapshot and the ID QA, Content Dev QA and Trainer Eval breakdowns. Individual and team scorecards now live in My Performance and Team Performance. This tab keeps its own date range for now.</div>
     <div class="dash-topbar">
       <div></div>
       <div class="dash-controls">
@@ -5128,7 +5138,7 @@ function renderDashboard(){
 const _DMI=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const DASH_MAIN_TABS=[
   {id:'overview',label:'Overview',icon:_DMI('<rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/>')},
-  {id:'team',label:'Team Performance',icon:_DMI('<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5v-.8a4.2 4.2 0 0 1 4.2-4.2h2.6a4.2 4.2 0 0 1 4.2 4.2v.8"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M17.5 14.6a3.6 3.6 0 0 1 3 3.5v.9"/>')},
+  {id:'team',label:'QA & Evaluation Detail',icon:_DMI('<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5v-.8a4.2 4.2 0 0 1 4.2-4.2h2.6a4.2 4.2 0 0 1 4.2 4.2v.8"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M17.5 14.6a3.6 3.6 0 0 1 3 3.5v.9"/>')},
   {id:'ops',label:'Training Operations',icon:_DMI('<rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>')},
   {id:'quality',label:'Quality & Learner Experience',icon:_DMI('<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>')},
   {id:'effectiveness',label:'Learning Effectiveness',icon:_DMI('<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5"/>')},
@@ -8764,7 +8774,22 @@ function openAddUser(){
   document.getElementById('mu-pass-info').style.display='block';
   document.getElementById('mu-reset-row').classList.add('hidden');
   document.getElementById('mu-active').disabled=false; document.getElementById('mu-admin').disabled=false;
-  populateUserDropdowns(null); updateEmpStat(''); openModal('user');
+  populateUserDropdowns(null); updateEmpStat(''); _muSupHist(null); openModal('user');
+}
+/* v5.15b (2026-10-30, per Sandra): reporting-line history + effective date for supervisor changes */
+function _muSupHist(u){
+  const eff=document.getElementById('mu-sup-eff'), wrap=document.getElementById('mu-sup-eff-wrap'), h=document.getElementById('mu-sup-hist'); if(!eff||!h) return;
+  eff.value=''; eff.max=_todayStr(); if(wrap) wrap.style.display=u?'':'none';
+  if(!u){ h.innerHTML=''; return; }
+  const nm=id=>{ const s=id?DB.byId(id):null; return s?`${s.firstName} ${s.lastName}`:'None (top of chain)'; };
+  const rows=(Cache.data.reporting_lines||[]).filter(x=>x.profileId===u.id).sort((a,b)=>b.effectiveFrom.localeCompare(a.effectiveFrom));
+  h.innerHTML=rows.length?'Reporting line: '+rows.map(r=>`${Utils.esc(nm(r.supervisorId))} (${Utils.formatDate(r.effectiveFrom)}${r.effectiveTo?' – '+Utils.formatDate(r.effectiveTo):' – now'})`).join(' · '):'';
+}
+async function _muAfterSupChange(id,effDate){
+  try{
+    if(effDate&&effDate<_todayStr()){ const {error}=await sb.rpc('set_reporting_line_effective',{p_profile:id,p_from:effDate}); if(error){ _surfaceDbError(error,'Set reporting-line date'); } }
+    const {data,error}=await sb.from('reporting_lines').select('*').eq('profile_id',id); if(!error&&data){ Cache.data.reporting_lines=(Cache.data.reporting_lines||[]).filter(x=>x.profileId!==id).concat(data.map(r=>rowToCamel('reporting_lines',r))); }
+  }catch(e){ console.warn('reporting line refresh',e); }
 }
 
 function openEditUser(id){
@@ -8789,6 +8814,7 @@ function openEditUser(id){
   populateUserDropdowns(id,u.supervisorId);
   document.getElementById('mu-position').value=u.positionId||'';
   document.getElementById('mu-supervisor').value=u.supervisorId||'';
+  _muSupHist(u); // v5.15b
   document.getElementById('mu-form-trainer').checked=!!u.formTrainer;
   document.getElementById('mu-form-idqa').checked=!!u.formIDQA;
   document.getElementById('mu-form-cqa').checked=!!u.formCQA;
@@ -8897,7 +8923,7 @@ async function saveUser(){
     const saveBtn=document.getElementById('mu-save'); const origTxt=saveBtn?saveBtn.textContent:'';
     if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
     try{
-      const oldPct=ex.workloadAllocationPct!=null?Number(ex.workloadAllocationPct):60;
+      const oldPct=ex.workloadAllocationPct!=null?Number(ex.workloadAllocationPct):60; const oldSup=ex.supervisorId||null; // v5.15b
       await DB.update(id,{employeeId:empId,firstName:fname,lastName:lname,email,positionId:posId,supervisorId:supId,hireDate,roleEffectiveDate,workloadAllocationPct,isActive,isAdmin,isReportsViewer,formTrainer,formIDQA,formCQA,canViewTrainingCosts,canManageFacilitationRates,dashScope});
       // Phase P (2026-08-13, per Sandra): log a dated history row on actual change, rather than
       // just silently overwriting the old % -- otherwise past Trainer Workload periods would
@@ -8907,6 +8933,8 @@ async function saveUser(){
         try{ await WorkloadPctHistoryDB.record(id,workloadAllocationPct,_todayStr()); }
         catch(e){ /* error already surfaced by record() */ }
       }
+      // v5.15b: the DB trigger records the new reporting line (today); backdate it if an earlier date was given
+      if(oldSup!==(supId||null)){ await _muAfterSupChange(id,document.getElementById('mu-sup-eff')?.value||''); }
       if(id===Auth.user.id){Auth.refresh();setupNav();}
       toast(`${fname} ${lname} updated.`,'success');
     }catch(e){ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} return; }
@@ -24673,8 +24701,15 @@ function _scMonthsElapsed(r){ const today=_todayStr(); const end=r.end<today?r.e
 const _scIn=(d,r)=>{ if(!d) return false; const x=String(d).slice(0,10); return x>=r.start&&x<=r.end; };
 const _scFinalIn=(rec,r)=>rec&&rec.status!=='draft'&&rec.finalizedAt&&_scIn(_mnlDateOf(rec.finalizedAt),r);
 /* downline (client-side, mirrors public.is_in_my_downline) */
-function _scDownline(uid){ const all=DB.all().filter(u=>u.isActive!==false); const out=[]; const seen=new Set([uid]); let frontier=[uid]; let depth=0;
-  while(frontier.length&&depth<20){ const next=all.filter(u=>frontier.includes(u.supervisorId)&&!seen.has(u.id)); next.forEach(u=>{seen.add(u.id);out.push(u);}); frontier=next.map(u=>u.id); depth++; } return out; }
+/* v5.15b (2026-10-30, per Sandra): dated reporting lines (table reporting_lines). The line that applied
+   on date d decides who sits under whom, so a transfer never rewrites a past period. d defaults to today.
+   No history rows for someone (table not loaded) → today's profiles.supervisor_id. */
+function _supOn(uid,d){ const rows=(Cache.data.reporting_lines||[]).filter(x=>x.profileId===uid);
+  if(!rows.length||!d) return DB.byId(uid)?.supervisorId||null;
+  const r=rows.find(x=>x.effectiveFrom<=d&&(!x.effectiveTo||x.effectiveTo>=d)); return r?(r.supervisorId||null):null; }
+function _scAsOf(r){ const t=_todayStr(); return r&&r.end&&r.end<t?r.end:t; }
+function _scDownline(uid,d){ const on=d||_todayStr(); const all=DB.all().filter(u=>u.isActive!==false); const out=[]; const seen=new Set([uid]); let frontier=[uid]; let depth=0;
+  while(frontier.length&&depth<20){ const next=all.filter(u=>!seen.has(u.id)&&frontier.includes(_supOn(u.id,on))); next.forEach(u=>{seen.add(u.id);out.push(u);}); frontier=next.map(u=>u.id); depth++; } return out; } // each person once (seen set)
 /* data helpers */
 function _scPdps(pid){ return (Cache.data.pdp_items||[]).filter(x=>x.profileId===pid); }
 function _scInput(pid,code,quarter){ return (Cache.data.scorecard_inputs||[]).find(x=>x.profileId===pid&&x.kpiCode===code&&x.quarter===quarter)||null; }
@@ -24750,7 +24785,7 @@ function _scActual(key,pid,r,kind,depth){
   }
   if(key==='rollup'){
     if((depth||0)>5) return {v:null};
-    const team=_scDownline(pid).filter(u=>_scRoleOf(u));
+    const team=_scDownline(pid,_scAsOf(r)).filter(u=>_scRoleOf(u)); // v5.15b: team as it was in this period
     const scores=team.map(u=>_scScorecard(u.id,kind,r.key,(depth||0)+1)).filter(x=>x&&x.overall!=null);
     return {v:scores.length?scores.reduce((a,b)=>a+b.overall,0)/scores.length:null,n:scores.length,detail:`Average of ${scores.length} of ${team.length} team member${team.length!==1?'s':''}`};
   }
@@ -24797,27 +24832,34 @@ function _scState(k,pid,r){
 function mpToggle(what){ if(what==='scale') _mpShowScale=!_mpShowScale; if(what==='allpdp') _mpAllPdp=!_mpAllPdp; renderMyPerformance(); }
 function mpDownloadScorecard(){ document.body.classList.add('mp-printing'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('mp-printing'),500); },50); }
 
+/* v5.15b (2026-10-30, per Sandra): My Performance = the signed-in person's own scorecard only (supervisors and
+   the Director included). Leaders open a team member from Team Performance; that drill-down renders this same
+   layout inside #tp-root (_mpHost='tp') with a Back button. */
+let _mpHost='mp';
 function renderMyPerformance(){
-  const root=document.getElementById('mp-root'); if(!root) return;
+  const inTp=_mpHost==='tp';
+  const root=document.getElementById(inTp?'tp-root':'mp-root'); if(!root) return;
   if(!Cache.data.pdp_items) Cache.data.pdp_items=[];
-  const esc=Utils.esc, viewer=_mpViewer(); if(!viewer){ root.innerHTML=''; return; }
+  const esc=Utils.esc, viewer=inTp?_tpViewer():_mpViewer(); if(!viewer){ root.innerHTML=''; return; }
   const name=u=>u?`${u.firstName} ${u.lastName}`:'—';
-  const visible=[viewer,..._scDownline(viewer.id)].filter(u=>u&&(_scRoleOf(u)||u.id===viewer.id));
-  if(Auth.isAdmin&&!_mpAs) DB.all().filter(u=>u.isActive!==false&&_scRoleOf(u)&&!visible.some(v=>v.id===u.id)).forEach(u=>visible.push(u));
-  if(!_mpPerson||!visible.some(u=>u.id===_mpPerson)) _mpPerson=_scRoleOf(viewer)?viewer.id:(visible.find(u=>_scRoleOf(u))||viewer).id;
+  if(inTp){ if(!_tpPerson||!_tpCanOpen(viewer,_tpPerson)){ _tpPerson=null; _mpHost='mp'; renderTeamPerformance(); return; } _mpPerson=_tpPerson; }
+  else _mpPerson=viewer.id;
   const subject=DB.byId(_mpPerson), role=_scRoleOf(subject);
   const periods=_scPeriods(_mpKind); if(!_mpKey||!periods.includes(_mpKey)) _mpKey=periods[0];
-  const asBar=Auth.isAdmin?`<div class="mp-as"><label>Preview as</label><select onchange="mpSet('as',this.value)"><option value="">Myself (admin)</option>${DB.all().filter(u=>u.isActive!==false&&u.id!==Auth.user.id&&(_scRoleOf(u)||Perms.isSupervisor(u))).sort((a,b)=>name(a).localeCompare(name(b))).map(u=>`<option value="${u.id}"${_mpAs===u.id?' selected':''}>${esc(name(u))} — ${esc(SC_ROLES[_scRoleOf(u)]?.label||Sel.nameOf(Store.POS,u.positionId)||'')}</option>`).join('')}</select>${_mpAs?'<span>View-only — you see exactly what this person sees.</span>':''}</div>`:'';
-  const personSel=visible.length>1?`<select class="mp-sel" onchange="mpSet('person',this.value)">${visible.map(u=>`<option value="${u.id}"${u.id===_mpPerson?' selected':''}>${u.id===viewer.id?'Me — ':''}${esc(name(u))}</option>`).join('')}</select>`:'';
-  const head=`${asBar}<div class="mp-head"><div><div class="mp-title" style="font-size:18px">${esc(name(subject))}${subject&&subject.id===viewer.id?' <span class="mp-sub" style="font-size:12px;font-weight:400">(you)</span>':''}</div><div class="mp-sub" style="font-size:13px">${role?esc(SC_ROLES[role].label):''}${subject?.supervisorId?' · reports to '+esc(name(DB.byId(subject.supervisorId))):''}</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${personSel}<div class="mp-seg">${['month','quarter'].map(k=>`<button class="${_mpKind===k?'on':''}" onclick="mpSet('kind','${k}')">${k==='month'?'Month':'Quarter'}</button>`).join('')}</div><select class="mp-sel" onchange="mpSet('key',this.value)">${periods.map(p=>`<option value="${p}"${p===_mpKey?' selected':''}>${esc(_scPeriodRange(_mpKind,p).label)}</option>`).join('')}</select></div></div>`;
-  if(!role){ root.innerHTML=head+`<div class="mp-c" style="text-align:center;color:var(--text3);padding:28px">There's no scorecard for this role yet. Scorecards cover Instructional Designers, Content Developers, Trainers and L&D Supervisors.${visible.length>1?' Pick someone from the list above.':''}</div>`; return; }
+  const asBar=inTp?(_tpAs?`<div class="mp-as"><span>View-only — viewing as ${esc(name(viewer))}.</span></div>`:'')
+    :(Auth.isAdmin?`<div class="mp-as"><label>Preview as</label><select onchange="mpSet('as',this.value)"><option value="">Myself (admin)</option>${DB.all().filter(u=>u.isActive!==false&&u.id!==Auth.user.id&&(_scRoleOf(u)||Perms.isSupervisor(u))).sort((a,b)=>name(a).localeCompare(name(b))).map(u=>`<option value="${u.id}"${_mpAs===u.id?' selected':''}>${esc(name(u))} — ${esc(SC_ROLES[_scRoleOf(u)]?.label||Sel.nameOf(Store.POS,u.positionId)||'')}</option>`).join('')}</select>${_mpAs?'<span>View-only — you see exactly what this person sees.</span>':''}</div>`:'');
+  const back=inTp?`<a class="mp-link" style="font-size:12.5px;display:inline-block;margin-bottom:4px" onclick="tpBack()">← Back to Team Performance</a>`:'';
+  const sup=_supOn(_mpPerson,_scAsOf(_scPeriodRange(_mpKind,_mpKey)));
+  const head=`${asBar}<div class="mp-head"><div>${back}<div class="mp-title" style="font-size:18px">${esc(name(subject))}${subject&&subject.id===viewer.id?' <span class="mp-sub" style="font-size:12px;font-weight:400">(you)</span>':''}</div><div class="mp-sub" style="font-size:13px">${role?esc(SC_ROLES[role].label):''}${sup?' · reports to '+esc(name(DB.byId(sup))):''}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="mp-seg">${['month','quarter'].map(k=>`<button class="${_mpKind===k?'on':''}" onclick="mpSet('kind','${k}')">${k==='month'?'Month':'Quarter'}</button>`).join('')}</div><select class="mp-sel" onchange="mpSet('key',this.value)">${periods.map(p=>`<option value="${p}"${p===_mpKey?' selected':''}>${esc(_scPeriodRange(_mpKind,p).label)}</option>`).join('')}</select></div></div>`;
+  if(!role){ root.innerHTML=head+`<div class="mp-c" style="text-align:center;color:var(--text3);padding:28px">There's no scorecard for ${inTp?'this role':'your role'} yet. Scorecards cover the L&D Director, Supervisors, Instructional Designers, Content Developers and Trainers.</div>`; return; }
   const sc=_scScorecard(_mpPerson,_mpKind,_mpKey);
   if(sc.before){ root.innerHTML=head+`<div class="mp-c" style="color:var(--text3)">Scorecards start ${Utils.formatDate(SC_EFFECTIVE_FROM)}.</div>`; return; }
   const r=sc.range, open=r.end>=_todayStr(), band=_scBand(sc.overall), totalW=sc.rows.reduce((a,b)=>a+b.w,0);
   const covPct=totalW?Math.round(sc.weightMeasured/totalW*100):0, provisional=open||sc.measured<sc.total;
   const states=sc.rows.map(k=>_scState(k,_mpPerson,r));
-  const isOwner=viewer.id===_mpPerson, canVerify=!isOwner&&((viewer.isAdmin&&!_mpAs)||_scDownline(viewer.id).some(u=>u.id===_mpPerson));
+  const asOn=inTp?_tpAs:_mpAs;
+  const isOwner=viewer.id===_mpPerson, canVerify=!isOwner&&((viewer.isAdmin&&!asOn)||_scDownline(viewer.id).some(u=>u.id===_mpPerson));
   /* attention items */
   const att=[];
   sc.rows.forEach((k,i)=>{ const s=states[i][0]; if(k.rating!=null&&k.rating<3) att.push({tone:'danger',t:`${k.name} below target`,d:`Rated ${k.rating} — ${k.actual.detail}`,go:''}); else if(s.startsWith('Awaiting')) att.push({tone:'warning',t:`${k.name}: ${s.toLowerCase()}`,d:'This KPI is rated once the evaluations or reviews are acknowledged.',go:k.key==='obs'?"showView('evaluations')":(k.key.startsWith('id')?"showView('id-qa')":"showView('content-qa')")}); });
@@ -24826,7 +24868,7 @@ function renderMyPerformance(){
   if(role==='trainer'){ const late=TrSessionDB.all().filter(s=>s.trainerId===_mpPerson&&_isReportPending(s)).length; if(late) att.push({tone:'warning',t:`${late} training report${late!==1?'s':''} to submit`,d:'Reports count toward Timeliness once submitted.',go:"showView('training-delivery')"});
     const l3=TrSessionDB.all().filter(s=>(s.trainerId===_mpPerson)&&_l3DueSoonOrOverdue(s)).length; if(l3) att.push({tone:'warning',t:`${l3} L3 follow-up${l3!==1?'s':''} due`,d:'Due within 14 days or overdue.',go:"showView('training-delivery')"}); }
   const toVerify=_scDownline(_mpPerson).flatMap(u=>_scPdps(u.id).filter(x=>x.status==='submitted'));
-  if(toVerify.length) att.push({tone:'accent',t:`${toVerify.length} PDP${toVerify.length!==1?'s':''} to verify`,d:'Submitted by your team with proof.',go:''});
+  if(toVerify.length) att.push({tone:'accent',t:`${toVerify.length} PDP${toVerify.length!==1?'s':''} to verify`,d:'Submitted by your team with proof — open them in Team Performance.',go:inTp?'':"showView('team-performance')"});
   const curQ=_scQuarterOf(_todayStr()), qEnd=_scPeriodRange('quarter',curQ).end;
   if(!_scPdps(_mpPerson).some(x=>x.status==='verified'&&x.quarter===curQ)) att.push({tone:'warning',t:`PDP: 1 needed by ${Utils.formatDate(qEnd)}`,d:'Create and submit your development plan for this quarter.',go:''});
   const attIcon=t=>`<span class="mp-dot mp-dot-${t}">!</span>`;
@@ -24865,14 +24907,14 @@ function renderMyPerformance(){
   const pdpBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Development Plan · Q${q.slice(6)} ${q.slice(0,4)}</span><span style="display:flex;gap:10px;align-items:center">${isOwner&&items.length&&!_mpPdpForm?`<a class="mp-link" onclick="if(!_mpRO()){_mpPdpForm=true;renderMyPerformance()}">+ Add</a>`:''}<a class="mp-link" onclick="mpToggle('allpdp')">${_mpAllPdp?'This quarter':'View all PDPs'}</a></span></div>${form}${items.length?items.map(pdpRow).join(''):(_mpPdpForm?'':empty)}<div class="mp-note">Planned → Ongoing → Submitted (with proof) → Verified by supervisor. Target: 1 verified per quarter.</div></div>`;
   const attBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Needs Attention ${att.length?`<span class="mp-count">${att.length}</span>`:''}</span></div>${att.length?att.map(a=>`<div class="mp-att"${a.go?` onclick="${a.go}" style="cursor:pointer"`:''}>${attIcon(a.tone)}<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${esc(a.t)}</div><div class="mp-sub">${esc(a.d)}</div></div>${a.go?'<span class="mp-sub">›</span>':''}</div>`).join(''):'<div class="mp-empty"><div class="mp-sub">Nothing needs your attention.</div></div>'}</div>`;
   const qa=(icon,label,on)=>`<button class="mp-qa" onclick="${on}">${_tdIconSvg(icon,'#475569',16)}<span>${label}</span></button>`;
-  const quick=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quick Actions</span></div>${isOwner?qa('list','Add Development Plan (PDP)',"if(!_mpRO()){_mpPdpForm=true;renderMyPerformance()}"):''}${qa('calendar','View Training Calendar',"showView('training-delivery')")}${qa('award','View My Evaluations',"showView(Auth.isAdmin||Auth.formAccess(Auth.user).trainerEval?'evaluations':'reports')")}${qa('filecheck','Download Scorecard (PDF)','mpDownloadScorecard()')}</div>`;
-  /* supervisor team */
+  const quick=inTp?`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quick Actions</span></div>${qa('list','Back to Team Performance','tpBack()')}${qa('calendar','View Training Calendar',"showView('training-delivery')")}${qa('filecheck','Download Scorecard (PDF)','mpDownloadScorecard()')}</div>`:`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quick Actions</span></div>${isOwner?qa('list','Add Development Plan (PDP)',"if(!_mpRO()){_mpPdpForm=true;renderMyPerformance()}"):''}${qa('calendar','View Training Calendar',"showView('training-delivery')")}${qa('award','View My Evaluations',"showView(Auth.isAdmin||Auth.formAccess(Auth.user).trainerEval?'evaluations':'reports')")}${qa('filecheck','Download Scorecard (PDF)','mpDownloadScorecard()')}</div>`;
+  /* supervisor team — v5.15b: moved out of My Performance (Team Performance covers the team) */
   let teamBox='';
-  if(role==='supervisor'){ const team=_scDownline(_mpPerson).filter(u=>_scRoleOf(u)); const tsc=team.map(u=>({u,s:_scScorecard(u.id,_mpKind,_mpKey)}));
+  if(false&&role==='supervisor'){ const team=_scDownline(_mpPerson).filter(u=>_scRoleOf(u)); const tsc=team.map(u=>({u,s:_scScorecard(u.id,_mpKind,_mpKey)}));
     const dist=SC_BANDS.map(b=>[b[1],tsc.filter(x=>x.s.overall!=null&&_scBand(x.s.overall).label===b[1]).length,b[2]]);
     teamBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Team · ${esc(r.label)}</span><span class="mp-sub">${dist.filter(d=>d[1]).map(d=>`${d[1]} ${d[0]}`).join(' · ')||'No scores yet'}</span></div>${tsc.map(({u,s})=>{ const b=_scBand(s.overall); const low=(s.rows||[]).filter(k=>k.rating!=null&&k.rating<3).length; return `<div class="mp-team" onclick="mpSet('person','${u.id}')"><span style="flex:1;min-width:0"><b>${esc(name(u))}</b><span class="mp-sub"> · ${esc(SC_ROLES[_scRoleOf(u)].label)}${low?` · ${low} KPI${low!==1?'s':''} below target`:''}</span></span><span style="font-weight:700;min-width:40px;text-align:right">${s.overall!=null?s.overall.toFixed(2):'—'}</span>${b?_mpChip(b.label,b.tone):_mpChip('Not rated')}</div>`; }).join('')||'<div class="mp-sub">No one reports to this supervisor yet.</div>'}</div>`; }
   let inputsBox='';
-  const canEnterInputs=(role==='supervisor'&&canVerify)||(role==='director'&&(canVerify||(isOwner&&viewer.isAdmin&&!_mpAs)));
+  const canEnterInputs=(role==='supervisor'&&canVerify)||(role==='director'&&(canVerify||(isOwner&&viewer.isAdmin&&!asOn)));
   if((role==='supervisor'||role==='director')&&_mpKind==='quarter'&&canEnterInputs){ const v=c=>_scInput(_mpPerson,c,q)?.value??'';
     inputsBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quarter-end ratings · Q${q.slice(6)} ${q.slice(0,4)}</span></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">${role==='director'?`<label style="font-size:12px">KR Achievement %<input id="mp-kr" type="number" min="0" max="200" step="0.1" class="form-control" style="width:120px" value="${v('KR')}"></label>`:''}<label style="font-size:12px">EEI (1–5)<input id="mp-eei" type="number" min="1" max="5" step="0.01" class="form-control" style="width:110px" value="${v('EEI')}"></label><label style="font-size:12px">LEI (1–5)<input id="mp-lei" type="number" min="1" max="5" step="0.01" class="form-control" style="width:110px" value="${v('LEI')}"></label><button class="btn btn-secondary btn-sm" onclick="mpSaveInputs('${q}')">Save ratings</button></div><div class="mp-note">${role==='director'?'KR Achievement from Tempo and LEAP; EEI and LEI from the HR survey. Entered at quarter end.':"From the HR survey results, entered at quarter end by the Director or this supervisor's manager."}</div></div>`; }
   root.innerHTML=`${head}${row1}<div class="mp-r2">${table}${trend}</div>${teamBox}${inputsBox}<div class="mp-r3">${pdpBox}${attBox}${quick}</div>`;
@@ -24887,8 +24929,13 @@ function renderMyPerformance(){
    Performance; the team = everyone below the leader with a scorecard role. */
 let _tpAs=null, _tpKind='month', _tpKey=null, _tpScope='all', _tpQ='', _tpCharts={};
 function _tpViewer(){ return (Auth.isAdmin&&_tpAs)?DB.byId(_tpAs):Auth.user; }
-function tpSet(f,v){ if(f==='as'){ _tpAs=v||null; _tpScope='all'; } if(f==='kind'){ _tpKind=v; _tpKey=null; } if(f==='key') _tpKey=v; if(f==='scope') _tpScope=v; if(f==='q'){ _tpQ=v; } renderTeamPerformance(f==='q'); }
-function tpOpenPerson(pid){ if(Auth.isAdmin){ _mpAs=_tpAs; } _mpPerson=pid; _mpKind=_tpKind; _mpKey=_tpKey; showView('my-performance'); }
+function tpSet(f,v){ if(f==='as'){ _tpAs=v||null; _tpScope='all'; _tpPerson=null; } if(f==='kind'){ _tpKind=v; _tpKey=null; } if(f==='key') _tpKey=v; if(f==='scope') _tpScope=v; if(f==='q'){ _tpQ=v; } renderTeamPerformance(f==='q'); }
+/* v5.15b: drill-down stays inside Team Performance (My Performance is the viewer's own page only) */
+let _tpPerson=null;
+function _tpCanOpen(viewer,pid){ if(!viewer||!pid||viewer.id===pid) return false; if(Auth.isAdmin&&!_tpAs) return true;
+  return _scDownline(viewer.id).some(u=>u.id===pid)||_scDownline(viewer.id,_scAsOf(_scPeriodRange(_tpKind,_tpKey||_scPeriods(_tpKind)[0]))).some(u=>u.id===pid); }
+function tpOpenPerson(pid){ _tpPerson=pid; _mpKind=_tpKind; _mpKey=_tpKey; _mpPdpForm=false; _mpReturnId=null; _mpHost='tp'; renderMyPerformance(); try{ document.querySelector('.main')?.scrollTo?.(0,0); window.scrollTo(0,0); }catch(e){} }
+function tpBack(){ _tpPerson=null; _mpHost='mp'; _tpKind=_mpKind; _tpKey=_mpKey; renderTeamPerformance(); }
 function _tpAlerts(pid,sc){
   const out={below:0,pending:0,items:[]};
   (sc.rows||[]).forEach(k=>{ if(k.rating!=null&&k.rating<3){ out.below++; out.items.push(`${k.name} below target`); } });
@@ -24907,18 +24954,26 @@ function _tpSpark(vals){
 }
 function renderTeamPerformance(keepFocus){
   const root=document.getElementById('tp-root'); if(!root) return;
+  if(_tpPerson){ _mpHost='tp'; renderMyPerformance(); return; } // v5.15b drill-down
+  _mpHost='mp';
   const esc=Utils.esc, viewer=_tpViewer(); if(!viewer){ root.innerHTML=''; return; }
   const name=u=>u?`${u.firstName} ${u.lastName}`:'—', ini=u=>((u?.firstName||'?')[0]+(u?.lastName||'')[0]).toUpperCase();
-  // scope options: everyone under the viewer (admin without preview-as = whole L&D), direct reports, or one sub-team
-  const base=(Auth.isAdmin&&!_tpAs)?DB.all().filter(u=>u.isActive!==false&&u.id!==viewer.id):_scDownline(viewer.id);
-  const leaders=base.filter(u=>DB.all().some(x=>x.isActive!==false&&x.supervisorId===u.id));
-  let pool=base;
-  if(_tpScope==='direct') pool=base.filter(u=>u.supervisorId===viewer.id);
-  else if(_tpScope.startsWith('lead:')){ const lid=_tpScope.slice(5); pool=_scDownline(lid); }
-  const team=pool.filter(u=>_scRoleOf(u)).sort((a,b)=>name(a).localeCompare(name(b)));
   const periods=_scPeriods(_tpKind); if(!_tpKey||!periods.includes(_tpKey)) _tpKey=periods[0];
+  // v5.15b: scope follows the reporting line in effect for the selected period (dated reporting_lines).
+  // All Reports = direct + indirect (admin without preview-as = whole L&D), Direct Reports Only, or one supervisor's team.
+  const asOf=_scAsOf(_scPeriodRange(_tpKind,_tpKey));
+  const dedupe=a=>{ const s=new Set(); return a.filter(u=>u&&!s.has(u.id)&&s.add(u.id)); };
+  const down=_scDownline(viewer.id,asOf);
+  const adminAll=Auth.isAdmin&&!_tpAs;
+  const base=dedupe(adminAll?DB.all().filter(u=>u.isActive!==false&&u.id!==viewer.id):down);
+  const leaders=base.filter(u=>base.some(x=>_supOn(x.id,asOf)===u.id));
+  let pool=base;
+  if(_tpScope==='direct') pool=base.filter(u=>_supOn(u.id,asOf)===viewer.id);
+  else if(_tpScope.startsWith('lead:')){ const lid=_tpScope.slice(5); pool=leaders.some(l=>l.id===lid)?_scDownline(lid,asOf):base; }
+  const team=dedupe(pool).filter(u=>_scRoleOf(u)).sort((a,b)=>name(a).localeCompare(name(b)));
   const asBar=Auth.isAdmin?`<div class="mp-as"><label>Preview as</label><select onchange="tpSet('as',this.value)"><option value="">Myself (admin)</option>${DB.all().filter(u=>u.isActive!==false&&u.id!==Auth.user.id&&Perms.isSupervisor(u)).map(u=>`<option value="${u.id}"${_tpAs===u.id?' selected':''}>${esc(name(u))}</option>`).join('')}</select>${_tpAs?'<span>View-only — you see exactly what this leader sees.</span>':''}</div>`:'';
-  const scopeSel=`<select class="mp-sel" onchange="tpSet('scope',this.value)"><option value="all"${_tpScope==='all'?' selected':''}>${(Auth.isAdmin&&!_tpAs)?'All L&D':'My team'} (${base.filter(u=>_scRoleOf(u)).length})</option><option value="direct"${_tpScope==='direct'?' selected':''}>Direct reports (${base.filter(u=>u.supervisorId===viewer.id&&_scRoleOf(u)).length})</option>${leaders.map(l=>`<option value="lead:${l.id}"${_tpScope==='lead:'+l.id?' selected':''}>${esc(name(l))}'s team (${_scDownline(l.id).filter(u=>_scRoleOf(u)).length})</option>`).join('')}</select>`;
+  const allLbl=(adminAll&&base.length>down.length)?'All L&D (admin)':'All Reports (Direct + Indirect)';
+  const scopeSel=`<select class="mp-sel" onchange="tpSet('scope',this.value)"><option value="all"${_tpScope==='all'?' selected':''}>${allLbl} (${base.filter(u=>_scRoleOf(u)).length})</option><option value="direct"${_tpScope==='direct'?' selected':''}>Direct Reports Only (${base.filter(u=>_supOn(u.id,asOf)===viewer.id&&_scRoleOf(u)).length})</option>${leaders.map(l=>`<option value="lead:${l.id}"${_tpScope==='lead:'+l.id?' selected':''}>${esc(name(l))}'s Team (${_scDownline(l.id,asOf).filter(u=>_scRoleOf(u)).length})</option>`).join('')}</select>`;
   const head=`${asBar}<div class="mp-head"><div><div class="mp-title" style="font-size:18px">Team Performance</div><div class="mp-sub" style="font-size:13px">Monitor your team's performance, spot what needs attention, and act.${_tpAs?' · Viewing as '+esc(name(viewer)):''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${scopeSel}<div class="mp-seg">${['month','quarter'].map(k=>`<button class="${_tpKind===k?'on':''}" onclick="tpSet('kind','${k}')">${k==='month'?'Month':'Quarter'}</button>`).join('')}</div><select class="mp-sel" onchange="tpSet('key',this.value)">${periods.map(p=>`<option value="${p}"${p===_tpKey?' selected':''}>${esc(_scPeriodRange(_tpKind,p).label)}</option>`).join('')}</select></div></div>`;
   if(!team.length){ root.innerHTML=head+`<div class="mp-c" style="text-align:center;color:var(--text3);padding:28px">No one with a scorecard reports to ${_tpAs?esc(name(viewer)):'you'} in this view.</div>`; return; }
   /* compute */
@@ -24970,7 +25025,7 @@ function renderTeamPerformance(keepFocus){
 
 /* ── PDP actions (owner / supervisor) ── */
 // "Preview as" is look-only: an admin sees exactly what that person sees but can't act as them.
-function _mpRO(){ if(_mpAs){ toast('Preview as is view-only. Switch back to "Myself" to make changes.','info'); return true; } return false; }
+function _mpRO(){ if(_mpHost==='tp'?_tpAs:_mpAs){ toast('Preview as is view-only. Switch back to "Myself" to make changes.','info'); return true; } return false; }
 async function _mpPdpWrite(q){ const {data,error}=await q.select().single(); if(error){ _surfaceDbError(error,'Save PDP'); return null; } const row=rowToCamel('pdp_items',data); const a=Cache.data.pdp_items; const i=a.findIndex(x=>x.id===row.id); if(i>=0) a[i]=row; else a.push(row); return row; }
 async function mpPdpAdd(quarter){ if(_mpRO()) return;
   const title=(document.getElementById('mp-pdp-title')?.value||'').trim(); if(!title){ document.getElementById('mp-pdp-err').style.display='block'; return; }
