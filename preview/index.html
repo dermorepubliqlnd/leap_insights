@@ -1526,7 +1526,7 @@
         <div class="nav-item js-cost-view hidden" data-view="cost-analysis"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="6" y="13" width="2.6" height="6.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/><rect x="10.7" y="9" width="2.6" height="10.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/><rect x="15.4" y="5.5" width="2.6" height="14" rx="0.6" stroke="currentColor" stroke-width="1.4"/></svg></span> Cost Analysis</div>
         <div class="nav-item js-cost-manage hidden" data-view="cost-settings"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="6" width="17" height="12" rx="1.8" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 9v0M17.5 15v0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span> Cost Settings</div>
         <div class="nav-sec" style="margin-top:6px">Resources</div>
-        <div class="nav-item" onclick="window.open('LEAP_KB.html','_blank','noopener')" title="Opens in a new tab" style="cursor:pointer"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.3c-1.7-1.2-3.9-1.8-6.2-1.8-.7 0-1.3.1-1.8.2v13.1c.5-.1 1.1-.2 1.8-.2 2.3 0 4.5.6 6.2 1.8 1.7-1.2 3.9-1.8 6.2-1.8.7 0 1.3.1 1.8.2V4.7c-.5-.1-1.1-.2-1.8-.2-2.3 0-4.5.6-6.2 1.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 6.3v13.1" stroke="currentColor" stroke-width="1.4"/></svg></span> Knowledge Base <span style="font-size:9px;opacity:.55;margin-left:auto">↗</span></div>
+        <div class="nav-item" data-view="knowledge-base"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.3c-1.7-1.2-3.9-1.8-6.2-1.8-.7 0-1.3.1-1.8.2v13.1c.5-.1 1.1-.2 1.8-.2 2.3 0 4.5.6 6.2 1.8 1.7-1.2 3.9-1.8 6.2-1.8.7 0 1.3.1 1.8.2V4.7c-.5-.1-1.1-.2-1.8-.2-2.3 0-4.5.6-6.2 1.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 6.3v13.1" stroke="currentColor" stroke-width="1.4"/></svg></span> Knowledge Base</div>
       </nav>
       <div class="sb-footer">
         <div class="sb-user">
@@ -1543,7 +1543,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="topbar-title-group">
-          <span class="topbar-title" id="page-title">Dashboard</span>
+          <span class="topbar-title" id="page-title">Dashboard</span><span id="page-help"></span>
           <span class="topbar-subtitle" id="page-subtitle"></span>
         </div>
         <div class="topbar-search">
@@ -1629,10 +1629,30 @@
             .dp-soon{border-style:dashed;background:#f8fafc}.dp-sec{font-weight:700;font-size:13px;color:#334155;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
             .dp-scroll{max-height:420px;overflow:auto}.dp-x{cursor:pointer}.cp-inl{font-size:12px;padding:3px 6px;max-width:160px}.dp-x:hover td{background:#f8fafc}.dp-sub td{background:#fbfcfe;font-size:12.5px}.dp-sub td:first-child{padding-left:22px}.dp-sub2 td{font-size:12px;color:#475569}.dp-sub2 td:first-child{padding-left:40px}.dp-legacy{margin-top:16px}.dp-legacy>summary{cursor:pointer;font-weight:600;font-size:13px;color:#334155;padding:10px 0}
             #view-dashboard .mp-r1,#view-dashboard .mp-r2{margin-bottom:14px}
+            /* v5.17 Knowledge Base */
+            .kb-hero{text-align:center;padding:26px 16px 18px;background:linear-gradient(135deg,#eef2ff,#ecfeff);border:1px solid var(--border);border-radius:14px;margin-bottom:14px}.kb-ht{font-size:22px;font-weight:800;margin-bottom:4px}
+            .kb-search-big{width:min(640px,100%);padding:12px 16px;font-size:15px;border:1px solid #cbd5e1;border-radius:12px;outline:none}.kb-search-big:focus,.kb-search:focus{border-color:#6366f1;box-shadow:0 0 0 3px #e0e7ff}
+            .kb-search{width:260px;padding:6px 10px;font-size:13px;border:1px solid #cbd5e1;border-radius:8px;outline:none}
+            .kb-crumbs{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
+            .kb-topics{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}.kb-topic{background:#fff;border:1px solid var(--border);border-top:4px solid var(--kbc);border-radius:12px;padding:14px;cursor:pointer;transition:transform .12s,box-shadow .12s}.kb-topic:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(15,23,42,.08)}
+            .kb-ti{font-size:26px;line-height:1}.kb-tn{font-weight:700;margin:6px 0 2px}.kb-tc{font-size:11.5px;font-weight:600;color:#475569;margin-top:6px}
+            .kb-row{display:flex;gap:10px;align-items:flex-start;padding:9px 6px;border-bottom:1px solid #f1f5f9;cursor:pointer;border-radius:8px}.kb-row:hover{background:#f8fafc}.kb-ic{font-size:18px}.kb-rt{font-weight:600;font-size:13.5px}
+            .kb-cath{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+            .kb-article{max-width:860px}.kb-title{font-size:24px;font-weight:800;margin:4px 0}.kb-meta{margin-bottom:10px}.kb-admin{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}
+            .kb-body{font-size:14px;line-height:1.6;color:#1e293b}.kb-body p{margin:0 0 10px}.kb-body ul,.kb-body ol{margin:0 0 10px 20px}.kb-body .kb-h1{font-size:20px;margin:14px 0 6px}.kb-body .kb-h2{font-size:16px;margin:16px 0 6px;color:#0f172a}
+            .kb-acc{border:1px solid var(--border);border-radius:10px;margin:8px 0;background:#fff}.kb-acc>summary{cursor:pointer;padding:10px 12px;font-weight:700}.kb-acc>div{padding:0 14px 8px}
+            .kb-tw{overflow-x:auto;margin:6px 0 12px}.kb-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin:8px 0 12px}.kb-card{display:flex;gap:10px;border:1px solid var(--border);border-radius:10px;padding:12px;background:#fafafa}.kb-cn{width:24px;height:24px;border-radius:50%;background:#6366f1;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px}.kb-do{margin-top:6px;font-size:12.5px;color:#334155}
+            .kb-rel{margin-top:16px;border-top:1px solid var(--border);padding-top:6px}
+            .kb-ed{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kb-ed textarea{min-height:420px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}.kb-prevbox{border:1px dashed #cbd5e1;border-radius:10px;padding:10px 14px;max-height:520px;overflow:auto}
+            .kb-f{font-size:12px;display:flex;flex-direction:column;gap:3px}
+            .kb-help{margin-left:8px;width:20px;height:20px;border-radius:50%;border:1px solid #c7d2fe;background:#eef2ff;color:#4338ca;font-weight:800;font-size:12px;cursor:pointer;vertical-align:2px}
+            .kb-body mark,.kb-row mark{background:#fef08a;padding:0 1px}
             .tp-qas{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tp-qa{display:flex;gap:8px;align-items:flex-start;text-align:left;border:1px solid var(--border);background:#fff;border-radius:8px;padding:10px;font-size:12.5px;cursor:pointer}.tp-qa:hover{background:#f1f5f9}
           </style>
           <div id="tp-root"></div>
         </div>
+
+        <div id="view-knowledge-base" class="hidden"><div id="kb-root"></div></div><!-- v5.17 Knowledge Base -->
 
         <div id="view-dashboard" class="hidden">
           <div id="dash-banner"></div>
@@ -3942,6 +3962,8 @@ const _FIELD_MAPS = {
     // v5.16 (2026-10-30, per Sandra): department KPI fields (NULL on individual rows)
     kpiLevel:'kpi_level', tier:'tier', dimension:'dimension', scored:'scored', frequency:'frequency', targetMax:'target_max', ratingScale:'rating_scale', ownerId:'owner_id', sortOrder:'sort_order'
   },
+  kb_categories:{ id:'id', slug:'slug', name:'name', description:'description', icon:'icon', color:'color', sortOrder:'sort_order', isActive:'is_active', archivedAt:'archived_at', archivedBy:'archived_by', createdAt:'created_at' }, // v5.17
+  kb_entries:{ id:'id', articleNumber:'article_number', slug:'slug', categoryId:'category_id', title:'title', content:'content', audience:'audience', keywords:'keywords', sortOrder:'sort_order', isActive:'is_active', isPinned:'is_pinned', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by', archivedAt:'archived_at', archivedBy:'archived_by' },
   committed_projects:{ id:'id', periodKey:'period_key', title:'title', programId:'program_id', ownerId:'owner_id', milestone:'milestone', milestoneNote:'milestone_note', originalDue:'original_due', revisedDue:'revised_due', commitType:'commit_type', status:'status', evidenceUrl:'evidence_url', evidenceNote:'evidence_note', linkedSessionId:'linked_session_id', linkedReviewId:'linked_review_id', deliveredOn:'delivered_on', deliveredConfirmedBy:'delivered_confirmed_by', approvalBy:'approval_by', approvalAt:'approval_at', approvalNote:'approval_note', sortOrder:'sort_order', createdBy:'created_by', createdAt:'created_at', updatedAt:'updated_at' }, // v5.16c
   committed_project_events:{ id:'id', projectId:'project_id', at:'at', actorId:'actor_id', action:'action', detail:'detail' },
   department_kpi_snapshots:{ id:'id', periodKey:'period_key', results:'results', status:'status', finalizedAt:'finalized_at', finalizedBy:'finalized_by', reopenedAt:'reopened_at', reopenedBy:'reopened_by', reopenReason:'reopen_reason' },
@@ -4007,9 +4029,9 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[], department_kpi_snapshots:[], committed_projects:[], committed_project_events:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[], department_kpi_snapshots:[], committed_projects:[], committed_project_events:[], kb_categories:[], kb_entries:[] },
   // v5.02: tables added by a migration that may not be applied yet -- a load error here must not block the app.
-  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines','department_kpi_snapshots','committed_projects','committed_project_events']),
+  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines','department_kpi_snapshots','committed_projects','committed_project_events','kb_categories','kb_entries']),
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -4803,9 +4825,10 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={dashboard:'Department Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={'knowledge-base':'Knowledge Base',dashboard:'Department Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
+  'knowledge-base':'How-to guides, rules and answers for LEAP Insights',
   dashboard:'L&D department KPIs against the strategic plan: targets, results, coverage and the evidence behind each',
   'my-performance':'Your own scorecard, development plan and what needs your action',
   'team-performance':'Scorecards and development of the people in your reporting line',
@@ -4840,11 +4863,13 @@ function showView(id){
   }
   document.getElementById('page-title').textContent=PAGE_TITLES[id]||'';
   document.getElementById('page-subtitle').textContent=PAGE_SUBTITLES[id]||'';
+  { const ph=document.getElementById('page-help'); if(ph) ph.innerHTML=(typeof _kbHelpBtn==='function'&&id!=='knowledge-base')?_kbHelpBtn(id):''; } // v5.17
   // Dashboard's single "+ New Evaluation" dropdown (2026-09-22, per Sandra: replaces the old
   // 3-button "Quick Actions" strip in dash-body) lives in the shared topbar-acts slot -- cleared
   // for every other view so it doesn't linger when navigating away.
   document.getElementById('topbar-acts').innerHTML=(id==='dashboard')?(_dpTopbarHtml()+_dashNewEvalBtnHtml()):(id==='learning-programs'?_lpTopbarHtml():'');
   if(id==='dashboard')   renderDashboard();
+  if(id==='knowledge-base') renderKnowledgeBase(); // v5.17
   if(id==='my-performance'){ _mpHost='mp'; renderMyPerformance(); }
   if(id==='team-performance'){ _tpPerson=null; _mpHost='mp'; renderTeamPerformance(); }
   if(id==='users')       { uF={q:'',account:'all',role:'all'}; const uq=document.getElementById('user-q'); if(uq) uq.value=''; renderUsers(); }
@@ -4906,6 +4931,7 @@ function _hashForView(id){
   if(id==='content-qa')  return _computeCQAHash();
   if(id==='training-delivery') return _computeTrainingDeliveryHash();
   if(id==='learning-programs') return '#learning-programs'+(_lpDetailId?'/'+_lpDetailId:'');
+  if(id==='knowledge-base') return _kbHash(); // v5.17
   return '#'+id;
 }
 function _pushAppHash(hash){
@@ -4945,8 +4971,9 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+    const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
+    if(view==='knowledge-base'){ const k=parts[1]; _kbR=k==='article'?{page:'article',id:parts[2]}:k==='category'?{page:'category',id:parts[2]}:k==='search'?{page:'search',q:decodeURIComponent(parts[2]||'')}:k==='archive'?{page:'archive'}:{page:'home'}; if(k==='search') _kbQ=_kbR.q; } // v5.17
     showView(view);
     if(view==='evaluations'){
       if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewEval(); else { const rec=EvalDB.byId(rid); if(rec) (rec.status==='draft'?openEvalForm(rid):openEvalView(rid)); else showEvalSubview('list'); } }
@@ -25427,6 +25454,133 @@ function cpDelete(id){ const x=(Cache.data.committed_projects||[]).find(y=>y.id=
     const {error}=await sb.from('committed_projects').delete().eq('id',id); if(error){ _surfaceDbError(error,'Delete commitment'); return; }
     Cache.data.committed_projects=Cache.data.committed_projects.filter(y=>y.id!==id); await AuditLog.record('delete','Committed Projects',id,`Deleted commitment ${x.title}`); _cpEdit=null; _dpCache=null; renderDepartmentPerformance(); }); }
 
+/* ══ v5.17 (2026-10-30, per Sandra): KNOWLEDGE BASE (in-app, shared L&D KB framework) ═════════════════════════
+   kb_categories · kb_entries (KB-0000 numbers, draft/published, pinned, audience, archive) · kb_entry_versions.
+   Search-first home → category → article, each with its own link (#knowledge-base/…). Markdown-lite content.
+   Admins edit (DB-enforced); drafts are shown to admins on the preview site only. "?" help links from app pages. */
+const KB_AUD={everyone:['Everyone','neutral'],leaders:['Leaders','accent'],admins:['Admins','warning']};
+const KB_HELP={'my-performance':'my-performance','team-performance':'team-performance',dashboard:'department-performance','learning-programs':'learning-programs','training-delivery':'training-calendar','training-dashboard':'training-dashboard','trainer-checklist':'trainer-checklist',evaluations:'trainer-evaluation','id-qa':'id-qa-review','content-qa':'cd-qa-review',reports:'qa-reports',users:'user-management',settings:'settings-targets'};
+let _kbR={page:'home'}, _kbQ='', _kbEdit=null, _kbHist=null;
+const _kbNum=n=>'KB-'+String(n).padStart(4,'0');
+const _kbIsPreview=()=>window.LEAP_CHANNEL==='preview';
+function _kbCats(){ return (Cache.data.kb_categories||[]).filter(c=>!c.archivedAt&&c.isActive!==false).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)); }
+function _kbVisible(e){ if(!e||e.archivedAt) return false; if(e.isActive) return true; return Auth.isAdmin&&_kbIsPreview(); } // drafts: admins on preview only
+function _kbAll(){ return (Cache.data.kb_entries||[]).filter(_kbVisible).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)||a.articleNumber-b.articleNumber); }
+const _kbCat=id=>(Cache.data.kb_categories||[]).find(c=>c.id===id||c.slug===id);
+const _kbByNum=n=>(Cache.data.kb_entries||[]).find(e=>String(e.articleNumber)===String(Number(String(n).replace(/\D/g,''))));
+const _kbBySlug=s=>(Cache.data.kb_entries||[]).find(e=>e.slug===s);
+function _kbMinRead(t){ return Math.max(1,Math.round(String(t||'').split(/\s+/).length/200)); }
+function _kbSummary(t){ const line=String(t||'').split('\n').map(x=>x.trim()).find(x=>x&&!/^(#|\||-|\d+\.|@@|\{\{)/.test(x))||''; return line.replace(/\*\*|\*|\[\[|\]\]|\{(\w+):([^}]+)\}/g,(m,a,b)=>b||'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').slice(0,170); }
+/* ── markdown-lite renderer (escapes everything; no stored HTML) ── */
+function _kbInline(s){
+  let h=Utils.esc(s);
+  h=h.replace(/\{(success|warning|danger|accent|neutral):([^}]+)\}/g,(m,t,l)=>_mpChip(l,t));
+  h=h.replace(/\[\[([^\]]+)\]\]/g,(m,t)=>{ const e=(Cache.data.kb_entries||[]).find(x=>x.title.toLowerCase()===t.toLowerCase().replace(/&amp;/g,'&')&&_kbVisible(x)); return e?`<a class="mp-link" onclick="kbGo('article','${e.articleNumber}')">${t}</a>`:`<span title="Article not found">${t}</span>`; });
+  h=h.replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g,(m,t,u)=>`<a href="${u}" target="_blank" rel="noopener">${t} ↗</a>`);
+  h=h.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1<i>$2</i>');
+  return h;
+}
+function _kbRender(md){
+  const lines=String(md||'').replace(/\r/g,'').split('\n'), out=[]; let i=0, inSec=false;
+  const closeSec=()=>{ if(inSec){ out.push('</div></details>'); inSec=false; } };
+  while(i<lines.length){ const l=lines[i]; const t=l.trim();
+    if(!t){ i++; continue; }
+    let m;
+    if((m=t.match(/^(#{1,3})\s+(.*)$/))){ const lv=m[1].length; if(lv===3){ closeSec(); out.push(`<details class="kb-acc"><summary>${_kbInline(m[2])}</summary><div>`); inSec=true; } else { closeSec(); out.push(`<h${lv+1} class="kb-h${lv}">${_kbInline(m[2])}</h${lv+1}>`); } i++; continue; }
+    if(t.startsWith('@@')){ const cards=[]; while(i<lines.length&&lines[i].trim().startsWith('@@')){ const [a,b,c]=lines[i].trim().slice(2).split('||').map(x=>x.trim()); cards.push({a,b,c}); i++; }
+      out.push(`<div class="kb-cards">${cards.map((c,n)=>`<div class="kb-card"><div class="kb-cn">${n+1}</div><div><b>${_kbInline(c.a||'')}</b><div>${_kbInline(c.b||'')}</div>${c.c?`<div class="kb-do"><i>What you do:</i> ${_kbInline(c.c)}</div>`:''}</div></div>`).join('')}</div>`); continue; }
+    if(t.startsWith('|')){ const rows=[]; while(i<lines.length&&lines[i].trim().startsWith('|')){ rows.push(lines[i].trim()); i++; }
+      const cells=r=>r.replace(/^\||\|$/g,'').split('|').map(x=>x.trim()); const body=rows.filter(r=>!/^\|[\s:|-]+\|$/.test(r));
+      out.push(`<div class="kb-tw"><table class="mp-tbl"><thead><tr>${cells(body[0]).map(c=>`<th>${_kbInline(c)}</th>`).join('')}</tr></thead><tbody>${body.slice(1).map(r=>`<tr>${cells(r).map(c=>`<td>${_kbInline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`); continue; }
+    if(/^[-*]\s+/.test(t)){ const it=[]; while(i<lines.length&&/^\s*[-*]\s+/.test(lines[i])){ it.push(lines[i].trim().replace(/^[-*]\s+/,'')); i++; } out.push(`<ul>${it.map(x=>`<li>${_kbInline(x)}</li>`).join('')}</ul>`); continue; }
+    if(/^\d+\.\s+/.test(t)){ const it=[]; while(i<lines.length&&/^\s*\d+\.\s+/.test(lines[i])){ it.push(lines[i].trim().replace(/^\d+\.\s+/,'')); i++; } out.push(`<ol>${it.map(x=>`<li>${_kbInline(x)}</li>`).join('')}</ol>`); continue; }
+    const para=[t]; i++; while(i<lines.length&&lines[i].trim()&&!/^(#{1,3}\s|\||[-*]\s|\d+\.\s|@@)/.test(lines[i].trim())){ para.push(lines[i].trim()); i++; }
+    out.push(`<p>${_kbInline(para.join(' '))}</p>`);
+  }
+  closeSec(); return out.join('');
+}
+/* ── search: title > category > content ── */
+function _kbSearch(q){
+  const terms=q.toLowerCase().split(/\s+/).filter(Boolean); if(!terms.length) return [];
+  return _kbAll().map(e=>{ const cat=_kbCat(e.categoryId); const T=e.title.toLowerCase(), C=(cat?.name||'').toLowerCase(), B=(e.content+' '+(e.keywords||'')).toLowerCase(); let s=0;
+    for(const w of terms){ if(T.includes(w)) s+=10; else if(C.includes(w)) s+=4; else if(B.includes(w)) s+=1; else return null; } return {e,s}; }).filter(Boolean).sort((a,b)=>b.s-a.s).map(x=>x.e);
+}
+function _kbSnippet(e,q){ const t=String(e.content).replace(/[#*|@{}\[\]]/g,' ').replace(/\s+/g,' '); const w=q.toLowerCase().split(/\s+/).filter(Boolean)[0]||''; const k=t.toLowerCase().indexOf(w);
+  const s=k<0?t.slice(0,160):t.slice(Math.max(0,k-60),k+110); let h=Utils.esc(s); q.split(/\s+/).filter(Boolean).forEach(x=>{ h=h.replace(new RegExp('('+x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig'),'<mark>$1</mark>'); }); return (k>60?'…':'')+h+'…'; }
+/* ── navigation ── */
+function kbGo(page,id,q){ _kbR={page,id,q}; _kbEdit=null; _kbHist=null; if(page==='search') _kbQ=q||''; if(document.getElementById('view-knowledge-base')?.classList.contains('hidden')) showView('knowledge-base'); else renderKnowledgeBase(); _pushAppHash(_kbHash()); try{ document.querySelector('.main')?.scrollTo?.(0,0); window.scrollTo(0,0); }catch(e){} }
+function _kbHash(){ const r=_kbR; if(r.page==='article'){ const e=_kbByNum(r.id); return '#knowledge-base/article/'+(e?_kbNum(e.articleNumber):r.id); } if(r.page==='category') return '#knowledge-base/category/'+r.id; if(r.page==='search') return '#knowledge-base/search/'+encodeURIComponent(r.q||''); if(r.page==='archive') return '#knowledge-base/archive'; return '#knowledge-base'; }
+function kbSearchKey(ev,el){ if(ev.key==='Enter'){ const q=el.value.trim(); if(q) kbGo('search',null,q); else kbGo('home'); } }
+function kbOpenHelp(view){ const e=_kbBySlug(KB_HELP[view]); if(e&&_kbVisible(e)) kbGo('article',e.articleNumber); else kbGo('search',null,(PAGE_TITLES[view]||view)); }
+function _kbHelpBtn(view){ const e=_kbBySlug(KB_HELP[view]); return (e&&_kbVisible(e))?`<button class="kb-help" title="Help: ${Utils.esc(e.title)}" onclick="kbOpenHelp('${view}')">?</button>`:''; }
+/* ── page ── */
+function renderKnowledgeBase(){
+  const root=document.getElementById('kb-root'); if(!root) return; const esc=Utils.esc, r=_kbR, admin=Auth.isAdmin;
+  const sbox=(big)=>`<input class="${big?'kb-search-big':'kb-search'}" placeholder="🔍 Search the Knowledge Base…" value="${esc(r.page==='search'?_kbQ:'')}" onkeydown="kbSearchKey(event,this)">`;
+  const crumbs=(parts)=>`<div class="kb-crumbs"><div><a class="mp-link" onclick="kbGo('home')">📖 Knowledge Base</a>${parts.map(p=>` › ${p}`).join('')}</div>${sbox(false)}</div>`;
+  const aud=e=>{ const a=KB_AUD[e.audience]||KB_AUD.everyone; return e.audience&&e.audience!=='everyone'?_mpChip(a[0],a[1]):''; };
+  const draft=e=>e.isActive?'':_mpChip('DRAFT','warning');
+  const row=e=>{ const c=_kbCat(e.categoryId); return `<div class="kb-row" onclick="kbGo('article','${e.articleNumber}')"><span class="kb-ic">${esc(c?.icon||'📄')}</span><div style="flex:1;min-width:0"><div class="kb-rt">${esc(e.title)} ${draft(e)} ${aud(e)}</div><div class="mp-sub">${esc(_kbSummary(e.content))}</div></div><span class="mp-sub" style="white-space:nowrap">${_kbNum(e.articleNumber)}</span></div>`; };
+  if(_kbEdit){ root.innerHTML=_kbEditorHtml(); _kbPreview(); return; }
+  if(r.page==='home'){
+    const all=_kbAll(), pinned=all.filter(e=>e.isPinned), recent=all.slice().sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,5);
+    root.innerHTML=`<div class="kb-hero"><div class="kb-ht">📖 How can we help?</div><div class="mp-sub" style="margin-bottom:12px">Guides for LEAP Insights: your performance, team and department views, programs, sessions and QA.</div>${sbox(true)}${admin?`<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="kbNew()">+ New article</button><button class="btn btn-ghost btn-sm" onclick="kbGo('archive')">🗄️ Archive</button>${_kbIsPreview()?'':`<span class="mp-sub">Drafts are visible on the preview site only.</span>`}</div>`:''}</div>
+      <div class="dp-sec">Browse by topic</div><div class="kb-topics">${_kbCats().map(c=>{ const n=all.filter(e=>e.categoryId===c.id).length; return `<div class="kb-topic" style="--kbc:${esc(c.color||'#f1f5f9')}" onclick="kbGo('category','${esc(c.slug)}')"><div class="kb-ti">${esc(c.icon||'📄')}</div><div class="kb-tn">${esc(c.name)}</div><div class="mp-sub">${esc(c.description||'')}</div><div class="kb-tc">${n} article${n!==1?'s':''}</div></div>`; }).join('')}</div>
+      <div class="mp-r2" style="grid-template-columns:1fr 1fr;margin-top:14px"><div class="mp-c">${_dpHead('⭐ Frequently used')}${pinned.map(row).join('')||'<div class="mp-sub">No pinned articles yet.</div>'}</div><div class="mp-c">${_dpHead('🕒 Recently updated')}${recent.map(row).join('')||'<div class="mp-sub">No articles yet.</div>'}</div></div>`;
+    return;
+  }
+  if(r.page==='category'){ const c=_kbCat(r.id); if(!c){ kbGo('home'); return; } const list=_kbAll().filter(e=>e.categoryId===c.id);
+    root.innerHTML=`${crumbs([esc(c.icon+' '+c.name)])}<div class="mp-c"><div class="kb-cath"><span class="kb-ti">${esc(c.icon)}</span><div><div class="mp-title" style="font-size:18px">${esc(c.name)}</div><div class="mp-sub">${esc(c.description||'')}</div></div>${admin?`<button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="kbNew('${c.id}')">+ New article</button>`:''}</div>${list.map(row).join('')||'<div class="mp-sub" style="padding:10px 0">No articles in this topic yet.</div>'}</div>`; return; }
+  if(r.page==='search'){ const res=_kbSearch(_kbQ);
+    root.innerHTML=`${crumbs(['Search'])}<div class="mp-c">${_dpHead(`${res.length} result${res.length!==1?'s':''} for “${esc(_kbQ)}”`)}${res.map(e=>{ const c=_kbCat(e.categoryId); return `<div class="kb-row" onclick="kbGo('article','${e.articleNumber}')"><span class="kb-ic">${esc(c?.icon||'📄')}</span><div style="flex:1;min-width:0"><div class="kb-rt">${esc(e.title)} ${draft(e)} ${aud(e)}</div><div class="mp-sub">${esc(c?.name||'')} · ${_kbSnippet(e,_kbQ)}</div></div><span class="mp-sub">${_kbNum(e.articleNumber)}</span></div>`; }).join('')||'<div class="mp-sub" style="padding:10px 0">No articles match. Try a different word, or browse by topic.</div>'}</div>`; return; }
+  if(r.page==='archive'&&admin){ const arch=(Cache.data.kb_entries||[]).filter(e=>e.archivedAt);
+    root.innerHTML=`${crumbs(['🗄️ Archive'])}<div class="mp-c">${_dpHead('Archived articles','restore to bring back · numbers are never reused')}${arch.map(e=>`<div class="kb-row"><span class="kb-ic">🗄️</span><div style="flex:1"><div class="kb-rt">${esc(e.title)}</div><div class="mp-sub">${_kbNum(e.articleNumber)} · archived ${Utils.formatDate(_mnlDateOf(e.archivedAt))}</div></div><button class="btn btn-ghost btn-sm" onclick="kbArchive('${e.id}',false)">Restore</button></div>`).join('')||'<div class="mp-sub">Archive is empty.</div>'}</div>`; return; }
+  if(r.page==='article'){ const e=_kbByNum(r.id); if(!e||!_kbVisible(e)){ root.innerHTML=`${crumbs(['Not found'])}<div class="mp-c">That article isn't available. <a class="mp-link" onclick="kbGo('home')">Back to the Knowledge Base</a></div>`; return; }
+    const c=_kbCat(e.categoryId), by=DB.byId(e.updatedBy||e.createdBy), rel=_kbAll().filter(x=>x.categoryId===e.categoryId&&x.id!==e.id).slice(0,6);
+    const adminBar=admin?`<div class="kb-admin"><button class="btn btn-secondary btn-xs" onclick="kbEditOpen('${e.id}')">✏️ Edit</button><button class="btn btn-ghost btn-xs" onclick="kbSet('${e.id}','isActive',${!e.isActive})">${e.isActive?'Unpublish':'🚀 Publish'}</button><button class="btn btn-ghost btn-xs" onclick="kbSet('${e.id}','isPinned',${!e.isPinned})">${e.isPinned?'Unpin':'⭐ Pin'}</button><button class="btn btn-ghost btn-xs" onclick="kbHistory('${e.id}')">🕒 History</button><button class="btn btn-ghost btn-xs" onclick="kbArchive('${e.id}',true)">🗄️ Archive</button></div>`:'';
+    root.innerHTML=`${crumbs([`<a class="mp-link" onclick="kbGo('category','${esc(c?.slug||'')}')">${esc((c?.icon||'')+' '+(c?.name||''))}</a>`,esc(e.title)])}
+      <div class="mp-c kb-article"><div class="mp-sub" style="font-weight:600">${_kbNum(e.articleNumber)} ${draft(e)}</div><h1 class="kb-title">${esc(e.title)}</h1>
+      <div class="mp-sub kb-meta">Updated ${Utils.formatDate(_mnlDateOf(e.updatedAt||e.createdAt))}${by?' · by '+esc(by.firstName+' '+by.lastName):''} · ${_kbMinRead(e.content)} min read · For: ${_mpChip((KB_AUD[e.audience]||KB_AUD.everyone)[0],(KB_AUD[e.audience]||KB_AUD.everyone)[1])}</div>${adminBar}
+      ${_kbHist===e.id?_kbHistHtml(e):''}<div class="kb-body">${_kbRender(e.content)}</div>
+      ${rel.length?`<div class="kb-rel"><div class="dp-sec">Related articles</div>${rel.map(row).join('')}</div>`:''}</div>`;
+    root.querySelectorAll('.kb-acc').forEach((d,n)=>{ if(n===0) d.open=true; }); return; }
+  kbGo('home');
+}
+/* ── admin: editor, publish/pin, history, archive ── */
+function kbNew(catId){ _kbEdit={id:null,categoryId:catId||_kbCats()[0]?.id,title:'',slug:'',audience:'everyone',keywords:'',sortOrder:0,content:'**[One-line outcome, in bold]**\n\n## [Section]\n2–4 sentences or a table.\n*What you do:* [action, **button names** bold]\n\n## Want the detail?\n- [[Related Article]]\n'}; renderKnowledgeBase(); }
+function kbEditOpen(id){ const e=(Cache.data.kb_entries||[]).find(x=>x.id===id); if(!e) return; _kbEdit={...e}; renderKnowledgeBase(); }
+function _kbEditorHtml(){ const x=_kbEdit, esc=Utils.esc;
+  return `<div class="mp-c"><div class="mp-ch" style="margin-bottom:8px"><span style="font-size:15px">${x.id?'✏️ Edit '+_kbNum(x.articleNumber):'✨ New article'}</span><span class="mp-sub">Markdown-lite: # ## ### (collapsible) · **bold** · *italic* · - lists · 1. steps · | tables | · [[Article Title]] · [text](https://…) · {success:Label} pills · @@ Title || body || what you do</span></div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px"><label class="kb-f">Title<input id="kb-title" class="form-control" value="${esc(x.title||'')}" oninput="_kbPreview()"></label><label class="kb-f">Topic<select id="kb-cat" class="form-control">${_kbCats().map(c=>`<option value="${c.id}"${c.id===x.categoryId?' selected':''}>${esc(c.icon+' '+c.name)}</option>`).join('')}</select></label><label class="kb-f">Audience<select id="kb-aud" class="form-control">${Object.entries(KB_AUD).map(([k,v])=>`<option value="${k}"${k===x.audience?' selected':''}>${v[0]}</option>`).join('')}</select></label><label class="kb-f">Order<input id="kb-order" type="number" class="form-control" value="${esc(String(x.sortOrder||0))}"></label>
+      <label class="kb-f" style="grid-column:span 2">Search keywords / synonyms<input id="kb-kw" class="form-control" value="${esc(x.keywords||'')}" placeholder="e.g. timesheet, hours"></label><label class="kb-f" style="grid-column:span 2">Help-link key (optional)<input id="kb-slug" class="form-control" value="${esc(x.slug||'')}" placeholder="e.g. my-performance"></label></div>
+    <div class="kb-ed"><textarea id="kb-content" class="form-control" oninput="_kbPreview()">${esc(x.content||'')}</textarea><div id="kb-prev" class="kb-body kb-prevbox"></div></div>
+    <div id="kb-err" class="modal-err hidden" style="margin-top:6px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="_kbEdit=null;renderKnowledgeBase()">Cancel</button><button class="btn btn-secondary btn-sm" onclick="kbSave(false)">Save as draft</button><button class="btn btn-primary btn-sm" onclick="kbSave(true)">Save &amp; publish</button></div></div>`; }
+function _kbPreview(){ const p=document.getElementById('kb-prev'), c=document.getElementById('kb-content'); if(p&&c) p.innerHTML=`<h1 class="kb-title">${Utils.esc(document.getElementById('kb-title')?.value||'')}</h1>`+_kbRender(c.value); }
+async function kbSave(publish){
+  const g=i=>document.getElementById(i), err=g('kb-err'), fail=m=>{ err.textContent=m; err.classList.remove('hidden'); };
+  const p={title:g('kb-title').value.trim(),categoryId:g('kb-cat').value,audience:g('kb-aud').value,sortOrder:Number(g('kb-order').value)||0,keywords:g('kb-kw').value.trim()||null,slug:g('kb-slug').value.trim()||null,content:g('kb-content').value,isActive:!!publish};
+  if(!p.title) return fail('Enter a title.'); if(!p.content.trim()) return fail('Write the article.');
+  const ex=_kbEdit.id?(Cache.data.kb_entries||[]).find(x=>x.id===_kbEdit.id):null;
+  const q=ex?sb.from('kb_entries').update(patchToSnake('kb_entries',p)).eq('id',ex.id):sb.from('kb_entries').insert(patchToSnake('kb_entries',{...p,createdBy:Auth.user.id,updatedBy:Auth.user.id}));
+  const {data,error}=await q.select().single(); if(error){ _surfaceDbError(error,'Save article'); return; }
+  const row=rowToCamel('kb_entries',data), a=Cache.data.kb_entries||(Cache.data.kb_entries=[]), i=a.findIndex(x=>x.id===row.id); if(i>=0) a[i]=row; else a.push(row);
+  await AuditLog.record(ex?'update':'create','Knowledge Base',row.id,`${_kbNum(row.articleNumber)} ${row.title}${publish?' (published)':' (draft)'}`);
+  _kbEdit=null; toast(publish?'Article published.':'Draft saved.','success'); kbGo('article',row.articleNumber);
+}
+async function kbSet(id,field,val){ const {data,error}=await sb.from('kb_entries').update(patchToSnake('kb_entries',{[field]:val})).eq('id',id).select().single(); if(error){ _surfaceDbError(error,'Update article'); return; }
+  const row=rowToCamel('kb_entries',data), a=Cache.data.kb_entries; a[a.findIndex(x=>x.id===id)]=row; await AuditLog.record('update','Knowledge Base',id,`${_kbNum(row.articleNumber)} ${field==='isActive'?(val?'published':'unpublished'):(val?'pinned':'unpinned')}`); renderKnowledgeBase(); }
+function kbArchive(id,on){ const e=(Cache.data.kb_entries||[]).find(x=>x.id===id); if(!e) return;
+  const go=async()=>{ const {data,error}=await sb.from('kb_entries').update(on?{archived_at:new Date().toISOString(),archived_by:Auth.user.id,is_pinned:false}:{archived_at:null,archived_by:null}).eq('id',id).select().single(); if(error){ _surfaceDbError(error,'Archive article'); return; }
+    const a=Cache.data.kb_entries; a[a.findIndex(x=>x.id===id)]=rowToCamel('kb_entries',data); await AuditLog.record('update','Knowledge Base',id,`${_kbNum(e.articleNumber)} ${on?'archived':'restored'}`); toast(on?'Moved to the Archive.':'Restored.','success'); kbGo(on?'home':'article',on?null:e.articleNumber); };
+  if(on) confirm$('Archive article',`Move <b>${Utils.esc(e.title)}</b> (${_kbNum(e.articleNumber)}) to the Archive? You can restore it later; its number is never reused.`,'Archive',go); else go(); }
+async function kbHistory(id){ if(_kbHist===id){ _kbHist=null; renderKnowledgeBase(); return; } const {data,error}=await sb.from('kb_entry_versions').select('*').eq('entry_id',id).order('edited_at',{ascending:false}).limit(30); if(error){ _surfaceDbError(error,'Load history'); return; }
+  window._kbVers=(data||[]).map(r=>({id:r.id,title:r.title,content:r.content,editedAt:r.edited_at,editedBy:r.edited_by})); _kbHist=id; renderKnowledgeBase(); }
+function _kbHistHtml(e){ const v=window._kbVers||[]; return `<div class="mp-pdp" style="margin:8px 0">${_dpHead('🕒 Version history','a snapshot is saved before every edit')}${v.map((x,n)=>{ const u=DB.byId(x.editedBy); return `<div class="kb-row" style="cursor:default"><div style="flex:1"><b>${Utils.esc(x.title||'')}</b><div class="mp-sub">Replaced ${Utils.formatDate(_mnlDateOf(x.editedAt))}${u?' by '+Utils.esc(u.firstName+' '+u.lastName):''} · ${_kbMinRead(x.content)} min read</div></div><button class="btn btn-ghost btn-xs" onclick="kbRestoreVersion('${e.id}',${n})">Restore this version</button></div>`; }).join('')||'<div class="mp-sub">No earlier versions yet.</div>'}</div>`; }
+function kbRestoreVersion(id,n){ const v=(window._kbVers||[])[n]; if(!v) return; confirm$('Restore version','Replace the current text with this earlier version? The current text is saved to history first.','Restore',async()=>{
+  const {data,error}=await sb.from('kb_entries').update({title:v.title,content:v.content}).eq('id',id).select().single(); if(error){ _surfaceDbError(error,'Restore version'); return; }
+  const a=Cache.data.kb_entries; a[a.findIndex(x=>x.id===id)]=rowToCamel('kb_entries',data); await AuditLog.record('update','Knowledge Base',id,'Restored an earlier version'); _kbHist=null; toast('Version restored.','success'); renderKnowledgeBase(); }); }
+
 /* ══ v5.15a (2026-10-30, per Sandra's mockup): TEAM PERFORMANCE — leaders' view ══════════════
    For anyone with people under them (reporting line) and admins. Same scorecard engine as My
    Performance; the team = everyone below the leader with a scorecard role. */
@@ -25712,7 +25866,7 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const validViews=['dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+  const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
   if(location.hash && location.hash.length>1){
     _restoreFromHash(location.hash);
   } else {
