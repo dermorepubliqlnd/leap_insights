@@ -4142,16 +4142,18 @@ const PhHolidaysDB = {
    answers "what was this person's Workload Allocation % on this date" -- the most recent row
    with effective_date <= date, falling back to the profile's current live value if no history
    row exists yet (e.g. right after a fresh signup, before anything writes a history row). */
+// v5.15a (2026-10-30, per Sandra): Delivery Allocation default -- trainers 60%, everyone else 5%.
+function _defaultDeliveryPct(u){ return u&&u.positionId==='pos_6'?60:5; }
 const WorkloadPctHistoryDB = {
   all(profileId){
     const rows=(Cache.data[Store.WORKLOAD_PCT_HISTORY]||[]).filter(h=>h.profileId===profileId);
     return rows.slice().sort((a,b)=>a.effectiveDate<b.effectiveDate?-1:a.effectiveDate>b.effectiveDate?1:0);
   },
-  resolveAsOf(profileId,dateStr){
+  resolveAsOf(profileId,dateStr){ /* v5.15a: default = 60% trainers, 5% everyone else */
     const rows=this.all(profileId).filter(h=>h.effectiveDate<=dateStr);
     if(rows.length) return Number(rows[rows.length-1].pct);
     const trainer=DB.byId(profileId);
-    return trainer&&trainer.workloadAllocationPct!=null?Number(trainer.workloadAllocationPct):60;
+    return trainer&&trainer.workloadAllocationPct!=null?Number(trainer.workloadAllocationPct):_defaultDeliveryPct(trainer);
   },
   // Called from saveUser() whenever the Workload Allocation % field actually changed -- logs a
   // new dated row rather than silently losing what the OLD % was.
@@ -8716,7 +8718,7 @@ function renderUsers(){
     const scopeBadge=u.isAdmin?'':(u.dashScope==='full'?'<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe" title="Full org dashboard view">⊞ Full View</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0" title="Team data only">⊟ Team View</span>');
     const toggleBtn=!isMe?(u.isActive?`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',false)">Deactivate</button>`:`<button class="btn btn-sm btn-ghost" onclick="confirmToggleActive('${u.id}',true)">Activate</button>`):'';
     const deleteBtn=!isMe?`<button class="btn btn-sm btn-ghost" style="color:#b91c1c" onclick="deleteUserConfirm('${u.id}')">Delete</button>`:'';
-    const deliveryPct=`<span style="font-size:13px">${u.workloadAllocationPct??60}%</span>`;
+    const deliveryPct=`<span style="font-size:13px">${u.workloadAllocationPct??_defaultDeliveryPct(u)}%</span>`;
     return `<tr><td><div class="tbl-user"><div class="tbl-ava" style="${Utils.avatarBg(u.isAdmin)}">${Utils.initials(name)}</div><div><div class="td-name">${Utils.esc(name)}${isMe?' <span class="txt-muted" style="font-size:11.5px">(you)</span>':''}</div><div style="font-size:11.5px;color:var(--text3)">${Utils.esc(u.email)}</div></div></div></td><td class="txt-mono">${Utils.esc(u.employeeId)||'<span class="txt-muted">—</span>'}</td><td>${pos}</td><td style="font-size:13px">${sup}</td><td>${esBadge}</td><td>${deliveryPct}</td><td><div class="badge-row">${statBadge}${resetBadge}</div></td><td><div class="badge-row">${adminBadge}${catBadges}${scopeBadge}</div></td><td><div class="td-acts"><button class="btn btn-sm btn-secondary" onclick="openEditUser('${u.id}')">Edit</button>${toggleBtn}${deleteBtn}</div></td></tr>`;
   }).join('');
 }
@@ -8772,7 +8774,7 @@ function openEditUser(id){
   document.getElementById('mu-fname').value=u.firstName; document.getElementById('mu-lname').value=u.lastName;
   document.getElementById('mu-email').value=u.email; document.getElementById('mu-hiredate').value=u.hireDate||'';
   document.getElementById('mu-role-eff-date').value=u.roleEffectiveDate||'';
-  document.getElementById('mu-workload-pct').value=u.workloadAllocationPct??60;
+  document.getElementById('mu-workload-pct').value=u.workloadAllocationPct??_defaultDeliveryPct(u);
   document.getElementById('mu-active').checked=u.isActive; document.getElementById('mu-admin').checked=u.isAdmin; document.getElementById('mu-reports-viewer').checked=u.isReportsViewer||false;
   document.getElementById('mu-title').textContent='Edit User';
   document.getElementById('mu-subtitle').textContent=`${u.firstName} ${u.lastName}  ·  ${u.email}`;
@@ -8856,7 +8858,7 @@ async function saveUser(){
   const roleEffDateRaw=document.getElementById('mu-role-eff-date').value;
   const roleEffectiveDate=roleEffDateRaw||hireDate||null;
   const workloadPctRaw=document.getElementById('mu-workload-pct').value;
-  const workloadAllocationPct=workloadPctRaw===''?60:parseFloat(workloadPctRaw);
+  const workloadAllocationPct=workloadPctRaw===''?_defaultDeliveryPct({positionId:document.getElementById('mu-position').value}):parseFloat(workloadPctRaw);
   const isActive=document.getElementById('mu-active').checked;
   const isAdmin=document.getElementById('mu-admin').checked;
   const isReportsViewer=document.getElementById('mu-reports-viewer').checked;
