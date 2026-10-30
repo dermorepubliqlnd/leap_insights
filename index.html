@@ -17728,7 +17728,29 @@ function _tdManualOverrideBanner(s){
   return `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#1e40af;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <span>✉️ This session's Training Report was <strong>logged as already submitted</strong> outside the app (submitted ${Utils.esc(c.manualSubmittedDate||'—')}), so this section wasn't filled in live here.</span>
     <a href="${Utils.esc(_lpSafeResourceUrl(c.manualReportLink)||'#')}" target="_blank" rel="noopener" style="color:#1e40af;font-weight:700;text-decoration:none;white-space:nowrap">View report link →</a>
+    ${_tdManualOverrideCanClose(s)?`<button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="_tdManualOverrideClose()">Mark Delivery Complete</button>`:''}
   </div>`;
+}
+// v5.14a (2026-10-30, per Sandra): close back-tracked sessions. A session whose report was logged as
+// already submitted (outside the app) but is still not Delivery Complete -- e.g. logged before the
+// override started flipping the status -- can be closed here without the attendance/recording checks.
+// Same people and same pre-cutover eligibility as "Log as Already Submitted".
+function _tdManualOverrideCanClose(s){
+  if(!s||s.status==='completed'||s.status==='cancelled') return false;
+  if(!_tdManualOverrideReport(s)||!_tdrManualOverrideEligible(s)) return false;
+  return !!(Auth.user&&(Auth.user.isAdmin||Auth.formAccess(Auth.user).trainerEval));
+}
+function _tdManualOverrideClose(){
+  const s=TrSessionDB.byId(_tdDetailId); if(!_tdManualOverrideCanClose(s)) return;
+  const report=_tdManualOverrideReport(s);
+  confirm$('Mark Delivery Complete',`This session's report was logged as already submitted on <strong>${Utils.esc(report.content.manualSubmittedDate||'—')}</strong>. Marking it Delivery Complete skips the attendance and recording checks (they were handled outside the app). Continue?`,'Mark Delivery Complete',async()=>{
+    try{
+      await TrSessionDB.update(s.id,{status:'completed'});
+      await AuditLog.record('session_closed_backtracked','Training Session',s.id,`${s.code||'Session'} marked Delivery Complete (report logged outside the app on ${report.content.manualSubmittedDate||'—'}) by ${Auth.user.firstName} ${Auth.user.lastName}`);
+      renderTrainingDetail();
+      toast('Session marked Delivery Complete.','success');
+    }catch(e){ /* error already surfaced */ }
+  });
 }
 // Reopen for manually-submitted reports (Phase Q, 2026-08-13, per Sandra): the normal Request/
 // Approve/Deny Reopen flow (_tdrRequestReopen etc.) lives on the Training Report tab, which is
