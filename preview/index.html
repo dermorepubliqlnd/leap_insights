@@ -24728,7 +24728,7 @@ function renderMyPerformance(){
   const subject=DB.byId(_mpPerson); const role=_scRoleOf(subject);
   const periods=_scPeriods(_mpKind); if(!_mpKey||!periods.includes(_mpKey)) _mpKey=periods[0];
   const name=u=>u?`${u.firstName} ${u.lastName}`:'—';
-  const asOpts=Auth.isAdmin?`<div class="mp-as"><label>Preview as</label><select onchange="mpSet('as',this.value)"><option value="">Myself (admin)</option>${DB.all().filter(u=>u.isActive!==false&&u.id!==Auth.user.id&&(_scRoleOf(u)||Perms.isSupervisor(u))).sort((a,b)=>name(a).localeCompare(name(b))).map(u=>`<option value="${u.id}"${_mpAs===u.id?' selected':''}>${esc(name(u))} — ${esc(SC_ROLES[_scRoleOf(u)]?.label||Sel.nameOf(Store.POS,u.positionId)||'')}</option>`).join('')}</select></div>`:'';
+  const asOpts=Auth.isAdmin?`<div class="mp-as"><label>Preview as</label><select onchange="mpSet('as',this.value)"><option value="">Myself (admin)</option>${DB.all().filter(u=>u.isActive!==false&&u.id!==Auth.user.id&&(_scRoleOf(u)||Perms.isSupervisor(u))).sort((a,b)=>name(a).localeCompare(name(b))).map(u=>`<option value="${u.id}"${_mpAs===u.id?' selected':''}>${esc(name(u))} — ${esc(SC_ROLES[_scRoleOf(u)]?.label||Sel.nameOf(Store.POS,u.positionId)||'')}</option>`).join('')}</select>${_mpAs?'<span>View-only — you see exactly what this person sees.</span>':''}</div>`:'';
   const personSel=visible.length>1?`<select onchange="mpSet('person',this.value)" style="min-width:210px">${visible.map(u=>`<option value="${u.id}"${u.id===_mpPerson?' selected':''}>${u.id===viewer.id?'Me — ':''}${esc(name(u))}</option>`).join('')}</select>`:'';
   const kindSel=`<div class="mp-seg">${['month','quarter'].map(k=>`<button class="${_mpKind===k?'on':''}" onclick="mpSet('kind','${k}')">${k==='month'?'Month':'Quarter'}</button>`).join('')}</div>`;
   const keySel=`<select onchange="mpSet('key',this.value)">${periods.map(p=>`<option value="${p}"${p===_mpKey?' selected':''}>${esc(_scPeriodRange(_mpKind,p).label)}</option>`).join('')}</select>`;
@@ -24762,7 +24762,7 @@ function renderMyPerformance(){
     const meta=[x.provider,x.targetDate?`target ${Utils.formatDate(x.targetDate)}`:null,x.completedOn?`completed ${Utils.formatDate(x.completedOn)}`:null,x.status==='verified'&&x.verifiedBy?`verified by ${name(DB.byId(x.verifiedBy))}`:null,x.status==='returned'&&x.returnReason?`returned: ${x.returnReason}`:null].filter(Boolean).join(' · ');
     return `<div class="mp-pdp"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:600;font-size:13px">${esc(x.title)}</div><div class="mp-sub">${esc(meta)}${x.proofUrl?` · <a href="${esc(_lpSafeResourceUrl(x.proofUrl)||'#')}" target="_blank" rel="noopener">proof ↗</a>`:''}</div></div>${_mpChip(s[0],s[1])}</div>${acts.length?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">${acts.join('')}</div>`:''}${_mpReturnId===x.id?`<div style="display:flex;gap:6px;margin-top:6px"><input id="mp-ret-reason" class="form-control" placeholder="What's missing?" style="flex:1"><button class="btn btn-secondary btn-xs" onclick="mpPdpReturnSave('${x.id}')">Return</button></div>`:''}</div>`; };
   const form=_mpPdpForm?`<div class="mp-pdp" style="background:var(--surface-1,#f8fafc)"><input id="mp-pdp-title" class="form-control" placeholder="Advanced Storyline course" style="margin-bottom:6px"><div style="display:flex;gap:6px;flex-wrap:wrap"><select id="mp-pdp-provider" class="form-control" style="flex:1;min-width:120px"><option>DermoU</option><option>External</option><option>On-the-job</option><option>Other</option></select><input id="mp-pdp-target" type="date" class="form-control" style="flex:1;min-width:140px" value="${qr.end}"></div><div id="mp-pdp-err" style="display:none;color:var(--red);font-size:12px;margin-top:4px">Enter a title.</div><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="_mpPdpForm=false;renderMyPerformance()">Cancel</button><button class="btn btn-primary btn-sm" onclick="mpPdpAdd('${q}')">Add PDP</button></div></div>`:'';
-  const pdpBox=`<div class="card mp-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="mp-box-t" style="margin:0">Development plan · Q${q.slice(6)} ${q.slice(0,4)}</div>${isOwner&&!_mpPdpForm?`<button class="btn btn-secondary btn-sm" onclick="_mpPdpForm=true;renderMyPerformance()">+ Add PDP</button>`:''}</div>${form}${items.length?items.map(pdpRow).join(''):(_mpPdpForm?'':`<div class="mp-sub" style="padding:8px 0">${isOwner?'No PDP for this quarter yet. Add one to plan your development.':'No PDP for this quarter yet.'}</div>`)}<div class="mp-sub" style="margin-top:8px">Planned → Ongoing → Submitted (with proof) → Verified by the supervisor. Target: 1 verified per quarter.</div></div>`;
+  const pdpBox=`<div class="card mp-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="mp-box-t" style="margin:0">Development plan · Q${q.slice(6)} ${q.slice(0,4)}</div>${isOwner&&!_mpPdpForm?`<button class="btn btn-secondary btn-sm" onclick="if(!_mpRO()){_mpPdpForm=true;renderMyPerformance()}">+ Add PDP</button>`:''}</div>${form}${items.length?items.map(pdpRow).join(''):(_mpPdpForm?'':`<div class="mp-sub" style="padding:8px 0">${isOwner?'No PDP for this quarter yet. Add one to plan your development.':'No PDP for this quarter yet.'}</div>`)}<div class="mp-sub" style="margin-top:8px">Planned → Ongoing → Submitted (with proof) → Verified by the supervisor. Target: 1 verified per quarter.</div></div>`;
   /* EEI / LEI entry (supervisor scorecards, by someone above them) */
   let inputsBox='';
   if(role==='supervisor'&&_mpKind==='quarter'&&canVerify){
@@ -24789,18 +24789,20 @@ function renderMyPerformance(){
 }
 
 /* ── PDP actions (owner / supervisor) ── */
+// "Preview as" is look-only: an admin sees exactly what that person sees but can't act as them.
+function _mpRO(){ if(_mpAs){ toast('Preview as is view-only. Switch back to "Myself" to make changes.','info'); return true; } return false; }
 async function _mpPdpWrite(q){ const {data,error}=await q.select().single(); if(error){ _surfaceDbError(error,'Save PDP'); return null; } const row=rowToCamel('pdp_items',data); const a=Cache.data.pdp_items; const i=a.findIndex(x=>x.id===row.id); if(i>=0) a[i]=row; else a.push(row); return row; }
-async function mpPdpAdd(quarter){
+async function mpPdpAdd(quarter){ if(_mpRO()) return;
   const title=(document.getElementById('mp-pdp-title')?.value||'').trim(); if(!title){ document.getElementById('mp-pdp-err').style.display='block'; return; }
   const row=await _mpPdpWrite(sb.from('pdp_items').insert(patchToSnake('pdp_items',{profileId:_mpPerson,title,provider:document.getElementById('mp-pdp-provider').value,quarter,targetDate:document.getElementById('mp-pdp-target').value||null,status:'planned'})));
   if(row){ await AuditLog.record('create','PDP',row.id,`Added PDP "${title}" for ${quarter}`); _mpPdpForm=false; toast('PDP added.','success'); renderMyPerformance(); }
 }
-async function mpPdpStatus(id,status){
+async function mpPdpStatus(id,status){ if(_mpRO()) return;
   const x=(Cache.data.pdp_items||[]).find(r=>r.id===id); if(!x) return;
   const row=await _mpPdpWrite(sb.from('pdp_items').update(patchToSnake('pdp_items',{status})).eq('id',id));
   if(row){ await AuditLog.record('update','PDP',id,`PDP "${x.title}" → ${status}`); toast(status==='verified'?'PDP verified.':'PDP updated.','success'); renderMyPerformance(); }
 }
-function mpPdpSubmit(id){
+function mpPdpSubmit(id){ if(_mpRO()) return;
   const x=(Cache.data.pdp_items||[]).find(r=>r.id===id); if(!x) return;
   confirm$('Mark PDP complete',`<div style="font-size:13px;margin-bottom:8px">${Utils.esc(x.title)}</div><label style="font-size:12px;display:block">Completed on<input id="mp-pdp-done" type="date" class="form-control" value="${_todayStr()}"></label><label style="font-size:12px;display:block;margin-top:6px">Proof of completion (link)<input id="mp-pdp-proof" class="form-control" placeholder="https://… certificate, DermoU record or file link"></label><div style="font-size:12px;color:var(--text3);margin-top:6px">Your supervisor verifies it; it counts once verified.</div>`,'Submit for verification',async()=>{
     const proof=(document.getElementById('mp-pdp-proof')?.value||'').trim(); const done=document.getElementById('mp-pdp-done')?.value||_todayStr();
@@ -24809,20 +24811,20 @@ function mpPdpSubmit(id){
     if(row){ await AuditLog.record('update','PDP',id,`PDP "${x.title}" submitted for verification`); toast('Submitted for verification.','success'); renderMyPerformance(); }
   });
 }
-function mpPdpReturn(id){ _mpReturnId=id; renderMyPerformance(); }
-async function mpPdpReturnSave(id){
+function mpPdpReturn(id){ if(_mpRO()) return; _mpReturnId=id; renderMyPerformance(); }
+async function mpPdpReturnSave(id){ if(_mpRO()) return;
   const x=(Cache.data.pdp_items||[]).find(r=>r.id===id); const reason=(document.getElementById('mp-ret-reason')?.value||'').trim(); if(!reason){ toast('Say what is missing.','error'); return; }
   const row=await _mpPdpWrite(sb.from('pdp_items').update(patchToSnake('pdp_items',{status:'returned',returnReason:reason})).eq('id',id));
   if(row){ await AuditLog.record('update','PDP',id,`PDP "${x?.title}" returned: ${reason}`); _mpReturnId=null; toast('Returned to the owner.','success'); renderMyPerformance(); }
 }
-function mpPdpDelete(id){
+function mpPdpDelete(id){ if(_mpRO()) return;
   const x=(Cache.data.pdp_items||[]).find(r=>r.id===id); if(!x) return;
   confirm$('Remove PDP',`Remove "${Utils.esc(x.title)}"?`,'Remove',async()=>{
     const {error}=await sb.from('pdp_items').delete().eq('id',id); if(error){ _surfaceDbError(error,'Remove PDP'); return; }
     Cache.data.pdp_items=Cache.data.pdp_items.filter(r=>r.id!==id); await AuditLog.record('delete','PDP',id,`Removed PDP "${x.title}"`); renderMyPerformance();
   });
 }
-async function mpSaveInputs(quarter){
+async function mpSaveInputs(quarter){ if(_mpRO()) return;
   for(const code of ['EEI','LEI']){
     const raw=document.getElementById('mp-'+code.toLowerCase())?.value; if(raw===''||raw==null) continue;
     const val=Number(raw); if(!(val>=1&&val<=5)){ toast(`${code} must be between 1 and 5.`,'error'); return; }
