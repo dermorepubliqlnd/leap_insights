@@ -3942,6 +3942,8 @@ const _FIELD_MAPS = {
     // v5.16 (2026-10-30, per Sandra): department KPI fields (NULL on individual rows)
     kpiLevel:'kpi_level', tier:'tier', dimension:'dimension', scored:'scored', frequency:'frequency', targetMax:'target_max', ratingScale:'rating_scale', ownerId:'owner_id', sortOrder:'sort_order'
   },
+  committed_projects:{ id:'id', periodKey:'period_key', title:'title', programId:'program_id', ownerId:'owner_id', milestone:'milestone', milestoneNote:'milestone_note', originalDue:'original_due', revisedDue:'revised_due', commitType:'commit_type', status:'status', evidenceUrl:'evidence_url', evidenceNote:'evidence_note', linkedSessionId:'linked_session_id', linkedReviewId:'linked_review_id', deliveredOn:'delivered_on', deliveredConfirmedBy:'delivered_confirmed_by', approvalBy:'approval_by', approvalAt:'approval_at', approvalNote:'approval_note', sortOrder:'sort_order', createdBy:'created_by', createdAt:'created_at', updatedAt:'updated_at' }, // v5.16c
+  committed_project_events:{ id:'id', projectId:'project_id', at:'at', actorId:'actor_id', action:'action', detail:'detail' },
   department_kpi_snapshots:{ id:'id', periodKey:'period_key', results:'results', status:'status', finalizedAt:'finalized_at', finalizedBy:'finalized_by', reopenedAt:'reopened_at', reopenedBy:'reopened_by', reopenReason:'reopen_reason' },
   // Learning Programs (2026-09-25, per Sandra): program library. contributors/components are jsonb.
   learning_programs:{
@@ -4005,9 +4007,9 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[], department_kpi_snapshots:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[], department_kpi_snapshots:[], committed_projects:[], committed_project_events:[] },
   // v5.02: tables added by a migration that may not be applied yet -- a load error here must not block the app.
-  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines','department_kpi_snapshots']),
+  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines','department_kpi_snapshots','committed_projects','committed_project_events']),
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -24999,7 +25001,7 @@ function renderMyPerformance(){
    weighted average of measured scored KPIs; shown only when >= DP_MIN_COVERAGE % of scored weight is measured
    ("Insufficient Data" otherwise). Quarter results can be frozen (department_kpi_snapshots) = Final. */
 const DP_MIN_COVERAGE=60;
-const DP_PHASE={dp_ppd:'Phase 3 — Committed Projects tracker',dp_l3:'Phase 5 — learner-level L3',dp_cert:'Phase 4 — Certification tracker'}; // v5.16b: dp_gain connected
+const DP_PHASE={dp_l3:'Phase 5 — learner-level L3',dp_cert:'Phase 4 — Certification tracker'}; // v5.16b: dp_gain connected
 const DP_SRC={dp_ppd:'Committed Projects',dp_csat:'Training Reports',dp_gain:'L2 Assessments',dp_l3:'L3 Follow-ups',dp_cert:'Certification Tracker',dp_sdr:'Training Calendar',dp_util:'Trainer Capacity',dp_nps:'Training Reports',dp_qae:'ID / CD QA',dp_otd:'ID / CD QA',dp_sla:'Training Reports'};
 const DP_TAB={dp_ppd:'delivery',dp_csat:'outcomes',dp_gain:'outcomes',dp_l3:'outcomes',dp_cert:'capability',dp_sdr:'delivery',dp_util:'delivery',dp_nps:'outcomes',dp_qae:'quality',dp_otd:'quality',dp_sla:'quality'};
 const DP_DEFS={
@@ -25116,6 +25118,7 @@ function _dpCalc(key,r){
   if(DP_PHASE[key]) o={notConnected:true,detail:'Not connected yet · '+DP_PHASE[key]};
   else if(key==='dp_csat'){ const l=_dpL1(r); o={v:l.csat,n:l.csatN,detail:`${l.csatN} session${l.csatN!==1?'s':''} with learner ratings`,cov:l.eligible.length?Math.round(l.csatN/l.eligible.length*100):null}; }
   else if(key==='dp_nps'){ const l=_dpL1(r); o={v:l.nps,n:l.npsN,detail:`${l.npsN} session${l.npsN!==1?'s':''} with NPS`,cov:l.eligible.length?Math.round(l.npsN/l.eligible.length*100):null}; }
+  else if(key==='dp_ppd'){ const k=_cpKpi(r.quarter); o={v:k.v,n:k.counted.length,detail:`${k.del.length} of ${k.counted.length} counted commitment${k.counted.length!==1?'s':''} delivered${k.atRisk?` · ${k.atRisk} at risk`:''}`,inProgress:k.open&&r.kind==='quarter'}; } // v5.16c
   else if(key==='dp_gain'){ const k=_dpKg(r); o={v:k.v,n:k.pairs.length,detail:`${k.pairs.length} valid learner pair${k.pairs.length!==1?'s':''} · ${k.evaluatedSessions} of ${k.eligibleSessions} session${k.eligibleSessions!==1?'s':''} with pre-tests`,cov:k.eligibleSessions?Math.round(k.evaluatedSessions/k.eligibleSessions*100):null}; }
   else if(key==='dp_sdr'){ const x=_dpSdr(r); o={v:x.v,n:x.n,detail:`${x.delivered.length} delivered · ${x.missed.length} missed · ${x.excluded.length} cancellation${x.excluded.length!==1?'s':''} not counted`}; }
   else if(key==='dp_util'){ const x=_dpUtil(r); o={v:x.v,n:x.n,detail:`${Math.round(x.hrs*10)/10} h of ${Math.round(x.cap)} h capacity · ${x.n} facilitator${x.n!==1?'s':''}`,overload:x.v!=null&&x.v>85}; }
@@ -25132,8 +25135,8 @@ function _dpScorecard(r,noSnap){
   if(snap&&snap.results) return {...snap.results,final:true,snap};
   const asOf=r.end<_todayStr()?r.end:_todayStr(), open=r.end>=_todayStr();
   const rows=_dpRows(asOf).map(row=>{ const a=_dpCalc(row.kpiKey,r); const qOnly=row.frequency==='quarterly'&&r.kind==='month'; // v5.16b: quarterly KPIs are rated in the Quarter view
-    const rating=(a.notConnected||qOnly)?null:_dpRate(row,a.v);
-    let st; if(a.notConnected) st=['Not connected yet','neutral']; else if(qOnly) st=['Rated quarterly','neutral']; else if(rating==null) st=open?['Pending data','neutral']:['Insufficient data','neutral']; else if(a.overload) st=['Over capacity','warning']; else st=rating>=3?['On target','success']:['Below target','danger'];
+    const rating=(a.notConnected||qOnly||a.inProgress)?null:_dpRate(row,a.v);
+    let st; if(a.notConnected) st=['Not connected yet','neutral']; else if(qOnly) st=['Rated quarterly','neutral']; else if(a.inProgress) st=['In progress','warning']; // v5.16c: Planned Program Delivery is rated when the quarter ends else if(rating==null) st=open?['Pending data','neutral']:['Insufficient data','neutral']; else if(a.overload) st=['Over capacity','warning']; else st=rating>=3?['On target','success']:['Below target','danger'];
     return {key:row.kpiKey,name:row.kpiName,tier:row.tier,dim:row.dimension,w:Number(row.weight||0),scored:row.scored!==false,target:_dpFmtTarget(row),scale:_dpScaleText(row),actual:a.v??null,actualTxt:_dpFmt(row.kpiKey,a.v),n:a.n??null,cov:a.cov??null,detail:a.detail||'',rating,status:st}; });
   const sc=rows.filter(x=>x.scored), tw=sc.reduce((a,b)=>a+b.w,0), meas=sc.filter(x=>x.rating!=null), mw=meas.reduce((a,b)=>a+b.w,0);
   const cov=tw?mw/tw*100:0, overall=mw?meas.reduce((a,b)=>a+b.rating*b.w,0)/mw:null;
@@ -25239,7 +25242,7 @@ function _dpDeliveryHtml(r){
   const esc=Utils.esc, x=_dpSdr(r), u=_dpUtil(r), d=_ovDelivery(r);
   const byType={}; _ovDeliverySessions(r).forEach(s=>{ const k=s.deliveryType||'—'; byType[k]=byType[k]||{n:0,c:0}; byType[k].n++; if(_tdStatus(s)==='Completed') byType[k].c++; });
   const sessRow=(s,counted)=>`<tr><td>${esc(s.code||'')}</td><td>${esc(_dpSessName(s))}</td><td>${Utils.formatDate(s.trainingDate)}</td><td>${esc(s.deliveryType||'')}</td><td>${s.status==='cancelled'?esc(_tdCancelLabel(s.cancelReason))+(s.cancelNote?` — ${esc(s.cancelNote)}`:''):'Delivered'}</td><td>${counted}</td></tr>`;
-  return `${_dpSoon('Committed Projects','Phase 3','Planned Program Delivery (18% of the department score) will be tracked here: approved commitments per quarter, insertions and deferrals with approval history, and delivery evidence linked to each Learning Program.')}
+  return `${_cpHtml(r)}
   <div class="mp-r1">${_dpCard('Session Delivery Rate',_dpFmt('dp_sdr',x.v),`${x.delivered.length} delivered · ${x.missed.length} missed`)}${_dpCard('Training Hours',`${Math.round(d.deliv*10)/10} h`,`delivered of ${Math.round(d.sched*10)/10} h scheduled`)}${_dpCard('Trainer Utilization',_dpFmt('dp_util',u.v),`${Math.round(u.hrs*10)/10} h of ${Math.round(u.cap)} h capacity · ${u.wd} working days`)}${_dpCard('Learners Reached',d.learners,`unique people in ${d.completed} completed session${d.completed!==1?'s':''}`)}</div>
   <div class="mp-r2" style="grid-template-columns:1.4fr 1fr"><div class="mp-c">${_dpHead('Sessions counted for delivery · '+esc(r.label),'ILT and VILT')}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Code</th><th>Session</th><th>Date</th><th>Type</th><th>Outcome</th><th>In rate</th></tr></thead><tbody>${[...x.missed.map(s=>sessRow(s,'Missed')),...x.excluded.map(s=>sessRow(s,'Not counted')),...x.delivered.map(s=>sessRow(s,'Delivered'))].join('')||'<tr><td colspan="6" class="mp-sub">No sessions in this period.</td></tr>'}</tbody></table></div><div class="mp-note">${x.open.length} session${x.open.length!==1?'s':''} still upcoming or in progress are not counted yet. Cancelled sessions without a reason show "Reason not recorded" and are not counted.</div></div>
   <div class="mp-c">${_dpHead('Trainer utilization','target band 65–85%')}<table class="mp-tbl"><thead><tr><th>Facilitator</th><th>Alloc.</th><th>Hours</th><th>Capacity</th><th>Util.</th></tr></thead><tbody>${u.people.map(p=>`<tr><td>${esc(p.u.firstName+' '+p.u.lastName)}</td><td>${p.pct}%</td><td>${Math.round(p.hrs*10)/10}</td><td>${Math.round(p.cap*10)/10}</td><td>${p.util!=null?`<b style="color:${p.util>85?'#d97706':(p.util<65?'#64748b':'#16a34a')}">${Math.round(p.util)}%</b>`:'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="mp-sub">No facilitators.</td></tr>'}</tbody></table>
@@ -25317,6 +25320,96 @@ function dpExport(){
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Department Scorecard'); XLSX.writeFile(wb,`Department_Performance_${r.key}.xlsx`);
   }catch(e){ toast('Export failed: '+e.message,'error'); }
 }
+
+/* ══ v5.16c (2026-10-30, per Sandra): COMMITTED PROJECTS — Planned Program Delivery ══
+   committed_projects + committed_project_events. Counted = Original + Approved insertion that are not deferred / on hold /
+   pipeline / proposed. Delivered needs evidence (link, linked session or QA review). KPI = delivered ÷ counted, rated when
+   the quarter ends (open quarter = "In progress", not rated). Sandra (admin) approves; Full View users can propose. */
+const CP_MILESTONE={deploy:'Deploy',design:'Design complete',scoping:'Scoping complete',other:'Other'};
+const CP_TYPE={original:['Original','neutral'],insertion:['Approved insertion','accent'],deferral:['Approved deferral','warning'],unplanned:['Unplanned / ad hoc','neutral']};
+const CP_STATUS={proposed:['Proposed','accent'],open:['Open','neutral'],at_risk:['At risk','danger'],delivered:['Delivered','success'],deferred:['Deferred','warning'],on_hold:['On hold','neutral'],pipeline:['Pipeline','neutral']};
+let _cpEdit=null, _cpHist=new Set();
+const _cpAll=q=>(Cache.data.committed_projects||[]).filter(x=>!q||x.periodKey===q).sort((a,b)=>(a.sortOrder||999)-(b.sortOrder||999)||String(a.createdAt).localeCompare(String(b.createdAt)));
+const _cpCounts=x=>(x.commitType==='original'||x.commitType==='insertion')&&!['deferred','on_hold','pipeline','proposed'].includes(x.status);
+function _cpKpi(q){ const all=_cpAll(q), counted=all.filter(_cpCounts), del=counted.filter(x=>x.status==='delivered'); const qr=_scPeriodRange('quarter',q);
+  return {all,counted,del,v:counted.length?del.length/counted.length*100:null,open:qr.end>=_todayStr(),atRisk:counted.filter(x=>x.status==='at_risk').length}; }
+function _cpEvidence(x){ const out=[]; if(x.evidenceUrl) out.push(`<a href="${Utils.esc(_lpSafeResourceUrl(x.evidenceUrl)||'#')}" target="_blank" rel="noopener">evidence ↗</a>`);
+  if(x.linkedSessionId){ const s=TrSessionDB.byId(x.linkedSessionId); if(s) out.push(`<a class="mp-link" onclick="dpOpenSession('${s.id}')">${Utils.esc(s.code||'session')}</a>`); }
+  if(x.linkedReviewId){ const r=IDQADB.all().find(y=>y.id===x.linkedReviewId)||ContentQADB.all().find(y=>y.id===x.linkedReviewId); if(r) out.push(Utils.esc(r.code||'QA review')); }
+  return out.join(' · '); }
+function _cpSuggest(x,q){ if(!x.programId||x.status==='delivered') return null; const qr=_scPeriodRange('quarter',q);
+  const fam=LearningProgramDB.byId(x.programId); const ids=new Set(LearningProgramDB.all().filter(p=>fam&&p.code===fam.code).map(p=>p.id)); ids.add(x.programId);
+  const s=TrSessionDB.all().filter(s=>ids.has(s.programId)&&_tdStatus(s)==='Completed'&&_scIn(_tdSessionEndDate(s),{start:'2000-01-01',end:qr.end})).sort((a,b)=>String(a.trainingDate).localeCompare(String(b.trainingDate)))[0];
+  return s||null; }
+function cpToggleHist(id){ if(_cpHist.has(id)) _cpHist.delete(id); else _cpHist.add(id); renderDepartmentPerformance(); }
+function cpEdit(id){ _cpEdit=id; renderDepartmentPerformance(); setTimeout(()=>document.getElementById('cp-form')?.scrollIntoView({block:'center'}),50); }
+function _cpHtml(r){
+  const esc=Utils.esc, q=r.quarter, k=_cpKpi(q), admin=Auth.isAdmin, nm=id=>{ const u=id?DB.byId(id):null; return u?u.firstName+' '+u.lastName:'—'; };
+  const rows=k.all.map(x=>{ const t=CP_TYPE[x.commitType]||[x.commitType,'neutral'], s=CP_STATUS[x.status]||[x.status,'neutral'], sug=admin?_cpSuggest(x,q):null, ev=_cpEvidence(x);
+    const prog=x.programId?LearningProgramDB.byId(x.programId):null, open=_cpHist.has(x.id);
+    const hist=open?(Cache.data.committed_project_events||[]).filter(e=>e.projectId===x.id).sort((a,b)=>String(a.at).localeCompare(String(b.at))).map(e=>`<div class="mp-sub">${Utils.formatDate(_mnlDateOf(e.at))} · ${esc(nm(e.actorId))} · <b>${esc(e.action)}</b> ${esc(e.detail||'')}</div>`).join('')||'<div class="mp-sub">No history.</div>':'';
+    return `<tr${_cpCounts(x)?'':' style="opacity:.8"'}><td><div style="font-weight:600">${esc(x.title)}</div><div class="mp-sub">${esc(CP_MILESTONE[x.milestone]||x.milestone)}${x.milestoneNote?' · '+esc(x.milestoneNote):''}${prog?` · <a class="mp-link" onclick="showView('learning-programs')">${esc(prog.code)}</a>`:''}</div>${x.approvalNote?`<div class="mp-sub" style="font-style:italic">${esc(x.approvalNote)}</div>`:''}${sug?`<div class="mp-sub" style="color:#16a34a">Evidence found: ${esc(sug.code||'')} Delivery Complete ${Utils.formatDate(_tdSessionEndDate(sug))} — <a class="mp-link" onclick="cpEdit('${x.id}')">confirm delivered</a></div>`:''}${hist?`<div style="margin-top:4px">${hist}</div>`:''}</td>
+      <td>${_mpChip(t[0],t[1])}${_cpCounts(x)?'':'<div class="mp-sub">not counted</div>'}</td><td class="mp-sub">${esc(nm(x.ownerId))}</td><td class="mp-sub">${x.originalDue?Utils.formatDate(x.originalDue):'—'}${x.revisedDue?`<div>→ ${Utils.formatDate(x.revisedDue)}</div>`:''}</td>
+      <td>${_mpChip(s[0],s[1])}${x.deliveredOn?`<div class="mp-sub">${Utils.formatDate(x.deliveredOn)}</div>`:''}</td><td class="mp-sub">${ev||'—'}</td>
+      <td style="white-space:nowrap"><a class="mp-link" onclick="cpToggleHist('${x.id}')">${open?'Hide':'History'}</a>${admin?` · <a class="mp-link" onclick="cpEdit('${x.id}')">Edit</a>`:''}</td></tr>`; }).join('');
+  const kpiTxt=k.v==null?'—':Math.round(k.v)+'%';
+  return `<div class="mp-c">${_dpHead('Committed Projects · Q'+q.slice(6)+' '+q.slice(0,4),`Planned Program Delivery = delivered ÷ counted commitments · ${k.open?'rated when the quarter ends':'quarter closed'}`)}
+    <div class="dp-pp" style="grid-template-columns:repeat(5,1fr);margin-bottom:10px"><div><b>${k.del.length} of ${k.counted.length}</b><span>Delivered</span></div><div><b>${kpiTxt}</b><span>Delivery rate (target ≥ 90%)</span></div><div><b style="color:${k.atRisk?'#dc2626':'inherit'}">${k.atRisk}</b><span>At risk</span></div><div><b>${k.all.filter(x=>x.status==='deferred').length}</b><span>Approved deferrals</span></div><div><b>${k.all.filter(x=>['on_hold','pipeline','proposed'].includes(x.status)).length}</b><span>On hold / pipeline / proposed</span></div></div>
+    <div style="overflow-x:auto"><table class="mp-tbl"><thead><tr><th>Commitment</th><th>Type</th><th>Owner</th><th>Due</th><th>Status</th><th>Evidence</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="mp-sub">No commitments recorded for this quarter.</td></tr>'}</tbody></table></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap"><div class="mp-note" style="margin:0">Counted = Original and Approved insertions. Deferrals, on-hold and pipeline items stay visible but are not counted. Delivered needs evidence: a link, the program's first completed session, or an endorsed QA review.</div><button class="btn btn-secondary btn-sm" onclick="cpEdit('new')">${admin?'+ Add commitment':'+ Propose commitment'}</button></div>
+    ${_cpEdit?_cpFormHtml(_cpEdit,q):''}</div>`;
+}
+function _cpFormHtml(id,q){
+  const esc=Utils.esc, admin=Auth.isAdmin, x=id==='new'?{periodKey:q,milestone:'deploy',commitType:admin?'insertion':'insertion',status:admin?'open':'proposed',originalDue:_scPeriodRange('quarter',q).end}:(Cache.data.committed_projects||[]).find(y=>y.id===id); if(!x) return '';
+  const opt=(o,v)=>Object.entries(o).map(([k,l])=>`<option value="${k}"${k===v?' selected':''}>${Array.isArray(l)?l[0]:l}</option>`).join('');
+  const progs=LearningProgramDB.all().filter(p=>p.status!=='archived').sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+  const people=DB.all().filter(u=>u.isActive!==false).sort((a,b)=>a.firstName.localeCompare(b.firstName));
+  const sessions=x.programId?TrSessionDB.all().filter(s=>{ const fam=LearningProgramDB.byId(x.programId); const p=LearningProgramDB.byId(s.programId); return s.programId===x.programId||(fam&&p&&p.code===fam.code); }).filter(s=>s.status!=='cancelled'):[];
+  const reviews=[...IDQADB.all(),...ContentQADB.all()].filter(r=>r.status==='completed').sort((a,b)=>String(b.reviewDate).localeCompare(String(a.reviewDate))).slice(0,150);
+  const f=(label,html,w)=>`<label style="font-size:12px;display:flex;flex-direction:column;gap:3px;${w?'grid-column:span '+w:''}">${label}${html}</label>`;
+  const sug=_cpSuggest(x,q);
+  return `<div id="cp-form" class="mp-pdp" style="margin-top:10px"><div style="font-weight:700;margin-bottom:8px">${id==='new'?(admin?'Add commitment':'Propose commitment (Sandra approves)'):'Edit commitment'}</div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+      ${f('Title',`<input id="cp-title" class="form-control" value="${esc(x.title||'')}">`,2)}${f('Quarter',`<input id="cp-period" class="form-control" value="${esc(x.periodKey||q)}" placeholder="2026-Q4">`)}${f('Owner',`<select id="cp-owner" class="form-control"><option value="">—</option>${people.map(u=>`<option value="${u.id}"${u.id===x.ownerId?' selected':''}>${esc(u.firstName+' '+u.lastName)}</option>`).join('')}</select>`)}
+      ${f('Linked Learning Program',`<select id="cp-program" class="form-control" onchange="_cpProgramChanged()"><option value="">— none —</option>${progs.map(p=>`<option value="${p.id}"${p.id===x.programId?' selected':''}>${esc(p.code+' · '+p.title)}</option>`).join('')}</select>`,2)}${f('Milestone',`<select id="cp-milestone" class="form-control">${opt(CP_MILESTONE,x.milestone)}</select>`)}${f('Milestone detail',`<input id="cp-mnote" class="form-control" value="${esc(x.milestoneNote||'')}">`)}
+      ${f('Original due',`<input id="cp-odue" type="date" class="form-control" value="${esc(x.originalDue||'')}">`)}${f('Approved revised due',`<input id="cp-rdue" type="date" class="form-control" value="${esc(x.revisedDue||'')}">`)}${f('Type',`<select id="cp-type" class="form-control"${admin?'':' disabled'}>${opt(CP_TYPE,x.commitType)}</select>`)}${f('Status',`<select id="cp-status" class="form-control"${admin?'':' disabled'}>${opt(CP_STATUS,x.status)}</select>`)}
+      ${f('Evidence link',`<input id="cp-evurl" class="form-control" value="${esc(x.evidenceUrl||'')}" placeholder="https://… (LMS launch, sign-off, document)">`,2)}${f('Linked session',`<select id="cp-sess" class="form-control"><option value="">—</option>${sessions.map(s=>`<option value="${s.id}"${s.id===(x.linkedSessionId||(sug&&sug.id))?' selected':''}>${esc((s.code||'')+' · '+Utils.formatDate(s.trainingDate)+' · '+(_tdStatus(s)||''))}</option>`).join('')}</select>`)}${f('Linked QA review',`<select id="cp-rev" class="form-control"><option value="">—</option>${reviews.map(r=>`<option value="${r.id}"${r.id===x.linkedReviewId?' selected':''}>${esc((r.code||'')+' · '+(r.projectTitle||''))}</option>`).join('')}</select>`)}
+      ${f('Delivered on',`<input id="cp-delon" type="date" class="form-control" value="${esc(x.deliveredOn||(sug?_tdSessionEndDate(sug):''))}">`)}${f('Evidence note',`<input id="cp-evnote" class="form-control" value="${esc(x.evidenceNote||'')}">`)}${f('Approval / change note',`<input id="cp-anote" class="form-control" value="" placeholder="${esc(x.approvalNote||'Why this was added or changed')}">`,2)}
+    </div><div id="cp-err" class="modal-err hidden" style="margin-top:6px"></div>
+    <div style="display:flex;gap:6px;justify-content:space-between;margin-top:8px"><div>${admin&&id!=='new'?`<button class="btn btn-ghost btn-sm" onclick="cpDelete('${id}')">Delete</button>`:''}</div><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="_cpEdit=null;renderDepartmentPerformance()">Cancel</button><button class="btn btn-primary btn-sm" onclick="cpSave('${id}')">${admin?'Save':'Submit proposal'}</button></div></div></div>`;
+}
+function _cpProgramChanged(){ const pid=document.getElementById('cp-program').value, sel=document.getElementById('cp-sess'); if(!sel) return;
+  const fam=pid?LearningProgramDB.byId(pid):null; const ss=pid?TrSessionDB.all().filter(s=>{ const p=LearningProgramDB.byId(s.programId); return s.programId===pid||(fam&&p&&p.code===fam.code); }).filter(s=>s.status!=='cancelled'):[];
+  sel.innerHTML='<option value="">—</option>'+ss.map(s=>`<option value="${s.id}">${Utils.esc((s.code||'')+' · '+Utils.formatDate(s.trainingDate)+' · '+(_tdStatus(s)||''))}</option>`).join(''); }
+async function cpSave(id){
+  const err=document.getElementById('cp-err'), fail=m=>{ err.textContent=m; err.classList.remove('hidden'); }, g=i=>document.getElementById(i);
+  const admin=Auth.isAdmin, ex=id==='new'?null:(Cache.data.committed_projects||[]).find(y=>y.id===id);
+  const p={periodKey:g('cp-period').value.trim(),title:g('cp-title').value.trim(),programId:g('cp-program').value||null,ownerId:g('cp-owner').value||null,milestone:g('cp-milestone').value,milestoneNote:g('cp-mnote').value.trim()||null,
+    originalDue:g('cp-odue').value||null,revisedDue:g('cp-rdue').value||null,commitType:admin?g('cp-type').value:'insertion',status:admin?g('cp-status').value:'proposed',evidenceUrl:g('cp-evurl').value.trim()||null,
+    linkedSessionId:g('cp-sess').value||null,linkedReviewId:g('cp-rev').value||null,deliveredOn:g('cp-delon').value||null,evidenceNote:g('cp-evnote').value.trim()||null,updatedAt:new Date().toISOString()};
+  const note=g('cp-anote').value.trim();
+  if(!p.title) return fail('Enter a title.'); if(!/^\d{4}-Q[1-4]$/.test(p.periodKey)) return fail('Quarter must look like 2026-Q4.');
+  if(p.evidenceUrl&&!_lpSafeResourceUrl(p.evidenceUrl)) return fail('Evidence link must start with https://');
+  if(p.status==='delivered'&&!(p.evidenceUrl||p.linkedSessionId||p.linkedReviewId)) return fail('Delivered needs evidence: a link, a linked session or a linked QA review.');
+  if(p.status==='delivered'&&!p.deliveredOn) return fail('Enter the delivered date.');
+  if(p.status!=='delivered') p.deliveredOn=null;
+  const changedApproval=admin&&(!ex||ex.commitType!==p.commitType||ex.status!==p.status||ex.revisedDue!==p.revisedDue);
+  if(admin&&ex&&(ex.commitType!==p.commitType||(p.status==='deferred'&&ex.status!=='deferred'))&&!note) return fail('Add an approval note for a type change or deferral.');
+  if(note) p.approvalNote=note; if(changedApproval||(!ex&&admin)){ p.approvalBy=Auth.user.id; p.approvalAt=new Date().toISOString(); }
+  if(p.status==='delivered'&&(!ex||ex.status!=='delivered')) p.deliveredConfirmedBy=Auth.user.id;
+  const q=ex?sb.from('committed_projects').update(patchToSnake('committed_projects',p)).eq('id',id):sb.from('committed_projects').insert(patchToSnake('committed_projects',{...p,createdBy:Auth.user.id,sortOrder:(_cpAll(p.periodKey).length+1)}));
+  const {data,error}=await q.select().single(); if(error){ _surfaceDbError(error,'Save commitment'); return; }
+  const row=rowToCamel('committed_projects',data), a=Cache.data.committed_projects||(Cache.data.committed_projects=[]); const i=a.findIndex(y=>y.id===row.id); if(i>=0) a[i]=row; else a.push(row);
+  const diff=ex?['title','commitType','status','originalDue','revisedDue','programId','ownerId','milestone','deliveredOn','evidenceUrl','linkedSessionId','linkedReviewId'].filter(f=>(ex[f]||null)!==(row[f]||null)).map(f=>`${f}: ${ex[f]||'—'} → ${row[f]||'—'}`).join('; '):`${row.commitType} · ${row.status}`;
+  const ev={projectId:row.id,actorId:Auth.user.id,action:ex?(row.status==='delivered'&&ex.status!=='delivered'?'delivered':'updated'):(admin?'added':'proposed'),detail:[diff,note].filter(Boolean).join(' — ')};
+  const r2=await sb.from('committed_project_events').insert(patchToSnake('committed_project_events',ev)).select().single(); if(!r2.error){ (Cache.data.committed_project_events||(Cache.data.committed_project_events=[])).push(rowToCamel('committed_project_events',r2.data)); }
+  await AuditLog.record(ex?'update':'create','Committed Projects',row.id,`${row.title}: ${ev.detail}`);
+  _cpEdit=null; _dpCache=null; toast(admin?'Commitment saved.':'Proposal submitted for approval.','success'); renderDepartmentPerformance();
+}
+function cpDelete(id){ const x=(Cache.data.committed_projects||[]).find(y=>y.id===id); if(!x||!Auth.isAdmin) return;
+  confirm$('Delete commitment',`Delete <b>${Utils.esc(x.title)}</b> and its history? Prefer status On hold or an approved deferral to keep the record.`,'Delete',async()=>{
+    const {error}=await sb.from('committed_projects').delete().eq('id',id); if(error){ _surfaceDbError(error,'Delete commitment'); return; }
+    Cache.data.committed_projects=Cache.data.committed_projects.filter(y=>y.id!==id); await AuditLog.record('delete','Committed Projects',id,`Deleted commitment ${x.title}`); _cpEdit=null; _dpCache=null; renderDepartmentPerformance(); }); }
 
 /* ══ v5.15a (2026-10-30, per Sandra's mockup): TEAM PERFORMANCE — leaders' view ══════════════
    For anyone with people under them (reporting line) and admins. Same scorecard engine as My
