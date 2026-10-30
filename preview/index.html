@@ -25009,7 +25009,7 @@ const DP_DEFS={
   dp_l3:'Learners meeting the program’s L3 criteria ÷ valid learner-level L3 evaluations × 100, with coverage shown.',
   dp_cert:'Certified ÷ candidates with a final decision × 100. Completion rate shown separately.',
   dp_sdr:'ILT/VILT sessions delivered ÷ (delivered + sessions cancelled for an L&D-controllable reason). Rescheduled, business-request and low-enrolment cancellations are listed but not counted.',
-  dp_util:'Scheduled live facilitation hours (ILT, VILT, Ad-hoc) ÷ trainer capacity (working days × 7.5 h × allocation %). Target band 65–85%; above 85% is flagged as overload.',
+  dp_util:'Live facilitation hours (ILT, VILT, Ad-hoc; not cancelled or tentative) ÷ trainer capacity (working days × 7.5 h × allocation %), measured to date in an open period. Target band 65–85%; above 85% is flagged as overload.',
   dp_nps:'Response-weighted Net Promoter Score (−100 to +100) from post-training surveys.',
   dp_qae:'Acknowledged ID and CD QA reviews with an Endorse disposition (≥85%, no 0s) ÷ all acknowledged reviews.',
   dp_otd:'ID and CD deliverables completed on or before their target date ÷ deliverables with both dates recorded.',
@@ -25042,7 +25042,9 @@ function _dpSdr(r){
   rows.forEach(s=>{ if(s.status==='cancelled'){ if(_tdCancelIsMiss(s.cancelReason)) out.missed.push(s); else out.excluded.push(s); } else if(_tdStatus(s)==='Completed') out.delivered.push(s); else out.open.push(s); });
   const den=out.delivered.length+out.missed.length; out.v=den?out.delivered.length/den*100:null; out.n=den; return out;
 }
-function _dpUtil(r){
+function _dpUtil(r0){
+  // open period: measured to date (capacity and hours both stop today), so unbooked future weeks don't dilute it
+  const t=_todayStr(), r={...r0,end:r0.end>t?t:r0.end};
   const cfg=_workloadSettings(), daily=cfg.standardWeeklyHours/5, wd=_workingDaysBetween(r.start,r.end);
   const live=TrSessionDB.all().filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT'||s.deliveryType==='Ad-hoc')&&s.status!=='cancelled'&&s.status!=='tentative'&&s.trainingDate&&_tdSessionDayList(s).some(d=>d>=r.start&&d<=r.end));
   const ids=new Set(DB.all().filter(u=>u.isActive!==false&&u.positionId==='pos_6').map(u=>u.id)); live.forEach(s=>{ if(s.trainerId) ids.add(s.trainerId); if(s.coFacilitatorId) ids.add(s.coFacilitatorId); });
