@@ -1505,7 +1505,7 @@
       </div>
       <nav class="sb-nav">
         <div class="nav-sec">Performance</div>
-        <!-- v5.15b (2026-10-30, per Sandra): My Performance (everyone) · Team Performance (leaders) · L&D Performance (department; Department Head + authorised) -->
+        <!-- v5.15b (2026-10-30, per Sandra): My Performance (everyone) · Team Performance (leaders) · L&D Performance (department; Department Head + authorized) -->
         <div class="nav-item" data-view="my-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span> My Performance</div>
         <div class="nav-item js-team-view hidden" data-view="team-performance"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="17" cy="9.5" r="2.3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.5 14.6c2.6-.4 4.9.9 5.7 3.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Team Performance</div>
         <div class="nav-item js-dept-view hidden" data-view="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Department Performance</div>
@@ -3954,7 +3954,7 @@ const _FIELD_MAPS = {
     learningResources:'learning_resources' // v5.04 (2026-10-15, per Sandra): resource inventory titles [{id,title,updatedAt}]
   },
   learning_methods:{ id:'id', name:'name', isActive:'is_active' }, // v5.04: Learning Method list (Settings → Lists)
-  // v5.04: dated L1 targets; programFamilyId null = organisation default
+  // v5.04: dated L1 targets; programFamilyId null = organization default
   l1_targets:{ id:'id', programFamilyId:'program_family_id', metric:'metric', target:'target', effectiveFrom:'effective_from', effectiveTo:'effective_to', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by' },
   // v5.02 (2026-10-14, per Sandra): Setup Mode flag, prerequisite list, SME & External Contacts, program SMEs/facilitators.
   app_flags:{ key:'key', value:'value', updatedAt:'updated_at', updatedBy:'updated_by' },
@@ -4364,7 +4364,7 @@ const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
   canView(v){ if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
-    // v5.15b (2026-10-30, per Sandra): L&D Performance = department view — Department Head (admin) and authorised
+    // v5.15b (2026-10-30, per Sandra): L&D Performance = department view — Department Head (admin) and authorized
     // management only (Reports Viewer or Dashboard Access = Full View). Everyone else lands on My Performance.
     if(v==='dashboard') return !!(Auth.isAdmin||(Auth.user&&(Auth.user.isReportsViewer||Auth.user.dashScope==='full'))); if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
   isSupervisor(u){
@@ -6232,7 +6232,7 @@ function renderLpSettingsPane(){
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px;line-height:1.55">While on, <b>everyone who can edit programs</b> can edit in-use programs in place (agenda, evaluations, delivery setup) with no minor revision or new version. Each save is tagged <b>[Setup Mode]</b> in the Audit Log. Sessions created from a program keep their own saved copy; mapped historical sessions show their own details. Contributor history rules still apply.${flag?.updatedAt?` <br>Last changed ${Utils.esc(new Date(flag.updatedAt).toLocaleString('en-PH'))}${flag.updatedBy?' by '+Utils.esc(_lpName(flag.updatedBy)):''}.`:''}</div></div>
       ${Auth.isAdmin?`<button class="btn ${on?'btn-primary':'btn-secondary'} btn-sm" onclick="lpToggleSetupMode()">${on?'Turn Off Setup Mode':'Turn On Setup Mode'}</button>`:''}
     </div>
-    <div class="sec-hdr" style="margin-top:22px"><div><strong style="font-size:14px">Default L1 Targets</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Organisation-wide targets for the post-training survey. A program can set its own targets on its Evaluations tab; otherwise these apply. Each target has an effective-from date and an optional end date.</div></div></div>
+    <div class="sec-hdr" style="margin-top:22px"><div><strong style="font-size:14px">Default L1 Targets</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">Organization-wide targets for the post-training survey. A program can set its own targets on its Evaluations tab; otherwise these apply. Each target has an effective-from date and an optional end date.</div></div></div>
     <div class="card" style="padding:12px 16px;max-width:900px">${_l1TargetsTableHtml(null,!!Auth.isAdmin)}</div>
     <div class="sec-hdr" style="margin-top:22px"><div><strong style="font-size:14px">SME &amp; External Contacts</strong><div style="font-size:12px;color:var(--text3);margin-top:2px">People without LEAP accounts who can be selected as SMEs or accredited facilitators on Learning Programs. Contacts never get app access. Linked contacts can be deactivated but not deleted.</div></div>${lpCanEdit()?'<button class="btn btn-primary btn-sm" onclick="lpContactOpen()">+ Add Contact</button>':''}</div>
     <div class="card" style="padding:12px 16px">
@@ -6357,7 +6357,7 @@ function _lpCurSidebarHtml(p,editRes){
 }
 
 /* ── v5.04 (2026-10-15, per Sandra): L1 targets ──────────────────────────────────────────────────────
-   Five measures with organisation defaults (Settings → Learning Programs, admin) and optional program-specific
+   Five measures with organization defaults (Settings → Learning Programs, admin) and optional program-specific
    targets (Evaluations tab, program editors). Every target has an effective-from and optional end date; the
    target in force on a date is the program's own if one covers that date, otherwise the default. Stored in
    l1_targets (not on the program row), so changes never create a new program version. */
@@ -6451,7 +6451,7 @@ function _l1TargetsTableHtml(fid,canEdit){
 /* ── list page ── */
 function _lpFiltered(){
   const q=lpF.q.trim().toLowerCase();
-  // One catalogue row per Program ID. Older versions remain accessible in Audit Log.
+  // One catalog row per Program ID. Older versions remain accessible in Audit Log.
   const latest=new Map();
   LearningProgramDB.all().forEach(p=>{
     const key=p.programFamilyId||p.id;
@@ -6571,7 +6571,7 @@ function lpSetTab(t){
   if(t==='impl') _lpRefreshMappingLinks();
 }
 async function _lpRefreshMappingLinks(){
-  // The catalogue cache may be older than another administrator's mapping. Read current
+  // The catalog cache may be older than another administrator's mapping. Read current
   // links before offering historical sessions again; the conditional UPDATE below remains
   // the final safeguard if a link changes after this refresh.
   const programAtStart=_lpDetailId;
@@ -6613,7 +6613,7 @@ function _lpImplementationsHtml(p){
   return `<div class="card lp-card" style="margin-top:16px"><div class="lp-card-hd"><span class="lp-card-t">Implementations by Version (${count})</span></div>
     <div class="lp-muted" style="font-size:12.5px;margin-bottom:12px">Sessions stay linked to the exact version selected or mapped. Their saved details and reports remain unchanged when a new version is created.</div>
     ${groups.map(({version:v,sessions})=>`<div style="margin:14px 0 8px;font-weight:650">${esc(v.code||p.code||'Program')} · ${esc(_lpVerLabel(v))} <span class="lp-muted" style="font-weight:400">(${sessions.length} session${sessions.length===1?'':'s'}; ${v.status==='inactive'?'Archived':esc(v.status||'Active')})</span></div>
-      ${sessions.length?`<div style="max-height:420px;overflow:auto">${sessions.map(s=>`<div class="lp-map-row"><span style="flex:1;min-width:0"><strong>${esc(s.code||s.id)}</strong> · ${esc(s.trainingProgram||'Untitled')}<small>Linked to ${esc(_lpSessionVerLabel(s,v))}${(()=>{const cr=_lpCreditedContributors(s);return cr.length?' · Credited: '+esc(cr.map(c=>_lpName(c.profileId)+(_lpContribWork(c).length?' ('+_lpContribWork(c).map(k=>LP_WORK.find(y=>y[0]===k)[1]).join(' + ')+')':'')).join(', ')):'';})()} ·${esc([s.deliveryType,s.batchNo?'Batch '+s.batchNo:null,s.trainingDate,s.status].filter(Boolean).join(' · '))} · ${s.programLinkOrigin==='catalog_mapping'?'Catalogue mapping':'Program-selected'}</small></span><button class="btn btn-ghost btn-xs" onclick="openTrainingDetail('${esc(s.id)}')">Open</button>${canUnmap&&v.id===p.id&&s.programLinkOrigin==='catalog_mapping'?`<button class="btn btn-ghost btn-xs" onclick="lpUnmapSession('${esc(s.id)}')">Unlink</button>`:''}</div>`).join('')}</div>`:'<div class="lp-muted" style="padding:4px 0 10px">No sessions linked to this version.</div>'}`).join('')}
+      ${sessions.length?`<div style="max-height:420px;overflow:auto">${sessions.map(s=>`<div class="lp-map-row"><span style="flex:1;min-width:0"><strong>${esc(s.code||s.id)}</strong> · ${esc(s.trainingProgram||'Untitled')}<small>Linked to ${esc(_lpSessionVerLabel(s,v))}${(()=>{const cr=_lpCreditedContributors(s);return cr.length?' · Credited: '+esc(cr.map(c=>_lpName(c.profileId)+(_lpContribWork(c).length?' ('+_lpContribWork(c).map(k=>LP_WORK.find(y=>y[0]===k)[1]).join(' + ')+')':'')).join(', ')):'';})()} ·${esc([s.deliveryType,s.batchNo?'Batch '+s.batchNo:null,s.trainingDate,s.status].filter(Boolean).join(' · '))} · ${s.programLinkOrigin==='catalog_mapping'?'Catalog mapping':'Program-selected'}</small></span><button class="btn btn-ghost btn-xs" onclick="openTrainingDetail('${esc(s.id)}')">Open</button>${canUnmap&&v.id===p.id&&s.programLinkOrigin==='catalog_mapping'?`<button class="btn btn-ghost btn-xs" onclick="lpUnmapSession('${esc(s.id)}')">Unlink</button>`:''}</div>`).join('')}</div>`:'<div class="lp-muted" style="padding:4px 0 10px">No sessions linked to this version.</div>'}`).join('')}
   </div>${canMap?`<div class="card lp-card" style="margin-top:16px"><div class="lp-card-hd"><span class="lp-card-t">Map Historical Sessions to ${esc(p.version||'v1')}</span></div>
     <div class="lp-muted" style="font-size:12.5px;margin-bottom:12px">Admin-only backfill of session links; archived program details stay read only. Only Completed sessions or sessions whose last training date has passed appear. Future, tentative, cancelled, and already linked sessions are excluded. Create October sessions through Add Training → Internal.</div>
     <input id="lp-map-search" class="form-control" type="search" value="${esc(_lpMapQuery)}" placeholder="Search session ID, title, or batch" oninput="lpMapSearch(this.value)" style="width:100%;margin-bottom:10px">
@@ -6872,7 +6872,7 @@ function _lpDetailHtml(p){
   const assessments=`<div class="card lp-card lp-evals-card"><div class="lp-card-hd"><div><span class="lp-card-t">Evaluations</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Kirkpatrick L1–L4 requirements for this program. Sessions created from the program copy these settings.</div></div></div>
     <div class="lp-eval-summary"><div class="lp-eval-chips">${lvChip('L1',ec.l1,'#f5f3ff','#7c3aed')}${lvChip('L2',ec.l2.enabled,'#ecfdf5','#059669')}${lvChip('L3',ec.l3.enabled,'#fffbeb','#d97706')}${lvChip('L4',ec.l4.enabled,'#fef2f2','#dc2626')}</div>
       <span class="lp-tl2-cap">Evaluation timeline · hover an item for details</span>${tlHtml}</div>
-    ${level('l1','L1 · Reaction','Post-training survey: participants’ immediate feedback on the training experience.',ec.l1,draft?'<div class="lp-muted" style="font-size:12px">Targets can be set after the draft is first saved. Organisation defaults apply until then.</div>':`<div class="lp-team-h" style="margin-bottom:6px">Targets <span class="lp-muted" style="font-weight:400;font-size:11.5px">· program targets override the defaults for their dates; changes never create a new version</span></div>${_l1TargetsTableHtml(_lpFamilyId(p),can&&!archived&&!ed)}`,['#f5f3ff','#7c3aed'])}
+    ${level('l1','L1 · Reaction','Post-training survey: participants’ immediate feedback on the training experience.',ec.l1,draft?'<div class="lp-muted" style="font-size:12px">Targets can be set after the draft is first saved. Organization defaults apply until then.</div>':`<div class="lp-team-h" style="margin-bottom:6px">Targets <span class="lp-muted" style="font-weight:400;font-size:11.5px">· program targets override the defaults for their dates; changes never create a new version</span></div>${_l1TargetsTableHtml(_lpFamilyId(p),can&&!archived&&!ed)}`,['#f5f3ff','#7c3aed'])}
     ${level('l2','L2 · Learning','Knowledge and skills gained. Pre / Post, optional Retention (post-test re-taken N days later, plotted on the Training Calendar) and passing % are set per item.',ec.l2.enabled,l2Body,['#ecfdf5','#059669'])}
     ${level('l3','L3 · Behavior','Application on the job: follow-through methods, who is responsible, and timing.',ec.l3.enabled,l3Body,['#fffbeb','#d97706'])}
     ${level('l4','L4 · Results','Business outcome measures with baseline, target, unit and timing.',ec.l4.enabled,l4Body,['#fef2f2','#dc2626'])}
@@ -10721,7 +10721,7 @@ function renderBackupPane(){
       <div style="font-size:12px;color:var(--text3);margin-top:8px">Last export: <strong>${lastExp ? Utils.formatDate(new Date(lastExp)) : 'Never'}</strong></div>
 
       <div style="font-size:15px;font-weight:700;margin:28px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Option 2 — OneDrive Auto-Backup</div>
-      <p style="font-size:13px;color:var(--text2);margin:8px 0 14px">Saves a timestamped JSON backup to your organisation&#x27;s OneDrive automatically after data changes. Requires IT to configure Azure App credentials below.</p>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0 14px">Saves a timestamped JSON backup to your organization&#x27;s OneDrive automatically after data changes. Requires IT to configure Azure App credentials below.</p>
 
       <div style="background:var(--bg,#f9fafb);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:13px;margin-bottom:14px">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
@@ -12548,7 +12548,7 @@ function _tdVenueTypeFor(deliveryType){ return deliveryType==='Self-led'?'platfo
 function _tdShowsModality(deliveryType){ return deliveryType==='ILT'||deliveryType==='External'||deliveryType==='Ad-hoc'; }
 
 // Populates a Venue/Platform <select id="{prefix}-venue"> filtered by delivery type -- ILT/VILT/
-// External see physical venues, Self-led sees platform entries (relabelled "Platform" in the UI).
+// External see physical venues, Self-led sees platform entries (relabeled "Platform" in the UI).
 // The "Other (please specify)" sentinel venue is always included regardless of its own type so
 // the existing Other-specify flow keeps working for both groups.
 function _tdPopulateVenueOptions(prefix,deliveryType,selectedId){
@@ -13404,7 +13404,7 @@ function renderTDList(rows){
 }
 
 // v5.13 (2026-10-27, per Sandra): user-friendly Training Calendar export. Replaces the raw
-// database dump (every column, ids, JSON) with one readable sheet: codes users recognise, real
+// database dump (every column, ids, JSON) with one readable sheet: codes users recognize, real
 // Excel dates (End Date = Start Date for single-day sessions), and the Training Report SLA
 // (due date, when it was sent, working days taken, On time / Late / Overdue / Pending).
 // SLA rule is the same as the List view's Report SLA column: 2 working days (Mon-Fri) after the
@@ -20134,8 +20134,8 @@ function _tddToggleConfirmSection(){
   _tddSetConfirmSectionVisible(!!(sec&&sec.classList.contains('hidden')));
 }
 /* v5.16 (2026-10-30, per Sandra): cancellation reason. Only L&D-controllable reasons count as a missed
-   session in the department Session Delivery Rate; rescheduled / business / low enrolment do not. */
-const TD_CANCEL_REASONS=[['rescheduled','Rescheduled',false],['business','Business request',false],['low_enrolment','Low enrolment / no-show',false],['trainer','Trainer unavailable',true],['content','Content not ready',true],['logistics','Logistics / venue',true],['other','Other (specify)',true]];
+   session in the department Session Delivery Rate; rescheduled / business / low enrollment do not. */
+const TD_CANCEL_REASONS=[['rescheduled','Rescheduled',false],['business','Business request',false],['low_enrolment','Low enrollment / no-show',false],['trainer','Trainer unavailable',true],['content','Content not ready',true],['logistics','Logistics / venue',true],['other','Other (specify)',true]];
 const _tdCancelIsMiss=code=>!!(TD_CANCEL_REASONS.find(r=>r[0]===code)||[])[2];
 const _tdCancelLabel=code=>(TD_CANCEL_REASONS.find(r=>r[0]===code)||[null,'Reason not recorded'])[1];
 function _tdCancelReasonHtml(s,styleAttr){
@@ -25005,10 +25005,10 @@ const DP_TAB={dp_ppd:'delivery',dp_csat:'outcomes',dp_gain:'outcomes',dp_l3:'out
 const DP_DEFS={
   dp_ppd:'Delivered approved commitments ÷ total approved commitments × 100. Delivered = agreed completion criteria met.',
   dp_csat:'Response-weighted average CSAT (1–5) from post-training surveys on sessions that ended in the period.',
-  dp_gain:'Normalised gain per matched learner pre/post pair: (post − pre) ÷ (100 − pre) × 100, averaged over all valid pairs in the department (not program averages). Pairs = same learner, same assessment, or the session’s pre-test item paired with its post-test item. Pre-test of 100% excluded (counted); negative gains kept; unmatched results excluded (counted).',
+  dp_gain:'Normalized gain per matched learner pre/post pair: (post − pre) ÷ (100 − pre) × 100, averaged over all valid pairs in the department (not program averages). Pairs = same learner, same assessment, or the session’s pre-test item paired with its post-test item. Pre-test of 100% excluded (counted); negative gains kept; unmatched results excluded (counted).',
   dp_l3:'Learners meeting the program’s L3 criteria ÷ valid learner-level L3 evaluations × 100, with coverage shown.',
   dp_cert:'Certified ÷ candidates with a final decision × 100. Completion rate shown separately.',
-  dp_sdr:'ILT/VILT sessions delivered ÷ (delivered + sessions cancelled for an L&D-controllable reason). Rescheduled, business-request and low-enrolment cancellations are listed but not counted.',
+  dp_sdr:'ILT/VILT sessions delivered ÷ (delivered + sessions cancelled for an L&D-controllable reason). Rescheduled, business-request and low-enrollment cancellations are listed but not counted.',
   dp_util:'Live facilitation hours (ILT, VILT, Ad-hoc; not cancelled or tentative) ÷ trainer capacity (working days × 7.5 h × allocation %), measured to date in an open period. Target band 65–85%; above 85% is flagged as overload.',
   dp_nps:'Response-weighted Net Promoter Score (−100 to +100) from post-training surveys.',
   dp_qae:'Acknowledged ID and CD QA reviews with an Endorse disposition (≥85%, no 0s) ÷ all acknowledged reviews.',
@@ -25149,7 +25149,7 @@ function _dpSpark(vals){ const pts=vals.map((x,i)=>x==null?null:[i,x]).filter(Bo
 function _dpAttention(sc,r){
   const items=[];
   sc.rows.filter(x=>x.rating!=null&&x.rating<3).forEach(x=>items.push({sev:'danger',t:`${x.name} below target`,d:`${x.actualTxt} vs ${x.target} · ${x.detail}`,go:`dpSetTab('${DP_TAB[x.key]}')`}));
-  sc.rows.filter(x=>x.status[0]==='Over capacity').forEach(x=>items.push({sev:'warning',t:'Trainer utilisation above 85%',d:x.detail,go:"dpSetTab('delivery')"}));
+  sc.rows.filter(x=>x.status[0]==='Over capacity').forEach(x=>items.push({sev:'warning',t:'Trainer utilization above 85%',d:x.detail,go:"dpSetTab('delivery')"}));
   const nc=sc.rows.filter(x=>x.status[0]==='Not connected yet'); if(nc.length) items.push({sev:'neutral',t:`${nc.length} strategic KPI${nc.length!==1?'s':''} not connected yet`,d:nc.map(x=>x.name).join(', '),go:''});
   const saved=_ovF.team; _ovF.team='all'; let ov=[]; try{ ov=_ovAttention(r); }catch(e){} _ovF.team=saved;
   ov.forEach(a=>items.push({sev:a.sev==='red'?'danger':'warning',t:`${a.n} ${a.label}`,d:'Data quality — affects KPI evidence',go:a.go}));
@@ -25240,9 +25240,9 @@ function _dpDeliveryHtml(r){
   const byType={}; _ovDeliverySessions(r).forEach(s=>{ const k=s.deliveryType||'—'; byType[k]=byType[k]||{n:0,c:0}; byType[k].n++; if(_tdStatus(s)==='Completed') byType[k].c++; });
   const sessRow=(s,counted)=>`<tr><td>${esc(s.code||'')}</td><td>${esc(_dpSessName(s))}</td><td>${Utils.formatDate(s.trainingDate)}</td><td>${esc(s.deliveryType||'')}</td><td>${s.status==='cancelled'?esc(_tdCancelLabel(s.cancelReason))+(s.cancelNote?` — ${esc(s.cancelNote)}`:''):'Delivered'}</td><td>${counted}</td></tr>`;
   return `${_dpSoon('Committed Projects','Phase 3','Planned Program Delivery (18% of the department score) will be tracked here: approved commitments per quarter, insertions and deferrals with approval history, and delivery evidence linked to each Learning Program.')}
-  <div class="mp-r1">${_dpCard('Session Delivery Rate',_dpFmt('dp_sdr',x.v),`${x.delivered.length} delivered · ${x.missed.length} missed`)}${_dpCard('Training Hours',`${Math.round(d.deliv*10)/10} h`,`delivered of ${Math.round(d.sched*10)/10} h scheduled`)}${_dpCard('Trainer Utilisation',_dpFmt('dp_util',u.v),`${Math.round(u.hrs*10)/10} h of ${Math.round(u.cap)} h capacity · ${u.wd} working days`)}${_dpCard('Learners Reached',d.learners,`unique people in ${d.completed} completed session${d.completed!==1?'s':''}`)}</div>
+  <div class="mp-r1">${_dpCard('Session Delivery Rate',_dpFmt('dp_sdr',x.v),`${x.delivered.length} delivered · ${x.missed.length} missed`)}${_dpCard('Training Hours',`${Math.round(d.deliv*10)/10} h`,`delivered of ${Math.round(d.sched*10)/10} h scheduled`)}${_dpCard('Trainer Utilization',_dpFmt('dp_util',u.v),`${Math.round(u.hrs*10)/10} h of ${Math.round(u.cap)} h capacity · ${u.wd} working days`)}${_dpCard('Learners Reached',d.learners,`unique people in ${d.completed} completed session${d.completed!==1?'s':''}`)}</div>
   <div class="mp-r2" style="grid-template-columns:1.4fr 1fr"><div class="mp-c">${_dpHead('Sessions counted for delivery · '+esc(r.label),'ILT and VILT')}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Code</th><th>Session</th><th>Date</th><th>Type</th><th>Outcome</th><th>In rate</th></tr></thead><tbody>${[...x.missed.map(s=>sessRow(s,'Missed')),...x.excluded.map(s=>sessRow(s,'Not counted')),...x.delivered.map(s=>sessRow(s,'Delivered'))].join('')||'<tr><td colspan="6" class="mp-sub">No sessions in this period.</td></tr>'}</tbody></table></div><div class="mp-note">${x.open.length} session${x.open.length!==1?'s':''} still upcoming or in progress are not counted yet. Cancelled sessions without a reason show "Reason not recorded" and are not counted.</div></div>
-  <div class="mp-c">${_dpHead('Trainer utilisation','target band 65–85%')}<table class="mp-tbl"><thead><tr><th>Facilitator</th><th>Alloc.</th><th>Hours</th><th>Capacity</th><th>Util.</th></tr></thead><tbody>${u.people.map(p=>`<tr><td>${esc(p.u.firstName+' '+p.u.lastName)}</td><td>${p.pct}%</td><td>${Math.round(p.hrs*10)/10}</td><td>${Math.round(p.cap*10)/10}</td><td>${p.util!=null?`<b style="color:${p.util>85?'#d97706':(p.util<65?'#64748b':'#16a34a')}">${Math.round(p.util)}%</b>`:'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="mp-sub">No facilitators.</td></tr>'}</tbody></table>
+  <div class="mp-c">${_dpHead('Trainer utilization','target band 65–85%')}<table class="mp-tbl"><thead><tr><th>Facilitator</th><th>Alloc.</th><th>Hours</th><th>Capacity</th><th>Util.</th></tr></thead><tbody>${u.people.map(p=>`<tr><td>${esc(p.u.firstName+' '+p.u.lastName)}</td><td>${p.pct}%</td><td>${Math.round(p.hrs*10)/10}</td><td>${Math.round(p.cap*10)/10}</td><td>${p.util!=null?`<b style="color:${p.util>85?'#d97706':(p.util<65?'#64748b':'#16a34a')}">${Math.round(p.util)}%</b>`:'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="mp-sub">No facilitators.</td></tr>'}</tbody></table>
   ${_dpHead('By delivery type')}<table class="mp-tbl"><thead><tr><th>Type</th><th>Sessions</th><th>Completed</th></tr></thead><tbody>${Object.entries(byType).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n}</td><td>${v.c}</td></tr>`).join('')||'<tr><td colspan="3" class="mp-sub">—</td></tr>'}</tbody></table></div></div>`;
 }
 /* v5.16b (2026-10-30, per Sandra): Learning Outcomes = L1 deep dive (Department → Program → Session → results) and
@@ -25285,11 +25285,11 @@ function _dpOutcomesHtml(r){
   const l3done=TrSessionDB.all().filter(s=>s.l3Required&&s.l3CompletedAt&&_scIn(_mnlDateOf(s.l3CompletedAt),r)).length, l3over=TrSessionDB.all().filter(s=>s.l3Required&&!s.l3CompletedAt&&s.status!=='cancelled'&&_tdl3Status(s)==='overdue').length;
   return `<div class="dp-sec">L1 · Learner Experience</div><div class="mp-r1" style="grid-template-columns:repeat(5,minmax(0,1fr))">${_dpCard('Learner Satisfaction (CSAT)',f(l.csat)+'<span> / 5</span>',`target ≥ ${T} · ${l.csatN} session${l.csatN!==1?'s':''}`)}${_dpCard('NPS',fn(l.nps),'target ≥ +85')}${_dpCard('Learning Content',f(l.content),'supporting · 1–5')}${_dpCard('Learning Material',f(l.material),'supporting · 1–5')}${_dpCard('Facilitator',f(l.facil),'supporting · 1–5')}</div>
   <div class="mp-c">${_dpHead('L1 deep dive · '+esc(r.label),`${l.reps.length} session${l.reps.length!==1?'s':''} with reports · ${l.responses} responses · response-weighted · click a program for its sessions`)}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Program / session</th><th>Sessions</th><th>Responses</th><th>CSAT</th><th>NPS</th><th>Content</th><th>Material</th><th>Facilitator</th></tr></thead><tbody>${l1Rows||'<tr><td colspan="8" class="mp-sub">No submitted training reports for sessions that ended in this period.</td></tr>'}</tbody></table></div>${noRep.length?`<div class="mp-note">${noRep.length} completed session${noRep.length!==1?'s':''} without a submitted report yet: ${noRep.map(x=>esc(x.s.code||'')).join(', ')}.</div>`:''}</div>
-  <div class="dp-sec">L2 · Knowledge Gain</div><div class="mp-r1" style="grid-template-columns:repeat(4,minmax(0,1fr))">${_dpCard('Normalised Knowledge Gain',pc(k.v),`target ≥ ${KT}% · ${k.pairs.length} valid learner pair${k.pairs.length!==1?'s':''}`)}${_dpCard('Coverage',`${k.evaluatedSessions} of ${k.eligibleSessions}`,'sessions with pre-tests that have valid pairs')}${_dpCard('Excluded',k.unmatched+k.pre100+k.invalid,`${k.unmatched} unmatched · ${k.pre100} pre-test 100% · ${k.invalid} invalid`)}${_dpCard('Average pre → post',`${pc(k.avgPre)} → ${pc(k.avgPost)}`,'valid pairs only')}</div>
+  <div class="dp-sec">L2 · Knowledge Gain</div><div class="mp-r1" style="grid-template-columns:repeat(4,minmax(0,1fr))">${_dpCard('Normalized Knowledge Gain',pc(k.v),`target ≥ ${KT}% · ${k.pairs.length} valid learner pair${k.pairs.length!==1?'s':''}`)}${_dpCard('Coverage',`${k.evaluatedSessions} of ${k.eligibleSessions}`,'sessions with pre-tests that have valid pairs')}${_dpCard('Excluded',k.unmatched+k.pre100+k.invalid,`${k.unmatched} unmatched · ${k.pre100} pre-test 100% · ${k.invalid} invalid`)}${_dpCard('Average pre → post',`${pc(k.avgPre)} → ${pc(k.avgPost)}`,'valid pairs only')}</div>
   <div class="mp-c">${_dpHead('Knowledge Gain by program · '+esc(r.label),'click a program for implementations, then a session for its pairs')}<div class="dp-scroll"><table class="mp-tbl"><thead><tr><th>Program / implementation</th><th>Status</th><th>Sessions</th><th>Valid pairs</th><th>Excluded</th><th>Avg pre</th><th>Avg post</th><th>Gain</th></tr></thead><tbody>${l2Rows||'<tr><td colspan="8" class="mp-sub">No completed sessions in this period.</td></tr>'}</tbody></table></div>
     <div class="mp-note">Gain per learner = (post − pre) ÷ (100 − pre). Department result = average over all valid pairs. Evaluated = every result paired · Partial data = some unmatched or invalid · Not yet evaluated = pre-test set up but no valid pairs · Not applicable = no pre-test on the session.</div></div>
   <div class="mp-r2" style="grid-template-columns:1fr 1fr">${_dpCard('Average final score',sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1)+'%':'—',`supporting · ${sc.length} post-test scores`)}${_dpCard('Pass rate',assessed?Math.round(passed/assessed*100)+'%':'—',`supporting · ${assessed} learners assessed`)}</div>
-  <div class="dp-sec">L3 · Behavioural Effectiveness</div><div class="mp-r2" style="grid-template-columns:2fr 1fr 1fr">${_dpSoon('Behavioural Effectiveness','Phase 5','Learner-level L3 results against each program’s behavioural criteria, with L3 coverage beside the rate. Until then this KPI shows Not connected rather than a session-level figure.')}${_dpCard('L3 follow-ups completed',l3done,'supporting · in this period')}${_dpCard('L3 overdue',l3over,'supporting · open now')}</div>`;
+  <div class="dp-sec">L3 · Behavioral Effectiveness</div><div class="mp-r2" style="grid-template-columns:2fr 1fr 1fr">${_dpSoon('Behavioral Effectiveness','Phase 5','Learner-level L3 results against each program’s behavioral criteria, with L3 coverage beside the rate. Until then this KPI shows Not connected rather than a session-level figure.')}${_dpCard('L3 follow-ups completed',l3done,'supporting · in this period')}${_dpCard('L3 overdue',l3over,'supporting · open now')}</div>`;
 }
 function _dpQualityHtml(r){
   const esc=Utils.esc, q=_dpQa(r), s=_dpSla(r), nm=id=>{ const u=DB.byId(id); return u?u.firstName+' '+u.lastName:'—'; };
