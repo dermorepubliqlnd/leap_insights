@@ -1627,7 +1627,7 @@
             .dp-dots{display:flex;gap:4px;margin:8px 0 6px}.dp-dots i{flex:1;height:7px;border-radius:99px;background:#e2e8f0}.dp-dots i.on{background:#16a34a}
             .dp-pp{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:6px}.dp-pp b{display:block;font-size:22px}.dp-pp span{font-size:11.5px;color:var(--text3)}
             .dp-soon{border-style:dashed;background:#f8fafc}.dp-sec{font-weight:700;font-size:13px;color:#334155;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
-            .dp-scroll{max-height:420px;overflow:auto}.dp-x{cursor:pointer}.dp-x:hover td{background:#f8fafc}.dp-sub td{background:#fbfcfe;font-size:12.5px}.dp-sub td:first-child{padding-left:22px}.dp-sub2 td{font-size:12px;color:#475569}.dp-sub2 td:first-child{padding-left:40px}.dp-legacy{margin-top:16px}.dp-legacy>summary{cursor:pointer;font-weight:600;font-size:13px;color:#334155;padding:10px 0}
+            .dp-scroll{max-height:420px;overflow:auto}.dp-x{cursor:pointer}.cp-inl{font-size:12px;padding:3px 6px;max-width:160px}.dp-x:hover td{background:#f8fafc}.dp-sub td{background:#fbfcfe;font-size:12.5px}.dp-sub td:first-child{padding-left:22px}.dp-sub2 td{font-size:12px;color:#475569}.dp-sub2 td:first-child{padding-left:40px}.dp-legacy{margin-top:16px}.dp-legacy>summary{cursor:pointer;font-weight:600;font-size:13px;color:#334155;padding:10px 0}
             #view-dashboard .mp-r1,#view-dashboard .mp-r2{margin-bottom:14px}
             .tp-qas{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tp-qa{display:flex;gap:8px;align-items:flex-start;text-align:left;border:1px solid var(--border);background:#fff;border-radius:8px;padding:10px;font-size:12.5px;cursor:pointer}.tp-qa:hover{background:#f1f5f9}
           </style>
@@ -25349,8 +25349,8 @@ function _cpHtml(r){
     const prog=x.programId?LearningProgramDB.byId(x.programId):null, open=_cpHist.has(x.id);
     const hist=open?(Cache.data.committed_project_events||[]).filter(e=>e.projectId===x.id).sort((a,b)=>String(a.at).localeCompare(String(b.at))).map(e=>`<div class="mp-sub">${Utils.formatDate(_mnlDateOf(e.at))} · ${esc(nm(e.actorId))} · <b>${esc(e.action)}</b> ${esc(e.detail||'')}</div>`).join('')||'<div class="mp-sub">No history.</div>':'';
     return `<tr${_cpCounts(x)?'':' style="opacity:.8"'}><td><div style="font-weight:600">${esc(x.title)}</div><div class="mp-sub">${esc(CP_MILESTONE[x.milestone]||x.milestone)}${x.milestoneNote?' · '+esc(x.milestoneNote):''}${prog?` · <a class="mp-link" onclick="showView('learning-programs')">${esc(prog.code)}</a>`:''}</div>${x.approvalNote?`<div class="mp-sub" style="font-style:italic">${esc(x.approvalNote)}</div>`:''}${sug?`<div class="mp-sub" style="color:#16a34a">Evidence found: ${esc(sug.code||'')} Delivery Complete ${Utils.formatDate(_tdSessionEndDate(sug))} — <a class="mp-link" onclick="cpEdit('${x.id}')">confirm delivered</a></div>`:''}${hist?`<div style="margin-top:4px">${hist}</div>`:''}</td>
-      <td>${_mpChip(t[0],t[1])}${_cpCounts(x)?'':'<div class="mp-sub">not counted</div>'}</td><td class="mp-sub">${esc(nm(x.ownerId))}</td><td class="mp-sub">${x.originalDue?Utils.formatDate(x.originalDue):'—'}${x.revisedDue?`<div>→ ${Utils.formatDate(x.revisedDue)}</div>`:''}</td>
-      <td>${_mpChip(s[0],s[1])}${x.deliveredOn?`<div class="mp-sub">${Utils.formatDate(x.deliveredOn)}</div>`:''}</td><td class="mp-sub">${ev||'—'}</td>
+      <td>${admin?`<select class="mp-sel cp-inl" onchange="cpQuick('${x.id}','commitType',this.value)">${Object.entries(CP_TYPE).map(([k2,l])=>`<option value="${k2}"${k2===x.commitType?' selected':''}>${l[0]}</option>`).join('')}</select>`:_mpChip(t[0],t[1])}${_cpCounts(x)?'':'<div class="mp-sub">not counted</div>'}</td><td class="mp-sub">${esc(nm(x.ownerId))}</td><td class="mp-sub">${x.originalDue?Utils.formatDate(x.originalDue):'—'}${x.revisedDue?`<div>→ ${Utils.formatDate(x.revisedDue)}</div>`:''}</td>
+      <td>${admin?`<select class="mp-sel cp-inl" onchange="cpQuick('${x.id}','status',this.value)">${Object.entries(CP_STATUS).map(([k2,l])=>`<option value="${k2}"${k2===x.status?' selected':''}>${l[0]}</option>`).join('')}</select>`:_mpChip(s[0],s[1])}${x.deliveredOn?`<div class="mp-sub">${Utils.formatDate(x.deliveredOn)}</div>`:''}</td><td class="mp-sub">${ev||'—'}</td>
       <td style="white-space:nowrap"><a class="mp-link" onclick="cpToggleHist('${x.id}')">${open?'Hide':'History'}</a>${admin?` · <a class="mp-link" onclick="cpEdit('${x.id}')">Edit</a>`:''}</td></tr>`; }).join('');
   const kpiTxt=k.v==null?'—':Math.round(k.v)+'%';
   return `<div class="mp-c">${_dpHead('Committed Projects · Q'+q.slice(6)+' '+q.slice(0,4),`Planned Program Delivery = delivered ÷ counted commitments · ${k.open?'rated when the quarter ends':'quarter closed'}`)}
@@ -25405,6 +25405,22 @@ async function cpSave(id){
   const r2=await sb.from('committed_project_events').insert(patchToSnake('committed_project_events',ev)).select().single(); if(!r2.error){ (Cache.data.committed_project_events||(Cache.data.committed_project_events=[])).push(rowToCamel('committed_project_events',r2.data)); }
   await AuditLog.record(ex?'update':'create','Committed Projects',row.id,`${row.title}: ${ev.detail}`);
   _cpEdit=null; _dpCache=null; toast(admin?'Commitment saved.':'Proposal submitted for approval.','success'); renderDepartmentPerformance();
+}
+/* v5.16c (2026-10-30, per Sandra): change Type / Status straight from the table (admin). Delivered still needs evidence
+   (opens the form when missing); a type change or deferral asks for an approval note. Logged in History + Audit Log. */
+async function cpQuick(id,field,value){
+  const x=(Cache.data.committed_projects||[]).find(y=>y.id===id); if(!x||!Auth.isAdmin) return;
+  if(field==='status'&&value==='delivered'&&!(x.evidenceUrl||x.linkedSessionId||x.linkedReviewId)){ toast('Add evidence first: link, session or QA review.','info'); cpEdit(id); setTimeout(()=>{ const s=document.getElementById('cp-status'); if(s) s.value='delivered'; },80); return; }
+  let note=null;
+  if(field==='commitType'||(field==='status'&&value==='deferred')){ note=prompt(`Approval note for changing ${field==='commitType'?'type':'status'} of "${x.title}" (recorded in History):`); if(note===null){ renderDepartmentPerformance(); return; } note=note.trim(); if(!note){ toast('An approval note is required.','error'); renderDepartmentPerformance(); return; } }
+  const p={[field]:value,updatedAt:new Date().toISOString()}; if(field==='status'&&value!=='delivered') p.deliveredOn=null;
+  if(field==='status'&&value==='delivered'){ p.deliveredOn=x.deliveredOn||_todayStr(); p.deliveredConfirmedBy=Auth.user.id; }
+  if(note){ p.approvalNote=note; p.approvalBy=Auth.user.id; p.approvalAt=new Date().toISOString(); }
+  const {data,error}=await sb.from('committed_projects').update(patchToSnake('committed_projects',p)).eq('id',id).select().single(); if(error){ _surfaceDbError(error,'Update commitment'); renderDepartmentPerformance(); return; }
+  const row=rowToCamel('committed_projects',data), a=Cache.data.committed_projects; a[a.findIndex(y=>y.id===id)]=row;
+  const detail=`${field==='commitType'?'type':'status'}: ${x[field]} → ${value}${note?' — '+note:''}`;
+  const r2=await sb.from('committed_project_events').insert(patchToSnake('committed_project_events',{projectId:id,actorId:Auth.user.id,action:value==='delivered'?'delivered':'updated',detail})).select().single(); if(!r2.error) (Cache.data.committed_project_events||(Cache.data.committed_project_events=[])).push(rowToCamel('committed_project_events',r2.data));
+  await AuditLog.record('update','Committed Projects',id,`${x.title}: ${detail}`); _dpCache=null; toast('Updated.','success'); renderDepartmentPerformance();
 }
 function cpDelete(id){ const x=(Cache.data.committed_projects||[]).find(y=>y.id===id); if(!x||!Auth.isAdmin) return;
   confirm$('Delete commitment',`Delete <b>${Utils.esc(x.title)}</b> and its history? Prefer status On hold or an approved deferral to keep the record.`,'Delete',async()=>{
