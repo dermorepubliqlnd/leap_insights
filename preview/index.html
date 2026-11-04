@@ -21579,12 +21579,26 @@ async function saveEvalDraft(){
   finally{ if(btn){btn.disabled=false;btn.textContent=origTxt;} }
 }
 
+// v5.14c (2026-11-04, per Sandra): Trainer Evaluation finalize confirmation shows trainer, program, batch,
+// dates, mode, score and band (same idea as the QA submit confirmation, v5.14b).
+function _evalFinalizeConfirmMsg(d){
+  const p=DB.byId(d.trainerId); const nm=p?`${p.firstName} ${p.lastName}`:'(not selected)';
+  const sc=d.overallScore; const band=_evalDisposition(sc);
+  const mode=d.evaluationMode==='live'?'Live (sit-in)':d.evaluationMode==='virtual'?'Virtual (recording)':(d.evaluationMode||'—');
+  const fd=v=>v?Utils.formatDate(v):'—';
+  const row=(k,v)=>`<tr><td style="padding:4px 12px 4px 0;color:var(--text3);white-space:nowrap">${k}</td><td style="padding:4px 0"><strong>${v}</strong></td></tr>`;
+  return `Please check that this evaluation is going to the right trainer.<br><br><table style="font-size:13.5px;border-collapse:collapse">`
+    +row('Trainer',`<span style="font-size:15px">${Utils.esc(nm)}</span>`)+row('Program',Utils.esc(d.trainingProgram||'—'))+row('Batch',Utils.esc(d.batchNo||'—'))
+    +row('Training date',fd(d.trainingDate))+row('Mode',Utils.esc(mode))
+    +row('Overall score',sc!=null?sc.toFixed(2)+' / 5':'—')+row('Rating',Utils.esc(band?band.label:'—'))
+    +`</table><br>Once finalized, it is sent to <strong>${Utils.esc(nm)}</strong> for acknowledgement and can no longer be edited.`;
+}
 function finalizeEval(){
   if(!_validateEval(true)) return;
   const d=_getCurrentData();
   const trainer=DB.byId(d.trainerId);
   const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'this trainer';
-  confirm$('Finalize Evaluation',`You are about to finalize the evaluation for <strong>${Utils.esc(tName)}</strong>.<br><br>Once finalized, this evaluation will be sent for <em>employee acknowledgement</em> and can no longer be edited. Are you sure?`,'Yes, Finalize',async()=>{
+  confirm$('Confirm Finalization',_evalFinalizeConfirmMsg(d),'Yes, Finalize',async()=>{
     try{
       const data={..._getCurrentData(),status:'pending_ack',finalizedAt:new Date().toISOString()};
       data.venueId=await _ensureVenueId('ef',data.venueId);
