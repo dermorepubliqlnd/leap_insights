@@ -1406,6 +1406,7 @@
     .seg-btn-group{background:#eef1f5;border:none!important;border-radius:10px!important;padding:2px;gap:2px}
     .seg-btn-group .btn{border-radius:8px!important;border:none!important}
   </style>
+<style>/* v5.15-v5.16 release (2026-11-10, per Sandra): in-app Knowledge Base (v5.17) stays preview-only; live keeps LEAP_KB.html */ html:not(.is-preview) .nav-item[data-view="knowledge-base"]{display:none} html.is-preview .js-kb-file{display:none}</style>
 </head>
 <body>
 
@@ -1528,6 +1529,7 @@
         <div class="nav-item js-cost-manage hidden" data-view="cost-settings"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="6" width="17" height="12" rx="1.8" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 9v0M17.5 15v0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span> Cost Settings</div>
         <div class="nav-sec" style="margin-top:6px">Resources</div>
         <div class="nav-item" data-view="knowledge-base"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.3c-1.7-1.2-3.9-1.8-6.2-1.8-.7 0-1.3.1-1.8.2v13.1c.5-.1 1.1-.2 1.8-.2 2.3 0 4.5.6 6.2 1.8 1.7-1.2 3.9-1.8 6.2-1.8.7 0 1.3.1 1.8.2V4.7c-.5-.1-1.1-.2-1.8-.2-2.3 0-4.5.6-6.2 1.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 6.3v13.1" stroke="currentColor" stroke-width="1.4"/></svg></span> Knowledge Base</div>
+        <div class="nav-item js-kb-file" onclick="window.open('LEAP_KB.html','_blank','noopener')" title="Opens in a new tab" style="cursor:pointer"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.3c-1.7-1.2-3.9-1.8-6.2-1.8-.7 0-1.3.1-1.8.2v13.1c.5-.1 1.1-.2 1.8-.2 2.3 0 4.5.6 6.2 1.8 1.7-1.2 3.9-1.8 6.2-1.8.7 0 1.3.1 1.8.2V4.7c-.5-.1-1.1-.2-1.8-.2-2.3 0-4.5.6-6.2 1.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 6.3v13.1" stroke="currentColor" stroke-width="1.4"/></svg></span> Knowledge Base <span style="font-size:9px;opacity:.55;margin-left:auto">↗</span></div>
       </nav>
       <div class="sb-footer">
         <div class="sb-user">
@@ -4396,7 +4398,7 @@ const Auth = {
 const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
-  canView(v){ if(v==='ld-reports') return !!Auth.isAdmin; if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
+  canView(v){ if(v==='knowledge-base'&&window.LEAP_CHANNEL!=='preview') return false; if(v==='ld-reports') return !!Auth.isAdmin; if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
     // v5.15b (2026-10-30, per Sandra): L&D Performance = department view — Department Head (admin) and authorized
     // management only (Reports Viewer or Dashboard Access = Full View). Everyone else lands on My Performance.
     if(v==='dashboard') return !!(Auth.isAdmin||(Auth.user&&(Auth.user.isReportsViewer||Auth.user.dashScope==='full'))); if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
@@ -4873,7 +4875,7 @@ function showView(id){
   }
   document.getElementById('page-title').textContent=PAGE_TITLES[id]||'';
   document.getElementById('page-subtitle').textContent=PAGE_SUBTITLES[id]||'';
-  { const ph=document.getElementById('page-help'); if(ph) ph.innerHTML=(typeof _kbHelpBtn==='function'&&id!=='knowledge-base')?_kbHelpBtn(id):''; } // v5.17
+  { const ph=document.getElementById('page-help'); if(ph) ph.innerHTML=(typeof _kbHelpBtn==='function'&&id!=='knowledge-base'&&window.LEAP_CHANNEL==='preview')?_kbHelpBtn(id):''; } // v5.17
   // Dashboard's single "+ New Evaluation" dropdown (2026-09-22, per Sandra: replaces the old
   // 3-button "Quick Actions" strip in dash-body) lives in the shared topbar-acts slot -- cleared
   // for every other view so it doesn't linger when navigating away.
