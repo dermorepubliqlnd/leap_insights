@@ -12705,17 +12705,19 @@ function _tdReportReqLabel(s){ if(!_tdReportWaived(s)) return 'Required'; const 
 function _tdReportReqViewHtml(s){ if(!(s.deliveryType==='ILT'||s.deliveryType==='VILT')) return ''; return _tddInfoBlock('edit3','#d97706','Training Report',_tdReportWaived(s)?`<span class="badge" style="background:#fef3c7;color:#92400e">Not required</span> <span style="font-weight:400;font-size:12px;color:var(--text2)">${Utils.esc((TD_REPORT_WAIVER_REASONS[s.reportWaiverReason]||'')+(s.reportWaiverNote?' — '+s.reportWaiverNote:''))} · survey results only</span>`:'Required'); }
 function _tdReportReqEditHtml(s){
   if(!(s.deliveryType==='ILT'||s.deliveryType==='VILT')) return '';
+  return _tddInfoBlockEdit('edit3','#d97706','Training Report',_tdReportReqControl(s,'font-size:13px;padding:5px 8px'));
+}
+function _tdReportReqControl(s,st){
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id&&(r.status==='submitted'||r.status==='approved'));
   const locked=s.status==='completed'||!!rep;
   const val=_tdReportWaived(s)?(s.reportWaiverReason||'sme_led'):'yes';
-  const st='font-size:13px;padding:5px 8px';
-  return _tddInfoBlockEdit('edit3','#d97706','Training Report',`<select id="tdd-report-req" class="form-control" style="${st}" ${locked?'disabled':''} onchange="document.getElementById('tdd-report-note-wrap').classList.toggle('hidden',this.value==='yes')">
+  return `<select id="tdd-report-req" class="form-control" style="${st}" ${locked?'disabled':''} onchange="document.getElementById('tdd-report-note-wrap').classList.toggle('hidden',this.value==='yes')">
       <option value="yes" ${val==='yes'?'selected':''}>Required (trainer submits report)</option>
       <option value="sme_led" ${val==='sme_led'?'selected':''}>Not required — SME-led (survey results only)</option>
       <option value="other" ${val==='other'?'selected':''}>Not required — Other (survey results only)</option>
     </select>
     <div id="tdd-report-note-wrap" class="${val==='yes'?'hidden':''}" style="margin-top:5px"><input type="text" id="tdd-report-note" class="form-control" style="${st}" placeholder="Note (required for Other)" value="${Utils.esc(s.reportWaiverNote||'')}" ${locked?'disabled':''}></div>
-    ${locked?'<div style="font-size:11px;color:var(--text3);margin-top:3px">Locked once Delivery Complete or a report is submitted.</div>':''}`);
+    ${locked?'<div style="font-size:11px;color:var(--text3);margin-top:3px">Locked once Delivery Complete or a report is submitted.</div>':''}`;
 }
 function _tdHasNoReportRequirement(s){
   return s.deliveryType==='Ad-hoc' || s.status==='tentative' || s.deliveryType==='External' ||
@@ -13803,7 +13805,7 @@ function _rpPptBuild(P,D){
 
 function _rpLoadPptx(){
   if(window.PptxGenJS) return Promise.resolve();
-  return new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js'; sc.onload=()=>res(); sc.onerror=()=>rej(new Error('load')); document.head.appendChild(sc); });
+  return new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'; sc.onload=()=>res(); sc.onerror=()=>rej(new Error('load')); document.head.appendChild(sc); });
 }
 let _rpWeek=null;
 function renderLdReports(){
@@ -17232,7 +17234,7 @@ function _tdaDeliveryCompletionReadiness(s,rows){
     }).length;
     if(missingScores) blockers.push(`${missingScores} participant(s) are missing required L2 assessment score(s).`);
   }
-  const recordingRequired=!!s&&(s.deliveryType==='ILT'||s.deliveryType==='VILT');
+  const recordingRequired=!!s&&(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s);
   const recordingReady=!recordingRequired||!!String(s.recordingLink||'').trim();
   if(!recordingReady) blockers.push('Add a Recording Link before marking Delivery Complete.');
   return {ready:blockers.length===0,blockers,pendingCount,missingDept,missingScores,l2Required:assessments.length>0,recordingRequired,recordingReady};
@@ -19442,7 +19444,7 @@ function _tdLinkedSessionInfoCard(s,editing){
     return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box">
       <div style="font-weight:700;font-size:15px;margin-bottom:16px">Session Information</div>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 16px">
-        ${item('Session ID',s.code||s.id)}${item('Batch',s.batchNo||'Assigned when saved')}${item('Status',_tdSavedStatusLabel(s))}${item('Delivery Method',modality)}${item('Venue / Location',venue)}${item('Audience',audience)}${item('Facilitator',facilitator)}${item('Co-Facilitator',cofac)}${htmlItem('Recording',recordingHtml)}${notesHtml}
+        ${item('Session ID',s.code||s.id)}${item('Batch',s.batchNo||'Assigned when saved')}${item('Status',_tdSavedStatusLabel(s))}${item('Delivery Method',modality)}${item('Venue / Location',venue)}${item('Audience',audience)}${item('Facilitator',facilitator)}${item('Co-Facilitator',cofac)}${htmlItem('Recording',recordingHtml)}${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?htmlItem('Training Report',Utils.esc(_tdReportReqLabel(s))):''}${notesHtml}
       </div>
     </div>`;
   }
@@ -19461,7 +19463,8 @@ function _tdLinkedSessionInfoCard(s,editing){
       ${field('Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],small))}
       ${field('Facilitator',`<select id="tdd-trainer" class="form-control ${isGuest?'hidden':''}" style="${small}" onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select><div id="tdd-guest-name-wrap" class="${isGuest?'':'hidden'}"><input id="tdd-guest-name" class="form-control" style="${small}" value="${Utils.esc(s.guestTrainerName||'')}" placeholder="Guest Facilitator"><button type="button" class="btn btn-ghost btn-xs" onclick="_tddClearGuestTrainer()">Choose from list</button></div>`)}
       ${field('Co-Facilitator (Optional)',`<select id="tdd-cofacilitator" class="form-control ${isGuestCofac?'hidden':''}" style="${small}" onchange="_tddCofacSelectChange()"><option value="">— None —</option></select><div id="tdd-cofacilitator-guest-wrap" class="${isGuestCofac?'':'hidden'}"><input id="tdd-cofacilitator-guest-name" class="form-control" style="${small}" value="${Utils.esc(s.coFacilitatorGuestName||'')}" placeholder="Guest Co-Facilitator"><button type="button" class="btn btn-ghost btn-xs" onclick="_tddClearCofacGuest()">Choose from list</button></div>`)}
-      <div style="grid-column:span 2">${field((s.deliveryType==='ILT'||s.deliveryType==='VILT')?'Recording Link *':'Recording Link (Optional)',`<input type="url" id="tdd-recording" class="form-control" style="${small}" value="${Utils.esc(s.recordingLink||'')}" placeholder="Enter recording or Teams/Drive link"><div style="font-size:10px;color:var(--text3);margin-top:4px">${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?'Required before Delivery Complete.':'Add when a recording is available.'}</div>`)}</div>
+      <div style="grid-column:span 2">${field((s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Recording Link *':'Recording Link (Optional)',`<input type="url" id="tdd-recording" class="form-control" style="${small}" value="${Utils.esc(s.recordingLink||'')}" placeholder="Enter recording or Teams/Drive link"><div style="font-size:10px;color:var(--text3);margin-top:4px">${(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Required before Delivery Complete.':'Add when a recording is available.'}</div>`)}</div>
+      ${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?`<div style="grid-column:span 2">${field('Training Report',_tdReportReqControl(s,small))}</div>`:''}
       <div style="grid-column:span 2">${field('Session Notes (Optional)',`<textarea id="tdd-session-notes" class="form-control" rows="3" style="${small}" placeholder="Add session-specific notes or context...">${Utils.esc(s.sessionNotes||'')}</textarea>`)}</div>
     </div>
     <div class="modal-err hidden" id="tdd-error" style="margin-top:12px"></div>
