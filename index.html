@@ -5372,9 +5372,9 @@ function _ovMetrics(r){
   const today=_todayStr();
   let slaTotal=0, slaOk=0;
   TrSessionDB.all().forEach(s=>{
-    if(s.status==='cancelled'||s.status==='tentative'||_tdHasNoReportRequirement(s)||!s.trainingDate) return;
+    if(s.status==='cancelled'||s.status==='tentative'||_tdSlaExempt(s)||!s.trainingDate) return;
     const end=_tdSessionEndDate(s); if(!end||end>=today||!_ovIn(end,r)) return;
-    const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+    const rep={submittedAt:_tdSlaSubmittedAt(s)};
     if(rep&&rep.submittedAt){ slaTotal++; if((_tdBusinessDaysBetween(end,rep.submittedAt)||0)<=2) slaOk++; }
     else if((_tdBusinessDaysBetween(end,today)||0)>2){ slaTotal++; }
   });
@@ -5399,9 +5399,9 @@ function _ovDelivery(r){
 function _ovAttention(r){
   const today=_todayStr(), items=[];
   const reportsLate=TrSessionDB.all().filter(s=>{
-    if(s.status==='cancelled'||s.status==='tentative'||_tdHasNoReportRequirement(s)||!s.trainingDate) return false;
+    if(s.status==='cancelled'||s.status==='tentative'||_tdSlaExempt(s)||!s.trainingDate) return false;
     const end=_tdSessionEndDate(s); if(!end||end>=today) return false;
-    const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+    const rep={submittedAt:_tdSlaSubmittedAt(s)};
     if(rep&&rep.submittedAt) return false;
     return (_tdBusinessDaysBetween(end,today)||0)>2;
   }).length;
@@ -12053,7 +12053,7 @@ function _l1WAvg(group,pick){ let w=0,t=0; (group||[]).forEach(({s,rep})=>{ cons
 function _learnersReached(sessions){ const set=new Set(); const ids=new Set((sessions||[]).filter(s=>(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&_tdStatus(s)==='Completed').map(s=>s.id)); SessionParticipantsDB.all().forEach(r=>{ if(!ids.has(r.sessionId)) return; const s=TrSessionDB.all().find(x=>x.id===r.sessionId); if(_lpAttended(r,s)) set.add(r.profileId||('ext:'+r.id)); }); return set.size; }
 const L3_DUE_WINDOW_DAYS=14;
 function _l3DueSoonOrOverdue(s){ return !!s && s.status!=='cancelled' && s.l3Required && !s.l3CompletedAt && s.l3DueDate && s.l3DueDate<=_addDaysStr(_todayStr(),L3_DUE_WINDOW_DAYS); }
-function _isReportPending(s){ const st=_tdStatus(s); if(st!=='Completed'&&st!=='In Progress') return false; if(_tdHasNoReportRequirement(s)) return false; const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id); return !(rep&&(rep.status==='submitted'||rep.status==='approved')); }
+function _isReportPending(s){ const st=_tdStatus(s); if(st!=='Completed'&&st!=='In Progress') return false; if(_tdSlaExempt(s)) return false; if(_tdReportWaived(s)) return !_tdSlaSubmittedAt(s); const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id); return !(rep&&(rep.status==='submitted'||rep.status==='approved')); }
 function _isStaleInProgress(s){ return !!s && _tdStatus(s)==='In Progress' && s.deliveryType!=='External' && (_tdSessionEndDate(s)||'')<_todayStr(); }
 // NPS (2026-08-12, per Sandra): just a color-coded number plus its word rating -- no gradient
 // bar here. `_tdrNpsLabel` is the SAME word-rating function already used everywhere else in the
@@ -12729,6 +12729,19 @@ function _tdHasNoReportRequirement(s){
   return s.deliveryType==='Ad-hoc' || s.status==='tentative' || s.deliveryType==='External' ||
     (s.deliveryType==='Self-led' && !s.isMandatory) || _tdReportWaived(s);
 }
+// v5.16e (2026-11-10, per Sandra): SME-led sessions (report waived) still count toward Report SLA.
+// "Submitted" = BOTH the Survey Results and the SME Observation are submitted; the later of the two
+// is the submission time. Accountable person = the L&D co-facilitator (else the named L&D trainer).
+function _tdSlaExempt(s){ return _tdHasNoReportRequirement(s)&&!(_tdReportWaived(s)&&s.status!=='tentative'); }
+function _tdSlaSubmittedAt(s){
+  if(_tdReportWaived(s)){
+    const r=TrainingReportsDB.all().find(x=>x.sessionId===s.id&&(x.status==='submitted'||x.status==='approved')&&x.submittedAt);
+    const o=(typeof SmeObsDB!=='undefined'?SmeObsDB.all():[]).filter(x=>x.sessionId===s.id&&x.status==='submitted'&&x.submittedAt).map(x=>x.submittedAt).sort().pop();
+    if(!r||!o) return null; return String(r.submittedAt)>String(o)?r.submittedAt:o;
+  }
+  const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id); return rep&&rep.submittedAt||null;
+}
+function _tdSlaOwnerId(s){ return _tdReportWaived(s)?(s.coFacilitatorId||s.trainerId||null):s.trainerId; }
 function _tdPostDeliveryState(s){
   if(_tdReportWaived(s)&&s.status!=='tentative'){ // v5.14d: survey results replace the report
     if(_tdSessionFullyClosed(s)) return {label:'Fully Closed',bg:'#dcfce7',fg:'#15803d'};
@@ -12807,9 +12820,9 @@ function _tdBusinessDaysBetween(startDateStr,endDateStr){
 // resubmit cycle automatically reflects the newest submission with no separate first/last
 // submission tracking needed (2026-07-31, per Sandra's reopen-workflow spec).
 function _tdReportSLA(s){
-  if(_tdHasNoReportRequirement(s)) return '<span style="color:var(--text3)">N/A</span>';
-  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
-  if(!rep||!rep.submittedAt) return '<span class="txt-muted">—</span>';
+  if(_tdSlaExempt(s)) return '<span style="color:var(--text3)">N/A</span>';
+  const rep={submittedAt:_tdSlaSubmittedAt(s)}; // v5.16e
+  if(!rep.submittedAt) return '<span class="txt-muted">—</span>';
   // 2026-08-06 QA fix: anchor to the session's END date (falls back to trainingDate for
   // single-day sessions) -- multi-day ILT/Self-led/External sessions were previously measured
   // from Day 1, so a 2-day session already had 1 of its 2 SLA days gone before the session even
@@ -12843,9 +12856,9 @@ function _tdDocStatusText(s){
   return _tdPostDeliveryState(s).label;
 }
 function _tdReportSLADays(s){
-  if(_tdHasNoReportRequirement(s)) return null;
-  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
-  if(!rep||!rep.submittedAt) return null;
+  if(_tdSlaExempt(s)) return null;
+  const rep={submittedAt:_tdSlaSubmittedAt(s)}; // v5.16e
+  if(!rep.submittedAt) return null;
   return _tdBusinessDaysBetween(_tdSessionEndDate(s),rep.submittedAt);
 }
 function _tdEvalStatusText(s){
@@ -13500,10 +13513,10 @@ function _tdAddWorkingDays(dateStr,n){
 }
 function _tdExportSLA(s,today){
   const blank={due:'',sent:'',days:'',result:'N/A'};
-  if(_tdHasNoReportRequirement(s)||s.status==='cancelled') return blank;
+  if(_tdSlaExempt(s)||s.status==='cancelled') return blank;
   const end=_tdSessionEndDate(s);
   const due=_tdAddWorkingDays(end,2);
-  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+  const rep={submittedAt:_tdSlaSubmittedAt(s)}; // v5.16e: SME-led = survey + observation
   if(rep&&rep.submittedAt){
     const days=_tdBusinessDaysBetween(end,rep.submittedAt);
     const sent=new Date(rep.submittedAt);
@@ -25314,8 +25327,8 @@ function _scActual(key,pid,r,kind,depth){
   }
   if(key==='report'){
     const today=_todayStr(); let tot=0,ok=0;
-    TrSessionDB.all().forEach(s=>{ if(s.trainerId!==pid||s.status==='cancelled'||s.status==='tentative'||_tdHasNoReportRequirement(s)||!s.trainingDate) return;
-      const end=_tdSessionEndDate(s); if(!end||end>=today||!_scIn(end,r)) return; const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+    TrSessionDB.all().forEach(s=>{ if(_tdSlaOwnerId(s)!==pid||s.status==='cancelled'||s.status==='tentative'||_tdSlaExempt(s)||!s.trainingDate) return;
+      const end=_tdSessionEndDate(s); if(!end||end>=today||!_scIn(end,r)) return; const rep={submittedAt:_tdSlaSubmittedAt(s)};
       if(rep&&rep.submittedAt){ tot++; if((_tdBusinessDaysBetween(end,rep.submittedAt)||0)<=2) ok++; } else if((_tdBusinessDaysBetween(end,today)||0)>2) tot++; });
     return {v:pct(ok,tot),n:tot,detail:`${ok} of ${tot} reports within 2 business days`};
   }
@@ -25422,7 +25435,7 @@ function renderMyPerformance(){
   sc.rows.forEach((k,i)=>{ const s=states[i][0]; if(k.rating!=null&&k.rating<3) att.push({tone:'danger',t:`${k.name} below target`,d:`Rated ${k.rating} — ${k.actual.detail}`,go:''}); else if(s.startsWith('Awaiting')) att.push({tone:'warning',t:`${k.name}: ${s.toLowerCase()}`,d:'This KPI is rated once the evaluations or reviews are acknowledged.',go:k.key==='obs'?"showView('evaluations')":(k.key.startsWith('id')?"showView('id-qa')":"showView('content-qa')")}); });
   const ackAll=[...EvalDB.all().filter(x=>x.trainerId===_mpPerson&&x.status==='pending_ack'),...IDQADB.all().filter(x=>x.designerId===_mpPerson&&x.status==='pending_ack'),...ContentQADB.all().filter(x=>x.authorId===_mpPerson&&x.status==='pending_ack')].length;
   if(ackAll&&!att.some(a=>a.t.includes('acknowledgement'))) att.push({tone:'warning',t:`${ackAll} item${ackAll!==1?'s':''} to acknowledge`,d:'Not counted in scores until acknowledged.',go:''});
-  if(role==='trainer'){ const late=TrSessionDB.all().filter(s=>s.trainerId===_mpPerson&&_isReportPending(s)).length; if(late) att.push({tone:'warning',t:`${late} training report${late!==1?'s':''} to submit`,d:'Reports count toward Timeliness once submitted.',go:"showView('training-delivery')"});
+  if(role==='trainer'){ const late=TrSessionDB.all().filter(s=>_tdSlaOwnerId(s)===_mpPerson&&_isReportPending(s)).length; if(late) att.push({tone:'warning',t:`${late} training report${late!==1?'s':''} to submit`,d:'Reports count toward Timeliness once submitted.',go:"showView('training-delivery')"});
     const l3=TrSessionDB.all().filter(s=>(s.trainerId===_mpPerson)&&_l3DueSoonOrOverdue(s)).length; if(l3) att.push({tone:'warning',t:`${l3} L3 follow-up${l3!==1?'s':''} due`,d:'Due within 14 days or overdue.',go:"showView('training-delivery')"}); }
   const toVerify=_scDownline(_mpPerson).flatMap(u=>_scPdps(u.id).filter(x=>x.status==='submitted'));
   if(toVerify.length) att.push({tone:'accent',t:`${toVerify.length} PDP${toVerify.length!==1?'s':''} to verify`,d:'Submitted by your team with proof — open them in Team Performance.',go:inTp?'':"showView('team-performance')"});
@@ -25550,8 +25563,8 @@ function _dpQa(r){
 }
 function _dpSla(r){
   const today=_todayStr(), rows=[];
-  TrSessionDB.all().forEach(s=>{ if(s.status==='cancelled'||s.status==='tentative'||_tdHasNoReportRequirement(s)||!s.trainingDate) return;
-    const end=_tdSessionEndDate(s); if(!end||end>=today||!_scIn(end,r)) return; const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+  TrSessionDB.all().forEach(s=>{ if(s.status==='cancelled'||s.status==='tentative'||_tdSlaExempt(s)||!s.trainingDate) return;
+    const end=_tdSessionEndDate(s); if(!end||end>=today||!_scIn(end,r)) return; const rep={submittedAt:_tdSlaSubmittedAt(s)};
     if(rep&&rep.submittedAt){ const bd=_tdBusinessDaysBetween(end,rep.submittedAt)||0; rows.push({s,end,state:bd<=2?'On time':'Late',bd}); }
     else { const bd=_tdBusinessDaysBetween(end,today)||0; rows.push({s,end,state:bd>2?'Missing (late)':'Due',bd}); } });
   const counted=rows.filter(x=>x.state!=='Due'), ok=counted.filter(x=>x.state==='On time').length;
