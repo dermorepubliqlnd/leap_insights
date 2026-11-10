@@ -8,6 +8,20 @@
        preview (/leap_insights/preview/). Path decides the channel, so a preview build can be copied to live unchanged. -->
   <script>window.LEAP_CHANNEL=/\/preview(\/|$)/.test(location.pathname)?'preview':'live';if(window.LEAP_CHANNEL==='preview'){document.documentElement.classList.add('is-preview');document.title='LEAP Insights (Preview)';}</script>
   <style>.preview-badge{display:none;font-size:9.5px;font-weight:800;letter-spacing:.6px;color:#7a4a00;background:#ffd166;border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:middle;line-height:1.4;font-family:inherit}html.is-preview .preview-badge{display:inline-block}</style>
+  <!-- v5.17a (2026-11-10, per Sandra): date fields always show "MMM DD, YYYY" (e.g. Oct 30, 2026) whatever the browser/computer region.
+       Display only — stored values stay YYYY-MM-DD. While a field is focused the browser's own editor shows so typing still works.
+       Chrome/Edge; other browsers fall back to their native look. -->
+  <style>input[type=date][data-date]:not(:focus)::-webkit-datetime-edit{display:none}input[type=date][data-date]:not(:focus)::before{content:attr(data-date);flex:1;white-space:nowrap}</style>
+  <script>(function(){try{var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function sync(el){try{var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(el.value||'');if(m)el.setAttribute('data-date',M[+m[2]-1]+' '+m[3]+', '+m[1]);else el.removeAttribute('data-date');}catch(e){}}
+    window._dateFmtSync=sync;
+    var d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+    Object.defineProperty(HTMLInputElement.prototype,'value',{configurable:true,enumerable:d.enumerable,get:function(){return d.get.call(this);},set:function(v){d.set.call(this,v);if(this.type==='date')sync(this);}});
+    function onEv(e){var t=e.target;if(t&&t.type==='date')sync(t);}
+    document.addEventListener('input',onEv,true);document.addEventListener('change',onEv,true);
+    function scan(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type=date]'))sync(n);if(n.querySelectorAll){var l=n.querySelectorAll('input[type=date]');for(var i=0;i<l.length;i++)sync(l[i]);}}
+    new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var a=ms[i].addedNodes;for(var j=0;j<a.length;j++)scan(a[j]);}}).observe(document.documentElement,{childList:true,subtree:true});
+  }catch(e){}})();</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2072%2072%22%3E%3Crect%20width%3D%2272%22%20height%3D%2272%22%20rx%3D%2218%22%20fill%3D%22%231e1b4b%22%2F%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2243%22%20r%3D%223.5%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.5%22%2F%3E%3Ccircle%20cx%3D%2227%22%20cy%3D%2249%22%20r%3D%222.5%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.35%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%2248%22%20r%3D%222%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.35%22%2F%3E%3Cpolyline%20points%3D%2224%2C45%2036%2C22%2048%2C45%22%20fill%3D%22none%22%20stroke%3D%22%23c7d2fe%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolyline%20points%3D%2230%2C34%2036%2C22%2042%2C34%22%20fill%3D%22%23818cf8%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
