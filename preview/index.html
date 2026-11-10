@@ -1521,6 +1521,7 @@
         <div class="nav-item" data-view="trainer-checklist"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7l1.4 1.4L8 5.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="7" x2="20.5" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M4 13l1.4 1.4L8 11.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="13" x2="20.5" y2="13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M4 19l1.4 1.4L8 17.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="10.5" y1="19" x2="20.5" y2="19" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Trainer Checklist</div>
         <div class="nav-sec js-admin hidden">Manage</div>
         <div class="nav-item js-admin hidden" data-view="users"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.2" r="3.7" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 20.5v-1.1a4.6 4.6 0 0 1 4.6-4.6h4.2a4.6 4.6 0 0 1 4.6 4.6v1.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> User Management</div>
+        <div class="nav-item js-admin hidden" data-view="ld-reports"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3.5" width="16" height="17" rx="1.8" stroke="currentColor" stroke-width="1.5"/><path d="M8 16v-3M12 16V9M16 16v-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Reports</div>
         <div class="nav-item js-admin hidden" data-view="settings"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 5.3l1.6 1.6M18.2 17.1l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 18.7l1.6-1.6M18.2 6.9l1.6-1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Settings</div>
         <div class="nav-sec js-cost-view hidden">Cost &amp; Finance <svg viewBox="0 0 24 24" fill="none" style="width:11px;height:11px;vertical-align:-1px;margin-left:2px;opacity:.6"><rect x="5" y="10.5" width="14" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" stroke="currentColor" stroke-width="1.6"/></svg></div>
         <div class="nav-item js-cost-view hidden" data-view="cost-analysis"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="6" y="13" width="2.6" height="6.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/><rect x="10.7" y="9" width="2.6" height="10.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/><rect x="15.4" y="5.5" width="2.6" height="14" rx="0.6" stroke="currentColor" stroke-width="1.4"/></svg></span> Cost Analysis</div>
@@ -2699,6 +2700,8 @@
           </div>
         </div>
 
+        <div id="view-ld-reports" class="hidden"><div id="rp-root"></div></div>
+
         <div id="view-users" class="hidden">
           <div class="card">
             <div class="card-header">
@@ -3813,6 +3816,8 @@ const _FIELD_MAPS = {
     // Self-led Session Information redesign (2026-08-06, Phase58): new boolean tag shown as a
     // "Mandatory" checkbox/badge in the SLT-specific Row 1 layout.
     isMandatory:'is_mandatory',
+    // v5.14d (2026-11-10, per Sandra): Training Report required? (false = SME-led, survey results only)
+    reportRequired:'report_required', reportWaiverReason:'report_waiver_reason', reportWaiverNote:'report_waiver_note',
     // Trainer Checklist template selector (Phase D2, 2026-08-07): which Checklist Template
     // (see checklist_templates) applies to this ILT session. Additive, nullable.
     checklistTemplateId:'checklist_template_id',
@@ -4387,7 +4392,7 @@ const Auth = {
 const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
-  canView(v){ if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
+  canView(v){ if(v==='ld-reports') return !!Auth.isAdmin; if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
     // v5.15b (2026-10-30, per Sandra): L&D Performance = department view — Department Head (admin) and authorized
     // management only (Reports Viewer or Dashboard Access = Full View). Everyone else lands on My Performance.
     if(v==='dashboard') return !!(Auth.isAdmin||(Auth.user&&(Auth.user.isReportsViewer||Auth.user.dashScope==='full'))); if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
@@ -4825,7 +4830,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={'knowledge-base':'Knowledge Base',dashboard:'Department Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={'knowledge-base':'Knowledge Base',dashboard:'Department Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','ld-reports':'Reports','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   'knowledge-base':'How-to guides, rules and answers for LEAP Insights',
@@ -4838,6 +4843,7 @@ const PAGE_SUBTITLES={
   'training-dashboard':'Rolled-up view of training delivery health across the organization',
   'learning-programs':'Central registry of L&D programs, ownership, content, and implementation history',
   'training-delivery':'Centralized list and calendar view of all training delivery — ILT, VILT, self-led, and external — reading the same sessions as Training Sessions with no duplicate data entry',
+  'ld-reports':'Exportable L&D reports — weekly training delivery and outlook (PowerPoint)',
   'trainer-checklist':'Trainer Checklist progress and reminders across ILT sessions — pre- and post-training task status at a glance',
   'cost-settings':'Manage facilitation labor cost rates for facilitators. Rates are effective-dated and applied based on the training date.',
   'cost-analysis':'Overview of facilitation labor cost for live ILT/VILT trainings. Costs are calculated based on facilitator rates and actual/scheduled facilitation hours.'
@@ -4881,6 +4887,7 @@ function showView(id){
   if(id==='training-dashboard') renderTrainingDashboard();
   if(id==='training-delivery') renderTrainingDelivery();
   if(id==='trainer-checklist') renderTrainerChecklist();
+  if(id==='ld-reports') renderLdReports();
   if(id==='learning-programs') renderLearningPrograms();
   if(id==='cost-settings') renderCostSettings();
   if(id==='cost-analysis') renderCostAnalysis();
@@ -4971,7 +4978,7 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+    const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','ld-reports','cost-settings','cost-analysis'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     if(view==='knowledge-base'){ const k=parts[1]; _kbR=k==='article'?{page:'article',id:parts[2]}:k==='category'?{page:'category',id:parts[2]}:k==='search'?{page:'search',q:decodeURIComponent(parts[2]||'')}:k==='archive'?{page:'archive'}:{page:'home'}; if(k==='search') _kbQ=_kbR.q; } // v5.17
     showView(view);
@@ -12687,11 +12694,42 @@ function _tdTypeBadge(dt){
 // yet", not "this type structurally never gets one". Covers: Ad-hoc (no report tab at all),
 // Tentative (not confirmed yet), External (no report tab -- Checklist covers what External needs),
 // and non-mandatory Self-led (report tab only shown when isMandatory is true).
+// v5.14d (2026-11-10, per Sandra): ILT/VILT sessions can be tagged "Training Report not required" (e.g. SME-led).
+// The trainer/co-facilitator then submits only the Survey Results (L1) on the report tab; the full
+// report, recording link and Trainer Checklist are skipped and the session is left out of Report SLA.
+// Attendance stays required. The survey is stored as a training_reports row (content.surveyOnly) so
+// every L1 dashboard/scorecard keeps reading it unchanged.
+const TD_REPORT_WAIVER_REASONS={sme_led:'SME-led session',other:'Other'};
+function _tdReportWaived(s){ return !!s && s.reportRequired===false && (s.deliveryType==='ILT'||s.deliveryType==='VILT'); }
+function _tdReportReqLabel(s){ if(!_tdReportWaived(s)) return 'Required'; const r=TD_REPORT_WAIVER_REASONS[s.reportWaiverReason]||'Not required'; return 'Not required — '+r+(s.reportWaiverNote?' ('+s.reportWaiverNote+')':'')+' · survey results only'; }
+function _tdReportReqViewHtml(s){ if(!(s.deliveryType==='ILT'||s.deliveryType==='VILT')) return ''; return _tddInfoBlock('edit3','#d97706','Training Report',_tdReportWaived(s)?`<span class="badge" style="background:#fef3c7;color:#92400e">Not required</span> <span style="font-weight:400;font-size:12px;color:var(--text2)">${Utils.esc((TD_REPORT_WAIVER_REASONS[s.reportWaiverReason]||'')+(s.reportWaiverNote?' — '+s.reportWaiverNote:''))} · survey results only</span>`:'Required'); }
+function _tdReportReqEditHtml(s){
+  if(!(s.deliveryType==='ILT'||s.deliveryType==='VILT')) return '';
+  const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id&&(r.status==='submitted'||r.status==='approved'));
+  const locked=s.status==='completed'||!!rep;
+  const val=_tdReportWaived(s)?(s.reportWaiverReason||'sme_led'):'yes';
+  const st='font-size:13px;padding:5px 8px';
+  return _tddInfoBlockEdit('edit3','#d97706','Training Report',`<select id="tdd-report-req" class="form-control" style="${st}" ${locked?'disabled':''} onchange="document.getElementById('tdd-report-note-wrap').classList.toggle('hidden',this.value==='yes')">
+      <option value="yes" ${val==='yes'?'selected':''}>Required (trainer submits report)</option>
+      <option value="sme_led" ${val==='sme_led'?'selected':''}>Not required — SME-led (survey results only)</option>
+      <option value="other" ${val==='other'?'selected':''}>Not required — Other (survey results only)</option>
+    </select>
+    <div id="tdd-report-note-wrap" class="${val==='yes'?'hidden':''}" style="margin-top:5px"><input type="text" id="tdd-report-note" class="form-control" style="${st}" placeholder="Note (required for Other)" value="${Utils.esc(s.reportWaiverNote||'')}" ${locked?'disabled':''}></div>
+    ${locked?'<div style="font-size:11px;color:var(--text3);margin-top:3px">Locked once Delivery Complete or a report is submitted.</div>':''}`);
+}
 function _tdHasNoReportRequirement(s){
   return s.deliveryType==='Ad-hoc' || s.status==='tentative' || s.deliveryType==='External' ||
-    (s.deliveryType==='Self-led' && !s.isMandatory);
+    (s.deliveryType==='Self-led' && !s.isMandatory) || _tdReportWaived(s);
 }
 function _tdPostDeliveryState(s){
+  if(_tdReportWaived(s)&&s.status!=='tentative'){ // v5.14d: survey results replace the report
+    if(_tdSessionFullyClosed(s)) return {label:'Fully Closed',bg:'#dcfce7',fg:'#15803d'};
+    const r0=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
+    if(!(r0&&(r0.status==='submitted'||r0.status==='approved'))) return {label:'Survey Pending',bg:'#fef9c3',fg:'#a16207'};
+    if(_tdL3Applicable(s)&&!_tdL3Complete(s)) return _tdl3Status(s)==='overdue'?{label:'L3 Overdue',bg:'#fee2e2',fg:'#dc2626'}:{label:'L3 Pending',bg:'#fef9c3',fg:'#a16207'};
+    if(_tdL4Applicable(s)&&!_tdL4Complete(s)) return {label:'L4 Pending',bg:'#fef9c3',fg:'#a16207'};
+    return {label:'Survey Submitted',bg:'#dbeafe',fg:'#1d4ed8'};
+  }
   if(_tdHasNoReportRequirement(s)) return {label:'N/A',bg:null,fg:'var(--text3)'};
 
   const rep=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
@@ -13550,7 +13588,7 @@ function tcPeriodRange(){ return _computePeriodRange(tcF.period,tcF.customStart,
 // assigned yet, or explicitly opted out via "No Checklist Required" -- all treated the same way
 // here (this page can't show progress that doesn't exist), surfaced as the "No Checklist" status.
 function _tcSessionChecklistStats(s){
-  if(s.deliveryType!=='ILT'||!s.trainingDate||s.trainingDate<CKTPL_FEATURE_START_DATE||!s.checklistTemplateId||s.checklistTemplateId===CKTPL_NONE_SENTINEL){
+  if(_tdReportWaived(s)||s.deliveryType!=='ILT'||!s.trainingDate||s.trainingDate<CKTPL_FEATURE_START_DATE||!s.checklistTemplateId||s.checklistTemplateId===CKTPL_NONE_SENTINEL){
     return {applicable:false};
   }
   const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
@@ -13592,6 +13630,7 @@ function _tcBaseRows(){
   const range=tcPeriodRange();
   return TrSessionDB.all().filter(s=>{
     if(s.deliveryType!=='ILT') return false;
+    if(_tdReportWaived(s)) return false; // v5.14d
     if(s.status==='cancelled') return false;
     if(!s.trainingDate) return false;
     if(!_tdSessionDayList(s).some(d=>d>=range.start&&d<=range.end)) return false;
@@ -13626,6 +13665,182 @@ function _tcComputeKpis(baseRows){
     overdueSessions:applicable.filter(r=>r.stats.overdue>0).length,
     completedSessions:applicable.filter(r=>r.stats.sessionStatus==='completed').length
   };
+}
+
+/* ── REPORTS (v5.14d, 2026-11-10, per Sandra) ─────────────────────────────────────────────────
+   Manage → Reports: home for L&D reporting exports. First report = "Weekly Training Delivery &
+   Outlook" — one PowerPoint slide (left summary panel + Training Timeline table) per ISO week
+   (Mon–Sun; 2026 has a Wk 53). Report week = "this week"; it shows sessions COMPLETED last week,
+   everything (incl. tentative) this week and the next 8 weeks. Cancelled and Ad-hoc excluded.
+   Long insight text goes to the speaker notes. PptxGenJS is lazy-loaded from cdnjs on first use. */
+const RP_MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function _rpD(s){ const [y,m,d]=String(s).slice(0,10).split('-').map(Number); return new Date(y,m-1,d,12); }
+function _rpS(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _rpAdd(s,n){ const d=_rpD(s); d.setDate(d.getDate()+n); return _rpS(d); }
+function _rpIsoWeek(s){ const d=_rpD(s); const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day); const y=t.getUTCFullYear(); return {y,w:Math.ceil(((t-Date.UTC(y,0,1))/86400000+1)/7)}; }
+function _rpMondayOf(s){ const d=_rpD(s); const dow=d.getDay()||7; d.setDate(d.getDate()-(dow-1)); return _rpS(d); }
+function _rpWeekInputVal(s){ const w=_rpIsoWeek(s); return w.y+'-W'+String(w.w).padStart(2,'0'); }
+function _rpMondayFromInput(v){ const m=/^(\d{4})-W(\d{1,2})$/.exec(v||''); if(!m) return _rpMondayOf(_todayStr()); const jan4=_rpS(new Date(+m[1],0,4,12)); return _rpAdd(_rpMondayOf(jan4),(+m[2]-1)*7); }
+function _rpMD(s){ const d=_rpD(s); return RP_MON[d.getMonth()]+' '+d.getDate(); }
+function _rpRange(a,b){ if(a===b) return _rpMD(a); const A=_rpD(a),B=_rpD(b); return A.getMonth()===B.getMonth()?`${_rpMD(a)}–${B.getDate()}`:`${_rpMD(a)}–${_rpMD(b)}`; }
+function _rpDur(h){ h=Number(h)||0; if(!h) return '—'; const m=Math.round(h*60), hh=Math.floor(m/60), mm=m%60; return (hh?hh+'h':'')+(mm?(hh?' ':'')+mm+'m':''); }
+function _rpOwner(p){ if(!p) return '—'; if(p.ownership==='ld') return 'L&D'; if(p.ownership==='non_ld') return (typeof Sel!=='undefined'&&Sel.nameOf(Store.DEPARTMENTS,p.ownerDepartmentId))||'Non-L&D'; return '—'; }
+
+function _rpBuildData(weekInput){
+  const mon=_rpMondayFromInput(weekInput);
+  const weeks=[]; for(let i=-1;i<=8;i++){ const st=_rpAdd(mon,i*7), en=_rpAdd(st,6); weeks.push({i:i+1,start:st,end:en,n:_rpIsoWeek(st).w,y:_rpIsoWeek(st).y,r:_rpRange(st,en)}); }
+  const lo=weeks[0].start, hi=weeks[9].end, idxOf=d=>Math.floor((_rpD(d)-_rpD(lo))/(7*86400000));
+  const progs={}, done=new Set(), now=new Set(), next=new Set(); let hours=0; const hrsSeen=new Set();
+  let lastDate=null;
+  TrSessionDB.all().forEach(s=>{
+    if(!s||s.status==='cancelled'||s.deliveryType==='Ad-hoc'||!s.trainingDate) return;
+    const days=(_tdSessionDayList(s)||[]).filter(d=>d>=lo&&d<=hi); if(!days.length) return;
+    const idx=[...new Set(days.map(idxOf))].filter(i=>i>=1||s.status==='completed'); if(!idx.length) return;
+    const lp=s.programId?LearningProgramDB.byId(s.programId):null, snap=s.programInfoSnapshot||{};
+    const key=snap.code||(lp&&lp.code)||('T:'+String(s.trainingProgram||'').trim().toLowerCase());
+    const p=progs[key]=progs[key]||{key,title:snap.title||(lp&&lp.title)||s.trainingProgram||'Untitled',owner:_rpOwner(lp),au:new Set(),types:new Set(),durs:new Set(),wk:{},days:[],ids:new Set(),tentative:0};
+    if(!p.ids.has(s.id)){ p.ids.add(s.id); (s.audience||[]).forEach(a=>p.au.add(a)); p.types.add(s.deliveryType==='Self-led'?'SLT':s.deliveryType); if(s.durationHours) p.durs.add(Math.round(Number(s.durationHours)*100)/100); if(s.status==='tentative') p.tentative++; }
+    idx.forEach(i=>{ p.wk[i]=(p.wk[i]||0)+1; });
+    days.filter(d=>idxOf(d)>=1||s.status==='completed').forEach(d=>p.days.push(d));
+    if(idx.includes(0)) done.add(s.id);
+    if(idx.includes(1)) now.add(s.id);
+    if(idx.some(i=>i>=2)&&!idx.includes(1)) next.add(s.id);
+    if(idx.some(i=>i>=1)&&!hrsSeen.has(s.id)){ hrsSeen.add(s.id); hours+=Number(s.durationHours)||0; }
+    days.forEach(d=>{ if(!lastDate||d>lastDate) lastDate=d; });
+  });
+  let rows=Object.values(progs).map(p=>{ p.days.sort(); const ds=[...p.durs].sort((a,b)=>a-b);
+    return {...p,n:p.ids.size,cov:_rpRange(p.days[0],p.days[p.days.length-1]),first:p.days[0],
+      dur:ds.length?(ds.length===1?_rpDur(ds[0]):_rpDur(ds[0])+'–'+_rpDur(ds[ds.length-1])):'—',
+      sub:[[...p.au].join(', ')||null,[...p.types].join('/')].filter(Boolean).join(' • ')}; })
+    .sort((a,b)=>a.first.localeCompare(b.first)||a.title.localeCompare(b.title));
+  const MAX=8;
+  if(rows.length>MAX){ const keep=rows.slice(0,MAX-1), rest=rows.slice(MAX-1), wk={};
+    rest.forEach(r=>Object.keys(r.wk).forEach(i=>wk[i]=(wk[i]||0)+r.wk[i]));
+    keep.push({title:`Other programs (${rest.length})`,owner:'—',sub:rest.map(r=>r.title).join(', '),wk,n:rest.reduce((a,r)=>a+r.n,0),cov:'',dur:'',other:true}); rows=keep; }
+  // insights → speaker notes
+  const notes=[];
+  let peak=null; rows.forEach(r=>Object.keys(r.wk).forEach(i=>{ i=+i; if(i>=1&&(!peak||r.wk[i]>peak.c)) peak={c:r.wk[i],t:r.title,w:weeks[i]}; }));
+  if(peak&&peak.c>1) notes.push(`${peak.t} peaks in Wk ${peak.w.n} (${peak.w.r}) with ${peak.c} sessions.`);
+  notes.push(done.size?`${done.size} session${done.size!==1?'s':''} completed in Wk ${weeks[0].n} (${weeks[0].r}).`:`No completions in Wk ${weeks[0].n} (${weeks[0].r}).`);
+  const nowRows=rows.filter(r=>r.wk[1]);
+  notes.push(nowRows.length?`This week (Wk ${weeks[1].n}): `+nowRows.map(r=>`${r.title} (${r.wk[1]})`).join('; ')+'.':`Nothing scheduled this week (Wk ${weeks[1].n}).`);
+  if(lastDate&&lastDate<_rpAdd(hi,-13)) notes.push(`Nothing is scheduled after ${_rpMD(lastDate)} yet.`);
+  notes.push(`${Math.round(hours*10)/10} h of training scheduled this week and the next 8 weeks.`);
+  const tent=rows.reduce((a,r)=>a+(r.tentative||0),0); if(tent) notes.push(`${tent} upcoming session${tent!==1?'s are':' is'} still tentative.`);
+  return {weeks,rows,done:done.size,now:now.size,next:next.size,hours:Math.round(hours*10)/10,notes,
+    week:weeks[1],asOf:_rpMD(_todayStr())+', '+_rpD(_todayStr()).getFullYear()};
+}
+
+// Pure slide builder (also run in Node for QA). P = new PptxGenJS().
+function _rpPptBuild(P,D){
+  P.layout='LAYOUT_16x9'; P.title='Training Delivery & Outlook — Wk '+D.week.n;
+  const H='Poppins SemiBold', B='Poppins', INK='1F1F1F', GRAY='5F6368', MUTE='9AA0A6', LINE='DADCE0';
+  const GREEN='2E7D5B', BLUE='2F6DB5', AMBER='D08A2E', NAVY='1F3B63', PANEL='3B3632';
+  const s=P.addSlide(); s.background={color:'FFFFFF'};
+  const T=(t,o)=>s.addText(t,Object.assign({margin:0,isTextBox:true},o));
+  // left panel
+  s.addShape(P.shapes.RECTANGLE,{x:0,y:0,w:3.0,h:5.625,fill:{color:PANEL},line:{color:PANEL}});
+  const w0=D.week, wkEnd=D.weeks[1].end;
+  T(`WEEK ${w0.n}  ·  ${w0.r.toUpperCase()}, ${_rpD(wkEnd).getFullYear()}`,{x:0.4,y:0.45,w:2.5,h:0.2,fontFace:H,fontSize:8,color:'C9B79C',charSpacing:2});
+  T('Training Delivery & Outlook',{x:0.4,y:0.7,w:2.4,h:0.75,fontFace:H,fontSize:20,color:'FFFFFF',valign:'top'});
+  const st=[[String(D.done),'completed last week',`Wk ${D.weeks[0].n} · ${D.weeks[0].r}`,'8FC9A9'],
+    [String(D.now),D.now===1?'session this week':'sessions this week',`Wk ${w0.n} · ${w0.r}`,'9DBDE6'],
+    [String(D.next),D.next===1?'session coming up':'sessions coming up',`Wk ${D.weeks[2].n} – Wk ${D.weeks[9].n} · ${_rpMD(D.weeks[2].start)} – ${_rpMD(D.weeks[9].end)}`,'E5B66B'],
+    [D.hours+' h','training scheduled','this week + next 8 weeks','FFFFFF']];
+  st.forEach((o,i)=>{ const y=1.75+i*0.78;
+    T(o[0],{x:0.4,y,w:1.15,h:0.5,fontFace:H,fontSize:o[0].length>3?20:26,color:o[3],valign:'middle'});
+    T([{text:o[1],options:{fontFace:H,fontSize:9,color:'FFFFFF',breakLine:true}},{text:o[2],options:{fontFace:B,fontSize:7.5,color:'B5ADA4'}}],{x:1.55,y:y+0.03,w:1.38,h:0.45,valign:'middle'});
+    if(i<3) s.addShape(P.shapes.LINE,{x:0.4,y:y+0.66,w:2.2,h:0,line:{color:'5A534D',width:0.5}});
+  });
+  s.addShape(P.shapes.RECTANGLE,{x:0.4,y:5.17,w:0.62,h:0.22,fill:{color:'FFFFFF'},line:{color:'FFFFFF'}});
+  T('DERMO',{x:0.4,y:5.17,w:0.62,h:0.22,fontFace:B,fontSize:9,color:PANEL,align:'center',valign:'middle'});
+  T('REPUBLIQ',{x:1.04,y:5.17,w:0.9,h:0.22,fontFace:B,fontSize:9,color:'FFFFFF',valign:'middle'});
+  // right: title
+  const X0=3.3, W=6.45;
+  s.addShape(P.shapes.RECTANGLE,{x:X0,y:0.42,w:0.06,h:0.52,fill:{color:GREEN},line:{color:GREEN}});
+  T('Training Timeline',{x:X0+0.16,y:0.38,w:W-0.2,h:0.34,fontFace:H,fontSize:18,color:INK});
+  T(`Key learning programs and delivery schedule, Wk ${D.weeks[0].n} to Wk ${D.weeks[9].n}`,{x:X0+0.16,y:0.72,w:W-0.2,h:0.22,fontFace:B,fontSize:9,color:GRAY});
+  // table
+  const ty=1.15, hh=0.44, nameW=2.1, ownW=0.55, cw=(W-nameW-ownW)/10;
+  const rows=D.rows.length?D.rows:[{title:'No sessions in this window',sub:'',owner:'',wk:{},empty:true}];
+  const rh=Math.min(0.46,(4.95-ty-hh)/rows.length), tableH=hh+rh*rows.length;
+  const wx=i=>X0+nameW+ownW+i*cw;
+  // week column tints (last week green, this week blue)
+  s.addShape(P.shapes.RECTANGLE,{x:wx(0),y:ty+hh,w:cw,h:rh*rows.length,fill:{color:'EEF6F0'},line:{type:'none'}});
+  s.addShape(P.shapes.RECTANGLE,{x:wx(1),y:ty+hh,w:cw,h:rh*rows.length,fill:{color:'E8F0FB'},line:{type:'none'}});
+  // header
+  s.addShape(P.shapes.RECTANGLE,{x:X0,y:ty,w:nameW,h:hh,fill:{color:NAVY},line:{color:NAVY}});
+  T('Learning Program',{x:X0+0.1,y:ty,w:nameW-0.12,h:hh,fontFace:H,fontSize:9,color:'FFFFFF',valign:'middle'});
+  s.addShape(P.shapes.RECTANGLE,{x:X0+nameW,y:ty,w:ownW,h:hh,fill:{color:'E8EDF4'},line:{color:LINE,width:0.5}});
+  T('Owner',{x:X0+nameW,y:ty,w:ownW,h:hh,fontFace:H,fontSize:8.5,color:NAVY,align:'center',valign:'middle'});
+  D.weeks.forEach((wk,i)=>{ const x=wx(i);
+    s.addShape(P.shapes.RECTANGLE,{x,y:ty,w:cw,h:hh,fill:{color:i===0?'E3F1E7':i===1?'D9E6F7':'F3F5F8'},line:{color:LINE,width:0.5}});
+    T([{text:'Wk '+wk.n,options:{fontFace:H,fontSize:7.5,color:INK,breakLine:true}},{text:_rpMD(wk.start),options:{fontFace:B,fontSize:6,color:GRAY}}],{x:x+0.01,y:ty+0.02,w:cw-0.02,h:hh-0.04,align:'center',valign:'middle'});
+  });
+  rows.forEach((r,ri)=>{ const y=ty+hh+ri*rh;
+    s.addShape(P.shapes.LINE,{x:X0,y:y+rh,w:W,h:0,line:{color:LINE,width:0.5}});
+    const titleTxt=r.title+(r.n>1&&!r.other?` (${r.n})`:'');
+    T([{text:titleTxt,options:{fontFace:H,fontSize:8.5,color:r.empty?MUTE:INK,breakLine:!!r.sub}},...(r.sub?[{text:r.sub,options:{fontFace:B,fontSize:6.5,color:GRAY}}]:[])],{x:X0+0.1,y:y+0.02,w:nameW-0.14,h:rh-0.04,valign:'middle',fit:'shrink'});
+    T(r.owner||'',{x:X0+nameW,y,w:ownW,h:rh,fontFace:B,fontSize:7,color:GRAY,align:'center',valign:'middle',fit:'shrink'});
+    D.weeks.forEach((wk,i)=>{ const c=r.wk[i]; if(!c) return; const col=i===0?GREEN:i===1?BLUE:AMBER, bw=Math.min(0.32,cw-0.08), bh=Math.min(0.21,rh-0.1);
+      s.addShape(P.shapes.ROUNDED_RECTANGLE,{x:wx(i)+(cw-bw)/2,y:y+(rh-bh)/2,w:bw,h:bh,rectRadius:bh/2,fill:{color:col},line:{color:col}});
+      T(String(c),{x:wx(i)+(cw-bw)/2,y:y+(rh-bh)/2,w:bw,h:bh,fontFace:H,fontSize:8,color:'FFFFFF',align:'center',valign:'middle'});
+    });
+  });
+  // grid lines + frame
+  [X0+nameW,X0+nameW+ownW,...D.weeks.slice(1).map((_,i)=>wx(i+1))].forEach(x=>s.addShape(P.shapes.LINE,{x,y:ty+hh,w:0,h:rh*rows.length,line:{color:LINE,width:0.5}}));
+  s.addShape(P.shapes.RECTANGLE,{x:X0,y:ty,w:W,h:tableH,fill:{type:'none'},line:{color:'C4C9D1',width:0.75}});
+  // key + footer
+  const ky=Math.min(ty+tableH+0.18,4.95);
+  [['Completed',GREEN],['This week',BLUE],['Scheduled / tentative',AMBER]].forEach((o,i)=>{ const x=X0+i*1.45;
+    s.addShape(P.shapes.ROUNDED_RECTANGLE,{x,y:ky+0.03,w:0.2,h:0.13,rectRadius:0.065,fill:{color:o[1]},line:{color:o[1]}});
+    T(o[0],{x:x+0.26,y:ky,w:1.15,h:0.19,fontFace:B,fontSize:7.5,color:GRAY}); });
+  T('Number = sessions that week.',{x:X0+4.35,y:ky,w:W-4.35,h:0.19,fontFace:B,fontSize:7,color:MUTE,align:'right'});
+  T(`Source: LEAP Insights · generated ${D.asOf}  ·  ©${_rpD(wkEnd).getFullYear()} Dermorepubliq Corporation`,{x:X0,y:5.25,w:W,h:0.18,fontFace:B,fontSize:7,color:MUTE});
+  s.addNotes(D.notes.join('\n'));
+  return P;
+}
+
+function _rpLoadPptx(){
+  if(window.PptxGenJS) return Promise.resolve();
+  return new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js'; sc.onload=()=>res(); sc.onerror=()=>rej(new Error('load')); document.head.appendChild(sc); });
+}
+let _rpWeek=null;
+function renderLdReports(){
+  const root=document.getElementById('rp-root'); if(!root) return;
+  if(!_rpWeek) _rpWeek=_rpWeekInputVal(_todayStr());
+  let D; try{ D=_rpBuildData(_rpWeek); }catch(e){ console.error(e); root.innerHTML='<div class="card" style="padding:20px">Could not build the report.</div>'; return; }
+  const esc=Utils.esc, chip=(c,t)=>`<span style="display:inline-block;min-width:22px;padding:1px 7px;border-radius:10px;background:${c};color:#fff;font-weight:600;font-size:11px;text-align:center">${t}</span>`;
+  const col=['#2E7D5B','#2F6DB5','#D08A2E'];
+  const tbl=D.rows.length?`<div class="eval-tbl-wrap"><table class="eval-tbl" style="font-size:12px"><tr><th style="min-width:200px">Learning Program</th><th>Owner</th>${D.weeks.map((w,i)=>`<th style="text-align:center;${i===0?'background:#e3f1e7;':i===1?'background:#d9e6f7;':''}">Wk ${w.n}<div style="font-weight:400;font-size:10.5px;color:var(--text3)">${esc(w.r)}</div></th>`).join('')}</tr>${D.rows.map(r=>`<tr><td><b>${esc(r.title)}${r.n>1&&!r.other?` (${r.n})`:''}</b><div style="font-size:11px;color:var(--text3)">${esc(r.sub||'')}${r.cov?` · ${esc(r.cov)} · ${esc(r.dur)}${r.n>1?' per session':''}`:''}</div></td><td style="font-size:11.5px;color:var(--text2)">${esc(r.owner||'')}</td>${D.weeks.map((w,i)=>`<td style="text-align:center;${i===0?'background:#f3faf5;':i===1?'background:#f1f6fd;':''}">${r.wk[i]?chip(col[Math.min(i,2)],r.wk[i]):''}</td>`).join('')}</tr>`).join('')}</table></div>`
+    :'<div style="font-size:13px;color:var(--text3);padding:12px 0">No sessions completed last week or scheduled in the next 9 weeks.</div>';
+  const kpi=(n,l,c)=>`<div style="flex:1;min-width:140px;border:1px solid var(--border-lt);border-radius:10px;padding:10px 14px"><div style="font-size:22px;font-weight:700;color:${c}">${n}</div><div style="font-size:11.5px;color:var(--text3)">${l}</div></div>`;
+  root.innerHTML=`<div class="card" style="padding:18px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+      <div><div style="font-weight:700;font-size:15px">Weekly Training Delivery &amp; Outlook</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">One PowerPoint slide: sessions completed last week, this week, and the next 8 weeks, by learning program. Weeks run Monday–Sunday.</div></div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <label style="font-size:11.5px;color:var(--text3)">Report week (this week)<input type="week" id="rp-week" class="form-control" style="font-size:13px;padding:5px 8px" value="${esc(_rpWeek)}" onchange="_rpWeek=this.value||_rpWeekInputVal(_todayStr());renderLdReports()"></label>
+        <button class="btn btn-primary btn-sm" id="rp-dl-btn" onclick="rpDownloadWeekly()">⇩ Download PowerPoint</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      ${kpi(D.done,`Completed · Wk ${D.weeks[0].n} (${esc(D.weeks[0].r)})`,col[0])}${kpi(D.now,`This week · Wk ${D.weeks[1].n} (${esc(D.weeks[1].r)})`,col[1])}${kpi(D.next,`Coming up · Wk ${D.weeks[2].n}–Wk ${D.weeks[9].n}`,col[2])}${kpi(D.hours+' h','Training scheduled (this week + next 8)','#3B3632')}
+    </div>
+    ${tbl}
+    <div style="margin-top:12px;font-size:12px;color:var(--text2)"><b>Speaker notes</b><ul style="margin:4px 0 0 18px;line-height:1.6">${D.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>
+  </div>`;
+}
+async function rpDownloadWeekly(){
+  const btn=document.getElementById('rp-dl-btn'); if(btn){ btn.disabled=true; btn.textContent='Preparing…'; }
+  try{
+    await _rpLoadPptx();
+    const D=_rpBuildData(_rpWeek||_rpWeekInputVal(_todayStr()));
+    const P=_rpPptBuild(new PptxGenJS(),D);
+    await P.writeFile({fileName:`LEAP_Training_Delivery_Wk${String(D.week.n).padStart(2,'0')}_${D.week.y}.pptx`});
+    toast('PowerPoint downloaded.','success');
+  }catch(e){ console.error(e); toast(e&&e.message==='load'?'Could not load the PowerPoint library. Check your connection and try again.':'Could not create the PowerPoint.','error'); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent='⇩ Download PowerPoint'; } }
 }
 
 function renderTrainerChecklist(){
@@ -14494,7 +14709,8 @@ function _tdVisibleDetailTabs(s,_tdMoActive,_tdGrp){
     .filter(t=>s.status!=='tentative'||t.id==='overview'||t.id==='audit')
     // Self-led/owner-type sessions do not use trainer evaluation.
     .filter(t=>t.id!=='trainer-eval'||(!ownerType&&s.deliveryType!=='Self-led'&&s.deliveryType!=='SLT'))
-  );
+    .filter(t=>t.id!=='checklist'||!_tdReportWaived(s))
+  ).map(t=>t.id==='report'&&_tdReportWaived(s)?{...t,label:'Survey Results'}:t);
 }
 
 // Minimal "+ Add Training" flow (2026-07-31): the delivery-type picker modal creates a bare
@@ -14877,6 +15093,14 @@ async function tdDetailSave(){
     d.trainingBondEndDate=_tdBondEndDate(anchor,d.trainingBondMonths);
   } else {
     d.trainingBondEndDate=null;
+  }
+  // v5.14d (2026-11-10, per Sandra): Training Report required? (only editable before Delivery Complete)
+  const _rrEl=document.getElementById('tdd-report-req');
+  if(_rrEl&&!_rrEl.disabled&&(deliveryType==='ILT'||deliveryType==='VILT')){
+    const v=_rrEl.value;
+    d.reportRequired=v==='yes'; d.reportWaiverReason=v==='yes'?null:v;
+    d.reportWaiverNote=v==='yes'?null:(document.getElementById('tdd-report-note')?.value.trim()||null);
+    if(v==='other'&&!d.reportWaiverNote){ toast('Add a note explaining why the Training Report is not required.','error'); return; }
   }
   // L3 due date: recomputed off THIS save's own dates whenever required and not yet completed, so
   // editing End Date later keeps it in sync; frozen once l3CompletedAt is set (a completed
@@ -17198,7 +17422,7 @@ function _tdrRenderTab(s){
   // no "recording" concept for evaluators to review, so there's nothing to request an exemption
   // from -- the option is hidden entirely for grp==='owner' rather than surfaced-then-exempted.
   const _tdrGrpEarly=_tdFieldGroup(s.deliveryType);
-  const _tdrRecEx=_tdrGrpEarly==='owner'?{requestBtn:'',banner:'',approveBtns:''}:_tdrRecordingExemptionInfo(s,c);
+  const _tdrRecEx=(_tdrGrpEarly==='owner'||_tdReportWaived(s))?{requestBtn:'',banner:'',approveBtns:''}:_tdrRecordingExemptionInfo(s,c);
 
   const toolbar=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
@@ -17210,7 +17434,7 @@ function _tdrRenderTab(s){
           ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
           ${_tdrRecEx.requestBtn}
           ${(Auth.user&&(Auth.user.isAdmin||Auth.formAccess(Auth.user).trainerEval)&&_tdrManualOverrideEligible(s))?`<button class="btn btn-sm btn-secondary" onclick="_tdrOpenManualOverride()">✉️ Log as Already Submitted</button>`:''}
-          <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 Submit Report</button>
+          <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 ${_tdReportWaived(s)?'Submit Survey Results':'Submit Report'}</button>
         `}
       </div>
     </div>`;
@@ -17427,6 +17651,10 @@ function _tdrRenderTab(s){
   const exportBarReport=canExportSummaryReport?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
       <button class="btn btn-sm btn-secondary" onclick="_tdExportSummaryImage('${s.id}')">📤 Export Summary</button>
     </div>`:'';
+  if(_tdReportWaived(s)){ // v5.14d: survey results only
+    const note=`<div style="background:#fef3c7;color:#92400e;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:14px">Training Report not required for this session (${Utils.esc(TD_REPORT_WAIVER_REASONS[s.reportWaiverReason]||'not required')}). Enter the L1 survey results only. No recording link or session summary needed.</div>`;
+    return `${toolbar}${note}${locked?_tdrReopenBlock():''}${l1Card.replace('1. Session L1 Report (Learner Reaction)','Survey Results (L1 Learner Reaction)')}${locked?_tdrReopenActionsBar(s):''}`;
+  }
   return `${exportBarReport}${toolbar}${_tdrRecEx.banner}${_tdrRecEx.approveBtns}${locked?_tdrReopenBlock():''}${l1Card}${agendaCard}${summaryCard}${locked?_tdrReopenActionsBar(s):''}`;
 }
 
@@ -17733,6 +17961,7 @@ function _tdrValidateForSubmit(sess){
   }
   const metricLabels={responses:'Responses',contentRating:'Content Rating',materialsRating:'Materials Rating',facilitationRating:'Facilitation Rating',csat:'CSAT',nps:'NPS'};
   Object.keys(metricLabels).forEach(k=>{ if(c[k]===null||c[k]===undefined||c[k]==='') missing.push(metricLabels[k]); });
+  if(_tdReportWaived(sess)) return missing; // v5.14d: survey results only
   if(!c.agendaDelivery||!c.agendaDelivery.length) missing.push('at least one Agenda Delivery row');
   if(sess?.programId){
     (c.agendaDelivery||[]).forEach((a,i)=>{
@@ -17795,7 +18024,7 @@ function _tdrSubmitReport(){
   // Recording Link / Exemption gate doesn't apply to Self-led (2026-08-07, per Sandra): Self-led
   // has no recording for an evaluator to watch, so there's nothing to require or exempt here --
   // Self-led is instead gated on the required-headcount guardrail below (via _tdrValidateForSubmit).
-  if(_tdrSubGrp!=='owner'){
+  if(_tdrSubGrp!=='owner'&&!_tdReportWaived(_tdrSess)){
     // 2026-08-06 (per Sandra): a recording link is required to submit, unless a supervisor-approved
     // Recording Exemption is on file (see the Recording Exemption workflow below).
     const _tdrRecExemption=_tdrReport.content.recordingExemption;
@@ -17817,7 +18046,7 @@ function _tdrSubmitReport(){
       // submittedAt is always stamped fresh on every (re)submit so the Report SLA column always
       // measures against the CURRENT submission, and reopenStatus is cleared so a future reopen
       // cycle can be requested again after this resubmission.
-      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content, createdBy:Auth.user.id,
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdReportWaived(_tdrSess)?{..._tdrReport.content,surveyOnly:true}:_tdrReport.content, createdBy:Auth.user.id,
         submittedAt:new Date().toISOString(), reopenStatus:null, reopenRequestedBy:null, reopenRequestedAt:null,
         reopenReason:null, reopenDecidedBy:null, reopenDecidedAt:null};
       const saved=_tdrReport._isNew?await TrainingReportsDB.create({...patch, id:_tdrReport.id}):await TrainingReportsDB.update(_tdrReport.id,patch);
@@ -18308,7 +18537,8 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
         ${_tddInfoBlock('clock','var(--amber)','Total Program Duration',_tdDurationLabel(s))}
         ${_tddInfoBlock('list','#7c3aed','Category',Utils.esc(s.category||'—'))}
         ${_tddInfoBlock('layers','var(--sky)','Version',Utils.esc(program?.version||'—'))}
-        ${s.deliveryType==='ILT'?_tddInfoBlock('clipboard','#0369a1','Trainer Checklist',Utils.esc(checklistName)):''}
+        ${s.deliveryType==='ILT'&&!_tdReportWaived(s)?_tddInfoBlock('clipboard','#0369a1','Trainer Checklist',Utils.esc(checklistName)):''}
+        ${_tdReportReqViewHtml(s)}
         ${_tddInfoBlock('list','var(--sky)','Delivery Parts',Utils.esc(plan.map(x=>`Part ${x.part}: ${_lpHoursDisplay(Number(x.minutes)||0)} hrs`).join(' · ')))}
       </div><div style="margin-top:12px">${_tddInfoBlock('filetext','var(--sky)','Program Description',Utils.esc(program?.description||s.description||'—'))}</div>
       ${program?.resourceUrl?`<div style="margin-top:12px">${_tddInfoBlock('link','var(--sky)','Resources',`<a href="${Utils.esc(_lpSafeResourceUrl(program.resourceUrl)||'#')}" target="_blank" rel="noopener">Open program resources</a>`)}</div>`:''}
@@ -18434,6 +18664,7 @@ function _tddSessionInfoViewContent(s,ownerType,personLabel,personName){
     <div style="${gridStyle}">
       <div style="grid-column:span 2">${_tddInfoBlock('clipboard','var(--sky)','Assessment',_tddAssessmentDisplay(s))}</div>
       ${ownerType?'':_tddInfoBlock('edit3','#64748b','Recording Link',_tdRecordingAccessHtml(s))}
+      ${_tdReportReqViewHtml(s)}
       ${s.deliveryType==='ILT'?_tddInfoBlock('clipboard','#0369a1','Trainer Checklist',_tdChecklistTemplateDisplay(s)):''}
       ${s.l3Required?`<div style="grid-column:span 2">${_tddInfoBlock('flag','#dc2626','L3 Behavior Evaluation',`${_tdl3Badge(s)}<div style="font-weight:400;font-size:12px;color:var(--text2);margin-top:4px">${Utils.esc(_tdl3MethodsDisplay(s))}</div>`)}</div>`:''}
     </div>`)+
@@ -18946,7 +19177,7 @@ function _tdOverviewJourneySteps(s,ownerType){
   steps.push({label:'Delivery Complete',state:s.status==='completed'?'done':'pending'});
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const reportState=report?(report.status==='submitted'||report.status==='approved'?'done':'in_progress'):'pending';
-  steps.push({label:'Training Report',state:reportState});
+  steps.push({label:'Training Report',state:reportState,sub:_tdReportWaived(s)?'Survey results only':null});
   if(_tdL3Applicable(s)) steps.push({label:'L3',state:_tdL3Complete(s)?'done':(_tdl3Status(s)==='overdue'?'in_progress':'pending'),sub:_tdL3Complete(s)?'Complete':(_tdl3Status(s)==='overdue'?'Overdue':null)});
   if(_tdL4Applicable(s)) steps.push({label:'L4',state:_tdL4Complete(s)?'done':'pending'});
   steps.push({label:'Fully Closed',state:_tdSessionFullyClosed(s)?'done':'pending'});
@@ -18960,6 +19191,7 @@ function _tdOverviewJourneySteps(s,ownerType){
 // that tab's own gates (Aug-1-2026 feature cutoff, no-template-yet, still-initializing) rather
 // than duplicating separate copy for each state.
 function _tdOverviewChecklistWidget(s){
+  if(_tdReportWaived(s)) return ''; // v5.14d: no Trainer Checklist when the report isn't required
   if(s.deliveryType!=='ILT') return '';
   if(s.trainingDate && s.trainingDate<CKTPL_FEATURE_START_DATE) return '';
   const goLink=`<a href="javascript:void(0)" onclick="tdDetailSwitchTab('checklist')" style="font-size:12px;color:var(--pri);text-decoration:none;font-weight:600;flex-shrink:0">Go to Checklist tab →</a>`;
@@ -19267,7 +19499,7 @@ function _tdLinkedWorkflowTiles(s){
   if(hasTab('checklist')) workflowTiles.push(tile('clipboard','Trainer Checklist',checklistStatus,'Complete the pre- and post-training checklist items.','checklist','Open Checklist','#2563eb'));
   if(hasTab('attendance')) workflowTiles.push(tile('users','Attendance',stText(attendance),'Add participants and record attendance for the session.','attendance','Manage Attendance','#16a34a'));
   if(hasTab('assessments')) workflowTiles.push(tile('filetext','L2 Assessments',stText(assessed),'Record the configured assessment results for participants.','assessments','Open L2 Assessments','#7c3aed'));
-  if(hasTab('report')) workflowTiles.push(tile('edit3','Training Report',stText(report),'Submit the training report, including L1 results and the session summary.','report','Open Training Report','#d97706'));
+  if(hasTab('report')) workflowTiles.push(_tdReportWaived(s)?tile('edit3','Survey Results',stText(report),'Training Report not required (SME-led). Enter the L1 survey results only.','report','Open Survey Results','#d97706'):tile('edit3','Training Report',stText(report),'Submit the training report, including L1 results and the session summary.','report','Open Training Report','#d97706'));
   if(hasTab('l3eval')) workflowTiles.push(tile('flag','L3 Evaluation',stText(l3),'Track the configured follow-through items and complete them on or before the due date.','l3eval','Open L3 Evaluation','#dc2626'));
   if(hasTab('l4eval')) workflowTiles.push(tile('target','L4 Results',stText(l4),'Capture the configured outcome measures, including baseline, target, days after training, and supporting resource links.','l4eval','Open L4 Results','#0891b2'));
   if(hasTab('trainer-eval')) workflowTiles.push(tile('star','Trainer Evaluation',evalStatus,'Optional facilitator evaluation. Record it when applicable; it does not block Delivery Complete or Fully Closed.','trainer-eval','Open Evaluation','#db2777'));
@@ -19864,7 +20096,7 @@ function _tddSessionInfoEditContent(s,ownerType){
       <div style="margin-top:12px">${_tddInfoBlockEdit('list','var(--sky)','Agenda',`<div style="font-size:12px;color:var(--text2)">${(program?.agenda||[]).map(a=>`<div>Part ${Utils.esc(String(a.part||1))}: ${Utils.esc(a.topic||'—')} · ${Utils.esc(String(a.duration||0))} min</div>`).join('')||'—'}</div>`)}</div>
       <div style="margin-top:12px">${_tddInfoBlockEdit('clipboard','var(--sky)','Program Evaluations',_tdProgramEvaluationSummary(s))}</div>
       <div style="font-weight:700;font-size:14.5px;margin:22px 0 14px;padding-top:16px;border-top:1px solid var(--border-lt)">2. Session Details <span style="font-size:11px;color:var(--text3);font-weight:400">Assign a date to each delivery part</span></div>
-      <div style="${gridStyle}">${dates}${grp==='trainer'?_tddInfoBlockEdit('filetext','var(--sky)','Batch',readonly(s.batchNo)):''}${statusField}${_tdShowsModality(s.deliveryType)?modalityField:''}${venueField}${audienceField}${grp==='owner'?_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`):trainerField}${grp==='trainer'?cofacField:''}${_tddInfoBlockEdit('edit3','#64748b','Recording Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}</div>
+      <div style="${gridStyle}">${dates}${grp==='trainer'?_tddInfoBlockEdit('filetext','var(--sky)','Batch',readonly(s.batchNo)):''}${statusField}${_tdShowsModality(s.deliveryType)?modalityField:''}${venueField}${audienceField}${grp==='owner'?_tddInfoBlockEdit('user','var(--sky)','Owner',`<select id="tdd-owner" class="form-control" ${smallInput}><option value="">— Select Owner —</option></select>`):trainerField}${grp==='trainer'?cofacField:''}${_tddInfoBlockEdit('edit3','#64748b','Recording Link',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}${_tdReportReqEditHtml(s)}</div>
       <div class="modal-err hidden" id="tdd-error"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary btn-sm" id="tdd-save-btn" onclick="tdDetailSave()">Save</button><button class="btn btn-secondary btn-sm" onclick="tdDetailCancelEdit()">Cancel</button></div>`;
   }
 
@@ -20002,6 +20234,7 @@ function _tddSessionInfoEditContent(s,ownerType){
     <div style="${gridStyle}">
       <div style="grid-column:span 2">${_tddInfoBlockEdit('clipboard','var(--sky)',programSession?'Evaluations (L2)':'L2 Assessments',`<div id="tdd-assess-list">${_tddAssessTableHtml()}</div><button type="button" class="btn btn-sm btn-secondary" onclick="_tddAddAssessRow()">+ Add Evaluation</button>`)}</div>
       ${_tddInfoBlockEdit('edit3','#64748b','<span id="tdd-recording-label">Recording Link</span>',`<input type="url" id="tdd-recording" class="form-control" ${smallInput} value="${Utils.esc(s.recordingLink||'')}">`)}
+      ${_tdReportReqEditHtml(s)}
       ${s.deliveryType==='ILT'?_tddInfoBlockEdit('clipboard','#0369a1','Trainer Checklist',`<select id="tdd-checklisttpl" class="form-control" ${smallInput}><option value="">— None —</option></select>`):''}
       ${l3Field}
     </div>`)+footer;
@@ -25158,7 +25391,7 @@ function _dpL1(r){
   const withRep=reps.filter(x=>x.rep), live=withRep.filter(x=>x.s.deliveryType==='ILT'||x.s.deliveryType==='VILT'), slt=withRep.filter(x=>x.s.deliveryType==='Self-led');
   const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
   const csatG=[...live.map(x=>({s:x.s,rep:{content:{v:(x.rep.content||{}).csat,responses:(x.rep.content||{}).responses}}})),...slt.map(x=>({s:x.s,rep:{content:{v:(x.rep.content||{}).learnerSatisfaction,responses:(x.rep.content||{}).responses}}}))];
-  const eligible=reps.filter(x=>['ILT','VILT','Self-led'].includes(x.s.deliveryType)&&!_tdHasNoReportRequirement(x.s));
+  const eligible=reps.filter(x=>['ILT','VILT','Self-led'].includes(x.s.deliveryType)&&(!_tdHasNoReportRequirement(x.s)||_tdReportWaived(x.s)));
   const rated=csatG.filter(x=>num(x.rep.content.v)!=null);
   return {reps:withRep,eligible,csat:_l1WAvg(csatG,c=>num(c.v)),csatN:rated.length,nps:_l1WAvg([...live,...slt],c=>num(c.nps)),npsN:[...live,...slt].filter(x=>num((x.rep.content||{}).nps)!=null).length,
     content:_l1WAvg(live,c=>num(c.contentRating)),material:_l1WAvg(live,c=>num(c.materialsRating)),facil:_l1WAvg(live,c=>num(c.facilitationRating)),
@@ -25892,7 +26125,7 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','cost-settings','cost-analysis'];
+  const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','ld-reports','cost-settings','cost-analysis'];
   if(location.hash && location.hash.length>1){
     _restoreFromHash(location.hash);
   } else {
