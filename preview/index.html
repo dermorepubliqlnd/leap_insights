@@ -1676,7 +1676,9 @@
             <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:14px 0 16px">
               <button id="eval-tab-my"       class="eval-tab active" onclick="setEvalTab('my')">👤 My Evaluations</button>
               <button id="eval-tab-team"     class="eval-tab"        onclick="setEvalTab('team')">👥 Team Evaluations</button>
+              <button id="eval-tab-sme"      class="eval-tab"        onclick="setEvalTab('sme')" style="display:none">🎤 SME Observations</button>
             </div>
+            <div id="sme-obs-block" class="hidden"></div>
 
             <div id="eval-table-block">
               <div class="eval-controls">
@@ -3984,6 +3986,8 @@ const _FIELD_MAPS = {
   },
   learning_methods:{ id:'id', name:'name', isActive:'is_active' }, // v5.04: Learning Method list (Settings → Lists)
   // v5.04: dated L1 targets; programFamilyId null = organization default
+  // v5.14e (2026-11-10, per Sandra): SME Facilitation Observation (Basic Facilitation Skills validation form)
+  sme_observations:{ id:'id', sessionId:'session_id', smeName:'sme_name', smeDeptRole:'sme_dept_role', assessorId:'assessor_id', assessorRole:'assessor_role', validationDate:'validation_date', validationType:'validation_type', topic:'topic', durationObserved:'duration_observed', setting:'setting', ratings:'ratings', evidence:'evidence', overallAvg:'overall_avg', criticalBelow:'critical_below', criticalUnobserved:'critical_unobserved', recommendedDecision:'recommended_decision', finalDecision:'final_decision', strengths:'strengths', priorityDev:'priority_dev', followUp:'follow_up', followUpFocus:'follow_up_focus', comments:'comments', status:'status', submittedAt:'submitted_at', createdAt:'created_at', updatedAt:'updated_at' },
   l1_targets:{ id:'id', programFamilyId:'program_family_id', metric:'metric', target:'target', effectiveFrom:'effective_from', effectiveTo:'effective_to', createdAt:'created_at', createdBy:'created_by', updatedAt:'updated_at', updatedBy:'updated_by' },
   // v5.02 (2026-10-14, per Sandra): Setup Mode flag, prerequisite list, SME & External Contacts, program SMEs/facilitators.
   app_flags:{ key:'key', value:'value', updatedAt:'updated_at', updatedBy:'updated_by' },
@@ -4034,9 +4038,9 @@ function _surfaceDbError(err,action){
    cache after a successful write — so a failed write cannot leave the UI showing stale-looking
    "saved" data. ───────────────────────────────────────────────────────────────────────────── */
 const Cache = {
-  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[], department_kpi_snapshots:[], committed_projects:[], committed_project_events:[], kb_categories:[], kb_entries:[] },
+  data:{ profiles:[], positions:[], venues:[], modalities:[], deliverables:[], categories:[], audiences:[], departments:[], attendance_settings:[], workload_settings:[], ph_holidays:[], workload_pct_history:[], training_sessions:[], evaluations:[], idqa_reviews:[], cdqa_reviews:[], audit_log:[], session_participants:[], training_reports:[], agenda_templates:[], checklist_templates:[], session_checklists:[], facilitation_cost_rates:[], kpi_settings:[], kpi_monthly_snapshots:[], kpi_targets:[], learning_programs:[], program_types:[], app_flags:[], lp_prerequisites:[], lnd_contacts:[], learning_program_people:[], learning_methods:[], l1_targets:[], sme_observations:[] , pdp_items:[], scorecard_inputs:[], reporting_lines:[], department_kpi_snapshots:[], committed_projects:[], committed_project_events:[], kb_categories:[], kb_entries:[] },
   // v5.02: tables added by a migration that may not be applied yet -- a load error here must not block the app.
-  optional:new Set(['app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines','department_kpi_snapshots','committed_projects','committed_project_events','kb_categories','kb_entries']),
+  optional:new Set(['sme_observations','app_flags','lp_prerequisites','lnd_contacts','learning_program_people','learning_methods','l1_targets','pdp_items','scorecard_inputs','reporting_lines','department_kpi_snapshots','committed_projects','committed_project_events','kb_categories','kb_entries']),
   loaded:false,
   async loadAll(){
     const tables=Object.keys(this.data);
@@ -12728,6 +12732,7 @@ function _tdPostDeliveryState(s){
     if(_tdSessionFullyClosed(s)) return {label:'Fully Closed',bg:'#dcfce7',fg:'#15803d'};
     const r0=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
     if(!(r0&&(r0.status==='submitted'||r0.status==='approved'))) return {label:'Survey Pending',bg:'#fef9c3',fg:'#a16207'};
+    if(!_smeObsDone(s)) return {label:'Observation Pending',bg:'#fef9c3',fg:'#a16207'}; // v5.14e
     if(_tdL3Applicable(s)&&!_tdL3Complete(s)) return _tdl3Status(s)==='overdue'?{label:'L3 Overdue',bg:'#fee2e2',fg:'#dc2626'}:{label:'L3 Pending',bg:'#fef9c3',fg:'#a16207'};
     if(_tdL4Applicable(s)&&!_tdL4Complete(s)) return {label:'L4 Pending',bg:'#fef9c3',fg:'#a16207'};
     return {label:'Survey Submitted',bg:'#dbeafe',fg:'#1d4ed8'};
@@ -13845,6 +13850,184 @@ async function rpDownloadWeekly(){
   finally{ if(btn){ btn.disabled=false; btn.textContent='⇩ Download PowerPoint'; } }
 }
 
+/* ── SME FACILITATION OBSERVATION (v5.14e, 2026-11-10, per Sandra) ───────────────────────────
+   For ILT/VILT sessions tagged "Training Report not required — SME-led" (_tdReportWaived): the
+   co-facilitator (or anyone with Trainer Evaluation form access / session edit rights) completes the
+   Basic Facilitation Skills – Facilitation Validation Form for the SME. Mirrors Sandra's workbook
+   exactly (16 behaviors, 8 critical, N/O + 1–4, area summary + decision formulas). Draft → Submitted
+   (complete) — no acknowledgement; feedback goes to the SME as a PDF. Not part of any L&D scorecard.
+   Edited only on the session (tab "SME Observation"); Trainer Evaluation → SME Observations lists all. */
+const SME_AREAS=['Purpose & Facilitation Approach','Learner-Centered Facilitation','Presence & Professionalism','Engagement & Instructions','Reading & Managing the Group'];
+const SME_BEHAVIORS=[
+  {id:'b1', a:0,c:true, t:'Clearly explains what people are expected to understand, decide, or do.',map:'LO1 – Role / Purpose'},
+  {id:'b2', a:0,c:false,t:'Uses an approach that fits the purpose instead of only talking through information.',map:'LO1 – Role / Purpose'},
+  {id:'b3', a:1,c:false,t:'Connects the topic or message to the audience’s work, needs, or practical use.',map:'LO2 – Learner-Centered'},
+  {id:'b4', a:1,c:true, t:'Gives people meaningful opportunities to think, contribute, discuss, or practice.',map:'LO2 – Learner-Centered'},
+  {id:'b5', a:1,c:true, t:'Responds respectfully to questions, mistakes, and different points of view.',map:'LO2 – Psychological Safety'},
+  {id:'b6', a:2,c:false,t:'Appears prepared, organized, and familiar with the topic or process being discussed.',map:'LO3 – Presence'},
+  {id:'b7', a:2,c:false,t:'Communicates clearly using appropriate voice, pacing, body language, and professional language.',map:'LO3 – Presence'},
+  {id:'b8', a:2,c:true, t:'Stays calm and professional when there are questions, disagreements, or unexpected situations.',map:'LO3 – Professionalism'},
+  {id:'b9', a:3,c:false,t:'Uses questions that help people think, explain, connect, or apply.',map:'LO4 – Questioning'},
+  {id:'b10',a:3,c:false,t:'Listens to responses and gives people reasonable time to think and answer.',map:'LO4 – Listening / Wait Time'},
+  {id:'b11',a:3,c:true, t:'Gives clear instructions for tasks, activities, or discussions, including what to do and the expected result.',map:'LO4 – Clear Instructions'},
+  {id:'b12',a:3,c:false,t:'Creates appropriate opportunities for different people to contribute.',map:'LO4 – Participation'},
+  {id:'b13',a:4,c:false,t:'Notices signs of confusion, hesitation, disengagement, low energy, or uneven participation.',map:'LO5 – Notice Cues'},
+  {id:'b14',a:4,c:true, t:'Adjusts the approach appropriately when people need clarification, support, or redirection.',map:'LO5 – Respond'},
+  {id:'b15',a:4,c:true, t:'Handles dominant, quiet, challenging, or distracted participants respectfully without losing the objective.',map:'LO5 – Manage Behaviors'},
+  {id:'b16',a:4,c:true, t:'Keeps the discussion, activity, or session moving while protecting the intended outcome and available time.',map:'LO5 – Keep Learning Moving'}
+];
+const SME_SCALE=[['N/O','Not Observed – no reasonable opportunity to observe this behavior.'],['1','Not Demonstrated – behavior was absent, ineffective, or required significant intervention.'],['2','Partially Demonstrated – some elements were present, but performance was inconsistent or needed support.'],['3','Demonstrated – behavior was performed appropriately and independently.'],['4','Strongly Demonstrated – behavior was consistently effective and adapted well to the situation.']];
+const SME_TYPES=['Structured Facilitation Demo','Actual Workplace Facilitation','Co-Facilitation Observation','Presentation / Briefing','Meeting / Huddle','Process Rollout','Knowledge Sharing','Other Approved Setting'];
+const SME_DECISIONS=['VALIDATED','CONDITIONAL PASS / REVALIDATION REQUIRED','NOT YET VALIDATED'];
+const SME_FOLLOWUPS=['No further action','Coaching / feedback discussion','Practice opportunity','Re-observation on specific criteria','Full re-demonstration'];
+const SmeObsDB=_makeRecordDB('sme_observations','SME Observation',r=>r?.smeName||r?.id||'');
+let _smeDraft=null, _smeDraftFor=null;
+function _smeObsFor(s){ return SmeObsDB.all().filter(o=>o.sessionId===s.id).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')))[0]||null; }
+function _smeObsDone(s){ return SmeObsDB.all().some(o=>o.sessionId===s.id&&o.status==='submitted'); }
+// Same formulas as the workbook's CAPABILITY SUMMARY + VALIDATION DECISION (cells B35:F40, B43).
+function _smeCalc(ratings){
+  const r=ratings||{}, num=v=>{ const n=Number(v); return (v!==''&&v!=null&&v!=='N/O'&&n>0)?n:null; };
+  const areas=SME_AREAS.map((name,i)=>{ const items=SME_BEHAVIORS.filter(b=>b.a===i); const vals=items.map(b=>num(r[b.id])).filter(v=>v!=null);
+    const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null; const crit=items.filter(b=>b.c&&num(r[b.id])!=null&&num(r[b.id])<3).length;
+    return {name,avg,observed:vals.length,critBelow:crit,status:!vals.length?'Not Observed':crit>0?'Needs Revalidation':avg>=3?'Meets Standard':'Development Needed'}; });
+  const avs=areas.map(a=>a.avg).filter(v=>v!=null), overall=avs.length?avs.reduce((a,b)=>a+b,0)/avs.length:null;
+  const critBelow=areas.reduce((a,x)=>a+x.critBelow,0), critUnobs=SME_BEHAVIORS.filter(b=>b.c&&(r[b.id]==='N/O'||r[b.id]==null||r[b.id]==='')).length;
+  const decision=(critUnobs>0||critBelow>0)?SME_DECISIONS[2]:(overall!=null&&overall>=3)?SME_DECISIONS[0]:SME_DECISIONS[1];
+  return {areas,overall,critBelow,critUnobs,decision};
+}
+function _smeDecisionChip(d){ const m={'VALIDATED':['#dcfce7','#15803d'],'CONDITIONAL PASS / REVALIDATION REQUIRED':['#fef3c7','#92400e'],'NOT YET VALIDATED':['#fee2e2','#b91c1c']}[d]||['#f1f5f9','#475569']; return `<span class="badge" style="background:${m[0]};color:${m[1]}">${Utils.esc(d||'—')}</span>`; }
+function _smeCanCreate(s){ const me=Auth.user; return !!me&&(me.isAdmin||Auth.formAccess(me).trainerEval||_tdCanEditSession(s)); }
+function _smeCanEdit(o){ const me=Auth.user; return !!me&&!!o&&o.status==='draft'&&(me.isAdmin||o.assessorId===me.id); }
+function _smeName(s){ if(s.guestTrainerName) return s.guestTrainerName; const u=s.trainerId?DB.byId(s.trainerId):null; return u?`${u.firstName||''} ${u.lastName||''}`.trim():''; }
+async function smeStart(sessionId){
+  const s=TrSessionDB.byId(sessionId); if(!s||!_smeCanCreate(s)) return;
+  const me=Auth.user;
+  try{
+    const o=await SmeObsDB.create({sessionId:s.id,smeName:_smeName(s),smeDeptRole:'',assessorId:me.id,assessorRole:me.id===s.coFacilitatorId?'Co-Facilitator':'L&D',
+      validationDate:s.trainingDate||null,validationType:'Actual Workplace Facilitation',topic:s.trainingProgram||'',durationObserved:(typeof _rpDur==='function'?_rpDur(s.durationHours):''),
+      setting:(typeof _venueDisplayName==='function'?_venueDisplayName(s):'')||'',ratings:{},evidence:{},status:'draft'});
+    _smeDraftFor=null; renderTrainingDetail(); toast('SME Observation started.','success');
+  }catch(e){}
+}
+function _smeLoad(o){ if(_smeDraftFor!==o.id||!_smeDraft){ _smeDraft=JSON.parse(JSON.stringify(o)); _smeDraft.ratings=_smeDraft.ratings||{}; _smeDraft.evidence=_smeDraft.evidence||{}; _smeDraftFor=o.id; } return _smeDraft; }
+function smeSet(field,val){ if(!_smeDraft) return; _smeDraft[field]=val; if(field==='finalDecision'||field==='followUp') _smeRefresh(); }
+function smeRate(bid,val){ if(!_smeDraft) return; _smeDraft.ratings[bid]=val; _smeRefresh(); }
+function smeEvidence(bid,val){ if(!_smeDraft) return; _smeDraft.evidence[bid]=val; }
+function _smeRefresh(){ const el=document.getElementById('sme-summary'); if(el&&_smeDraft) el.innerHTML=_smeSummaryHtml(_smeDraft); }
+function _smeSummaryHtml(o){
+  const c=_smeCalc(o.ratings), f=v=>v==null?'—':(Math.round(v*100)/100).toFixed(2);
+  const st=x=>{ const m={'Meets Standard':'#15803d','Needs Revalidation':'#b91c1c','Development Needed':'#92400e'}[x]||'var(--text3)'; return `<span style="color:${m};font-weight:600">${x}</span>`; };
+  return `<div class="eval-tbl-wrap"><table class="eval-tbl" style="font-size:12px"><tr><th>Capability Area</th><th style="text-align:center">Average Rating</th><th style="text-align:center">Observed Items</th><th style="text-align:center">Critical Items &lt; 3</th><th>Status</th></tr>
+    ${c.areas.map(a=>`<tr><td>${Utils.esc(a.name)}</td><td style="text-align:center">${f(a.avg)}</td><td style="text-align:center">${a.observed}</td><td style="text-align:center">${a.critBelow}</td><td>${st(a.status)}</td></tr>`).join('')}
+    <tr style="font-weight:700"><td>Overall Average</td><td style="text-align:center">${f(c.overall)}</td><td></td><td style="text-align:center">${c.critBelow}</td><td style="font-weight:400;font-size:11.5px">Unobserved critical: <b>${c.critUnobs}</b></td></tr></table></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px"><span style="font-size:12px;color:var(--text3)">Recommended decision</span>${_smeDecisionChip(c.decision)}${o.finalDecision&&o.finalDecision!==c.decision?`<span style="font-size:12px;color:var(--text3)">· Final assessor decision</span>${_smeDecisionChip(o.finalDecision)}`:''}</div>`;
+}
+function _smeRenderTab(s){
+  const o=_smeObsFor(s);
+  const intro=`<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px">Basic Facilitation Skills – Facilitation Validation Form. Completed by the co-facilitator for the SME. No acknowledgement step — download the PDF and send it to the SME. Not counted in any L&amp;D scorecard.</div>`;
+  if(!o){
+    return `<div class="card" style="padding:22px 24px"><div style="font-weight:700;font-size:15px;margin-bottom:6px">SME Facilitation Observation</div>${intro}
+      ${_smeCanCreate(s)?`<button class="btn btn-primary btn-sm" onclick="smeStart('${s.id}')">+ Start Observation</button>`:'<div style="font-size:12.5px;color:var(--text3)">No observation yet. The co-facilitator or anyone with Trainer Evaluation access can start it.</div>'}</div>`;
+  }
+  const d=_smeLoad(o), ed=_smeCanEdit(o), dis=ed?'':'disabled', esc=Utils.esc, st='font-size:12.5px;padding:5px 8px';
+  const inp=(f,label,type)=>`<div><label class="form-label" style="font-size:10.5px;color:var(--text3)">${label}</label><input ${type?`type="${type}"`:''} class="form-control" style="${st}" value="${esc(d[f]||'')}" ${dis} onchange="smeSet('${f}',this.value)"></div>`;
+  const sel=(f,label,opts,ph)=>`<div><label class="form-label" style="font-size:10.5px;color:var(--text3)">${label}</label><select class="form-control" style="${st}" ${dis} onchange="smeSet('${f}',this.value)"><option value="">${ph||'— Select —'}</option>${opts.map(x=>`<option ${d[f]===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
+  const ta=(f,label)=>`<div><label class="form-label" style="font-size:10.5px;color:var(--text3)">${label}</label><textarea class="form-control" rows="2" style="${st}" ${dis} onchange="smeSet('${f}',this.value)">${esc(d[f]||'')}</textarea></div>`;
+  const assessor=DB.byId(d.assessorId); const assessorName=assessor?`${assessor.firstName||''} ${assessor.lastName||''}`.trim():'—';
+  const header=`<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px">
+    ${inp('smeName','Participant Name (SME)')}${inp('smeDeptRole','Department / Role')}<div><label class="form-label" style="font-size:10.5px;color:var(--text3)">Assessor</label><input class="form-control" style="${st};background:#f1f5f9" value="${esc(assessorName)}" readonly></div>
+    ${inp('validationDate','Validation Date','date')}${sel('validationType','Validation Type',SME_TYPES)}${inp('topic','Topic / Activity Observed')}
+    ${inp('durationObserved','Duration Observed')}${inp('setting','Location / Setting')}${inp('assessorRole','Assessor Role')}</div>`;
+  const scale=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px">${SME_SCALE.map(x=>`<span title="${esc(x[1])}" style="font-size:11px;background:#f1f5f9;border-radius:6px;padding:3px 8px"><b>${x[0]}</b> ${esc(x[1].split(' – ')[0])}</span>`).join('')}</div>`;
+  const rows=SME_AREAS.map((area,i)=>`<tr><td colspan="4" style="background:#f8fafc;font-weight:700;font-size:12px">${esc(area)}</td></tr>`+SME_BEHAVIORS.filter(b=>b.a===i).map(b=>`<tr>
+      <td style="font-size:12.5px">${esc(b.t)}<div style="font-size:10.5px;color:var(--text3)">${esc(b.map)}</div></td>
+      <td style="text-align:center">${b.c?'<span class="badge" style="background:#fee2e2;color:#b91c1c">Critical</span>':'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+      <td><select class="form-control" style="${st};min-width:72px" ${dis} onchange="smeRate('${b.id}',this.value)"><option value="">—</option>${['N/O','1','2','3','4'].map(v=>`<option ${String(d.ratings[b.id]??'')===v?'selected':''}>${v}</option>`).join('')}</select></td>
+      <td><input class="form-control" style="${st};min-width:200px" placeholder="What the SME actually did or said" value="${esc(d.evidence[b.id]||'')}" ${dis} onchange="smeEvidence('${b.id}',this.value)"></td></tr>`).join('')).join('');
+  const toolbar=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+    <div style="font-weight:700;font-size:15px">SME Facilitation Observation ${o.status==='submitted'?'<span class="badge" style="background:#dcfce7;color:#15803d">Submitted</span>':'<span class="badge" style="background:#fef9c3;color:#a16207">Draft</span>'}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="smePdf('${o.id}')">⇩ Download PDF</button>
+      ${ed?`<button class="btn btn-secondary btn-sm" onclick="smeSave(false)">Save Draft</button><button class="btn btn-primary btn-sm" onclick="smeSave(true)">✓ Submit</button>`:''}
+      ${o.status==='submitted'&&Auth.user?.isAdmin?`<button class="btn btn-ghost btn-sm" onclick="smeReopen('${o.id}')">Reopen</button>`:''}
+      ${o.status==='draft'&&ed?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="smeDelete('${o.id}')">Delete</button>`:''}
+    </div></div>`;
+  return `<div class="card" style="padding:18px 20px">${toolbar}${intro}${header}${scale}
+    <div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>Observable Behavior</th><th style="text-align:center">Critical?</th><th>Rating</th><th>Assessor Notes / Evidence</th></tr>${rows}</table></div>
+    <div style="font-weight:700;font-size:13.5px;margin:16px 0 8px">Capability Summary &amp; Decision</div><div id="sme-summary">${_smeSummaryHtml(d)}</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;margin-top:14px">
+      ${sel('finalDecision','Final Assessor Decision',SME_DECISIONS,'— Same as recommended —')}${sel('followUp','Required Follow-Up',SME_FOLLOWUPS)}
+      ${ta('strengths','Strengths Demonstrated')}${ta('priorityDev','Priority Development Area')}
+      ${ta('followUpFocus','Revalidation Focus (if any)')}${ta('comments','Assessor Comments')}
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:10px">Rules: VALIDATED = overall average ≥ 3.0, no critical item below 3, and every critical item observed. A critical item rated N/O or below 3 means NOT YET VALIDATED. The final assessor decision may override the recommendation when justified in the comments.</div>
+  </div>`;
+}
+async function smeSave(submit){
+  const d=_smeDraft; if(!d) return; const s=TrSessionDB.byId(d.sessionId); const c=_smeCalc(d.ratings);
+  if(submit){
+    const missing=SME_BEHAVIORS.filter(b=>d.ratings[b.id]==null||d.ratings[b.id]==='').length;
+    const errs=[]; if(!String(d.smeName||'').trim()) errs.push('SME name');
+    if(missing) errs.push(`a rating (or N/O) for ${missing} behavior${missing!==1?'s':''}`);
+    if(d.finalDecision&&d.finalDecision!==c.decision&&!String(d.comments||'').trim()) errs.push('assessor comments explaining the override');
+    if(s&&s.trainingDate&&s.trainingDate>_todayStr()) errs.push('the session date to arrive');
+    if(errs.length){ toast('Please complete: '+errs.join(', ')+'.','error'); return; }
+  }
+  const patch={smeName:d.smeName,smeDeptRole:d.smeDeptRole,assessorRole:d.assessorRole,validationDate:d.validationDate||null,validationType:d.validationType,topic:d.topic,durationObserved:d.durationObserved,setting:d.setting,
+    ratings:d.ratings,evidence:d.evidence,overallAvg:c.overall==null?null:Math.round(c.overall*100)/100,criticalBelow:c.critBelow,criticalUnobserved:c.critUnobs,recommendedDecision:c.decision,
+    finalDecision:d.finalDecision||null,strengths:d.strengths,priorityDev:d.priorityDev,followUp:d.followUp,followUpFocus:d.followUpFocus,comments:d.comments,updatedAt:new Date().toISOString()};
+  const go=async()=>{ try{ if(submit){ patch.status='submitted'; patch.submittedAt=new Date().toISOString(); }
+      await SmeObsDB.update(d.id,patch); _smeDraftFor=null; renderTrainingDetail(); toast(submit?'SME Observation submitted.':'Draft saved.','success'); }catch(e){} };
+  if(submit) confirm$('Submit SME Observation',`Submit the observation for ${Utils.esc(d.smeName||'the SME')}? Decision: ${Utils.esc(d.finalDecision||c.decision)}. It becomes read-only (an admin can reopen it).`,'Submit',go); else go();
+}
+async function smeReopen(id){ confirm$('Reopen SME Observation','Set this observation back to Draft so the assessor can edit it?','Reopen',async()=>{ try{ await SmeObsDB.update(id,{status:'draft',submittedAt:null,updatedAt:new Date().toISOString()}); _smeDraftFor=null; renderTrainingDetail(); }catch(e){} }); }
+async function smeDelete(id){ confirm$('Delete draft','Delete this draft observation?','Delete',async()=>{ try{ const {error}=await sb.from('sme_observations').delete().eq('id',id); if(error) throw error; Cache.data.sme_observations=Cache.data.sme_observations.filter(r=>r.id!==id); await AuditLog.record('delete','SME Observation',id,'Deleted draft SME observation'); _smeDraftFor=null; renderTrainingDetail(); }catch(e){ _surfaceDbError(e,'Delete SME observation'); } }); }
+function smeOpenSession(sessionId){ showView('training-delivery'); openTrainingDetail(sessionId); setTimeout(()=>tdDetailSwitchTab('sme-obs'),50); }
+function _smeListHtml(){
+  const me=Auth.user; const rows=SmeObsDB.all().slice().sort((a,b)=>String(b.validationDate||'').localeCompare(String(a.validationDate||'')));
+  if(!rows.length) return `<div class="card" style="padding:22px 24px"><div style="font-weight:700;margin-bottom:6px">SME Observations</div><div style="font-size:12.5px;color:var(--text3)">No SME observations yet. They are started from a session tagged "Training Report: Not required — SME-led" (Session → SME Observation tab).</div></div>`;
+  const esc=Utils.esc;
+  return `<div class="card" style="padding:0"><div class="eval-tbl-wrap"><table class="eval-tbl"><tr><th>Date</th><th>SME</th><th>Program / Topic</th><th>Session</th><th>Assessor</th><th style="text-align:center">Overall</th><th>Decision</th><th>Status</th><th></th></tr>
+    ${rows.map(o=>{ const s=TrSessionDB.byId(o.sessionId)||{}; const a=DB.byId(o.assessorId); const dec=o.finalDecision||o.recommendedDecision;
+      return `<tr><td>${esc(o.validationDate||'—')}</td><td><b>${esc(o.smeName||'—')}</b><div style="font-size:11px;color:var(--text3)">${esc(o.smeDeptRole||'')}</div></td><td>${esc(o.topic||s.trainingProgram||'—')}</td><td>${esc(s.code||'—')}</td><td>${esc(a?`${a.firstName||''} ${a.lastName||''}`.trim():'—')}</td>
+        <td style="text-align:center">${o.overallAvg!=null?Number(o.overallAvg).toFixed(2):'—'}</td><td>${o.status==='submitted'?_smeDecisionChip(dec):'<span style="color:var(--text3)">—</span>'}</td>
+        <td>${o.status==='submitted'?'<span class="badge" style="background:#dcfce7;color:#15803d">Submitted</span>':'<span class="badge" style="background:#fef9c3;color:#a16207">Draft</span>'}</td>
+        <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="smeOpenSession('${o.sessionId}')">Open</button><button class="btn btn-ghost btn-sm" onclick="smePdf('${o.id}')">PDF</button></td></tr>`; }).join('')}
+  </table></div></div>`;
+}
+function smePdf(id){
+  const o=(_smeDraft&&_smeDraft.id===id)?_smeDraft:SmeObsDB.byId(id); if(!o) return;
+  const c=_smeCalc(o.ratings), esc=Utils.esc, f=v=>v==null?'—':(Math.round(v*100)/100).toFixed(2), a=DB.byId(o.assessorId);
+  const field=(l,v)=>`<td><div class="l">${l}</div><div class="v">${esc(v||'—')}</div></td>`;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>SME Observation – ${esc(o.smeName||'')}</title><style>
+    @page{size:A4;margin:12mm} body{font-family:Poppins,Arial,sans-serif;color:#1f1f1f;font-size:10px;margin:0}
+    h1{font-size:15px;margin:0 0 2px} .sub{color:#5f6368;margin-bottom:8px} table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    .hdr td{border:1px solid #dadce0;padding:4px 6px;width:33%} .l{font-size:8px;color:#5f6368;text-transform:uppercase} .v{font-weight:600}
+    .m th{background:#1f3b63;color:#fff;text-align:left;padding:4px 6px;font-size:9px} .m td{border:1px solid #dadce0;padding:3px 6px;vertical-align:top}
+    .area td{background:#eef2f7;font-weight:700} .c{text-align:center} .crit{color:#b91c1c;font-weight:700}
+    .dec{display:inline-block;padding:3px 8px;border-radius:10px;font-weight:700;background:#eef2f7} .box{border:1px solid #dadce0;padding:5px 7px;margin-bottom:6px} .box .l{margin-bottom:2px}
+    .foot{color:#9aa0a6;font-size:8px;margin-top:8px}</style></head><body>
+    <h1>Basic Facilitation Skills – Facilitation Validation Form</h1><div class="sub">Dermorepubliq L&amp;D · LEAP Insights</div>
+    <table class="hdr"><tr>${field('Participant Name',o.smeName)}${field('Department / Role',o.smeDeptRole)}${field('Assessor',a?`${a.firstName||''} ${a.lastName||''}`.trim():'')}</tr>
+      <tr>${field('Validation Date',o.validationDate)}${field('Validation Type',o.validationType)}${field('Topic / Activity Observed',o.topic)}</tr>
+      <tr>${field('Duration Observed',o.durationObserved)}${field('Location / Setting',o.setting)}${field('Assessor Role',o.assessorRole)}</tr></table>
+    <div class="sub">Rating scale: N/O Not Observed · 1 Not Demonstrated · 2 Partially Demonstrated · 3 Demonstrated (standard met) · 4 Strongly Demonstrated</div>
+    <table class="m"><tr><th style="width:52%">Observable Behavior</th><th class="c" style="width:7%">Critical?</th><th class="c" style="width:7%">Rating</th><th>Assessor Notes / Evidence</th></tr>
+      ${SME_AREAS.map((ar,i)=>`<tr class="area"><td colspan="4">${esc(ar)}</td></tr>`+SME_BEHAVIORS.filter(b=>b.a===i).map(b=>`<tr><td>${esc(b.t)}</td><td class="c ${b.c?'crit':''}">${b.c?'Yes':'No'}</td><td class="c"><b>${esc(String(o.ratings?.[b.id]??'—'))}</b></td><td>${esc(o.evidence?.[b.id]||'')}</td></tr>`).join('')).join('')}</table>
+    <table class="m"><tr><th>Capability Area</th><th class="c">Average</th><th class="c">Observed</th><th class="c">Critical &lt; 3</th><th>Status</th></tr>
+      ${c.areas.map(x=>`<tr><td>${esc(x.name)}</td><td class="c">${f(x.avg)}</td><td class="c">${x.observed}</td><td class="c">${x.critBelow}</td><td>${x.status}</td></tr>`).join('')}
+      <tr><td><b>Overall Average</b></td><td class="c"><b>${f(c.overall)}</b></td><td></td><td class="c">${c.critBelow}</td><td>Unobserved critical: ${c.critUnobs}</td></tr></table>
+    <div class="box"><span class="l">Recommended decision</span> <span class="dec">${esc(c.decision)}</span> &nbsp; <span class="l">Final assessor decision</span> <span class="dec">${esc(o.finalDecision||c.decision)}</span></div>
+    <div class="box"><div class="l">Strengths Demonstrated</div>${esc(o.strengths||'—')}</div>
+    <div class="box"><div class="l">Priority Development Area</div>${esc(o.priorityDev||'—')}</div>
+    <div class="box"><div class="l">Required Follow-Up</div>${esc(o.followUp||'—')}${o.followUpFocus?' — '+esc(o.followUpFocus):''}</div>
+    <div class="box"><div class="l">Assessor Comments</div>${esc(o.comments||'—')}</div>
+    <div class="foot">${o.status==='submitted'?'Submitted '+esc(String(o.submittedAt||'').slice(0,10)):'DRAFT — not yet submitted'} · Generated from LEAP Insights</div>
+    <script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>`;
+  const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups for LEAP to download the PDF.','error'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
 function renderTrainerChecklist(){
   tcPage=1;
   _tcRenderAll();
@@ -14692,6 +14875,7 @@ const TD_DETAIL_TABS=[
   {id:'l3eval',label:'L3 Evaluation'},
   {id:'l4eval',label:'L4 Results'},
   {id:'trainer-eval',label:'Trainer Evaluation'},
+  {id:'sme-obs',label:'SME Observation'}, // v5.14e: SME-led sessions only
   {id:'audit',label:'Audit History'}
 ];
 
@@ -14712,6 +14896,8 @@ function _tdVisibleDetailTabs(s,_tdMoActive,_tdGrp){
     // Self-led/owner-type sessions do not use trainer evaluation.
     .filter(t=>t.id!=='trainer-eval'||(!ownerType&&s.deliveryType!=='Self-led'&&s.deliveryType!=='SLT'))
     .filter(t=>t.id!=='checklist'||!_tdReportWaived(s))
+    .filter(t=>t.id!=='sme-obs'||_tdReportWaived(s))
+    .filter(t=>t.id!=='trainer-eval'||!_tdReportWaived(s))
   ).map(t=>t.id==='report'&&_tdReportWaived(s)?{...t,label:'Survey Results'}:t);
 }
 
@@ -18424,6 +18610,8 @@ function renderTrainingDetail(){
     tabBody=_tdl4ProgramTab(s);
   } else if(_tdDetailTab==='report'){
     tabBody=_tdrRenderTab(s);
+  } else if(_tdDetailTab==='sme-obs'){
+    tabBody=_smeRenderTab(s);
   } else if(_tdDetailTab==='trainer-eval'){
     tabBody=_tdTrainerEvalTabHtml(s);
   } else if(_tdDetailTab==='audit'){
@@ -19065,7 +19253,7 @@ function _tdSessionFullyClosed(s){
   if(!s||s.status!=='completed') return false;
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const reportDone=!!report&&(report.status==='submitted'||report.status==='approved');
-  return reportDone&&_tdL3Complete(s)&&_tdL4Complete(s);
+  return reportDone&&_tdL3Complete(s)&&_tdL4Complete(s)&&(!_tdReportWaived(s)||_smeObsDone(s)); // v5.14e
 }
 
 function _tdOverviewJourneySteps(s,ownerType){
@@ -19180,6 +19368,7 @@ function _tdOverviewJourneySteps(s,ownerType){
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const reportState=report?(report.status==='submitted'||report.status==='approved'?'done':'in_progress'):'pending';
   steps.push({label:'Training Report',state:reportState,sub:_tdReportWaived(s)?'Survey results only':null});
+  if(_tdReportWaived(s)) steps.push({label:'SME Observation',state:_smeObsDone(s)?'done':(_smeObsFor(s)?'in_progress':'pending')}); // v5.14e
   if(_tdL3Applicable(s)) steps.push({label:'L3',state:_tdL3Complete(s)?'done':(_tdl3Status(s)==='overdue'?'in_progress':'pending'),sub:_tdL3Complete(s)?'Complete':(_tdl3Status(s)==='overdue'?'Overdue':null)});
   if(_tdL4Applicable(s)) steps.push({label:'L4',state:_tdL4Complete(s)?'done':'pending'});
   steps.push({label:'Fully Closed',state:_tdSessionFullyClosed(s)?'done':'pending'});
@@ -19503,6 +19692,7 @@ function _tdLinkedWorkflowTiles(s){
   if(hasTab('attendance')) workflowTiles.push(tile('users','Attendance',stText(attendance),'Add participants and record attendance for the session.','attendance','Manage Attendance','#16a34a'));
   if(hasTab('assessments')) workflowTiles.push(tile('filetext','L2 Assessments',stText(assessed),'Record the configured assessment results for participants.','assessments','Open L2 Assessments','#7c3aed'));
   if(hasTab('report')) workflowTiles.push(_tdReportWaived(s)?tile('edit3','Survey Results',stText(report),'Training Report not required (SME-led). Enter the L1 survey results only.','report','Open Survey Results','#d97706'):tile('edit3','Training Report',stText(report),'Submit the training report, including L1 results and the session summary.','report','Open Training Report','#d97706'));
+  if(hasTab('sme-obs')) workflowTiles.push(tile('star','SME Observation',_smeObsDone(s)?'Complete':_smeObsFor(s)?'In progress':'Not started','Observe the SME with the Basic Facilitation Skills validation form, then send the PDF.','sme-obs','Open SME Observation','#db2777'));
   if(hasTab('l3eval')) workflowTiles.push(tile('flag','L3 Evaluation',stText(l3),'Track the configured follow-through items and complete them on or before the due date.','l3eval','Open L3 Evaluation','#dc2626'));
   if(hasTab('l4eval')) workflowTiles.push(tile('target','L4 Results',stText(l4),'Capture the configured outcome measures, including baseline, target, days after training, and supporting resource links.','l4eval','Open L4 Results','#0891b2'));
   if(hasTab('trainer-eval')) workflowTiles.push(tile('star','Trainer Evaluation',evalStatus,'Optional facilitator evaluation. Record it when applicable; it does not block Delivery Complete or Fully Closed.','trainer-eval','Open Evaluation','#db2777'));
@@ -21126,6 +21316,12 @@ function renderEvaluations(){
   const teamTabBtn=document.getElementById('eval-tab-team');
   if(myTabBtn)  myTabBtn.classList.toggle('active',_evalTab==='my');
   if(teamTabBtn) teamTabBtn.classList.toggle('active',_evalTab==='team');
+  // v5.14e: SME Observations tab (list only; editing happens on the session)
+  { const smeBtn=document.getElementById('eval-tab-sme'), smeBlk=document.getElementById('sme-obs-block'), evBlk=document.getElementById('eval-table-block');
+    if(smeBtn){ smeBtn.style.display=canConduct?'':'none'; smeBtn.classList.toggle('active',_evalTab==='sme'); }
+    if(_evalTab==='sme'&&canConduct){ if(evBlk) evBlk.classList.add('hidden'); if(smeBlk){ smeBlk.classList.remove('hidden'); smeBlk.innerHTML=_smeListHtml(); } const nb=document.getElementById('new-eval-btn'); if(nb) nb.style.display='none'; return; }
+    if(_evalTab==='sme') _evalTab='my';
+    if(evBlk) evBlk.classList.remove('hidden'); if(smeBlk) smeBlk.classList.add('hidden'); }
   const myEvals=allEvals.filter(e=>e.trainerId===me.id&&(me.isAdmin||e.status!=='draft'));
   const teamEvals=me.isAdmin?allEvals:allEvals.filter(e=>e.evaluatorId===me.id);
   const myPending=myEvals.filter(e=>e.status==='pending_ack').length;
