@@ -935,6 +935,23 @@
     .r-btn.active-2{background:#dcfce7;border-color:#16a34a;color:#16a34a}
     .r-btn.active-1{background:#fef9c3;border-color:#d97706;color:#d97706}
     .r-btn.active-0{background:#fee2e2;border-color:#dc2626;color:#dc2626}
+    /* v5.18 (2026-11-11, per Sandra): QA Calibration */
+    .r-btn.r-na{width:44px;font-size:11px}
+    .r-btn.active-na{background:#e2e8f0;border-color:#64748b;color:#334155}
+    .cal-grid-table{grid-template-columns:28px 1fr 196px 320px}
+    .cal-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+    .cal-kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px}
+    .cal-kpi-l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+    .cal-kpi-v{font-size:21px;font-weight:800;font-family:'DM Mono','Courier New',monospace;color:var(--text);line-height:1.3}
+    .cal-kpi-s{font-size:11px;color:var(--text3)}
+    .cal-chip{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 5px;border-radius:5px;font-size:11px;font-weight:800;font-family:'DM Mono','Courier New',monospace}
+    .cal-2{background:#dcfce7;color:#16a34a}.cal-1{background:#fef9c3;color:#d97706}.cal-0{background:#fee2e2;color:#dc2626}.cal-na{background:#e2e8f0;color:#475569}
+    .cal-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:9px;white-space:nowrap}
+    .cal-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 18px}
+    .cal-meta label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);font-weight:700;display:block;margin-bottom:2px}
+    .cal-meta span{font-size:13px;color:var(--text)}
+    .eval-tbl tr.cal-flag td{background:#fff7ed}
+    @media(max-width:900px){.cal-kpis,.cal-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.cal-two{grid-template-columns:1fr!important}}
     .cr-remarks{padding:8px 10px 8px 18px!important}
     .cr-remarks textarea{width:100%;min-height:68px;border:1px solid var(--border);border-radius:6px;font-size:12px;padding:5px 8px;font-family:'DM Sans',var(--font);color:var(--text);resize:vertical;outline:none;transition:border .15s;line-height:1.45;background:var(--white)}
     .cr-remarks textarea:focus{border-color:var(--pri);box-shadow:0 0 0 2px rgba(99,102,241,.1)}
@@ -1420,7 +1437,7 @@
     .seg-btn-group{background:#eef1f5;border:none!important;border-radius:10px!important;padding:2px;gap:2px}
     .seg-btn-group .btn{border-radius:8px!important;border:none!important}
   </style>
-<style>/* v5.15-v5.16 release (2026-11-10, per Sandra): in-app Knowledge Base (v5.17) stays preview-only; live keeps LEAP_KB.html */ html:not(.is-preview) .nav-item[data-view="knowledge-base"]{display:none} html.is-preview .js-kb-file{display:none}</style>
+<style>/* v5.15-v5.16 release (2026-11-10, per Sandra): in-app Knowledge Base (v5.17) stays preview-only; live keeps LEAP_KB.html */ html:not(.is-preview) .nav-item[data-view="knowledge-base"]{display:none} html:not(.is-preview) .nav-item[data-view="qa-calibration"]{display:none} html.is-preview .js-kb-file{display:none}</style>
 </head>
 <body>
 
@@ -1528,6 +1545,7 @@
         <div class="nav-item js-id-qa hidden" data-view="id-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4L16.5 3.9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Instructional Design</div>
         <div class="nav-item js-content-qa hidden" data-view="content-qa"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M10 8.3l6 3.7-6 3.7V8.3Z" fill="currentColor" stroke="none"/></svg></span> Content Development</div>
         <div class="nav-item js-trainer-eval hidden" data-view="evaluations"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.5 12l3-3 2.5 2.5L17.5 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Trainer Evaluation</div>
+        <div class="nav-item js-calibration" data-view="qa-calibration"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></span> QA Calibration</div>
         <div class="nav-item js-reports hidden" data-view="reports"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><line x1="6" y1="20" x2="6" y2="12" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="6" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><line x1="18" y1="20" x2="18" y2="9.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg></span> QA Reports</div>
         <div class="nav-sec">Training Operations</div>
         <div class="nav-item" data-view="training-dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 15.5l4-4.5 3.2 3 5.3-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Training Dashboard</div>
@@ -2368,6 +2386,9 @@
           </div>
 
         </div>
+
+        <!-- v5.18 (2026-11-11, per Sandra): QA Calibration (preview) -->
+        <div id="view-qa-calibration" class="hidden"><div id="cal-root"></div></div>
 
         <div id="view-training-dashboard" class="hidden">
           <div id="tdash-wrap">
@@ -4412,7 +4433,7 @@ const Auth = {
 const Perms = {
   roleLabel(u){ if(!u) return ''; const a=Auth.formAccess(u); if(u.isAdmin&&a.allForms) return 'Admin · Leader'; if(u.isAdmin) return 'Admin'; if(a.allForms) return 'Leader'; const parts=[]; if(a.idqa) parts.push('ID QA'); if(a.cqa) parts.push('CD QA'); if(a.trainerEval) parts.push('Trainer'); if(parts.length) return parts.join(' · '); return 'Employee'; },
   catBadges(u){ if(!u) return ''; const a=Auth.formAccess(u); if(!u.isAdmin&&!a.trainerEval&&!a.idqa&&!a.cqa) return '<span class="badge b-emp">Employee</span>'; if(u.isAdmin||a.allForms) return '<span class="badge b-leader">Leader</span>'; const parts=[]; if(a.idqa) parts.push('<span class="badge" style="background:#dbeafe;color:#1d4ed8">ID QA</span>'); if(a.cqa) parts.push('<span class="badge" style="background:#fef3c7;color:#92400e">CD QA</span>'); if(a.trainerEval) parts.push('<span class="badge b-td">Trainer</span>'); return parts.join(' '); },
-  canView(v){ if(v==='knowledge-base'&&window.LEAP_CHANNEL!=='preview') return false; if(v==='ld-reports') return !!Auth.isAdmin; if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
+  canView(v){ if(v==='knowledge-base'&&window.LEAP_CHANNEL!=='preview') return false; if(v==='qa-calibration') return window.LEAP_CHANNEL==='preview'&&!!Auth.user; /* v5.18 preview-only */ if(v==='ld-reports') return !!Auth.isAdmin; if(v==='team-performance') return !!(Auth.isAdmin||Perms.isSupervisor(Auth.user));
     // v5.15b (2026-10-30, per Sandra): L&D Performance = department view — Department Head (admin) and authorized
     // management only (Reports Viewer or Dashboard Access = Full View). Everyone else lands on My Performance.
     if(v==='dashboard') return !!(Auth.isAdmin||(Auth.user&&(Auth.user.isReportsViewer||Auth.user.dashScope==='full'))); if(v==='reports') return Auth.canViewReports; if(v==='id-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).idqa; if(v==='content-qa') return Auth.isAdmin||Auth.formAccess(Auth.user).cqa; if(v==='cost-settings') return !!(Auth.user&&Auth.user.canManageFacilitationRates); if(v==='cost-analysis') return !!(Auth.user&&(Auth.user.canViewTrainingCosts||Auth.user.canManageFacilitationRates)); return ['users','settings'].includes(v)?Auth.isAdmin:true; },
@@ -4850,7 +4871,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ── NAVIGATION ───────────────────── */
-const PAGE_TITLES={'knowledge-base':'Knowledge Base',dashboard:'Department Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','ld-reports':'Reports','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
+const PAGE_TITLES={'knowledge-base':'Knowledge Base',dashboard:'Department Performance','my-performance':'My Performance','team-performance':'Team Performance',evaluations:'Trainer Evaluation','id-qa':'Instructional Design QA','content-qa':'Content Development QA','qa-calibration':'QA Calibration',users:'User Management',reports:'QA Reports',settings:'Settings','training-dashboard':'Training Dashboard','learning-programs':'Learning Programs','training-delivery':'Training Calendar','trainer-checklist':'Trainer Checklist','ld-reports':'Reports','cost-settings':'Facilitation Cost Settings','cost-analysis':'Training Cost Analysis'};
 // Static subtitles shown under the page title in the topbar.
 const PAGE_SUBTITLES={
   'knowledge-base':'How-to guides, rules and answers for LEAP Insights',
@@ -4860,6 +4881,7 @@ const PAGE_SUBTITLES={
   evaluations:'Structured observation and rating of trainer delivery, facilitation, and learner engagement',
   'id-qa':'Evaluates instructional design quality across learning design, content accuracy, writing, and deliverable completeness',
   'content-qa':'Reviews developed content for design fidelity, visual and audio quality, interactivity, accessibility, and brand alignment',
+  'qa-calibration':'Team calibration exercises — everyone rates the same output independently, then compares and agrees how to apply the QA standard',
   'training-dashboard':'Rolled-up view of training delivery health across the organization',
   'learning-programs':'Central registry of L&D programs, ownership, content, and implementation history',
   'training-delivery':'Centralized list and calendar view of all training delivery — ILT, VILT, self-led, and external — reading the same sessions as Training Sessions with no duplicate data entry',
@@ -4903,6 +4925,7 @@ function showView(id){
   if(id==='reports')     renderReports();
   if(id==='id-qa')       renderIDQA();
   if(id==='content-qa')  renderContentQA();
+  if(id==='qa-calibration'){ if(!_cal.pending){ _cal.view='list'; _cal.id=null; _cal.edit=null; } renderQACalibration(true); } // v5.18
   if(id==='settings')    renderSettings();
   if(id==='training-dashboard') renderTrainingDashboard();
   if(id==='training-delivery') renderTrainingDelivery();
@@ -4956,6 +4979,7 @@ function _hashForView(id){
   if(id==='evaluations') return _computeEvalHash();
   if(id==='id-qa')       return _computeIDQAHash();
   if(id==='content-qa')  return _computeCQAHash();
+  if(id==='qa-calibration') return _calHash(); // v5.18
   if(id==='training-delivery') return _computeTrainingDeliveryHash();
   if(id==='learning-programs') return '#learning-programs'+(_lpDetailId?'/'+_lpDetailId:'');
   if(id==='knowledge-base') return _kbHash(); // v5.17
@@ -4998,9 +5022,10 @@ function _restoreFromHash(hash){
   try{
     const parts=(hash||'').replace(/^#/,'').split('/');
     const view=parts[0]||'dashboard';
-    const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','ld-reports','cost-settings','cost-analysis'];
+    const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','qa-calibration','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','ld-reports','cost-settings','cost-analysis'];
     if(!validViews.includes(view)){ showView('dashboard'); landedHash='#dashboard'; return; }
     if(view==='knowledge-base'){ const k=parts[1]; _kbR=k==='article'?{page:'article',id:parts[2]}:k==='category'?{page:'category',id:parts[2]}:k==='search'?{page:'search',q:decodeURIComponent(parts[2]||'')}:k==='archive'?{page:'archive'}:{page:'home'}; if(k==='search') _kbQ=_kbR.q; } // v5.17
+    if(view==='qa-calibration') _calFromHash(parts); // v5.18
     showView(view);
     if(view==='evaluations'){
       if(parts[1]==='form'){ const rid=parts[2]; if(!rid||rid==='new') openNewEval(); else { const rec=EvalDB.byId(rid); if(rec) (rec.status==='draft'?openEvalForm(rid):openEvalView(rid)); else showEvalSubview('list'); } }
@@ -5040,7 +5065,7 @@ function setupNav(){
   document.querySelectorAll('.js-id-qa').forEach(el=>el.classList.toggle('hidden',!_idqaAccess));
   document.querySelectorAll('.js-trainer-eval').forEach(el=>el.classList.toggle('hidden',!_trainerAccess));
   // 2026-09-25 nav restructure: Quality Assurance header shows if the user can see any QA item.
-  document.querySelectorAll('.js-qa-sec').forEach(el=>el.classList.toggle('hidden',!(_idqaAccess||_cqaAccess||_trainerAccess||Auth.canViewReports)));
+  document.querySelectorAll('.js-qa-sec').forEach(el=>el.classList.toggle('hidden',!(_idqaAccess||_cqaAccess||_trainerAccess||Auth.canViewReports||window.LEAP_CHANNEL==='preview'))); // v5.18: QA Calibration is open to everyone (preview)
   document.querySelectorAll('.js-cost-manage').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-settings')));
   document.querySelectorAll('.js-cost-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('cost-analysis')));
   document.querySelectorAll('.js-team-view').forEach(el=>el.classList.toggle('hidden',!Perms.canView('team-performance'))); // v5.15a
@@ -25200,6 +25225,665 @@ function exportCQACSV(){
 }
 
 
+/* ══ v5.18 (2026-11-11, per Sandra): QA CALIBRATION — Phase 1 (CD QA) ══════════════════════════════
+   A separate page (the real CD QA form is untouched). Everyone on the roster rates the same output on a copy of
+   the CD QA form layout: all 17 criteria shown, each rated 2/1/0 or N/A (+ reason). Submissions close at the
+   deadline (enforced in the DB). The owner (creator or admin) reviews results after the deadline, releases them to
+   the team as Evaluator A, B, C…, records agreed ratings / applicability recommendations / learning points, and
+   finalizes. Never written to cdqa_reviews; not in any scorecard, KPI, dashboard or acknowledgement.
+   Data is NOT kept in Cache (privacy): loaded on demand through RLS + RPCs calibration_counts / _participation /
+   _results (migration 20261111090000_v518_qa_calibration). */
+const CAL_FORMS={cdqa:'Content Development QA'};
+const CAL_ST={draft:['Draft','#f1f5f9','#475569'],open:['Open','#dbeafe','#1d4ed8'],closed:['Closed','#fef3c7','#92400e'],released:['Released','#ede9fe','#6d28d9'],finalized:['Finalized','#dcfce7','#15803d']};
+const CAL_REC={keep:'Keep existing applicability',update:'Recommend matrix update',conditional:'Apply conditionally',separate:'Evaluate separately',review:'Further review needed'};
+const CAL_DISP=[['Endorse','#dcfce7','#16a34a'],['Revise & Resubmit','#fef9c3','#d97706'],['Major Revision','#fee2e2','#dc2626']];
+const CAL_SUMMARY=[['learning','Key learning points'],['gaps','Gaps in QA criteria or guidelines'],['improvements','Recommended improvements'],['outstanding','Outstanding items for further review']];
+let _cal={loaded:false,err:null,list:[],counts:{},mine:{},view:'list',id:null,tab:'overview',rtab:'outcomes',f:{q:'',st:'all',form:'all',from:'',to:''},edit:null,sub:null,res:null,part:null,dec:{},subj:null,flagOnly:false,open:{},names:false,pending:null};
+let _calLive={ratings:{},remarks:{}}, _calGrpCollapsed={}, _calDirty=false;
+
+function _calCamel(r){ const o={}; Object.keys(r||{}).forEach(k=>{ o[k.replace(/_([a-z])/g,(m,c)=>c.toUpperCase())]=r[k]; }); return o; }
+function _calStatus(e){ return (e&&e.status==='open'&&e.deadlineAt&&Date.now()>=Date.parse(e.deadlineAt))?'closed':(e?e.status:''); }
+function _calBadge(st){ const m=CAL_ST[st]||[st,'#f1f5f9','#475569']; return `<span class="badge" style="background:${m[1]};color:${m[2]}">${m[0]}</span>`; }
+function _calFmt(iso,withTime=true){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleString('en-US',Object.assign({timeZone:'Asia/Manila',month:'short',day:'2-digit',year:'numeric'},withTime?{hour:'numeric',minute:'2-digit'}:{})); }
+function _calTime(iso){ if(!iso) return ''; return new Date(iso).toLocaleTimeString('en-US',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}); }
+function _calParts(iso){ if(!iso) return {d:'',t:''}; const p={}; new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(iso)).forEach(x=>{p[x.type]=x.value;}); return {d:`${p.year}-${p.month}-${p.day}`,t:`${p.hour}:${p.minute}`}; }
+function _calIso(d,t){ return (d&&t)?new Date(`${d}T${t}:00+08:00`).toISOString():null; } // entered in Philippine time
+function _calName(id){ const u=id?DB.byId(id):null; return u?`${u.firstName||''} ${u.lastName||''}`.trim():'—'; }
+function _calIsOwner(e){ const me=Auth.user; return !!me&&!!e&&(!!Auth.isAdmin||e.createdBy===me.id); }
+function _calCanCreate(){ return !!Auth.user&&(!!Auth.isAdmin||Perms.isSupervisor(Auth.user)); }
+function _calInRoster(e){ return !!Auth.user&&!!e&&(e.roster||[]).includes(Auth.user.id); }
+function _calTxt(html){ try{ return (new DOMParser().parseFromString(String(html||''),'text/html').body.textContent||'').trim(); }catch(_){ return ''; } }
+function _calById(id){ return _cal.list.find(e=>e.id===id)||null; }
+function _calHas(v){ return v!==undefined&&v!==null&&v!==''; }
+function _calLeft(iso){ const ms=Date.parse(iso)-Date.now(); if(!(ms>0)) return 'closed'; const h=Math.floor(ms/3600000); if(h>=48) return `closes in ${Math.floor(h/24)} days`; if(h>=1) return `closes in ${h} h`; return `closes in ${Math.max(1,Math.floor(ms/60000))} min`; }
+function _calMatrix(e){ const m=e&&e.matrixSnapshot&&Array.isArray(e.matrixSnapshot.applicable)?e.matrixSnapshot.applicable:null; return m||CQA_CRITERIA.filter(c=>_cqaApplies(c,e?e.contentType:'',e?e.criteriaVersion:QA_CRITERIA_VERSION_CURRENT)).map(c=>c.id); }
+// Same thresholds as the CD QA form (_cqaScore). Denominator = criteria this evaluator rated; N/A is never scored as 0.
+function _calScore(ratings){
+  const r=ratings||{}, num=CQA_CRITERIA.filter(c=>[0,1,2].includes(r[c.id]));
+  const answered=CQA_CRITERIA.filter(c=>_calHas(r[c.id])).length, na=answered-num.length;
+  if(!num.length) return {pct:null,count:answered,total:CQA_CRITERIA.length,na,disposition:null,dispBg:'',dispColor:'',hasZero:false};
+  const sum=num.reduce((s,c)=>s+r[c.id],0), pct=sum/(num.length*2)*100, hasZero=num.some(c=>r[c.id]===0);
+  let disposition,dispBg,dispColor;
+  if(pct<70){ disposition='Major Revision'; dispBg='#fee2e2'; dispColor='#dc2626'; }
+  else if(pct<85||hasZero){ disposition='Revise & Resubmit'; dispBg='#fef9c3'; dispColor='#d97706'; }
+  else { disposition='Endorse'; dispBg='#dcfce7'; dispColor='#16a34a'; }
+  return {pct,count:answered,total:CQA_CRITERIA.length,na,disposition,dispBg,dispColor,hasZero};
+}
+function _calChip(v){ if(!_calHas(v)) return '<span style="color:var(--text3)">—</span>'; if(v==='NA') return '<span class="cal-chip cal-na">N/A</span>'; return `<span class="cal-chip cal-${v}">${v}</span>`; }
+function _calDispChip(d){ const m=CAL_DISP.find(x=>x[0]===d); return m?`<span class="cqa-disp-chip" style="background:${m[1]};color:${m[2]}">${Utils.esc(d)}</span>`:'<span style="color:var(--text3)">—</span>'; }
+
+/* ── data ── */
+async function _calLoad(){
+  try{
+    const me=Auth.user;
+    const [ex,cnt,mine]=await Promise.all([
+      sb.from('calibration_exercises').select('*').order('created_at',{ascending:false}),
+      sb.rpc('calibration_counts'),
+      sb.from('calibration_submissions').select('id,exercise_id,status,submitted_at,updated_at').eq('evaluator_id',me.id)]);
+    if(ex.error) throw ex.error;
+    _cal.list=(ex.data||[]).map(_calCamel);
+    _cal.counts={}; (cnt.data||[]).forEach(r=>{ _cal.counts[r.exercise_id]={roster:r.roster_count||0,sub:r.submitted_count||0,draft:r.draft_count||0}; });
+    _cal.mine={}; (mine.data||[]).forEach(r=>{ _cal.mine[r.exercise_id]=_calCamel(r); });
+    _cal.err=null;
+  }catch(e){ _cal.err=(e&&e.message)||String(e); console.warn('QA Calibration load failed',e); }
+  _cal.loaded=true;
+}
+function _calHash(){ return _cal.view==='list'?'#qa-calibration':`#qa-calibration/${_cal.view}/${_cal.id||'new'}`; }
+function _calFromHash(parts){ const v=parts[1], id=parts[2]; _cal.pending=(['detail','form','edit'].includes(v)&&id&&id!=='new')?{view:v,id}:(v==='edit'?{view:'new'}:null); }
+async function renderQACalibration(reload){
+  const root=document.getElementById('cal-root'); if(!root) return;
+  if(!_cal.loaded||reload){ root.innerHTML='<div class="card" style="padding:22px 24px;color:var(--text3);font-size:13px">Loading calibration exercises…</div>'; await _calLoad(); }
+  if(_cal.err){ root.innerHTML=`<div class="card" style="padding:22px 24px"><div style="font-weight:700;margin-bottom:6px">QA Calibration is not available yet</div><div style="font-size:12.5px;color:var(--text3)">The calibration tables could not be loaded (${Utils.esc(_cal.err)}). The database update for this feature may not be applied yet.</div></div>`; return; }
+  if(_cal.pending){ const p=_cal.pending; _cal.pending=null;
+    if(p.view==='new'&&_calCanCreate()) return calNew();
+    if(p.view==='form'&&_calById(p.id)) return calOpenForm(p.id);
+    if(p.view==='edit'&&_calById(p.id)&&_calIsOwner(_calById(p.id))) return calEdit(p.id);
+    if(_calById(p.id)){ _cal.view='detail'; _cal.id=p.id; } else { _cal.view='list'; _cal.id=null; } }
+  if(_cal.view==='edit'&&_cal.edit) return _calRenderEdit(root);
+  if(_cal.view==='form') return _calRenderForm(root);
+  if(_cal.view==='detail') return _calRenderDetail(root);
+  _cal.view='list';
+  return _calRenderList(root);
+}
+function calGo(view,id){
+  guardedLeave(async()=>{
+    disarmLeaveGuard(); _calDirty=false;
+    if(view==='form') return calOpenForm(id);
+    if(view==='edit') return calEdit(id);
+    _cal.view=view; _cal.id=id||null;
+    if(view==='detail'){ _cal.res=null; _cal.part=null; _cal.subj=null; _cal.open={}; }
+    await renderQACalibration(view==='list'); _pushAppHash(_calHash()); window.scrollTo(0,0);
+  });
+}
+
+/* ── list ── */
+function calSetF(k,v){ _cal.f[k]=v; _calRenderList(document.getElementById('cal-root')); if(k==='q'){ const el=document.getElementById('cal-q'); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } } }
+function calClearF(){ _cal.f={q:'',st:'all',form:'all',from:'',to:''}; _calRenderList(document.getElementById('cal-root')); }
+function _calMyStatus(e){
+  if(!_calInRoster(e)) return '<span style="color:var(--text3)">—</span>';
+  const m=_cal.mine[e.id], st=_calStatus(e);
+  if(m&&m.status==='submitted') return '<span class="cal-tag" style="background:#dcfce7;color:#15803d">Submitted</span>';
+  if(m) return `<span class="cal-tag" style="background:#fef9c3;color:#a16207">${st==='open'?'Draft':'Draft (not submitted)'}</span>`;
+  return st==='open'?'<span class="cal-tag" style="background:#f1f5f9;color:#475569">Not started</span>':'<span class="cal-tag" style="background:#fee2e2;color:#b91c1c">Not submitted</span>';
+}
+function _calRenderList(root){
+  if(!root) return;
+  const now=Date.now(), f=_cal.f, esc=Utils.esc;
+  const pub=_cal.list.filter(e=>e.status!=='draft'&&!e.archived);
+  const openN=_cal.list.filter(e=>_calStatus(e)==='open'&&!e.archived).length;
+  const upN=pub.filter(e=>e.discussionAt&&Date.parse(e.discussionAt)>now&&e.status!=='finalized').length;
+  let rs=0,ss=0; pub.forEach(e=>{ const c=_cal.counts[e.id]; if(c){ rs+=c.roster; ss+=c.sub; } });
+  const finN=_cal.list.filter(e=>e.status==='finalized'&&!e.archived).length;
+  const kpi=(l,v,s)=>`<div class="cal-kpi"><div class="cal-kpi-l">${l}</div><div class="cal-kpi-v">${v}</div>${s?`<div class="cal-kpi-s">${s}</div>`:''}</div>`;
+  const rows=_cal.list.filter(e=>{
+    const st=_calStatus(e);
+    if(f.st==='archived'){ if(!e.archived) return false; } else { if(e.archived) return false; if(f.st!=='all'&&st!==f.st) return false; }
+    if(f.form!=='all'&&e.formType!==f.form) return false;
+    if(f.q){ const q=f.q.toLowerCase(); if(!`${e.code||''} ${e.title||''} ${e.itemTitle||''} ${e.contentType||''}`.toLowerCase().includes(q)) return false; }
+    const dd=e.discussionAt?_calParts(e.discussionAt).d:(e.deadlineAt?_calParts(e.deadlineAt).d:'');
+    if(f.from&&(!dd||dd<f.from)) return false; if(f.to&&(!dd||dd>f.to)) return false;
+    return true;
+  });
+  const anyF=f.q||f.st!=='all'||f.form!=='all'||f.from||f.to;
+  const body=rows.length?`<div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>Code</th><th>Exercise</th><th>Form</th><th>Status</th><th>Submission Deadline</th><th>Calibration Discussion</th><th>Participation</th><th>My Evaluation</th><th>Actions</th></tr></thead><tbody>${rows.map(e=>{
+      const st=_calStatus(e), c=_cal.counts[e.id]||{roster:(e.roster||[]).length,sub:0}, pct=c.roster?Math.round(c.sub/c.roster*100):0;
+      const m=_cal.mine[e.id]; let acts='';
+      if(st==='draft'&&_calIsOwner(e)) acts+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();calGo('edit','${e.id}')">Edit</button>`;
+      if(st==='open'&&_calInRoster(e)&&!(m&&m.status==='submitted')) acts+=`<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();calGo('form','${e.id}')">${m?'Continue':'Evaluate'}</button>`;
+      acts+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();calGo('detail','${e.id}')">${(st==='released'||st==='finalized'||(st==='closed'&&_calIsOwner(e)))?'Results':'View'}</button>`;
+      return `<tr style="cursor:pointer" onclick="calGo('detail','${e.id}')">
+        <td style="white-space:nowrap;font-family:var(--mono);font-size:12px">${esc(e.code||'—')}</td>
+        <td style="max-width:260px"><strong style="color:var(--text)">${esc(e.title||'Untitled')}</strong><div style="font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.contentType||'')}${e.itemTitle?' · '+esc(e.itemTitle):''}</div></td>
+        <td style="white-space:nowrap">${esc(CAL_FORMS[e.formType]||e.formType)}</td>
+        <td>${_calBadge(st)}</td>
+        <td style="white-space:nowrap">${_calFmt(e.deadlineAt)}</td>
+        <td style="white-space:nowrap">${_calFmt(e.discussionAt)}</td>
+        <td style="white-space:nowrap">${e.status==='draft'?'<span style="color:var(--text3)">—</span>':`<strong>${c.sub}</strong> of ${c.roster} <span style="color:var(--text3)">· ${pct}%</span>`}</td>
+        <td>${_calMyStatus(e)}</td>
+        <td><div class="td-acts">${acts}</div></td></tr>`; }).join('')}</tbody></table></div>`
+    :`<div class="empty-state"><div class="empty-ico">✦</div><div class="empty-title">${_cal.list.length?'No exercises match these filters':'No calibration exercises yet'}</div>${!_cal.list.length&&_calCanCreate()?'<div style="font-size:12.5px;color:var(--text3);margin-top:4px">Create one to have the team rate the same output independently.</div>':''}</div>`;
+  root.innerHTML=`
+    <div class="cal-kpis">${kpi('Open exercises',openN,'accepting evaluations')}${kpi('Upcoming discussions',upN,'scheduled after today')}${kpi('Participation rate',rs?Math.round(ss/rs*100)+'%':'—',rs?`${ss} of ${rs} submitted`:'published exercises')}${kpi('Finalized',finN,'completed calibrations')}</div>
+    <div class="eval-controls">
+      <input id="cal-q" class="eval-select" style="min-width:200px" placeholder="Search exercises…" value="${esc(f.q)}" oninput="calSetF('q',this.value)">
+      <select class="eval-select" onchange="calSetF('form',this.value)"><option value="all">All Forms</option>${Object.entries(CAL_FORMS).map(([k,v])=>`<option value="${k}"${f.form===k?' selected':''}>${v}</option>`).join('')}</select>
+      <select class="eval-select" onchange="calSetF('st',this.value)">${[['all','All Statuses'],['draft','Draft'],['open','Open'],['closed','Closed'],['released','Released'],['finalized','Finalized'],['archived','Archived']].map(([k,v])=>`<option value="${k}"${f.st===k?' selected':''}>${v}</option>`).join('')}</select>
+      <input type="date" class="eval-select" value="${f.from}" title="Discussion from" onchange="calSetF('from',this.value)"><span style="font-size:12px;color:var(--text3)">to</span><input type="date" class="eval-select" value="${f.to}" title="Discussion to" onchange="calSetF('to',this.value)">
+      ${anyF?'<button class="eval-toggle-btn" onclick="calClearF()" style="color:var(--red);border-color:var(--red-lt)">✕ Clear Filters</button>':''}
+      <span style="font-size:12px;color:var(--text3);flex:1">${rows.length} exercise${rows.length!==1?'s':''}</span>
+      ${_calCanCreate()?'<button class="btn btn-primary" onclick="calNew()">+ New Exercise</button>':''}
+    </div>
+    <div class="card">${body}</div>`;
+}
+
+/* ── create / edit ── */
+function calNew(){
+  if(!_calCanCreate()) return;
+  _cal.edit={isNew:true,status:'draft',title:'',formType:'cdqa',contentType:'',itemTitle:'',resources:[{title:'',url:''}],instructions:'',dl:{d:'',t:'17:00'},ds:{d:'',t:'14:00'},de:'',meetingLink:'',location:'',subjectProfileId:'',subjectName:''};
+  _cal.view='edit'; _cal.id=null; _calRenderEdit(document.getElementById('cal-root')); _pushAppHash(_calHash());
+}
+async function calEdit(id){
+  const e=_calById(id); if(!e||!_calIsOwner(e)) return;
+  const {data}=await sb.from('calibration_subjects').select('*').eq('exercise_id',id).maybeSingle();
+  _cal.edit={isNew:false,id,status:_calStatus(e),title:e.title||'',formType:e.formType||'cdqa',contentType:e.contentType||'',itemTitle:e.itemTitle||'',
+    resources:(Array.isArray(e.resources)&&e.resources.length?e.resources:[{title:'',url:''}]).map(r=>({title:r.title||'',url:r.url||''})),instructions:e.instructions||'',
+    dl:_calParts(e.deadlineAt),ds:_calParts(e.discussionAt),de:e.discussionEndAt?_calParts(e.discussionEndAt).t:'',meetingLink:e.meetingLink||'',location:e.location||'',
+    subjectProfileId:data?.subject_profile_id||'',subjectName:data?.subject_name||''};
+  _cal.view='edit'; _cal.id=id; _calRenderEdit(document.getElementById('cal-root')); _pushAppHash(_calHash());
+}
+function calE(path,v){ const d=_cal.edit; if(!d) return; const p=path.split('.'); if(p.length===2) d[p[0]][p[1]]=v; else d[path]=v; if(path==='subjectProfileId') _calRenderEdit(document.getElementById('cal-root')); }
+function calRes(i,k,v){ _cal.edit.resources[i][k]=v; }
+function calResAdd(){ _cal.edit.resources.push({title:'',url:''}); _calRenderEdit(document.getElementById('cal-root')); }
+function calResDel(i){ _cal.edit.resources.splice(i,1); if(!_cal.edit.resources.length) _cal.edit.resources.push({title:'',url:''}); _calRenderEdit(document.getElementById('cal-root')); }
+function _calRenderEdit(root){
+  const d=_cal.edit, esc=Utils.esc, locked=d.status!=='draft';
+  const cdTypes=Sel.all(Store.DELIVERABLES).filter(x=>x.isCD&&(x.isActive||x.name===d.contentType)).sort((a,b)=>a.name.localeCompare(b.name));
+  const people=DB.all().filter(u=>u.isActive).sort((a,b)=>(a.firstName||'').localeCompare(b.firstName||''));
+  const lab=(t,req,hint)=>`<label class="form-label">${t}${req?' <span class="req">*</span>':''}${hint?` <span style="font-weight:400;color:var(--text3);font-size:11px">${hint}</span>`:''}</label>`;
+  root.innerHTML=`<div class="card" style="padding:18px 22px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="calGo(${d.isNew?"'list'":`'detail','${d.id}'`})">← Back</button>
+      <div style="font-weight:700;font-size:15px">${d.isNew?'New Calibration Exercise':'Edit Calibration Exercise'}</div>${d.isNew?'':_calBadge(d.status)}
+    </div>
+    ${locked?'<div style="font-size:12px;background:#fefce8;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-bottom:12px">Published: the form, content type and roster are locked. You can still update the schedule, materials, instructions and the person being evaluated.</div>':''}
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px" class="cal-two">
+      <div class="form-group" style="margin:0;grid-column:1/-1">${lab('Exercise Title',1)}<input class="form-control" value="${esc(d.title)}" placeholder="e.g. Foundational Leadership — Content QA Calibration" onchange="calE('title',this.value)"></div>
+      <div class="form-group" style="margin:0">${lab('Evaluation Form',1)}<select class="form-control" ${locked?'disabled':''} onchange="calE('formType',this.value)">${Object.entries(CAL_FORMS).map(([k,v])=>`<option value="${k}"${d.formType===k?' selected':''}>${v}</option>`).join('')}<option disabled>Instructional Design QA (coming next)</option><option disabled>Trainer Evaluation (coming next)</option></select></div>
+      <div class="form-group" style="margin:0">${lab('Content Type',1,'evaluators see it; which criteria the real form hides is revealed only after the deadline')}<select class="form-control" ${locked?'disabled':''} onchange="calE('contentType',this.value)"><option value="">— Select Content Type —</option>${cdTypes.map(x=>`<option value="${esc(x.name)}"${d.contentType===x.name?' selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+      <div class="form-group" style="margin:0">${lab('Output or Performance Being Evaluated',1)}<input class="form-control" value="${esc(d.itemTitle)}" placeholder="e.g. Module 2 slide deck v3" onchange="calE('itemTitle',this.value)"></div>
+      <div class="form-group" style="margin:0">${lab('Person Being Evaluated','','visible only to you and admins')}
+        <select class="form-control" onchange="calE('subjectProfileId',this.value)"><option value="">— Not a LEAP user / type a name —</option>${people.map(u=>`<option value="${u.id}"${d.subjectProfileId===u.id?' selected':''}>${esc(`${u.firstName||''} ${u.lastName||''}`.trim())}</option>`).join('')}</select>
+        ${d.subjectProfileId?'':`<input class="form-control" style="margin-top:6px" value="${esc(d.subjectName)}" placeholder="Name (optional)" onchange="calE('subjectName',this.value)">`}</div>
+      <div class="form-group" style="margin:0;grid-column:1/-1">${lab('Reference Materials','','links only — share an anonymized review copy where practical')}
+        ${d.resources.map((r,i)=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;gap:8px;margin-bottom:6px"><input class="form-control" placeholder="Title (e.g. Slide deck)" value="${esc(r.title)}" onchange="calRes(${i},'title',this.value)"><input class="form-control" placeholder="https://…" value="${esc(r.url)}" onchange="calRes(${i},'url',this.value)"><button class="btn btn-ghost btn-sm" title="Remove" onclick="calResDel(${i})">✕</button></div>`).join('')}
+        <button class="btn btn-xs btn-ghost" onclick="calResAdd()">+ Add link</button></div>
+      <div class="form-group" style="margin:0">${lab('Submission Deadline',1,'Philippine time')}<div style="display:flex;gap:8px"><input type="date" class="form-control" value="${d.dl.d}" onchange="calE('dl.d',this.value)"><input type="time" class="form-control" style="max-width:130px" value="${d.dl.t}" onchange="calE('dl.t',this.value)"></div></div>
+      <div class="form-group" style="margin:0">${lab('Calibration Discussion',1,'date, start – end (end optional)')}<div style="display:flex;gap:8px"><input type="date" class="form-control" value="${d.ds.d}" onchange="calE('ds.d',this.value)"><input type="time" class="form-control" style="max-width:120px" value="${d.ds.t}" onchange="calE('ds.t',this.value)"><input type="time" class="form-control" style="max-width:120px" value="${d.de}" onchange="calE('de',this.value)"></div></div>
+      <div class="form-group" style="margin:0">${lab('Meeting Link')}<input class="form-control" value="${esc(d.meetingLink)}" placeholder="https://teams.microsoft.com/…" onchange="calE('meetingLink',this.value)"></div>
+      <div class="form-group" style="margin:0">${lab('Meeting Location')}<input class="form-control" value="${esc(d.location)}" placeholder="e.g. L&amp;D Room" onchange="calE('location',this.value)"></div>
+      <div class="form-group" style="margin:0;grid-column:1/-1">${lab('Instructions to Evaluators')}<textarea class="form-control" rows="3" placeholder="What to review, what to focus on…" onchange="calE('instructions',this.value)">${esc(d.instructions)}</textarea></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:12px">Everyone with an active LEAP account at publishing time can evaluate (the roster is saved then). Evaluators see the exercise, materials and the full CD QA form — not the person being evaluated, not each other, and not which criteria the real form would hide.</div>
+    <div class="modal-err hidden" id="cal-edit-err" style="margin-top:10px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
+      ${!d.isNew&&d.status==='draft'?`<button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="calDelete('${d.id}')">Delete Draft</button>`:''}
+      <button class="btn btn-secondary" onclick="calSave(false)">${d.status==='draft'?'💾 Save Draft':'💾 Save Changes'}</button>
+      ${d.status==='draft'?'<button class="btn btn-primary" onclick="calSave(true)">Publish</button>':''}
+    </div></div>`;
+  armLeaveGuard('cal-root');
+}
+async function calSave(publish){
+  const d=_cal.edit; if(!d) return; const err=document.getElementById('cal-edit-err');
+  const show=m=>{ if(err){ err.textContent=m; err.classList.remove('hidden'); err.style.display='block'; } return false; };
+  const res=d.resources.map(r=>({title:(r.title||'').trim(),url:(r.url||'').trim()})).filter(r=>r.title||r.url);
+  const dl=_calIso(d.dl.d,d.dl.t), ds=_calIso(d.ds.d,d.ds.t), de=(d.ds.d&&d.de)?_calIso(d.ds.d,d.de):null;
+  if(!d.title.trim()) return show('Exercise title is required.');
+  if(res.some(r=>!r.url)) return show('Each reference material needs a link.');
+  if(res.some(r=>!/^https?:\/\//i.test(r.url))) return show('Reference material links must start with http:// or https://');
+  if(d.meetingLink&&!/^https?:\/\//i.test(d.meetingLink.trim())) return show('Meeting link must start with http:// or https://');
+  if(dl&&ds&&Date.parse(ds)<=Date.parse(dl)) return show('The calibration discussion must be scheduled after the submission deadline.');
+  if(de&&ds&&Date.parse(de)<=Date.parse(ds)) return show('The discussion end time must be after the start time.');
+  if(publish||d.status!=='draft'){
+    if(!d.contentType) return show('Content type is required.');
+    if(!d.itemTitle.trim()) return show('Describe the output or performance being evaluated.');
+    if(!dl) return show('Submission deadline (date and time) is required.');
+    if(!ds) return show('Calibration discussion date and start time are required.');
+    if(d.status==='draft'&&Date.parse(dl)<=Date.now()) return show('The submission deadline must be in the future.');
+  }
+  const row={title:d.title.trim(),item_title:d.itemTitle.trim()||null,resources:res,instructions:d.instructions.trim()||null,deadline_at:dl,discussion_at:ds,discussion_end_at:de,meeting_link:d.meetingLink.trim()||null,location:d.location.trim()||null};
+  if(d.status==='draft'){ row.form_type=d.formType; row.content_type=d.contentType||null; }
+  const go=async()=>{
+    try{
+      let id=d.id;
+      if(d.isNew){ const r=await sb.from('calibration_exercises').insert({...row,created_by:Auth.user.id}).select().single(); if(r.error) throw r.error; id=r.data.id; d.isNew=false; d.id=id; }
+      else { const r=await sb.from('calibration_exercises').update(row).eq('id',id).select().single(); if(r.error) throw r.error; }
+      const sr=await sb.from('calibration_subjects').upsert({exercise_id:id,subject_profile_id:d.subjectProfileId||null,subject_name:d.subjectProfileId?null:(d.subjectName.trim()||null),updated_at:new Date().toISOString()},{onConflict:'exercise_id'});
+      if(sr.error) throw sr.error;
+      if(publish){
+        const matrix={criteriaVersion:QA_CRITERIA_VERSION_CURRENT,contentType:d.contentType,applicable:CQA_CRITERIA.filter(c=>_cqaApplies(c,d.contentType,QA_CRITERIA_VERSION_CURRENT)).map(c=>c.id)};
+        const r=await sb.from('calibration_exercises').update({status:'open',criteria_version:QA_CRITERIA_VERSION_CURRENT,matrix_snapshot:matrix}).eq('id',id).select().single(); if(r.error) throw r.error;
+        await AuditLog.record('publish','QA Calibration',id,`Published calibration "${d.title.trim()}" (${r.data.code||''}); deadline ${_calFmt(dl)}`);
+      } else await AuditLog.record(d.status==='draft'?'save':'update','QA Calibration',id,`Saved calibration "${d.title.trim()}"`);
+      disarmLeaveGuard(); toast(publish?'Exercise published — the team can now evaluate.':'Saved.','success');
+      _cal.edit=null; _cal.view='detail'; _cal.id=id; _cal.res=null; _cal.part=null; _cal.subj=null;
+      await renderQACalibration(true); _pushAppHash(_calHash());
+    }catch(e){ _surfaceDbError(e,publish?'Publish calibration exercise':'Save calibration exercise'); }
+  };
+  if(publish){ const n=DB.all().filter(u=>u.isActive).length;
+    confirm$('Publish Calibration Exercise',`Publish <b>${Utils.esc(d.title.trim())}</b>? All ${n} active LEAP users can then evaluate it until <b>${_calFmt(dl)}</b> (Philippine time). The form and content type lock after publishing.`,'Publish',go); }
+  else go();
+}
+function calDelete(id){ confirm$('Delete Draft','Delete this draft calibration exercise?','Delete',async()=>{ try{ const r=await sb.from('calibration_exercises').delete().eq('id',id); if(r.error) throw r.error; await AuditLog.record('delete','QA Calibration',id,'Deleted draft calibration exercise'); disarmLeaveGuard(); _cal.view='list'; _cal.id=null; _cal.edit=null; await renderQACalibration(true); _pushAppHash(_calHash()); }catch(e){ _surfaceDbError(e,'Delete calibration exercise'); } }); }
+
+/* ── status actions ── */
+function calStatus(id,to){
+  const e=_calById(id); if(!e) return; const esc=Utils.esc;
+  const msg={released:`Release the results of <b>${esc(e.title)}</b> to the team? Everyone on the roster will see all submitted ratings and remarks as Evaluator A, B, C… (no names).`,
+    finalized:`Finalize <b>${esc(e.title)}</b>? Agreed ratings, recommendations and notes become read-only.`,
+    reopen:`Reopen the discussion for <b>${esc(e.title)}</b>? It returns to Released so decisions can be edited. This is recorded in the Audit Log.`}[to];
+  const label={released:'Release Results',finalized:'Finalize',reopen:'Reopen'}[to];
+  confirm$(label,msg,label,async()=>{ try{
+    const r=await sb.from('calibration_exercises').update({status:to==='reopen'?'released':to}).eq('id',id).select().single(); if(r.error) throw r.error;
+    await AuditLog.record(to==='reopen'?'reopen':to==='released'?'release':'finalize','QA Calibration',id,`${label}: ${e.code||''} ${e.title}`);
+    toast(to==='released'?'Results released to the team.':to==='finalized'?'Exercise finalized.':'Discussion reopened.','success');
+    _cal.res=null; _cal.part=null; await renderQACalibration(true);
+  }catch(x){ _surfaceDbError(x,label); } });
+}
+function calCloseNow(id){ const e=_calById(id); if(!e) return;
+  confirm$('Close Submissions Now',`Close submissions for <b>${Utils.esc(e.title)}</b> now? Drafts that were not submitted will not count.`,'Close Now',async()=>{ try{
+    const r=await sb.from('calibration_exercises').update({deadline_at:new Date().toISOString()}).eq('id',id).select().single(); if(r.error) throw r.error;
+    await AuditLog.record('close','QA Calibration',id,`Closed submissions early: ${e.code||''} ${e.title}`); _cal.res=null; _cal.part=null; await renderQACalibration(true);
+  }catch(x){ _surfaceDbError(x,'Close submissions'); } }); }
+async function calArchive(id,flag){ try{ const r=await sb.from('calibration_exercises').update({archived:!!flag}).eq('id',id).select().single(); if(r.error) throw r.error; await AuditLog.record(flag?'archive':'unarchive','QA Calibration',id,(flag?'Archived ':'Unarchived ')+(_calById(id)?.title||'')); await renderQACalibration(true); }catch(x){ _surfaceDbError(x,'Archive calibration exercise'); } }
+
+/* ── individual evaluation (same layout as the CD QA form) ── */
+async function calOpenForm(id){
+  const e=_calById(id); if(!e) return;
+  const {data,error}=await sb.from('calibration_submissions').select('*').eq('exercise_id',id).eq('evaluator_id',Auth.user.id).maybeSingle();
+  if(error){ _surfaceDbError(error,'Load calibration evaluation'); return; }
+  _cal.sub=data?_calCamel(data):null;
+  _calLive={ratings:{...(_cal.sub?.ratings||{})},remarks:{...(_cal.sub?.remarks||{})}}; _calGrpCollapsed={}; _calDirty=false;
+  _cal.view='form'; _cal.id=id; _calRenderForm(document.getElementById('cal-root')); _pushAppHash(_calHash()); window.scrollTo(0,0);
+}
+function _calFormRO(e){ const s=_cal.sub; return !(_calStatus(e)==='open'&&_calInRoster(e)&&(!s||s.status==='draft')); }
+function _calRenderForm(root){
+  const e=_calById(_cal.id); if(!e){ _cal.view='list'; return _calRenderList(root); }
+  const esc=Utils.esc, s=_cal.sub, ro=_calFormRO(e), st=_calStatus(e), me=Auth.user;
+  const res=(Array.isArray(e.resources)?e.resources:[]).filter(r=>r.url);
+  const linkSt='color:#93c5fd;text-decoration:underline';
+  const stBadge=s?.status==='submitted'?'<span class="badge" style="background:#dcfce7;color:#15803d">Submitted</span>':s?'<span class="badge" style="background:#fef9c3;color:#a16207">Draft</span>':'';
+  const notice=ro?(s?.status==='submitted'?`Submitted ${_calFmt(s.submittedAt)}. Your evaluation is locked.`:st==='open'?'You are not on this exercise\'s roster.':'Submissions are closed for this exercise.'):'';
+  root.innerHTML=`
+    <div class="cqa-dark-hdr">
+      <div class="cqa-hdr-top">
+        <button class="btn btn-secondary btn-sm" onclick="calGo('detail','${e.id}')" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0">← Back</button>
+        <span class="cqa-brand-tag">QA Calibration · Content Development QA</span>
+        <strong class="cqa-hdr-title">${esc(e.title)}</strong>${stBadge}
+        <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-shrink:0">
+          ${ro?'':'<button class="btn btn-sm" onclick="calClearAll()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fca5a5;font-size:12px">✕ Clear</button>'}
+        </div>
+      </div>
+      <div class="cqa-hdr-body">
+        <div class="cqa-meta-grid">
+          <div class="cqa-meta-item"><label>Exercise</label><div class="cqa-meta-val">${esc(e.code||'—')}</div></div>
+          <div class="cqa-meta-item"><label>Content Type</label><div class="cqa-meta-val">${esc(e.contentType||'—')}</div></div>
+          <div class="cqa-meta-item"><label>Output Being Evaluated</label><div class="cqa-meta-val">${esc(e.itemTitle||'—')}</div></div>
+          <div class="cqa-meta-item"><label>Submission Deadline (PH time)</label><div class="cqa-meta-val">${_calFmt(e.deadlineAt)} <span style="font-weight:400;color:#94a3b8;font-size:12px">· ${_calLeft(e.deadlineAt)}</span></div></div>
+          <div class="cqa-meta-item" style="grid-column:1/-1"><label>Reference Materials</label><div class="cqa-meta-val" style="display:flex;gap:14px;flex-wrap:wrap">${res.length?res.map(r=>`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" style="${linkSt}">${esc(r.title||r.url)}</a>`).join(''):'<span style="color:#94a3b8;font-weight:400">None provided</span>'}</div></div>
+          ${e.instructions?`<div class="cqa-meta-item" style="grid-column:1/-1"><label>Instructions</label><div class="cqa-meta-val" style="font-weight:400;white-space:pre-wrap">${esc(e.instructions)}</div></div>`:''}
+        </div>
+        <div class="cqa-score-widget" style="align-self:center">
+          <div class="cqa-score-big" id="cal-score-val">—</div>
+          <div class="cqa-score-sub">QA Score</div>
+          <div class="cqa-score-progress"><div class="cqa-score-progress-fill" id="cal-score-fill" style="width:0%"></div></div>
+          <div class="cqa-score-rated-txt" id="cal-score-rated">0 answered</div>
+          <div class="cqa-disp-chip-wrap" id="cal-disp-chip"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cqa-form-body">
+      <div class="cqa-legend-bar">
+        <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Scale:</span>
+        <div class="cqa-legend-item"><div class="cqa-legend-dot cqa-ld-2">2</div>Fully Achieved</div>
+        <div class="cqa-legend-item"><div class="cqa-legend-dot cqa-ld-1">1</div>Partially Achieved</div>
+        <div class="cqa-legend-item"><div class="cqa-legend-dot cqa-ld-0">0</div>Not Achieved</div>
+        <div class="cqa-legend-item"><div class="cqa-legend-dot cqa-ld-na" style="width:30px">N/A</div>Not Applicable (explain why)</div>
+      </div>
+      <div style="margin:10px 24px 0;font-size:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:8px;padding:8px 12px">
+        ${notice?`<b>${esc(notice)}</b> `:''}Calibration exercise: rate every criterion using your own judgment, or mark it N/A and say why. Your ratings stay private until the deadline and are shared anonymously. This is not a QA review — no acknowledgement and not counted in any score.</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 24px 0">
+        <button type="button" class="btn btn-xs btn-ghost" onclick="calGrpAll(false)">⊞ Expand All</button>
+        <button type="button" class="btn btn-xs btn-ghost" onclick="calGrpAll(true)">⊟ Collapse All</button>
+      </div>
+      <div class="cqa-grid-wrap"><div id="cal-criteria-body">${_calCritHtml(ro)}</div></div>
+      <div style="padding:0 24px 20px">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">General Observations / Recommendations ${ro?'':'<span class="req">*</span>'}</label>
+          ${ro?`<div style="border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:13px;min-height:60px;white-space:pre-wrap">${esc(_calTxt(s?.observations||''))||'<span style="color:var(--text3)">—</span>'}</div>`:`
+          <div class="rte-wrap">
+            <div class="rte-toolbar">
+              <button type="button" onmousedown="event.preventDefault();_rteFmt('cal-observations','bold')" title="Bold"><b>B</b></button>
+              <button type="button" onmousedown="event.preventDefault();_rteFmt('cal-observations','italic')" title="Italic"><i>I</i></button>
+              <span class="rte-sep"></span>
+              <button type="button" onmousedown="event.preventDefault();_rteFmt('cal-observations','insertUnorderedList')" title="Bullets"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="1.5" cy="2.5" r="1.5"/><rect x="4.5" y="1.5" width="9" height="2" rx="1"/><circle cx="1.5" cy="7" r="1.5"/><rect x="4.5" y="6" width="9" height="2" rx="1"/><circle cx="1.5" cy="11.5" r="1.5"/><rect x="4.5" y="10.5" width="9" height="2" rx="1"/></svg></button>
+            </div>
+            <div id="cal-observations" class="rte-body" contenteditable="true" spellcheck="true" data-ph="Overall findings, notes, and recommendations…" style="min-height:90px" oninput="_calDirty=true"></div>
+          </div>`}
+        </div>
+      </div>
+      <div class="cqa-footer">
+        <div class="cqa-disp-panel">
+          <div class="cqa-disp-panel-title">Disposition Thresholds</div>
+          <div class="cqa-disp-threshold"><span class="cqa-dt-badge" style="background:#dcfce7;color:#16a34a">Endorse</span><span style="color:var(--text2)">Score ≥ 85% with no 0 ratings</span></div>
+          <div class="cqa-disp-threshold"><span class="cqa-dt-badge" style="background:#fef9c3;color:#d97706">Revise &amp; Resubmit</span><span style="color:var(--text2)">Score 70–84% or any 0 rating present</span></div>
+          <div class="cqa-disp-threshold" style="margin-bottom:0"><span class="cqa-dt-badge" style="background:#fee2e2;color:#dc2626">Major Revision</span><span style="color:var(--text2)">Score below 70%</span></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px">Score = points ÷ (criteria you rated × 2). N/A criteria are left out, never counted as 0.</div>
+        </div>
+        <div class="cqa-signoff-panel">
+          <div class="cqa-signoff-panel-title">Calibration Sign-Off</div>
+          <div style="font-size:12.5px;color:var(--text2)">Evaluator: <strong>${esc(me?`${me.firstName} ${me.lastName}`:'—')}</strong> <span style="color:var(--text3);font-size:11.5px">(other evaluators see you only as Evaluator A, B…)</span></div>
+          <div class="modal-err hidden" id="cal-error" style="margin:0;padding:8px 12px;font-size:12.5px"></div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:auto;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="calGo('detail','${e.id}')">← Back to Exercise</button>
+            <div style="flex:1"></div>
+            ${ro?'':'<button class="btn btn-secondary" onclick="calSaveSub(false)">💾 Save Draft</button><button class="btn btn-primary" onclick="calSaveSub(true)">✓ Submit Evaluation</button>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  if(!ro){ const ob=document.getElementById('cal-observations'); if(ob) ob.innerHTML=s?.observations||''; _leaveGuard={containerId:'cal-root',isDirtyFn:()=>_calDirty}; }
+  else disarmLeaveGuard();
+  _calUpdScore();
+}
+function _calCritHtml(ro){
+  const r=_calLive.ratings, rm=_calLive.remarks, esc=Utils.esc; let n=0,last='';
+  let html=`<div class="cqa-grid-table cal-grid-table">
+    <div class="cqa-grid-hdr-cell" style="border-radius:var(--r-md) 0 0 0">#</div><div class="cqa-grid-hdr-cell">Criterion</div>
+    <div class="cqa-grid-hdr-cell" style="text-align:center">Rating</div><div class="cqa-grid-hdr-cell" style="border-radius:0 var(--r-md) 0 0">Remarks</div>`;
+  CQA_CRITERIA.forEach(c=>{
+    n++; const key=c.group.replace(/\s+/g,'_'), col=!!_calGrpCollapsed[key];
+    if(c.group!==last){ last=c.group; const gc=CQA_GROUP_COLORS[c.group]||'#6366f1';
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 10px 8px;background:var(--bg);border-bottom:1px solid var(--border-lt);grid-column:1/-1;cursor:pointer" onclick="calGrp('${key}')">
+        <div class="cqa-group-accent" style="background:${gc}"></div><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:${gc};margin-right:6px">${esc(c.group)}</span>
+        <span style="font-size:13px;color:${gc};display:inline-block;transform:${col?'rotate(-90deg)':'rotate(0)'}">▾</span></div>`; }
+    const v=r[c.id], has=_calHas(v), need=has&&(v===0||v===1||v==='NA'), rmk=rm[c.id]||'';
+    const btns=`<div style="display:flex;gap:5px;justify-content:center">${[2,1,0,'NA'].map(o=>{ const on=has&&v===o, cls=`r-btn${o==='NA'?' r-na':''}${on?` active-${o==='NA'?'na':o}`:''}`;
+      return ro?`<button class="${cls}" disabled>${o==='NA'?'N/A':o}</button>`:`<button class="${cls}" id="cal-rb-${c.id}-${o}" onclick="calRate('${c.id}',${o==='NA'?"'NA'":o})" title="${o===2?'Fully Achieved':o===1?'Partially Achieved':o===0?'Not Achieved':'Not Applicable'}">${o==='NA'?'N/A':o}</button>`; }).join('')}</div>`;
+    const ph=v==='NA'?'Explain why this criterion does not apply…':need?'Remarks required for this rating…':'Remarks (optional)…';
+    const rmkCell=ro?`<div class="cr-rmk-ro">${esc(rmk)}</div>`:`<div id="cal-rmk-wrap-${c.id}"${need?' class="rmk-required"':''}><textarea id="cal-rmk-${c.id}" class="cr-rmk-ta" placeholder="${ph}" oninput="_calLive.remarks['${c.id}']=this.value;_calDirty=true">${esc(rmk)}</textarea></div>`;
+    html+=`<div class="cqa-cr-row-hover" style="display:${col?'none':'contents'}">
+      <div class="cqa-cr-cell cr-num">${n}</div>
+      <div class="cqa-cr-cell cr-content"><div class="cqa-param-name">${esc(c.param||'')}</div><div class="cqa-crit-text">${esc(c.text)}</div></div>
+      <div class="cqa-cr-cell cr-rating">${btns}</div>
+      <div class="cqa-cr-cell cr-remarks">${rmkCell}</div></div>`;
+  });
+  return html+'</div>';
+}
+function calRate(id,val){
+  const cur=_calLive.ratings[id], nv=(cur===val)?null:val; _calLive.ratings[id]=nv; _calDirty=true;
+  [2,1,0,'NA'].forEach(o=>{ const b=document.getElementById(`cal-rb-${id}-${o}`); if(b){ b.classList.remove('active-0','active-1','active-2','active-na'); if(nv===o) b.classList.add(`active-${o==='NA'?'na':o}`); } });
+  const need=nv===0||nv===1||nv==='NA', w=document.getElementById(`cal-rmk-wrap-${id}`), ta=document.getElementById(`cal-rmk-${id}`);
+  if(w) w.classList.toggle('rmk-required',need);
+  if(ta) ta.placeholder=nv==='NA'?'Explain why this criterion does not apply…':need?'Remarks required for this rating…':'Remarks (optional)…';
+  _calUpdScore();
+}
+function calGrp(key){ _calGrpCollapsed[key]=!_calGrpCollapsed[key]; const e=_calById(_cal.id); const b=document.getElementById('cal-criteria-body'); if(b) b.innerHTML=_calCritHtml(_calFormRO(e)); }
+function calGrpAll(collapse){ _calGrpCollapsed={}; if(collapse) CQA_CRITERIA.forEach(c=>{ _calGrpCollapsed[c.group.replace(/\s+/g,'_')]=true; }); const e=_calById(_cal.id); const b=document.getElementById('cal-criteria-body'); if(b) b.innerHTML=_calCritHtml(_calFormRO(e)); }
+function calClearAll(){ confirm$('Clear Ratings','Clear all ratings and remarks on this form?','Clear',()=>{ _calLive={ratings:{},remarks:{}}; _calDirty=true; const b=document.getElementById('cal-criteria-body'); if(b) b.innerHTML=_calCritHtml(false); _calUpdScore(); }); }
+function _calUpdScore(){
+  const sc=_calScore(_calLive.ratings), g=id=>document.getElementById(id);
+  if(g('cal-score-val')) g('cal-score-val').textContent=sc.pct!=null?sc.pct.toFixed(1)+'%':'—';
+  if(g('cal-score-fill')) g('cal-score-fill').style.width=sc.pct!=null?`${Math.min(sc.pct,100)}%`:'0%';
+  if(g('cal-score-rated')) g('cal-score-rated').textContent=`${sc.count} of ${sc.total} answered${sc.na?` · ${sc.na} N/A`:''}`;
+  if(g('cal-disp-chip')) g('cal-disp-chip').innerHTML=sc.disposition?`<span class="cqa-disp-chip" style="background:${sc.dispBg};color:${sc.dispColor}">${sc.disposition}</span>`:'';
+}
+async function calSaveSub(submit){
+  const e=_calById(_cal.id); if(!e) return; const err=document.getElementById('cal-error');
+  const show=m=>{ if(err){ err.textContent=m; err.classList.remove('hidden'); err.style.display='block'; } };
+  const r={}; CQA_CRITERIA.forEach(c=>{ if(_calHas(_calLive.ratings[c.id])) r[c.id]=_calLive.ratings[c.id]; });
+  const rm={}; CQA_CRITERIA.forEach(c=>{ const v=(_calLive.remarks[c.id]||'').trim(); if(v) rm[c.id]=v; });
+  const obsHtml=_rteGet('cal-observations')||'', obsTxt=_rteGetText('cal-observations');
+  if(submit){
+    const un=CQA_CRITERIA.filter(c=>!_calHas(r[c.id]));
+    if(un.length) return show(`${un.length} criterion/criteria still need a rating or N/A before submitting.`);
+    const naNo=CQA_CRITERIA.filter(c=>r[c.id]==='NA'&&!rm[c.id]); if(naNo.length) return show(`Please explain why ${naNo.length} criterion/criteria are N/A.`);
+    const mr=CQA_CRITERIA.filter(c=>(r[c.id]===0||r[c.id]===1)&&!rm[c.id]); if(mr.length) return show(`Remarks are required for criteria rated 0 or 1. Please complete ${mr.length} remark(s).`);
+    if(!CQA_CRITERIA.some(c=>[0,1,2].includes(r[c.id]))) return show('Rate at least one criterion — not everything can be N/A.');
+    if(!obsTxt) return show('General Observations / Recommendations is required before submitting.');
+  }
+  if(err){ err.classList.add('hidden'); err.style.display=''; }
+  const sc=_calScore(r);
+  const row={ratings:r,remarks:rm,observations:obsHtml,score_pct:sc.pct==null?null:Math.round(sc.pct*100)/100,disposition:sc.disposition,status:submit?'submitted':'draft'};
+  const go=async()=>{ try{
+      const q=_cal.sub?sb.from('calibration_submissions').update(row).eq('id',_cal.sub.id):sb.from('calibration_submissions').insert({...row,exercise_id:e.id,evaluator_id:Auth.user.id});
+      const res=await q.select().single(); if(res.error) throw res.error;
+      _cal.sub=_calCamel(res.data); _cal.mine[e.id]={id:_cal.sub.id,exerciseId:e.id,status:_cal.sub.status,submittedAt:_cal.sub.submittedAt}; _calDirty=false;
+      if(submit){ disarmLeaveGuard(); toast('Calibration evaluation submitted.','success'); _cal.view='detail'; _cal.res=null; _cal.part=null; await renderQACalibration(true); _pushAppHash(_calHash()); }
+      else toast('Draft saved.','success');
+    }catch(x){ _surfaceDbError(x,submit?'Submit calibration evaluation':'Save calibration draft'); } };
+  if(submit) confirm$('Submit Calibration Evaluation',`Your result: <b>${sc.pct!=null?sc.pct.toFixed(1)+'%':'—'}</b> · <b>${Utils.esc(sc.disposition||'—')}</b>${sc.na?` · ${sc.na} N/A`:''}.<br>You can't change it after submitting. Results are shared anonymously (Evaluator A, B…) when the owner releases them.`,'Submit',go);
+  else go();
+}
+
+/* ── exercise overview + results ── */
+async function _calLoadDetail(e){
+  const own=_calIsOwner(e), st=_calStatus(e);
+  const canRes=(own&&['closed','released','finalized'].includes(st))||(['released','finalized'].includes(st)&&_calInRoster(e));
+  const jobs=[];
+  if(own&&(!_cal.subj||_cal.subj.exId!==e.id)) jobs.push(sb.from('calibration_subjects').select('*').eq('exercise_id',e.id).maybeSingle().then(({data})=>{ _cal.subj={exId:e.id,...(data?_calCamel(data):{})}; }));
+  if(own&&e.status!=='draft'&&(!_cal.part||_cal.part.exId!==e.id)) jobs.push(sb.rpc('calibration_participation',{p_ex:e.id}).then(({data,error})=>{ _cal.part={exId:e.id,rows:(data||[]).map(_calCamel),err:error?error.message:null}; }));
+  if(canRes&&(!_cal.res||_cal.res.exId!==e.id)) jobs.push(Promise.all([sb.rpc('calibration_results',{p_ex:e.id}),sb.from('calibration_decisions').select('*').eq('exercise_id',e.id)]).then(([r,d])=>{
+      _cal.res={exId:e.id,rows:(r.data||[]).map(_calCamel),err:r.error?r.error.message:null};
+      _cal.dec={}; (d.data||[]).forEach(x=>{ const o=_calCamel(x); _cal.dec[o.criterionId]=o; }); }));
+  if(jobs.length) await Promise.all(jobs);
+  return canRes;
+}
+function calTab(t){ _cal.tab=t; _calRenderDetail(document.getElementById('cal-root')); }
+function calRTab(t){ _cal.rtab=t; _calRenderDetail(document.getElementById('cal-root')); }
+function calToggle(k){ _cal.open[k]=!_cal.open[k]; _calRenderDetail(document.getElementById('cal-root')); }
+async function _calRenderDetail(root){
+  const e=_calById(_cal.id); if(!e){ _cal.view='list'; return _calRenderList(root); }
+  const canRes=await _calLoadDetail(e);
+  if(_cal.view!=='detail'||_cal.id!==e.id) return; // navigated away while loading
+  const esc=Utils.esc, st=_calStatus(e), own=_calIsOwner(e), c=_cal.counts[e.id]||{roster:(e.roster||[]).length,sub:0,draft:0};
+  const pct=c.roster?Math.round(c.sub/c.roster*100):0, m=_cal.mine[e.id], inR=_calInRoster(e);
+  const res=(Array.isArray(e.resources)?e.resources:[]).filter(r=>r.url);
+  let acts='';
+  if(own&&st==='draft') acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('edit','${e.id}')">Edit / Publish</button><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="calDelete('${e.id}')">Delete</button>`;
+  if(own&&st==='open') acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('edit','${e.id}')">Edit Details</button><button class="btn btn-secondary btn-sm" onclick="calCloseNow('${e.id}')">Close Submissions Now</button>`;
+  if(own&&st==='closed') acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('edit','${e.id}')">Edit Details</button><button class="btn btn-primary btn-sm" onclick="calStatus('${e.id}','released')">Release Results to Team</button>`;
+  if(own&&st==='released') acts+=`<button class="btn btn-primary btn-sm" onclick="calStatus('${e.id}','finalized')">Finalize</button>`;
+  if(Auth.isAdmin&&st==='finalized') acts+=`<button class="btn btn-secondary btn-sm" onclick="calStatus('${e.id}','reopen')">Reopen Discussion</button>`;
+  if(own&&st!=='draft') acts+=`<button class="btn btn-ghost btn-sm" onclick="calArchive('${e.id}',${!e.archived})">${e.archived?'Unarchive':'Archive'}</button>`;
+  if(inR&&st==='open'&&!(m&&m.status==='submitted')) acts+=`<button class="btn btn-primary btn-sm" onclick="calGo('form','${e.id}')">${m?'Continue My Evaluation':'Start My Evaluation'}</button>`;
+  else if(m) acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('form','${e.id}')">View My Evaluation</button>`;
+  const disc=e.discussionAt?`${_calFmt(e.discussionAt)}${e.discussionEndAt?' – '+_calTime(e.discussionEndAt):''}`:'—';
+  const meta=(l,v,full)=>`<div${full?' style="grid-column:1/-1"':''}><label>${l}</label><span>${v}</span></div>`;
+  const subjName=_cal.subj&&_cal.subj.exId===e.id?(_cal.subj.subjectProfileId?_calName(_cal.subj.subjectProfileId):(_cal.subj.subjectName||'Not specified')):'';
+  const head=`<div class="card" style="padding:16px 20px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-ghost btn-sm" onclick="calGo('list')">← All Exercises</button>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--text3)">${esc(e.code||'')}</span>
+      <strong style="font-size:15.5px;color:var(--text)">${esc(e.title)}</strong>${_calBadge(st)}${e.archived?'<span class="badge" style="background:#f1f5f9;color:#64748b">Archived</span>':''}
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">${acts}</div>
+    </div>
+    <div class="cal-meta">
+      ${meta('Evaluation Form',esc(CAL_FORMS[e.formType]||e.formType))}${meta('Content Type',esc(e.contentType||'—'))}${meta('Output Being Evaluated',esc(e.itemTitle||'—'))}${meta('Participation',e.status==='draft'?'—':`<b>${c.sub}</b> of ${c.roster} submitted · ${pct}%`)}
+      ${meta('Submission Deadline (PH)',`${_calFmt(e.deadlineAt)}${st==='open'?` <span style="color:var(--text3)">· ${_calLeft(e.deadlineAt)}</span>`:''}`)}${meta('Calibration Discussion',disc)}
+      ${meta('Meeting',[e.meetingLink?`<a href="${esc(e.meetingLink)}" target="_blank" rel="noopener noreferrer">Join link</a>`:'',esc(e.location||'')].filter(Boolean).join(' · ')||'—')}${meta('Created by',esc(_calName(e.createdBy)))}
+      ${meta('Reference Materials',res.length?res.map(r=>`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.url)}</a>`).join(' · '):'—',true)}
+      ${e.instructions?meta('Instructions',`<span style="white-space:pre-wrap;font-weight:400">${esc(e.instructions)}</span>`,true):''}
+    </div>
+    ${own?`<div style="margin-top:12px;font-size:12px;background:#f8fafc;border:1px dashed var(--border);border-radius:8px;padding:7px 12px;color:var(--text2)">🔒 Person being evaluated: <b>${esc(subjName||'—')}</b> <span style="color:var(--text3)">· visible only to you and admins</span></div>`:''}
+  </div>`;
+  if(_cal.tab==='results'&&!canRes) _cal.tab='overview';
+  const tabs=`<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:0 0 12px">
+    <button class="eval-tab${_cal.tab==='overview'?' active':''}" onclick="calTab('overview')">👥 Participation</button>
+    ${canRes?`<button class="eval-tab${_cal.tab==='results'?' active':''}" onclick="calTab('results')">📊 Results &amp; Discussion</button>`:''}</div>`;
+  root.innerHTML=head+tabs+(_cal.tab==='results'?_calResultsHtml(e):_calPartHtml(e,c));
+}
+function _calPartHtml(e,c){
+  const st=_calStatus(e), own=_calIsOwner(e), esc=Utils.esc;
+  if(e.status==='draft') return '<div class="card" style="padding:18px 20px;font-size:13px;color:var(--text3)">Draft — not published yet. Publish it to open evaluations to the team.</div>';
+  const note=st==='open'?'Ratings stay hidden from everyone until the deadline.':st==='closed'?(own?'Submissions are closed. Results are visible only to you until you release them to the team.':'Submissions are closed. Results will be shared when the owner releases them.'):'Results have been released to the team.';
+  const bar=`<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="font-size:26px;font-weight:800;font-family:var(--mono)">${c.roster?Math.round(c.sub/c.roster*100):0}%</div>
+    <div style="flex:1;min-width:200px"><div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden"><div style="height:100%;width:${c.roster?c.sub/c.roster*100:0}%;background:#2563eb"></div></div>
+    <div style="font-size:12px;color:var(--text3);margin-top:4px">${c.sub} of ${c.roster} submitted${c.draft?` · ${c.draft} draft${c.draft!==1?'s':''} in progress`:''} · ${note}</div></div></div>`;
+  if(!own) return `<div class="card" style="padding:18px 20px">${bar}</div>`;
+  const p=_cal.part&&_cal.part.exId===e.id?_cal.part:null;
+  const lbl={submitted:['Submitted','#dcfce7','#15803d'],draft:['Draft — not submitted','#fef9c3','#a16207'],not_started:['Not started','#f1f5f9','#475569']};
+  const rows=(p?p.rows:[]).map(r=>({...r,name:_calName(r.profileId)})).sort((a,b)=>((a.status==='submitted')-(b.status==='submitted'))||a.name.localeCompare(b.name));
+  return `<div class="card" style="padding:18px 20px">${bar}
+    <div style="font-weight:700;font-size:13px;margin:16px 0 8px">Roster <span style="font-weight:400;color:var(--text3);font-size:12px">· only you and admins see names</span></div>
+    ${p&&p.err?`<div style="color:var(--red);font-size:12.5px">${esc(p.err)}</div>`:`<div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>Team Member</th><th>Status</th><th>Submitted</th></tr></thead><tbody>${rows.map(r=>{ const mm=lbl[r.status]||lbl.not_started; return `<tr><td>${esc(r.name)}</td><td><span class="cal-tag" style="background:${mm[1]};color:${mm[2]}">${mm[0]}</span></td><td style="white-space:nowrap">${r.submittedAt?_calFmt(r.submittedAt):'—'}</td></tr>`; }).join('')}</tbody></table></div>`}
+  </div>`;
+}
+// per-criterion stats across submitted evaluations
+function _calStats(e,rows){
+  const matrix=_calMatrix(e);
+  return CQA_CRITERIA.map((c,i)=>{
+    const vals=rows.map(r=>(r.ratings||{})[c.id]), nums=vals.filter(v=>[0,1,2].includes(v)), na=vals.filter(v=>v==='NA').length;
+    const spread=nums.length?Math.max(...nums)-Math.min(...nums):null, scored=nums.length;
+    const split=scored>0&&na>0, shown=matrix.includes(c.id);
+    const team=scored>na?'applies':na>scored?'na':'tie';
+    const differs=team!=='tie'&&((team==='applies')!==shown);
+    return {c,n:i+1,vals,nums,na,scored,spread,split,shown,team,differs,flag:(spread!=null&&spread>=1)||split};
+  });
+}
+function _calResultsHtml(e){
+  const r=_cal.res, esc=Utils.esc;
+  if(!r||r.exId!==e.id) return '<div class="card" style="padding:18px 20px;color:var(--text3)">Loading results…</div>';
+  if(r.err) return `<div class="card" style="padding:18px 20px;color:var(--red);font-size:13px">${esc(r.err)}</div>`;
+  if(!r.rows.length) return '<div class="card" style="padding:18px 20px;font-size:13px;color:var(--text3)">No evaluations were submitted for this exercise.</div>';
+  const own=_calIsOwner(e), showNames=own&&_cal.names;
+  const ev=r.rows.map(x=>({...x,disp:x.label+(x.isMe?' (You)':'')+(showNames&&x.evaluatorId?` · ${_calName(x.evaluatorId)}`:'')}));
+  const stats=_calStats(e,ev);
+  const sub=[['outcomes','Outcomes'],['scores','Score Comparison'],['applic','Applicability Review'],['decisions','Calibration Decisions']];
+  const sw=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sub.map(([k,l])=>`<button class="eval-toggle-btn${_cal.rtab===k?' on':''}" onclick="calRTab('${k}')">${l}</button>`).join('')}
+    <span style="flex:1"></span>${own?`<label style="font-size:12px;color:var(--text3);display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" ${_cal.names?'checked':''} onchange="_cal.names=this.checked;_calRenderDetail(document.getElementById('cal-root'))"> Show names (only you)</label>`:''}</div>`;
+  let body='';
+  if(_cal.rtab==='scores') body=_calScoresHtml(e,ev,stats);
+  else if(_cal.rtab==='applic') body=_calApplicHtml(e,ev,stats);
+  else if(_cal.rtab==='decisions') body=_calDecisionsHtml(e,ev,stats);
+  else body=_calOutcomesHtml(e,ev,stats);
+  return sw+body;
+}
+function _calOutcomesHtml(e,ev,stats){
+  const esc=Utils.esc, n=ev.length, c=_cal.counts[e.id]||{roster:(e.roster||[]).length,sub:n};
+  const scores=ev.map(x=>x.scorePct==null?null:Number(x.scorePct)).filter(v=>v!=null);
+  const dist=CAL_DISP.map(([d,bg,fg])=>({d,bg,fg,k:ev.filter(x=>x.disposition===d).length}));
+  const top=dist.slice().sort((a,b)=>b.k-a.k)[0];
+  const multi=stats.filter(s=>s.nums.length>=2), exact=multi.filter(s=>s.spread===0).length;
+  const applAgree=stats.filter(s=>!s.split).length, flagged=stats.filter(s=>s.flag).length;
+  const kpi=(l,v,s)=>`<div class="cal-kpi"><div class="cal-kpi-l">${l}</div><div class="cal-kpi-v">${v}</div>${s?`<div class="cal-kpi-s">${s}</div>`:''}</div>`;
+  return `<div class="cal-kpis">
+      ${kpi('Outcome agreement',n?Math.round(top.k/n*100)+'%':'—',top.k===n?'everyone chose the same outcome':`${top.k} of ${n} chose ${esc(top.d)}`)}
+      ${kpi('Exact score agreement',multi.length?Math.round(exact/multi.length*100)+'%':'—',`${exact} of ${multi.length} rated criteria`)}
+      ${kpi('Applicability agreement',Math.round(applAgree/stats.length*100)+'%',`${applAgree} of ${stats.length} criteria`)}
+      ${kpi('Participation',c.roster?Math.round(n/c.roster*100)+'%':'—',`${n} of ${c.roster} submitted`)}
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px" class="cal-two">
+      <div class="card" style="padding:16px 18px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px">Outcome distribution</div>
+        ${dist.map(x=>`<div style="display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin-bottom:8px">
+          <span class="cqa-disp-chip" style="background:${x.bg};color:${x.fg};text-align:center">${esc(x.d)}</span>
+          <div style="height:12px;background:#f1f5f9;border-radius:6px;overflow:hidden"><div style="height:100%;width:${n?x.k/n*100:0}%;background:${x.fg}"></div></div>
+          <span style="font-size:12.5px;font-family:var(--mono);text-align:right">${x.k} · ${n?Math.round(x.k/n*100):0}%</span></div>`).join('')}
+        <div style="font-size:12px;color:var(--text3);margin-top:10px">Score range: <b style="color:var(--text)">${scores.length?Math.min(...scores).toFixed(1)+'% – '+Math.max(...scores).toFixed(1)+'%':'—'}</b>${scores.length?` · spread ${(Math.max(...scores)-Math.min(...scores)).toFixed(1)} pts · average ${(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1)}%`:''}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">${flagged} of ${stats.length} criteria flagged for discussion (any score difference, or a split between rating and N/A).</div>
+      </div>
+      <div class="card" style="padding:16px 18px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px">Each evaluator</div>
+        <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>Evaluator</th><th style="text-align:right">Score</th><th>Outcome</th><th style="text-align:center">N/A</th></tr></thead><tbody>
+        ${ev.map(x=>`<tr><td>${esc(x.disp)}</td><td style="text-align:right;font-family:var(--mono)">${x.scorePct==null?'—':Number(x.scorePct).toFixed(1)+'%'}</td><td>${_calDispChip(x.disposition)}</td><td style="text-align:center">${CQA_CRITERIA.filter(cc=>(x.ratings||{})[cc.id]==='NA').length}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px 18px;margin-top:12px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px">General observations</div>
+      ${ev.map(x=>`<div style="padding:8px 0;border-top:1px solid var(--border-lt);font-size:12.5px"><b>${esc(x.disp)}</b><div style="white-space:pre-wrap;color:var(--text2);margin-top:3px">${esc(_calTxt(x.observations))||'—'}</div></div>`).join('')}
+    </div>`;
+}
+function _calScoresHtml(e,ev,stats){
+  const esc=Utils.esc; let last='';
+  const rows=stats.filter(s=>!_cal.flagOnly||s.flag).map(s=>{
+    let g=''; if(s.c.group!==last){ last=s.c.group; g=`<tr><td colspan="${ev.length+5}" style="background:#f8fafc;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:${CQA_GROUP_COLORS[s.c.group]||'#6366f1'}">${esc(s.c.group)}</td></tr>`; }
+    const k='s_'+s.c.id, open=!!_cal.open[k], dec=_cal.dec[s.c.id];
+    const main=`<tr class="${s.flag?'cal-flag':''}" style="cursor:pointer" onclick="calToggle('${k}')">
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${s.n}</td>
+      <td><div class="cqa-param-name">${esc(s.c.param)}</div></td>
+      ${ev.map(x=>`<td style="text-align:center;white-space:nowrap">${_calChip((x.ratings||{})[s.c.id])}${(x.remarks||{})[s.c.id]?'<span title="Has remarks" style="font-size:9px;color:var(--text3);vertical-align:super">●</span>':''}</td>`).join('')}
+      <td style="text-align:center;font-family:var(--mono);white-space:nowrap">${s.spread==null?'—':s.spread}${s.split?' <span class="cal-tag" style="background:#e2e8f0;color:#334155">N/A split</span>':''}</td>
+      <td style="text-align:center">${dec&&_calHas(dec.agreedRating)?_calChip(dec.agreedRating==='NA'?'NA':Number(dec.agreedRating)):(dec&&dec.unresolved?'<span class="cal-tag" style="background:#fee2e2;color:#b91c1c">Unresolved</span>':'<span style="color:var(--text3)">—</span>')}</td>
+      <td style="color:var(--text3)">${open?'▴':'▾'}</td></tr>`;
+    const det=open?`<tr><td></td><td colspan="${ev.length+4}" style="background:#fcfcfd;font-size:12.5px">
+      <div style="color:var(--text2);margin-bottom:6px">${esc(s.c.text)}</div>
+      ${ev.map(x=>{ const v=(x.ratings||{})[s.c.id], rm=(x.remarks||{})[s.c.id]; return `<div style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-top:1px dashed var(--border-lt)"><span style="min-width:120px;font-weight:600">${esc(x.disp)}</span>${_calChip(v)}<span style="white-space:pre-wrap;color:var(--text2)">${rm?esc(rm):'<span style="color:var(--text3)">No remarks</span>'}</span></div>`; }).join('')}
+    </td></tr>`:'';
+    return g+main+det; }).join('');
+  return `<div class="card" style="padding:14px 16px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-size:12px;color:var(--text3);flex:1">Spread = highest minus lowest rating (N/A left out). Highlighted rows have any score difference or a split between rating and N/A. Click a row for remarks.</div>
+      <label style="font-size:12px;display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" ${_cal.flagOnly?'checked':''} onchange="_cal.flagOnly=this.checked;_calRenderDetail(document.getElementById('cal-root'))"> Flagged only</label>
+    </div>
+    <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>#</th><th>Criterion</th>${ev.map(x=>`<th style="text-align:center;white-space:nowrap">${esc(x.disp)}</th>`).join('')}<th style="text-align:center">Spread</th><th style="text-align:center">Agreed</th><th></th></tr></thead><tbody>${rows||`<tr><td colspan="${ev.length+5}" style="color:var(--text3)">No flagged criteria — full agreement.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+function _calApplicHtml(e,ev,stats){
+  const esc=Utils.esc, n=ev.length, ed=_calIsOwner(e)&&e.status==='released';
+  const rows=stats.map(s=>{
+    const k='a_'+s.c.id, open=!!_cal.open[k], dec=_cal.dec[s.c.id]||{};
+    const tags=[s.split?'<span class="cal-tag" style="background:#fef3c7;color:#92400e">Team split</span>':'',s.differs?'<span class="cal-tag" style="background:#fee2e2;color:#b91c1c">Differs from form</span>':''].filter(Boolean).join(' ')||'<span style="color:var(--text3);font-size:12px">—</span>';
+    const rec=ed?`<select class="form-control" style="font-size:12px;padding:3px 6px" onclick="event.stopPropagation()" onchange="calDec('${s.c.id}','matrix_rec',this.value)"><option value="">— Select —</option>${Object.entries(CAL_REC).map(([kk,v])=>`<option value="${kk}"${dec.matrixRec===kk?' selected':''}>${v}</option>`).join('')}</select>`:esc(CAL_REC[dec.matrixRec]||'—');
+    const reasons=ev.filter(x=>(x.ratings||{})[s.c.id]==='NA');
+    return `<tr class="${s.split||s.differs?'cal-flag':''}" style="cursor:pointer" onclick="calToggle('${k}')">
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${s.n}</td>
+      <td><div class="cqa-param-name">${esc(s.c.param)}</div><div style="font-size:11px;color:var(--text3)">${esc(s.c.group)}</div></td>
+      <td style="text-align:center;white-space:nowrap">${s.scored} <span style="color:var(--text3)">· ${n?Math.round(s.scored/n*100):0}%</span></td>
+      <td style="text-align:center;white-space:nowrap">${s.na} <span style="color:var(--text3)">· ${n?Math.round(s.na/n*100):0}%</span></td>
+      <td style="text-align:center">${s.shown?'<span class="cal-tag" style="background:#dbeafe;color:#1d4ed8">Shown</span>':'<span class="cal-tag" style="background:#f1f5f9;color:#64748b">Hidden (N/A)</span>'}</td>
+      <td>${tags}</td><td style="min-width:200px">${rec}</td><td style="color:var(--text3)">${reasons.length?(open?'▴':'▾'):''}</td></tr>
+      ${open&&reasons.length?`<tr><td></td><td colspan="7" style="background:#fcfcfd;font-size:12.5px">${reasons.map(x=>`<div style="padding:3px 0"><b>${esc(x.disp)}</b> marked N/A: <span style="color:var(--text2)">${esc((x.remarks||{})[s.c.id]||'—')}</span></div>`).join('')}</td></tr>`:''}`; }).join('');
+  return `<div class="card" style="padding:14px 16px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">How each evaluator judged applicability, compared with what the real CD QA form does for <b>${esc(e.contentType||'—')}</b> (criteria version ${esc(String((e.matrixSnapshot&&e.matrixSnapshot.criteriaVersion)||e.criteriaVersion||''))}, saved when the exercise was published). Recommendations here never change the real form — matrix changes go through the usual QA form review.</div>
+    <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>#</th><th>Criterion</th><th style="text-align:center">Scored</th><th style="text-align:center">N/A</th><th style="text-align:center">Real Form</th><th>Flags</th><th>Recommendation</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>`;
+}
+function _calDecisionsHtml(e,ev,stats){
+  const esc=Utils.esc, ed=_calIsOwner(e)&&e.status==='released', sm=e.summary||{};
+  const rows=stats.map(s=>{ const d=_cal.dec[s.c.id]||{};
+    const agreed=ed?`<select class="form-control" style="font-size:12px;padding:3px 6px;width:86px" onchange="calDec('${s.c.id}','agreed_rating',this.value)"><option value="">—</option>${['2','1','0','NA'].map(v=>`<option value="${v}"${d.agreedRating===v?' selected':''}>${v==='NA'?'N/A':v}</option>`).join('')}</select>`:(_calHas(d.agreedRating)?_calChip(d.agreedRating==='NA'?'NA':Number(d.agreedRating)):'—');
+    const unres=ed?`<input type="checkbox" ${d.unresolved?'checked':''} onchange="calDec('${s.c.id}','unresolved',this.checked)">`:(d.unresolved?'<span class="cal-tag" style="background:#fee2e2;color:#b91c1c">Unresolved</span>':'');
+    const rat=ed?`<textarea class="form-control" rows="2" style="font-size:12px;min-width:220px" placeholder="Why — evidence, examples, interpretation of the criterion" onchange="calDec('${s.c.id}','rationale',this.value)">${esc(d.rationale||'')}</textarea>`:`<div style="white-space:pre-wrap;font-size:12.5px">${d.rationale?esc(d.rationale):'<span style="color:var(--text3)">—</span>'}</div>`;
+    const fu=d.unresolved?(ed?`<input class="form-control" style="font-size:12px;margin-top:4px" placeholder="Reason / follow-up action" value="${esc(d.followUp||'')}" onchange="calDec('${s.c.id}','follow_up',this.value)">`:`<div style="font-size:12px;color:#b91c1c;margin-top:3px">Follow-up: ${esc(d.followUp||'—')}</div>`):'';
+    return `<tr class="${s.flag?'cal-flag':''}"><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${s.n}</td>
+      <td><div class="cqa-param-name">${esc(s.c.param)}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${ev.map(x=>_calChip((x.ratings||{})[s.c.id])).join('')}</div></td>
+      <td style="text-align:center">${agreed}</td><td style="text-align:center">${unres}</td><td>${rat}${fu}</td></tr>`; }).join('');
+  const sumHtml=CAL_SUMMARY.map(([k,l])=>`<div class="form-group" style="margin:0"><label class="form-label">${l}</label>${ed?`<textarea class="form-control" rows="3" style="font-size:12.5px" onchange="calSum('${k}',this.value)">${esc(sm[k]||'')}</textarea>`:`<div style="white-space:pre-wrap;font-size:12.5px;border:1px solid var(--border-lt);border-radius:6px;padding:8px 10px;min-height:40px">${sm[k]?esc(sm[k]):'<span style="color:var(--text3)">—</span>'}</div>`}</div>`).join('');
+  return `<div class="card" style="padding:14px 16px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">${ed?'Record what the team agreed for each criterion after discussing the evidence — not an average or a majority vote. Changes save automatically.':e.status==='finalized'?'Finalized — read-only.':'Decisions are recorded by the exercise owner once results are released.'}</div>
+    <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>#</th><th>Criterion · team ratings</th><th style="text-align:center">Agreed Rating</th><th style="text-align:center">Unresolved</th><th>Rationale &amp; Supporting Examples</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>
+  <div class="card" style="padding:14px 16px;margin-top:12px"><div style="font-weight:700;font-size:13px;margin-bottom:10px">Calibration summary</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px" class="cal-two">${sumHtml}</div></div>`;
+}
+async function calDec(cid,field,val){
+  const e=_calById(_cal.id); if(!e) return; const cur=_cal.dec[cid]||{};
+  const row={exercise_id:e.id,criterion_id:cid,agreed_rating:cur.agreedRating??null,matrix_rec:cur.matrixRec??null,rationale:cur.rationale??null,unresolved:!!cur.unresolved,follow_up:cur.followUp??null,updated_by:Auth.user.id,updated_at:new Date().toISOString()};
+  row[field]=(val===''?null:val);
+  const {data,error}=await sb.from('calibration_decisions').upsert(row,{onConflict:'exercise_id,criterion_id'}).select().single();
+  if(error) return _surfaceDbError(error,'Save calibration decision');
+  _cal.dec[cid]=_calCamel(data);
+  if(field==='unresolved'||field==='agreed_rating') _calRenderDetail(document.getElementById('cal-root'));
+}
+async function calSum(k,v){
+  const e=_calById(_cal.id); if(!e) return; const sm={...(e.summary||{}),[k]:v};
+  const {data,error}=await sb.from('calibration_exercises').update({summary:sm}).eq('id',e.id).select().single();
+  if(error) return _surfaceDbError(error,'Save calibration summary');
+  Object.assign(e,_calCamel(data));
+}
+
+
 /* ── BOOT ─────────────────────────── */
 /* ══ v5.15a (2026-10-30, per Sandra): ROLE SCORECARDS + MY PERFORMANCE + PDP ══════════════════
    Spec: briefs/v5.15_scorecards_impact_note.md. Effective 1 Oct 2026. Each KPI's actual result is
@@ -26353,12 +27037,12 @@ function bootApp(){
   if(grp){ grp.classList.add('open'); }
   if(chv){ chv.style.transform='rotate(0deg)'; }
   if(par){ par.classList.add('active'); }
-  const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','ld-reports','cost-settings','cost-analysis'];
+  const validViews=['knowledge-base','dashboard','my-performance','team-performance','evaluations','id-qa','content-qa','qa-calibration','reports','users','settings','training-dashboard','learning-programs','training-delivery','trainer-checklist','ld-reports','cost-settings','cost-analysis'];
   if(location.hash && location.hash.length>1){
     _restoreFromHash(location.hash);
   } else {
     const lastView=localStorage.getItem('leap_view');
-    showView(validViews.includes(lastView)?lastView:'dashboard');
+    showView(validViews.includes(lastView)&&Perms.canView(lastView)?lastView:'dashboard'); // v5.18: never land on a preview-only view on live
   }
 }
 
