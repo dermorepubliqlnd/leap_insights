@@ -352,13 +352,14 @@
     /* ── MAIN ── */
     .main-wrap{margin-left:var(--sbw);flex:1;min-width:0;min-height:100vh;display:flex;flex-direction:column;transition:margin-left .18s ease}
     .app-layout.nav-collapsed .main-wrap{margin-left:var(--sbw-collapsed)}
-    .topbar{position:sticky;top:0;z-index:100;background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;min-height:60px;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,460px) minmax(0,1fr);align-items:center;gap:18px;box-shadow:var(--sh-xs)} /* v5.19: title · centered search · utilities */
+    .topbar{position:sticky;top:0;z-index:100;background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;min-height:60px;display:flex;align-items:center;gap:16px;box-shadow:var(--sh-xs)} /* v5.19c: title left · page actions + search + KB on the right */
+    .topbar>.topbar-title-group{flex:1;min-width:0}
     .topbar-title-group{display:flex;flex-direction:column;gap:1px;padding:9px 0}
     .topbar-title{font-size:var(--fs-page);font-weight:600;color:var(--text);font-family:var(--font-heading);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .topbar-subtitle{font-size:12px;color:var(--text3);line-height:1.3}
     .topbar-subtitle:empty{display:none}
     .topbar-right{display:flex;align-items:center;gap:10px}.topbar-utils{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0}.topbar-kb{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--text2);cursor:pointer;flex-shrink:0}.topbar-kb:hover{color:var(--pri);border-color:#bfdbfe;background:#eff6ff}
-    .topbar-search{position:relative;width:100%}
+    .topbar-search{position:relative;width:340px;flex-shrink:1;min-width:200px}
     .topbar-search-btn{width:100%;height:36px;border:1px solid var(--border);border-radius:9px;background:#f8fafc;color:var(--text3);display:flex;align-items:center;gap:8px;padding:0 11px;cursor:pointer;font:inherit;text-align:left}
     .topbar-search-btn:hover{border-color:#cbd5e1;background:#fff}
     .topbar-search-btn .kbd{margin-left:auto;border:1px solid var(--border);background:#fff;border-radius:5px;padding:1px 6px;font-size:10px;color:var(--text3)}
@@ -1086,6 +1087,12 @@
     .lt-group{border-bottom:1px solid var(--border)}.lt-group-h{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fbfcfe;cursor:pointer;font-size:13px}
     .lt-chev{display:inline-block;transition:transform .15s;color:#64748b;font-size:16px}.lt-chev.open{transform:rotate(90deg)}
     @media(max-width:1100px){.lt-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    /* v5.19c (per Sandra): one tone palette — same rounded-square shape, fill and text shade for status, disposition, mode, score and timeliness */
+    .lt-tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;line-height:1;padding:5px 8px;border-radius:6px;white-space:nowrap}
+    .lt-tag svg.eico{width:13px;height:13px}
+    .tone-ok{background:#dcfce7;color:#15803d}.tone-warn{background:#fef3c7;color:#b45309}.tone-bad{background:#fee2e2;color:#b91c1c}
+    .tone-info{background:#dbeafe;color:#1d4ed8}.tone-purple{background:#ede9fe;color:#6d28d9}.tone-neutral{background:#f1f5f9;color:#475569}
+    .txt-ok{color:#15803d}.txt-warn{color:#b45309}.txt-bad{color:#b91c1c}.txt-info{color:#1d4ed8}
     /* v5.18e calibration detail + results summary */
     #cal-root .btn,#cal-root .eval-toggle-btn{border-radius:6px}
     .cal-page{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 24px 20px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
@@ -1784,12 +1791,12 @@
           <span class="topbar-title" id="page-title">Dashboard</span><span id="page-help"></span>
           <span class="topbar-subtitle" id="page-subtitle"></span>
         </div>
-        <div class="topbar-search">
+        <div class="topbar-utils"><div class="topbar-right" id="topbar-acts"></div>
+          <div class="topbar-search">
           <button type="button" class="topbar-search-btn" onclick="globalSearchOpen()" title="Search across LEAP Insights">
             <span>⌕</span><span>Search LEAP Insights…</span><span class="kbd">Ctrl K</span>
           </button>
         </div>
-        <div class="topbar-utils"><div class="topbar-right" id="topbar-acts"></div>
           <button type="button" class="topbar-kb" data-tip="Knowledge Base" aria-label="Knowledge Base" onclick="openKnowledgeBase()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8M12 17h.01"/></svg></button></div>
       </header>
       <div id="gsearch-backdrop" class="gsearch-backdrop hidden" onclick="if(event.target===this)globalSearchClose()">
@@ -1902,68 +1909,24 @@
 
           <!-- ── EVAL LIST SUB-VIEW ── -->
           <div id="eval-list-view">
-            <!-- page header -->
-            <div class="sec-hdr" style="margin-bottom:0">
-              <div></div>
-              <div style="display:flex;gap:8px">
-                <button class="btn btn-primary" id="new-eval-btn">+ New Evaluation</button>
-              </div>
-            </div>
-
-            <!-- tabs -->
-            <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:14px 0 16px">
-              <button id="eval-tab-my"       class="eval-tab active" onclick="setEvalTab('my')">👤 My Evaluations</button>
-              <button id="eval-tab-team"     class="eval-tab"        onclick="setEvalTab('team')">👥 Team Evaluations</button>
-              <button id="eval-tab-sme"      class="eval-tab"        onclick="setEvalTab('sme')" style="display:none">🎤 SME Observations</button>
-            </div>
+            <!-- v5.19b (2026-11-11, per Sandra): shared list (tabs · toolbar · cards · LT table · pager) -->
+            <div class="lt-tabrow"><div class="lt-tabs" id="ef-tabs"></div><button class="btn btn-primary" id="new-eval-btn">+ New Evaluation</button></div>
             <div id="sme-obs-block" class="hidden"></div>
-
-            <div id="eval-table-block">
-              <div class="eval-controls">
-                <select class="eval-select" id="ef-filter-status" onchange="renderEvaluations()">
-                  <option value="all">All Statuses</option>
-                  <option value="draft">Draft</option>
-                  <option value="pending_ack">Pending Acknowledgement</option>
-                </select>
-                <select class="eval-select" id="ef-filter-trainer" onchange="renderEvaluations()">
-                  <option value="all">All Trainers</option>
-                </select>
-                <select class="eval-select hidden" id="ef-filter-evaluator" onchange="renderEvaluations()">
-                  <option value="all">All Evaluators</option>
-                </select>
-                <span class="df-date-group">
-                  <select class="eval-select" id="ef-filter-date" onchange="onDateFilterChange()">
-                    <option value="all">All Time</option>
-                    <option value="7d">Past 7 Days</option>
-                    <option value="1m">Past Month</option>
-                    <option value="3m">Last Quarter</option>
-                    <option value="custom">Custom Range</option>
-                  </select>
-                  <span class="df-tip-icon">i<span class="df-tip-bubble">Filters by training session date</span></span>
-                </span>
-                <span class="df-custom-wrap hidden" id="ef-filter-custom">
-                  <input type="date" class="eval-select" id="ef-date-from" onchange="renderEvaluations()">
-                  <span style="font-size:12px;color:var(--text3)">to</span>
-                  <input type="date" class="eval-select" id="ef-date-to" onchange="onDateToChange()">
-                </span>
-                <button class="eval-toggle-btn" id="ef-group-trainer-btn" onclick="setEvalGroupMode('trainer')">⊞ Group by Trainer</button>
-                <button class="eval-toggle-btn" id="ef-group-status-btn" onclick="setEvalGroupMode('status')">⊟ Group by Status</button>
-                <button class="eval-toggle-btn" id="ef-clear-filters-btn" onclick="clearEvalFilters()" style="display:none;color:var(--red);border-color:var(--red-lt)">✕ Clear Filters</button>
-                <span id="ef-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
-                <button class="eval-toggle-btn" onclick="exportEvalCSV()" title="Download visible columns as CSV">⬇ Export CSV</button>
-                <div class="col-picker" id="col-picker-wrap">
-                  <button class="eval-toggle-btn" onclick="toggleColPicker(event)">⋮ Columns</button>
-                  <div class="col-picker-dd" id="col-picker-dd">
-                    <div class="col-picker-hdr">Show / Hide Columns</div>
-                  </div>
-                </div>
-              </div>
-              <div id="eval-summary-bar"></div>
-              <div class="card">
-                <div id="eval-list-body"></div>
-              </div>
+            <div id="eval-table-block"><div class="lt-toolbar">
+              <div class="lt-search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="ef-q" class="eval-select" placeholder="Search…" oninput="ltResetPage('ef:'+_qalSt('ef').tab);renderEvaluations()"></div>
+              <select class="eval-select" id="ef-filter-status" onchange="ltResetPage('ef:'+_qalSt('ef').tab);renderEvaluations()"><option value="all">All Statuses</option><option value="draft">Draft</option><option value="pending_ack">Pending Acknowledgement</option><option value="completed">Completed</option></select>
+              <select class="eval-select" id="ef-filter-person" onchange="ltResetPage('ef:'+_qalSt('ef').tab);renderEvaluations()"><option value="all">All Trainers</option></select>
+              
+              <select class="eval-select" id="ef-filter-date" onchange="qalFilterChanged('ef')" title="Filters by training session date"><option value="all">All Time</option><option value="7d">Past 7 Days</option><option value="1m">Past Month</option><option value="3m">Last Quarter</option><option value="custom">Custom Range</option></select>
+              <span class="df-custom-wrap hidden" id="ef-filter-custom"><input type="date" class="eval-select" id="ef-filter-from" onchange="renderEvaluations()"><span style="font-size:12px;color:var(--text3)">to</span><input type="date" class="eval-select" id="ef-filter-to" onchange="renderEvaluations()"></span>
+              <select class="eval-select" id="ef-group" onchange="qalGroup('ef',this.value)" title="Group by"><option value="none">No Grouping</option><option value="person">Group by Trainer</option><option value="status">Group by Status</option></select>
+              <button class="btn btn-ghost btn-sm" id="ef-clear" onclick="qalClear('ef')" style="display:none;color:var(--red)">Clear filters</button>
+              <span id="ef-count" class="lt-muted" style="flex:1"></span>
+              <button class="btn btn-secondary btn-sm" onclick="qalExport('ef')" title="Download the visible columns as CSV"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg> Export</button>
+              <button class="btn btn-secondary btn-sm lt-cols-btn" onclick="qalCols(event,'ef')" title="Show, hide, reorder columns"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15M14.5 4.5v15"/></svg> Columns</button>
             </div>
-
+            <div id="ef-summary"></div>
+            <div class="lt-card"><div id="ef-body"></div><div id="ef-pager"></div></div></div>
           </div>
 
           <!-- ── EVAL FORM SUB-VIEW ── -->
@@ -2183,31 +2146,23 @@
 
           <!-- ── IDQA LIST SUB-VIEW ── -->
           <div id="idqa-list-view">
-            <!-- v5.19 (2026-11-11, per Sandra): tabs + New Review on one row; compact toolbar; shared LT table; simple pager -->
+            <!-- v5.19b (2026-11-11, per Sandra): shared list (tabs · toolbar · cards · LT table · pager) -->
             <div class="lt-tabrow"><div class="lt-tabs" id="idqa-tabs"></div><button class="btn btn-primary" id="new-idqa-btn">+ New Review</button></div>
             <div class="lt-toolbar">
-              <div class="lt-search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="idqa-q" class="eval-select" placeholder="Search reviews…" oninput="ltResetPage('idqa:'+_idqaTab);renderIDQA()"></div>
-              <select class="eval-select" id="idqa-filter-status" onchange="ltResetPage('idqa:'+_idqaTab);renderIDQA()">
-                <option value="all">All Statuses</option><option value="draft">Draft</option><option value="pending_ack">Pending Acknowledgement</option><option value="completed">Completed</option>
-              </select>
-              <select class="eval-select" id="idqa-filter-designer" onchange="ltResetPage('idqa:'+_idqaTab);renderIDQA()"><option value="all">All Designers</option></select>
-              <select class="eval-select" id="idqa-filter-type" onchange="ltResetPage('idqa:'+_idqaTab);renderIDQA()"><option value="all">All Deliverable Types</option></select>
-              <select class="eval-select" id="idqa-filter-date" onchange="onIDQADateFilterChange()">
-                <option value="all">All Time</option><option value="7d">Past 7 Days</option><option value="1m">Past Month</option><option value="3m">Last Quarter</option><option value="custom">Custom Range</option>
-              </select>
-              <span class="df-custom-wrap hidden" id="idqa-filter-custom">
-                <input type="date" class="eval-select" id="idqa-date-from" onchange="renderIDQA()"><span style="font-size:12px;color:var(--text3)">to</span><input type="date" class="eval-select" id="idqa-date-to" onchange="renderIDQA()">
-              </span>
-              <select class="eval-select" id="idqa-group" onchange="setIDQAGroupMode(this.value)" title="Group by">
-                <option value="none">No Grouping</option><option value="designer">Group by Designer</option><option value="status">Group by Status</option>
-              </select>
-              <button class="btn btn-ghost btn-sm" id="idqa-clear-btn" onclick="clearIDQAFilters()" style="display:none;color:var(--red)">Clear filters</button>
+              <div class="lt-search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="idqa-q" class="eval-select" placeholder="Search…" oninput="ltResetPage('idqa:'+_qalSt('idqa').tab);renderIDQA()"></div>
+              <select class="eval-select" id="idqa-filter-status" onchange="ltResetPage('idqa:'+_qalSt('idqa').tab);renderIDQA()"><option value="all">All Statuses</option><option value="draft">Draft</option><option value="pending_ack">Pending Acknowledgement</option><option value="completed">Completed</option></select>
+              <select class="eval-select" id="idqa-filter-person" onchange="ltResetPage('idqa:'+_qalSt('idqa').tab);renderIDQA()"><option value="all">All Designers</option></select>
+              <select class="eval-select" id="idqa-filter-type" onchange="ltResetPage('idqa:'+_qalSt('idqa').tab);renderIDQA()"><option value="all">All Deliverable Types</option></select>
+              <select class="eval-select" id="idqa-filter-date" onchange="qalFilterChanged('idqa')" title="Filters by review date"><option value="all">All Time</option><option value="7d">Past 7 Days</option><option value="1m">Past Month</option><option value="3m">Last Quarter</option><option value="custom">Custom Range</option></select>
+              <span class="df-custom-wrap hidden" id="idqa-filter-custom"><input type="date" class="eval-select" id="idqa-filter-from" onchange="renderIDQA()"><span style="font-size:12px;color:var(--text3)">to</span><input type="date" class="eval-select" id="idqa-filter-to" onchange="renderIDQA()"></span>
+              <select class="eval-select" id="idqa-group" onchange="qalGroup('idqa',this.value)" title="Group by"><option value="none">No Grouping</option><option value="person">Group by Designer</option><option value="status">Group by Status</option></select>
+              <button class="btn btn-ghost btn-sm" id="idqa-clear" onclick="qalClear('idqa')" style="display:none;color:var(--red)">Clear filters</button>
               <span id="idqa-count" class="lt-muted" style="flex:1"></span>
-              <button class="btn btn-secondary btn-sm" onclick="exportIDQACSV()" title="Download the visible columns as CSV"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg> Export</button>
-              <button class="btn btn-secondary btn-sm lt-cols-btn" onclick="toggleIDQAColPicker(event)" title="Show, hide, reorder columns"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15M14.5 4.5v15"/></svg> Columns</button>
+              <button class="btn btn-secondary btn-sm" onclick="qalExport('idqa')" title="Download the visible columns as CSV"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg> Export</button>
+              <button class="btn btn-secondary btn-sm lt-cols-btn" onclick="qalCols(event,'idqa')" title="Show, hide, reorder columns"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15M14.5 4.5v15"/></svg> Columns</button>
             </div>
-            <div id="idqa-summary-bar"></div>
-            <div class="lt-card"><div id="idqa-list-body"></div><div id="idqa-pager"></div></div>
+            <div id="idqa-summary"></div>
+            <div class="lt-card"><div id="idqa-body"></div><div id="idqa-pager"></div></div>
           </div>
 
           <!-- ── IDQA FORM SUB-VIEW ── -->
@@ -2358,55 +2313,23 @@
 
           <!-- ── CQA LIST SUB-VIEW ── -->
           <div id="cqa-list-view">
-            <div class="sec-hdr" style="margin-bottom:0">
-              <div></div>
-              <button class="btn btn-primary" id="new-cqa-btn">+ New Review</button>
+            <!-- v5.19b (2026-11-11, per Sandra): shared list (tabs · toolbar · cards · LT table · pager) -->
+            <div class="lt-tabrow"><div class="lt-tabs" id="cqa-tabs"></div><button class="btn btn-primary" id="new-cqa-btn">+ New Review</button></div>
+            <div class="lt-toolbar">
+              <div class="lt-search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="cqa-q" class="eval-select" placeholder="Search…" oninput="ltResetPage('cqa:'+_qalSt('cqa').tab);renderContentQA()"></div>
+              <select class="eval-select" id="cqa-filter-status" onchange="ltResetPage('cqa:'+_qalSt('cqa').tab);renderContentQA()"><option value="all">All Statuses</option><option value="draft">Draft</option><option value="pending_ack">Pending Acknowledgement</option><option value="completed">Completed</option></select>
+              <select class="eval-select" id="cqa-filter-person" onchange="ltResetPage('cqa:'+_qalSt('cqa').tab);renderContentQA()"><option value="all">All Content Developers</option></select>
+              <select class="eval-select" id="cqa-filter-type" onchange="ltResetPage('cqa:'+_qalSt('cqa').tab);renderContentQA()"><option value="all">All Content Types</option></select>
+              <select class="eval-select" id="cqa-filter-date" onchange="qalFilterChanged('cqa')" title="Filters by review date"><option value="all">All Time</option><option value="7d">Past 7 Days</option><option value="1m">Past Month</option><option value="3m">Last Quarter</option><option value="custom">Custom Range</option></select>
+              <span class="df-custom-wrap hidden" id="cqa-filter-custom"><input type="date" class="eval-select" id="cqa-filter-from" onchange="renderContentQA()"><span style="font-size:12px;color:var(--text3)">to</span><input type="date" class="eval-select" id="cqa-filter-to" onchange="renderContentQA()"></span>
+              <select class="eval-select" id="cqa-group" onchange="qalGroup('cqa',this.value)" title="Group by"><option value="none">No Grouping</option><option value="person">Group by Content Developer</option><option value="status">Group by Status</option></select>
+              <button class="btn btn-ghost btn-sm" id="cqa-clear" onclick="qalClear('cqa')" style="display:none;color:var(--red)">Clear filters</button>
+              <span id="cqa-count" class="lt-muted" style="flex:1"></span>
+              <button class="btn btn-secondary btn-sm" onclick="qalExport('cqa')" title="Download the visible columns as CSV"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg> Export</button>
+              <button class="btn btn-secondary btn-sm lt-cols-btn" onclick="qalCols(event,'cqa')" title="Show, hide, reorder columns"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15M14.5 4.5v15"/></svg> Columns</button>
             </div>
-            <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:14px 0 16px">
-              <button id="cqa-tab-my"   class="eval-tab active" onclick="setCQATab('my')">👤 My Reviews</button>
-              <button id="cqa-tab-team" class="eval-tab"        onclick="setCQATab('team')">📋 Team Reviews</button>
-            </div>
-            <div class="eval-controls">
-              <select class="eval-select" id="cqa-filter-status" onchange="renderContentQA()">
-                <option value="all">All Statuses</option>
-                <option value="draft">Draft</option>
-                <option value="pending_ack">Pending Acknowledgement</option>
-              </select>
-              <select class="eval-select" id="cqa-filter-author" onchange="renderContentQA()">
-                <option value="all">All Authors</option>
-              </select>
-              <select class="eval-select" id="cqa-filter-type" onchange="renderContentQA()">
-                <option value="all">All Content Types</option>
-              </select>
-              <span class="df-date-group">
-                <select class="eval-select" id="cqa-filter-date" onchange="onCQADateFilterChange()">
-                  <option value="all">All Time</option>
-                  <option value="7d">Past 7 Days</option>
-                  <option value="1m">Past Month</option>
-                  <option value="3m">Last Quarter</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-                <span class="df-tip-icon">i<span class="df-tip-bubble">Filters by review date</span></span>
-              </span>
-              <span class="df-custom-wrap hidden" id="cqa-filter-custom">
-                <input type="date" class="eval-select" id="cqa-date-from" onchange="renderContentQA()">
-                <span style="font-size:12px;color:var(--text3)">to</span>
-                <input type="date" class="eval-select" id="cqa-date-to" onchange="renderContentQA()">
-              </span>
-              <button class="eval-toggle-btn" id="cqa-group-author-btn" onclick="setCQAGroupMode('author')">⊞ Group by CD</button>
-              <button class="eval-toggle-btn" id="cqa-group-status-btn" onclick="setCQAGroupMode('status')">⊟ Group by Status</button>
-              <button class="eval-toggle-btn" id="cqa-clear-btn" onclick="clearCQAFilters()" style="display:none;color:var(--red);border-color:var(--red-lt)">✕ Clear Filters</button>
-              <span id="cqa-count" style="font-size:12px;color:var(--text3);margin-left:4px;flex:1"></span>
-              <button class="eval-toggle-btn" onclick="exportCQACSV()" title="Download visible columns as CSV">⬇ Export CSV</button>
-              <div class="col-picker" id="cqa-col-picker-wrap">
-                <button class="eval-toggle-btn" onclick="toggleCQAColPicker(event)">⋮ Columns</button>
-                <div class="col-picker-dd" id="cqa-col-picker-dd">
-                  <div class="col-picker-hdr">Show / Hide Columns</div>
-                </div>
-              </div>
-            </div>
-            <div id="cqa-summary-bar"></div>
-            <div class="card"><div id="cqa-list-body"></div></div>
+            <div id="cqa-summary"></div>
+            <div class="lt-card"><div id="cqa-body"></div><div id="cqa-pager"></div></div>
           </div>
 
           <!-- ── CQA FORM SUB-VIEW ── -->
@@ -5070,7 +4993,7 @@ function showView(id){
   if(id==='dashboard'&&!Perms.canView('dashboard')) id='my-performance'; // v5.15b: default landing for non-department users
   if(!Perms.canView(id)){ toast('You do not have access to that section.','error'); return; }
   localStorage.setItem('leap_view',id);
-  if(id==='evaluations'){ const t=localStorage.getItem('leap_eval_tab'); if(t) _evalTab=t; }
+  if(id==='evaluations'){ const t=localStorage.getItem('leap_eval_tab'); if(t&&['my','conducted','team','sme'].includes(t)) _qalSt('ef').tab=t; }
   document.querySelectorAll('[id^="view-"]').forEach(p=>p.classList.add('hidden'));
   document.getElementById('view-'+id)?.classList.remove('hidden');
   document.querySelectorAll('.nav-item,.nav-sub-item').forEach(n=>n.classList.remove('active'));
@@ -8762,7 +8685,7 @@ function _dashRenderTrainer(range,prevRange,key){
         <div id="dash-recent"></div>
       </div>
       <div class="dash-card">
-        <div class="dash-card-hdr"><div class="dash-card-title">Pending Acknowledgement</div><button class="dash-view-all" onclick="showView('evaluations');setEvalTab('team');document.getElementById('ef-filter-status').value='pending_ack';renderEvaluations()">View All →</button></div>
+        <div class="dash-card-hdr"><div class="dash-card-title">Pending Acknowledgement</div><button class="dash-view-all" onclick="showView('evaluations');setEvalTab('conducted');document.getElementById('ef-filter-status').value='pending_ack';renderEvaluations()">View All →</button></div>
         <div id="dash-pending"></div>
       </div>
     </div>
@@ -21160,16 +21083,7 @@ function clearEvalFilters(){
   document.getElementById('ef-group-status-btn')?.classList.remove('on');
   renderEvaluations();
 }
-function setEvalTab(tab){
-  _evalTab=tab;
-  localStorage.setItem('leap_eval_tab',tab);
-  _resetEvalFilterControls();
-  _evalGroupMode='none';
-  _evalGroupCollapsed={};
-  document.getElementById('ef-group-trainer-btn')?.classList.remove('on');
-  document.getElementById('ef-group-status-btn')?.classList.remove('on');
-  renderEvaluations();
-}
+function setEvalTab(tab){ qalTab('ef',tab); }
 
 function onDateFilterChange(){
   const val=(document.getElementById('ef-filter-date')||{}).value||'all';
@@ -21530,196 +21444,12 @@ function _evalStatusBadge(status){
 // Phase33 item 6: small badge showing whether a session-linked evaluation was conducted Live
 // (sit-in) or Virtual (recording review). Returns '' for manual/no-session evals with no mode.
 function _evalModeBadge(mode){
-  if(mode==='live')    return '<span class="badge" style="background:#dbeafe;color:#1d4ed8;white-space:nowrap">🧑\u200d🤝\u200d🧑 Live</span>';
+  if(mode==='live')    return `<span class="badge" style="background:#dbeafe;color:#1d4ed8;white-space:nowrap;border-radius:6px">${window._ico?window._ico('user'):''} Live</span>`; // v5.19c: one-person icon
   if(mode==='virtual') return '<span class="badge" style="background:#ede9fe;color:#6d28d9;white-space:nowrap">🎥 Virtual</span>';
   return '';
 }
 
-function renderEvaluations(){
-  // Guard against a stale 'sessions' value left in localStorage from before the Training
-  // Sessions sub-tab was removed (phase33 item 7) -- fall back to My Evaluations.
-  if(_evalTab==='sessions'){ _evalTab='my'; localStorage.setItem('leap_eval_tab','my'); }
-  showEvalSubview('list');
-  const me=Auth.user, access=Auth.formAccess(me);
-  const allEvals=EvalDB.all();
-  const canConduct=access.trainerEval||me.isAdmin; // trainer eval section
-  const myTabBtn=document.getElementById('eval-tab-my');
-  const teamTabBtn=document.getElementById('eval-tab-team');
-  if(myTabBtn)  myTabBtn.classList.toggle('active',_evalTab==='my');
-  if(teamTabBtn) teamTabBtn.classList.toggle('active',_evalTab==='team');
-  // v5.14e: SME Observations tab (list only; editing happens on the session)
-  { const smeBtn=document.getElementById('eval-tab-sme'), smeBlk=document.getElementById('sme-obs-block'), evBlk=document.getElementById('eval-table-block');
-    if(smeBtn){ smeBtn.style.display=canConduct?'':'none'; smeBtn.classList.toggle('active',_evalTab==='sme'); }
-    if(_evalTab==='sme'&&canConduct){ if(evBlk) evBlk.classList.add('hidden'); if(smeBlk){ smeBlk.classList.remove('hidden'); smeBlk.innerHTML=_smeListHtml(); } const nb=document.getElementById('new-eval-btn'); if(nb) nb.style.display='none'; return; }
-    if(_evalTab==='sme') _evalTab='my';
-    if(evBlk) evBlk.classList.remove('hidden'); if(smeBlk) smeBlk.classList.add('hidden'); }
-  const myEvals=allEvals.filter(e=>e.trainerId===me.id&&(me.isAdmin||e.status!=='draft'));
-  const teamEvals=me.isAdmin?allEvals:allEvals.filter(e=>e.evaluatorId===me.id);
-  const myPending=myEvals.filter(e=>e.status==='pending_ack').length;
-  const teamPending=teamEvals.filter(e=>e.status==='pending_ack').length;
-  if(myTabBtn) myTabBtn.innerHTML=`👤 My Evaluations${myPending?` <span class="eval-tab-badge">${myPending}</span>`:''}`;
-  if(teamTabBtn) teamTabBtn.innerHTML=`👥 Team Evaluations${teamPending?` <span class="eval-tab-badge">${teamPending}</span>`:''}`;
-  document.getElementById('ef-filter-evaluator')?.classList.toggle('hidden',_evalTab!=='team');
-  const newBtn=document.getElementById('new-eval-btn');
-  if(newBtn) newBtn.style.display=(canConduct&&_evalTab==='team')?'':'none';
-  const tabPool=_evalTab==='my'?myEvals:teamEvals;
-  const trainerFilter=document.getElementById('ef-filter-trainer');
-  if(trainerFilter){
-    const trainerIds=[...new Set(tabPool.map(e=>e.trainerId).filter(Boolean))];
-    const cur=trainerFilter.value;
-    trainerFilter.innerHTML='<option value="all">All Trainers</option>'+trainerIds.map(id=>{ const u=DB.byId(id)||{firstName:'?',lastName:'(inactive)'}; return `<option value="${id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`; }).join('');
-    if(trainerIds.includes(cur)) trainerFilter.value=cur;
-  }
-  const evaluatorFilter=document.getElementById('ef-filter-evaluator');
-  if(evaluatorFilter){
-    const evIds=[...new Set(tabPool.map(e=>e.evaluatorId).filter(Boolean))];
-    const cur=evaluatorFilter.value;
-    evaluatorFilter.innerHTML='<option value="all">All Evaluators</option>'+evIds.map(id=>{ const u=DB.byId(id)||{firstName:'?',lastName:'(inactive)'}; return `<option value="${id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`; }).join('');
-    if(evIds.includes(cur)) evaluatorFilter.value=cur;
-  }
-  renderEvalSummary(tabPool);
-  const statusF=(document.getElementById('ef-filter-status')||{}).value||'all';
-  const trainerF=(document.getElementById('ef-filter-trainer')||{}).value||'all';
-  const evaluatorF=(document.getElementById('ef-filter-evaluator')||{}).value||'all';
-  const dateF=(document.getElementById('ef-filter-date')||{}).value||'all';
-  const _hasActiveFilter=statusF!=='all'||trainerF!=='all'||evaluatorF!=='all'||dateF!=='all'||_evalGroupMode!=='none';
-  const _cfBtn=document.getElementById('ef-clear-filters-btn');
-  if(_cfBtn) _cfBtn.style.display=_hasActiveFilter?'':'none';
-  let visible=tabPool;
-  if(statusF!=='all') visible=visible.filter(e=>e.status===statusF);
-  if(trainerF!=='all') visible=visible.filter(e=>e.trainerId===trainerF);
-  if(evaluatorF!=='all') visible=visible.filter(e=>e.evaluatorId===evaluatorF);
-  if(dateF!=='all'){
-    const now=new Date(); now.setHours(23,59,59,999);
-    let fromDate=null, toDate=now;
-    if(dateF==='7d'){ fromDate=new Date(); fromDate.setDate(fromDate.getDate()-7); fromDate.setHours(0,0,0,0); }
-    else if(dateF==='1m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-1); fromDate.setHours(0,0,0,0); }
-    else if(dateF==='3m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-3); fromDate.setHours(0,0,0,0); }
-    else if(dateF==='custom'){
-      const fv=(document.getElementById('ef-date-from')||{}).value;
-      const tv=(document.getElementById('ef-date-to')||{}).value;
-      if(fv) fromDate=new Date(fv+'T00:00:00');
-      if(tv) toDate=new Date(tv+'T23:59:59');
-    }
-    visible=visible.filter(e=>{
-      if(!e.trainingDate) return false;
-      const d=new Date(e.trainingDate+'T00:00:00');
-      if(fromDate&&d<fromDate) return false;
-      if(d>toDate) return false;
-      return true;
-    });
-  }
-  const {col,dir}=_evalSort;
-  visible=[...visible].sort((a,b)=>{
-    let va,vb;
-    if(col==='date'){va=a.trainingDate||'';vb=b.trainingDate||'';}
-    else if(col==='evaldate'){va=a.evaluationDate||'';vb=b.evaluationDate||'';}
-    else if(col==='score'){va=a.overallScore||0;vb=b.overallScore||0;}
-    else if(col==='trainer'){const u=DB.byId(a.trainerId);const v=DB.byId(b.trainerId);va=(u?`${u.lastName} ${u.firstName}`:'');vb=(v?`${v.lastName} ${v.firstName}`:'');}
-    else if(col==='evaluator'){const u=DB.byId(a.evaluatorId);const v=DB.byId(b.evaluatorId);va=(u?`${u.lastName} ${u.firstName}`:'');vb=(v?`${v.lastName} ${v.firstName}`:'');}
-    else if(col==='program'){va=a.trainingProgram||'';vb=b.trainingProgram||'';}
-    else if(col==='code'){va=a.code||'';vb=b.code||'';}
-    else if(col==='sessioncode'){va=(TrSessionDB.byId(a.sessionId)||{}).code||'';vb=(TrSessionDB.byId(b.sessionId)||{}).code||'';}
-    else if(col==='submitted'){va=a.finalizedAt||'';vb=b.finalizedAt||'';}
-    else if(col==='acked'){va=a.acknowledgedAt||'';vb=b.acknowledgedAt||'';}
-    else{va='';vb='';}
-    if(va<vb) return dir==='asc'?-1:1;
-    if(va>vb) return dir==='asc'?1:-1;
-    return 0;
-  });
-  const countEl=document.getElementById('ef-count');
-  if(countEl) countEl.textContent=`${visible.length} record${visible.length!==1?'s':''}`;
-  const body=document.getElementById('eval-list-body');
-  if(!visible.length){
-    const emptyMsg=_evalTab==='my'?'No evaluations have been shared with you yet.':canConduct?'Click "+ New Evaluation" to get started.':'No team evaluations yet.';
-    _lastEvalVisible=visible;
-    body.innerHTML=`<div class="empty-state"><div class="empty-ico">📋</div><div class="empty-title">No evaluations found</div><div style="font-size:13px;color:var(--text3);margin-top:4px">${emptyMsg}</div></div>`;
-    return;
-  }
-  _lastEvalVisible=visible;
-  const visCols=_getVisibleCols();
-  function sortTh(s){ const a=_evalSort.col===s; return a?(_evalSort.dir==='asc'?'sort-asc':'sort-desc'):''; }
-  const thead=`<thead><tr>${visCols.map(c=>c.sort
-    ?`<th class="${sortTh(c.sort)}" onclick="evalSortBy('${c.sort}')">${c.label}</th>`
-    :`<th>${c.label}</th>`
-  ).join('')}</tr></thead>`;
-  function cellFor(col,ev,tName,evName,score,submitted,canEdit,canView,sessCode){
-    if(col==='code')      return `<td><span class="eval-code">${Utils.esc(ev.code||'—')}</span>${ev.evaluationMode?` ${_evalModeBadge(ev.evaluationMode)}`:''}</td>`;
-    if(col==='sessioncode') return `<td>${sessCode?`<span class="eval-code">${Utils.esc(sessCode)}</span>`:'<span class="txt-muted" style="font-size:12px">—</span>'}</td>`;
-    if(col==='trainer')   return `<td><strong style="color:var(--text)">${Utils.esc(tName)}</strong></td>`;
-    if(col==='evaluator') return `<td>${Utils.esc(evName)}</td>`;
-    if(col==='program')   return `<td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(ev.trainingProgram||'—')}</td>`;
-    if(col==='date')      return `<td style="white-space:nowrap">${Utils.formatDate(ev.trainingDate)}</td>`;
-    if(col==='evaldate')  return `<td style="white-space:nowrap">${ev.evaluationDate?Utils.formatDate(ev.evaluationDate):'<span class="txt-muted">—</span>'}</td>`;
-    if(col==='submitted') return `<td style="white-space:nowrap">${submitted}</td>`;
-    if(col==='acked')     return `<td style="white-space:nowrap">${ev.acknowledgedAt?Utils.formatDate(ev.acknowledgedAt.split('T')[0]):'<span class="txt-muted">—</span>'}</td>`;
-    if(col==='score')     return `<td>${score}</td>`;
-    if(col==='status')    return `<td>${_evalStatusBadge(ev.status)}</td>`;
-    if(col==='actions'){
-      const canAck=ev.status==='pending_ack'&&ev.trainerId===me.id;
-      let btns='';
-      if(canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openEvalForm('${ev.id}')" style="min-width:60px;text-align:center">Edit</button>`;
-      if(canAck)  btns+=`<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openEvalView('${ev.id}')">✓ Acknowledge</button>`;
-      else if(canView&&!canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openEvalView('${ev.id}')" style="min-width:60px;text-align:center">View</button>`;
-      if(ev.status==='completed') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();showEvalPDFPreview('${ev.id}')" style="color:var(--pri);border-color:var(--pri);min-width:60px;text-align:center" title="Download PDF">📄 PDF</button>`;
-      if(me.isAdmin&&ev.status==='completed') btns+=`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();reopenEval('${ev.id}')" title="Reopen for editing" style="color:var(--text3)">↩</button>`;
-      if(canEdit||me.isAdmin) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteEval('${ev.id}')" title="${ev.status==='draft'?'Delete draft':'Admin: delete record'}" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
-      return `<td><div class="td-acts">${btns||'<span class="txt-muted" style="font-size:12px">—</span>'}</div></td>`;
-    }
-    return '<td></td>';
-  }
-  function rowHtml(ev){
-    const trainer=DB.byId(ev.trainerId), evaluator=DB.byId(ev.evaluatorId);
-    const tName=trainer?`${trainer.firstName} ${trainer.lastName}`:'—';
-    const evName=evaluator?`${evaluator.firstName} ${evaluator.lastName}`:'—';
-    const sc=ev.overallScore;
-    const scClr=sc>=4.5?'#16a34a':sc>=3.5?'#65a30d':sc>=2.5?'#d97706':sc>=1.5?'#ea580c':'#dc2626';
-    const ratedCount=Object.keys(ev.ratings||{}).length;
-    const scoreHtml=sc!=null?`<strong style="color:${scClr}">${sc.toFixed(1)}</strong><span style="color:var(--text3);font-size:11.5px">/5</span>`
-      :(ratedCount>0?`<span style="font-size:11.5px;color:var(--text3)">${ratedCount}/10</span>`:'<span class="txt-muted">—</span>');
-    const score=scoreHtml;
-    const submitted=ev.finalizedAt?Utils.formatDate(ev.finalizedAt.split('T')[0]):'<span class="txt-muted">—</span>';
-    const canEdit=(ev.evaluatorId===me.id||me.isAdmin)&&ev.status==='draft';
-    const canView=ev.status!=='draft'&&(ev.trainerId===me.id||ev.evaluatorId===me.id||me.isAdmin);
-    const rowClick=canEdit?`openEvalForm('${ev.id}')`:canView?`openEvalView('${ev.id}')`:null;
-    const rowStyle=rowClick?'cursor:pointer;':'';
-    const rowAttr=rowClick?`onclick="${rowClick}" title="Click to open"`:'';
-    const sessCode=ev.sessionId?(TrSessionDB.byId(ev.sessionId)?.code||null):null;
-    return `<tr style="${rowStyle}" ${rowAttr}>${visCols.map(c=>cellFor(c.id,ev,tName,evName,score,submitted,canEdit,canView,sessCode)).join('')}</tr>`;
-  }
-  function groupAccordion(groups, keyFn, headerFn){
-    let html='';
-    Object.entries(groups).forEach(([key,rows])=>{
-      const collapsed=!!_evalGroupCollapsed[key];
-      const avgScore=rows.filter(r=>r.overallScore!=null).length?(rows.filter(r=>r.overallScore!=null).reduce((s,r)=>s+r.overallScore,0)/rows.filter(r=>r.overallScore!=null).length).toFixed(1):'—';
-      html+=`<div style="margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
-        <div class="eval-group-hdr" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:${collapsed?'none':'1px solid var(--border)'}" onclick="toggleEvalGroupRow('${key}')">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:13px">${collapsed?'▶':'▼'}</span>
-            ${headerFn(key,rows)}
-            <span style="font-weight:400;color:var(--text3)">${rows.length} eval${rows.length!==1?'s':''}</span>
-          </div>
-          ${avgScore!=='—'?`<div style="font-size:12.5px;color:var(--text2)">Avg: <strong>${avgScore}/5</strong></div>`:''}
-        </div>
-        ${collapsed?'':`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`}
-      </div>`;
-    });
-    return html||'<div class="empty-state"><div class="empty-ico">📋</div><div class="empty-title">No evaluations found</div></div>';
-  }
-  if(_evalGroupMode==='trainer'){
-    const groups={};
-    visible.forEach(ev=>{ const id=ev.trainerId||'__none__'; if(!groups[id]) groups[id]=[]; groups[id].push(ev); });
-    body.innerHTML=groupAccordion(groups, k=>k, (k)=>{ const u=DB.byId(k); return `<span>👤 ${Utils.esc(u?`${u.firstName} ${u.lastName}`:'Unknown')}</span>`; });
-  } else if(_evalGroupMode==='status'){
-    const order=['draft','pending_ack','completed'];
-    const groups={};
-    order.forEach(s=>{ const rows=visible.filter(e=>e.status===s); if(rows.length) groups[s]=rows; });
-    body.innerHTML=groupAccordion(groups, k=>k, (k)=>_evalStatusBadge(k));
-  } else {
-    body.innerHTML='<div class="eval-tbl-wrap"><table class="eval-tbl">'+thead+'<tbody>'+visible.map(rowHtml).join('')+'</tbody></table></div>';
-  }
-  setTimeout(()=>document.querySelectorAll('#eval-list-body .eval-tbl').forEach(_initColResize),50);
-}
+function renderEvaluations(){ if(_qalSt('ef').tab==='sessions') _qalSt('ef').tab='my'; showEvalSubview('list'); _qalRender('ef'); }
 
 /* — legacy Training Sessions sub-tab (Evaluations > Trainer) removed 2026-08-05, phase33 item 7 —
    startSessionEvaluation()/_openPrefilledEval() below remain -- they are still used by the
@@ -23734,6 +23464,157 @@ function ltColsReset(key){ const p=_ltPrefs(key); _ltSave(key,{pageSize:p.pageSi
 // compact summary cards
 function _ltStat(icon,tone,num,label,onclick,active){ return `<div class="lt-stat${onclick?' click':''}${active?' on':''}" ${onclick?`onclick="${onclick}" role="button" tabindex="0"`:''}><span class="lt-stat-ico lt-t-${tone}">${window._ico?window._ico(icon):''}</span><div><div class="lt-stat-n">${num}</div><div class="lt-stat-l">${label}</div></div></div>`; }
 
+/* ══ v5.19b (2026-11-11, per Sandra): one list engine for ID QA, CD QA and Trainer Evaluation (on LT) ══════════
+   Tabs (same idea everywhere): Received (about me) · Conducted (I'm the reviewer/evaluator) · Team (whole team, view-only)
+   · SME Observations (Trainer Evaluation only, unchanged). Others' drafts are hidden from Team unless admin.
+   Forms, scoring, acknowledgement and record rules are untouched — this only changes the list pages. */
+const _qalS={};
+function _qalName(id){ const u=id?DB.byId(id):null; return u?`${u.firstName} ${u.lastName}`:''; }
+const QAL={
+  idqa:{p:'idqa', all:()=>IDQADB.all(), subj:'designerId', rev:'reviewerId', dateF:'reviewDate', typeF:'delivType', person:'Designer', persons:'All Designers', typeL:'Deliverable Type', types:'All Deliverable Types',
+    noun:'Review', nouns:'reviews', tabs:{my:'Reviews Received',conducted:'Reviews Conducted',team:'Team Reviews'}, form:'idqa', newId:'new-idqa-btn', view:'View Review',
+    open:r=>`openIDQA('${r.id}')`, canEdit:r=>r.status==='draft'&&(Auth.user.isAdmin||r.reviewerId===Auth.user.id),
+    pdf:r=>exportIDQAPDF(r.id), canReopen:r=>r.status==='pending_ack'||r.status==='completed', reopen:r=>reopenIDQA(r.id), del:r=>deleteIDQADraft(r.id),
+    badge:s=>_idqaStatusBadge(s), score:r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion), tl:r=>_idqaTimeliness(r), tlc:t=>_idqaTimelinessColor(t), rerender:()=>renderIDQA()},
+  cqa:{p:'cqa', all:()=>ContentQADB.all(), subj:'authorId', rev:'reviewerId', dateF:'reviewDate', typeF:'contentType', person:'Content Developer', persons:'All Content Developers', typeL:'Content Type', types:'All Content Types',
+    noun:'Review', nouns:'reviews', tabs:{my:'Reviews Received',conducted:'Reviews Conducted',team:'Team Reviews'}, form:'cqa', newId:'new-cqa-btn', view:'View Review',
+    open:r=>`openCQA('${r.id}')`, canEdit:r=>r.status==='draft'&&(Auth.user.isAdmin||r.reviewerId===Auth.user.id),
+    pdf:r=>exportCQAPDF(r.id), canReopen:r=>r.status==='pending_ack'||r.status==='completed', reopen:r=>reopenCQA(r.id), del:r=>deleteCQADraft(r.id),
+    badge:s=>_cqaStatusBadge(s), score:r=>_cqaScore(r.ratings,r.contentType,r.criteriaVersion), tl:r=>_cqaTimeliness(r), tlc:t=>_cqaTimelinessColor(t), rerender:()=>renderContentQA()},
+  ef:{p:'ef', all:()=>EvalDB.all(), subj:'trainerId', rev:'evaluatorId', dateF:'trainingDate', typeF:null, person:'Trainer', persons:'All Trainers', eval:true,
+    noun:'Evaluation', nouns:'evaluations', tabs:{my:'Evaluations Received',conducted:'Evaluations Conducted',team:'Team Observations'}, form:'trainerEval', newId:'new-eval-btn', view:'View Evaluation',
+    open:r=>(r.status==='draft'&&(Auth.user.isAdmin||r.evaluatorId===Auth.user.id))?`openEvalForm('${r.id}')`:`openEvalView('${r.id}')`, canEdit:r=>r.status==='draft'&&(Auth.user.isAdmin||r.evaluatorId===Auth.user.id),
+    pdf:r=>showEvalPDFPreview(r.id), canReopen:r=>r.status==='completed', reopen:r=>reopenEval(r.id), del:r=>deleteEval(r.id),
+    badge:s=>_evalStatusBadge(s), rerender:()=>renderEvaluations()}
+};
+function _qalSt(p){ return _qalS[p]=_qalS[p]||{tab:'my',sort:{col:'date',dir:'desc'},group:'none',col:{}}; }
+function _qalAvail(M){ const me=Auth.user, fa=Auth.formAccess(me), all=M.all();
+  return {my:true, conducted:!!(me.isAdmin||fa[M.form]||all.some(r=>r[M.rev]===me.id)), team:true, sme:!!(M.eval&&(me.isAdmin||fa.trainerEval))}; }
+function _qalPool(M,tab){ const me=Auth.user, all=M.all();
+  if(tab==='conducted') return all.filter(r=>r[M.rev]===me.id);
+  if(tab==='team') return me.isAdmin?all:all.filter(r=>r.status!=='draft'||r[M.rev]===me.id);
+  return all.filter(r=>r[M.subj]===me.id&&(me.isAdmin||!M.eval||r.status!=='draft')); }
+// v5.19c: shared tones
+const QAL_ST={draft:['Draft','neutral'],pending_ack:['Pending Acknowledgement','warn'],completed:['Completed','ok']};
+function _qalStatus(st){ const m=QAL_ST[st]||[st||'—','neutral']; return `<span class="lt-tag tone-${m[1]}">${Utils.esc(m[0])}</span>`; }
+function _qalDispTone(d){ return d==='Endorse'?'ok':d==='Revise & Resubmit'?'warn':d==='Major Revision'?'bad':'neutral'; }
+function _qalEvalTone(sc){ return sc>=3.5?'ok':sc>=3?'warn':'bad'; }
+function _qalTlTone(t){ return /early|on ?time/i.test(t||'')?'ok':/late/i.test(t||'')?'bad':''; }
+function _qalMode(m){ const ico=n=>window._ico?window._ico(n):''; return m==='live'?`<span class="lt-tag tone-info">${ico('user')} Live</span>`:m==='virtual'?`<span class="lt-tag tone-purple">${ico('video')} Virtual</span>`:'<span class="lt-muted">—</span>'; }
+function _qalScoreHtml(M,r){
+  if(M.eval){ const sc=r.overallScore; if(sc==null) return '<span class="lt-muted">—</span>'; return `<span class="txt-${_qalEvalTone(sc)}" style="font-weight:600">${sc.toFixed(1)}</span><span class="lt-muted">/5</span>`; }
+  const sc=M.score(r); return sc.pct!=null?`<span class="txt-${_qalDispTone(sc.disposition)}" style="font-weight:600">${sc.pct.toFixed(1)}%</span>`:'<span class="lt-muted">—</span>'; }
+function _qalActions(M,r){
+  const me=Auth.user, st=_qalSt(M.p), team=st.tab==='team', canEdit=!team&&M.canEdit(r), canAck=!team&&r.status==='pending_ack'&&r[M.subj]===me.id;
+  const prim=canEdit?{icon:'pencil',title:`Continue ${M.noun}`,fn:M.open(r)}:canAck?{icon:'check',title:`Acknowledge ${M.noun}`,fn:M.open(r),accent:true}:{icon:'eye',title:M.view,fn:M.open(r)};
+  const menu=[];
+  if(r.status==='completed') menu.push({label:'Download PDF',icon:'file',run:()=>M.pdf(r)});
+  if(!team&&me.isAdmin&&M.canReopen(r)) menu.push({label:`Reopen ${M.noun}`,icon:'reopen',run:()=>M.reopen(r)});
+  if(!team&&(canEdit||me.isAdmin)) menu.push({label:r.status==='draft'?'Delete Draft':`Delete ${M.noun}`,icon:'trash',danger:true,run:()=>M.del(r)});
+  return _ltActions(M.p,r.id,prim,menu);
+}
+function _qalCols(M){
+  const esc=Utils.esc, nm=_qalName;
+  if(M.eval) return [
+    {id:'code',label:'Eval ID',w:150,sort:'code',fixed:'first',render:r=>`<span class="lt-code">${esc(r.code||'—')}</span>`,csv:r=>r.code||''},
+    {id:'sessioncode',label:'Session ID',w:130,sort:'sessioncode',render:r=>{ const c=r.sessionId?(TrSessionDB.byId(r.sessionId)||{}).code:''; return c?`<span class="lt-code">${esc(c)}</span>`:'<span class="lt-muted">—</span>'; },csv:r=>r.sessionId?((TrSessionDB.byId(r.sessionId)||{}).code||''):''},
+    {id:'mode',label:'Evaluation Type',w:130,render:r=>_qalMode(r.evaluationMode),csv:r=>r.evaluationMode==='live'?'Live':r.evaluationMode==='virtual'?'Virtual':''},
+    {id:'trainer',label:'Trainer',w:190,sort:'trainer',render:r=>`<span class="lt-name">${esc(nm(r.trainerId)||'—')}</span>`,csv:r=>nm(r.trainerId)},
+    {id:'evaluator',label:'Evaluator',w:170,sort:'evaluator',render:r=>esc(nm(r.evaluatorId)||'—'),csv:r=>nm(r.evaluatorId)},
+    {id:'program',label:'Training Program',w:260,sort:'program',render:r=>`<span title="${esc(r.trainingProgram||'')}">${esc(r.trainingProgram||'—')}</span>`,csv:r=>r.trainingProgram||''},
+    {id:'date',label:'Session Date',w:130,sort:'date',render:r=>Utils.formatDate(r.trainingDate),csv:r=>r.trainingDate||''},
+    {id:'evaldate',label:'Evaluation Date',w:140,sort:'evaldate',render:r=>r.evaluationDate?Utils.formatDate(r.evaluationDate):'<span class="lt-muted">—</span>',csv:r=>r.evaluationDate||''},
+    {id:'submitted',label:'Submitted',w:130,sort:'submitted',render:r=>r.finalizedAt?Utils.formatDate(r.finalizedAt.split('T')[0]):'<span class="lt-muted">—</span>',csv:r=>r.finalizedAt?r.finalizedAt.slice(0,10):''},
+    {id:'acked',label:'Acknowledged',w:130,sort:'acked',render:r=>r.acknowledgedAt?Utils.formatDate(r.acknowledgedAt.split('T')[0]):'<span class="lt-muted">—</span>',csv:r=>r.acknowledgedAt?r.acknowledgedAt.slice(0,10):''},
+    {id:'score',label:'Score',w:90,sort:'score',cls:'lt-num',render:r=>_qalScoreHtml(M,r),csv:r=>r.overallScore!=null?r.overallScore.toFixed(2):''},
+    {id:'status',label:'Status',w:190,render:r=>_qalStatus(r.status),csv:r=>(QAL_ST[r.status]||[r.status||''])[0]},
+    {id:'actions',label:'Actions',w:96,fixed:'last',render:r=>_qalActions(M,r)}];
+  return [
+    {id:'code',label:'Code',w:150,sort:'code',fixed:'first',render:r=>`<span class="lt-code">${esc(r.code||'—')}</span>`,csv:r=>r.code||''},
+    {id:'person',label:M.person,w:190,sort:'person',render:r=>`<span class="lt-name">${esc(nm(r[M.subj])||'—')}</span>`,csv:r=>nm(r[M.subj])},
+    {id:'reviewer',label:'Reviewer',w:170,sort:'reviewer',render:r=>esc(nm(r.reviewerId)||'—'),csv:r=>nm(r.reviewerId)},
+    {id:'title',label:'Project Title',w:280,sort:'title',render:r=>`<span title="${esc(r.projectTitle||'')}">${esc(r.projectTitle||'—')}</span>`,csv:r=>r.projectTitle||''},
+    {id:'type',label:M.typeL,w:180,sort:'type',render:r=>esc(r[M.typeF]||'—'),csv:r=>r[M.typeF]||''},
+    {id:'date',label:'Review Date',w:130,sort:'date',render:r=>Utils.formatDate(r.reviewDate),csv:r=>r.reviewDate||''},
+    {id:'score',label:'Score',w:90,sort:'score',cls:'lt-num',render:r=>_qalScoreHtml(M,r),csv:r=>{ const s=M.score(r); return s.pct!=null?s.pct.toFixed(1)+'%':''; }},
+    {id:'disp',label:'Disposition',w:160,render:r=>{ const s=M.score(r); return s.disposition?`<span class="lt-tag tone-${_qalDispTone(s.disposition)}">${s.disposition}</span>`:'<span class="lt-muted">—</span>'; },csv:r=>M.score(r).disposition||''},
+    {id:'timeliness',label:'Timeliness',w:110,render:r=>{ const t=M.tl(r), tn=_qalTlTone(t); return tn?`<span class="txt-${tn}" style="font-weight:500">${t}</span>`:`<span class="lt-muted">${t}</span>`; },csv:r=>M.tl(r)},
+    {id:'status',label:'Status',w:190,render:r=>_qalStatus(r.status),csv:r=>(QAL_ST[r.status]||[r.status||''])[0]},
+    {id:'actions',label:'Actions',w:96,fixed:'last',render:r=>_qalActions(M,r)}];
+}
+function _qalCfg(M){ const st=_qalSt(M.p); return {key:`${M.p}:${st.tab}`, sort:st.sort, onSort:`qalSort_${M.p}`, rerender:M.rerender, rowClick:r=>M.open(r), cols:_qalCols(M)}; }
+function qalSort(p,col){ const st=_qalSt(p); if(st.sort.col===col) st.sort.dir=st.sort.dir==='asc'?'desc':'asc'; else st.sort={col,dir:['date','score','evaldate','submitted','acked'].includes(col)?'desc':'asc'}; QAL[p].rerender(); }
+function qalSort_idqa(c){ qalSort('idqa',c); } function qalSort_cqa(c){ qalSort('cqa',c); } function qalSort_ef(c){ qalSort('ef',c); }
+function qalTab(p,tab){ const st=_qalSt(p); st.tab=tab; st.group='none'; st.col={}; if(p==='ef') try{ localStorage.setItem('leap_eval_tab',tab); }catch(_){} ltResetPage(`${p}:${tab}`); QAL[p].rerender(); }
+function qalGroup(p,v){ const st=_qalSt(p); st.group=v||'none'; st.col={}; QAL[p].rerender(); }
+function qalGroupToggle(p,k){ const st=_qalSt(p); st.col[k]=!st.col[k]; QAL[p].rerender(); }
+function qalStatus(p,v){ const el=document.getElementById(p+'-filter-status'); if(el) el.value=v; ltResetPage(`${p}:${_qalSt(p).tab}`); QAL[p].rerender(); }
+function qalFilterChanged(p){ const v=(document.getElementById(p+'-filter-date')||{}).value; document.getElementById(p+'-filter-custom')?.classList.toggle('hidden',v!=='custom'); ltResetPage(`${p}:${_qalSt(p).tab}`); QAL[p].rerender(); }
+function qalClear(p){ ['filter-status','filter-person','filter-type','filter-date'].forEach(s=>{ const el=document.getElementById(`${p}-${s}`); if(el) el.value='all'; });
+  ['q','filter-from','filter-to'].forEach(s=>{ const el=document.getElementById(`${p}-${s}`); if(el) el.value=''; });
+  document.getElementById(p+'-filter-custom')?.classList.add('hidden'); const st=_qalSt(p); st.group='none'; st.col={}; ltResetPage(`${p}:${st.tab}`); QAL[p].rerender(); }
+function qalCols(e,p){ ltColsPanel(e,`${p}:${_qalSt(p).tab}`); }
+function qalExport(p){
+  const M=QAL[p], rows=(_qalS[p]&&_qalS[p].last)||[]; if(!rows.length){ toast('No records to export.','info'); return; }
+  const cols=_ltCols(_qalCfg(M)).filter(c=>c.csv), esc=v=>{ const s=String(v==null?'':v).replace(/"/g,'""'); return /[",\n]/.test(s)?`"${s}"`:s; };
+  const out=[cols.map(c=>esc(c.label)).join(',')].concat(rows.map(r=>cols.map(c=>esc(c.csv(r))).join(',')));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([out.join('\r\n')],{type:'text/csv;charset=utf-8;'}));
+  a.download=`LEAP_${p==='ef'?'Evaluations':p==='cqa'?'CQA_Reviews':'IDQA_Reviews'}_${_todayStr()}.csv`; a.click(); toast(`Exported ${rows.length} record${rows.length!==1?'s':''}.`,'success');
+}
+function _qalRender(p){
+  const M=QAL[p], me=Auth.user, st=_qalSt(p), av=_qalAvail(M);
+  if(!av[st.tab]) st.tab='my';
+  const recvPending=_qalPool(M,'my').filter(r=>r.status==='pending_ack').length, condPending=_qalPool(M,'conducted').filter(r=>r.status==='pending_ack').length;
+  const ico=n=>window._ico?window._ico(n):'';
+  const tabs=[['my','user',M.tabs.my,recvPending],['conducted','clipboard',M.tabs.conducted,M.eval?condPending:0],['team','users',M.tabs.team,0]];
+  if(M.eval) tabs.push(['sme','mic','SME Observations',0]);
+  const te=document.getElementById(p+'-tabs'); if(te) te.innerHTML=tabs.filter(t=>av[t[0]]).map(([k,ic,l,b])=>`<button class="eval-tab${st.tab===k?' active':''}" onclick="qalTab('${p}','${k}')">${ico(ic)} ${l}${b?` <span class="eval-tab-badge">${b}</span>`:''}</button>`).join('');
+  const nb=document.getElementById(M.newId); if(nb) nb.style.display=((me.isAdmin||Auth.formAccess(me)[M.form])&&st.tab!=='sme')?'':'none';
+  if(M.eval){ const sb=document.getElementById('sme-obs-block'), tb=document.getElementById('eval-table-block');
+    if(st.tab==='sme'){ if(tb) tb.classList.add('hidden'); if(sb){ sb.classList.remove('hidden'); sb.innerHTML=_smeListHtml(); } return; }
+    if(tb) tb.classList.remove('hidden'); if(sb) sb.classList.add('hidden'); }
+  const pool=_qalPool(M,st.tab);
+  const fill=(id,vals,label,fmt)=>{ const s=document.getElementById(id); if(!s) return; const cur=s.value; s.innerHTML=`<option value="all">${label}</option>`+vals.map(v=>`<option value="${Utils.esc(v)}">${Utils.esc(fmt?fmt(v):v)}</option>`).join(''); if(vals.includes(cur)) s.value=cur; };
+  fill(p+'-filter-person',[...new Set(pool.map(r=>r[M.subj]).filter(Boolean))].sort((a,b)=>_qalName(a).localeCompare(_qalName(b))),M.persons,id=>_qalName(id)||'(inactive)');
+  if(M.typeF) fill(p+'-filter-type',[...new Set(pool.map(r=>r[M.typeF]).filter(Boolean))].sort(),M.types);
+  const gs=document.getElementById(p+'-group'); if(gs) gs.value=st.group;
+  const cur=(document.getElementById(p+'-filter-status')||{}).value||'all', cnt=s=>pool.filter(r=>r.status===s).length;
+  let avg='—'; if(M.eval){ const v=pool.map(r=>r.overallScore).filter(x=>x!=null); if(v.length) avg=(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2)+'/5'; } else { const v=pool.map(r=>M.score(r).pct).filter(x=>x!=null); if(v.length) avg=(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1)+'%'; }
+  const Noun=M.nouns.replace(/^./,c=>c.toUpperCase());
+  const sumEl=document.getElementById(p+'-summary'); if(sumEl) sumEl.innerHTML=pool.length?`<div class="lt-stats">${_ltStat('clipboard','blue',pool.length,`Total ${Noun}`,`qalStatus('${p}','all')`,cur==='all')}${_ltStat('pencil','amber',cnt('draft'),'Drafts',`qalStatus('${p}','draft')`,cur==='draft')}${_ltStat('hourglass','purple',cnt('pending_ack'),'Pending Acknowledgement',`qalStatus('${p}','pending_ack')`,cur==='pending_ack')}${_ltStat('checkc','green',cnt('completed'),'Completed',`qalStatus('${p}','completed')`,cur==='completed')}${_ltStat('chart','slate',avg,'Average Score','',false)}</div>`:'';
+  const val=s=>(document.getElementById(`${p}-${s}`)||{}).value||'';
+  const stF=val('filter-status')||'all', pF=val('filter-person')||'all', tF=val('filter-type')||'all', dF=val('filter-date')||'all', q=val('q').trim().toLowerCase();
+  const clr=document.getElementById(p+'-clear'); if(clr) clr.style.display=(stF!=='all'||pF!=='all'||tF!=='all'||dF!=='all'||q||st.group!=='none')?'':'none';
+  let rows=pool;
+  if(q) rows=rows.filter(r=>`${r.code||''} ${r.projectTitle||r.trainingProgram||''} ${M.typeF?r[M.typeF]||'':''} ${_qalName(r[M.subj])} ${_qalName(r[M.rev])} ${r.sessionId?((TrSessionDB.byId(r.sessionId)||{}).code||''):''}`.toLowerCase().includes(q));
+  if(stF!=='all') rows=rows.filter(r=>r.status===stF);
+  if(pF!=='all') rows=rows.filter(r=>r[M.subj]===pF);
+  if(M.typeF&&tF!=='all') rows=rows.filter(r=>r[M.typeF]===tF);
+  if(dF!=='all'){ const now=new Date(); now.setHours(23,59,59,999); let from=null, to=now;
+    if(dF==='7d'){ from=new Date(); from.setDate(from.getDate()-7); from.setHours(0,0,0,0); } else if(dF==='1m'){ from=new Date(); from.setMonth(from.getMonth()-1); from.setHours(0,0,0,0); } else if(dF==='3m'){ from=new Date(); from.setMonth(from.getMonth()-3); from.setHours(0,0,0,0); }
+    else if(dF==='custom'){ const fv=val('filter-from'), tv=val('filter-to'); if(fv) from=new Date(fv+'T00:00:00'); if(tv) to=new Date(tv+'T23:59:59'); }
+    rows=rows.filter(r=>{ const dv=r[M.dateF]; if(!dv) return false; const d=new Date(dv+'T00:00:00'); return !(from&&d<from)&&!(d>to); }); }
+  const {col,dir}=st.sort;
+  const key=r=>col==='date'?(r[M.dateF]||''):col==='score'?(M.eval?(r.overallScore||0):(M.score(r).pct||0)):(col==='person'||col==='trainer')?_qalName(r[M.subj]):(col==='reviewer'||col==='evaluator')?_qalName(r[M.rev]):col==='title'?(r.projectTitle||''):col==='program'?(r.trainingProgram||''):col==='type'?(r[M.typeF]||''):col==='code'?(r.code||''):col==='sessioncode'?((TrSessionDB.byId(r.sessionId)||{}).code||''):col==='evaldate'?(r.evaluationDate||''):col==='submitted'?(r.finalizedAt||''):col==='acked'?(r.acknowledgedAt||''):'';
+  rows=[...rows].sort((a,b)=>{ const va=key(a), vb=key(b); return va<vb?(dir==='asc'?-1:1):va>vb?(dir==='asc'?1:-1):0; });
+  st.last=rows;
+  const one=M.nouns.replace(/s$/,'');
+  const cnEl=document.getElementById(p+'-count'); if(cnEl) cnEl.textContent=`${rows.length} ${rows.length===1?one:M.nouns}`;
+  const body=document.getElementById(p+'-body'), pager=document.getElementById(p+'-pager'); if(!body) return;
+  if(!rows.length){ body.innerHTML=`<div class="empty-state"><div class="empty-title">No ${M.nouns} found</div><div style="font-size:13px;color:var(--text3);margin-top:4px">Adjust the filters${st.tab==='conducted'?', or start a new '+M.noun.toLowerCase():''}.</div></div>`; if(pager) pager.innerHTML=''; return; }
+  const cfg=_qalCfg(M); Object.keys(_ltRowMenus).forEach(k=>{ if(k.startsWith(p+'|')) delete _ltRowMenus[k]; });
+  if(st.group!=='none'){
+    const groups={};
+    if(st.group==='person') rows.forEach(r=>{ const k=r[M.subj]||'__none__'; (groups[k]=groups[k]||[]).push(r); });
+    else ['draft','pending_ack','completed'].forEach(s=>{ const rs=rows.filter(r=>r.status===s); if(rs.length) groups[s]=rs; });
+    body.innerHTML=Object.entries(groups).map(([k,rs])=>{ const c=!!st.col[k];
+      const sc=M.eval?rs.map(r=>r.overallScore).filter(v=>v!=null):rs.map(r=>M.score(r).pct).filter(v=>v!=null), a=sc.length?(sc.reduce((x,y)=>x+y,0)/sc.length).toFixed(M.eval?2:1)+(M.eval?'/5':'%'):null;
+      const head=st.group==='person'?`<span class="lt-name">${Utils.esc(_qalName(k)||'Unknown')}</span>`:_qalStatus(k);
+      return `<div class="lt-group"><div class="lt-group-h" onclick="qalGroupToggle('${p}','${k}')"><span class="lt-chev${c?'':' open'}">›</span>${head}<span class="lt-muted">${rs.length} ${rs.length===1?one:M.nouns}</span><span style="flex:1"></span>${a?`<span class="lt-muted">Average <b style="color:var(--text)">${a}</b></span>`:''}</div>${c?'':_ltTable(cfg,rs)}</div>`; }).join('');
+    if(pager) pager.innerHTML='';
+  } else { body.innerHTML=_ltTable(cfg,_ltSlice(cfg.key,rows)); if(pager) pager.innerHTML=_ltPager(cfg.key,rows.length); }
+}
+
 let _idqaId=null, _idqaReadOnly=false;
 let _idqaTab='my';
 let _idqaSort={col:'date',dir:'desc'};
@@ -24250,7 +24131,7 @@ function _idqaLtCfg(){
     ]};
 }
 function _getIDQAVisibleCols(){ return _ltCols(_idqaLtCfg()); }
-function setIDQATab(tab){ _idqaTab=tab; ltResetPage('idqa:'+tab); renderIDQA(); }
+function setIDQATab(tab){ qalTab('idqa',tab); }
 function setIDQAGroupMode(mode){ _idqaGroupMode=mode||'none'; _idqaGroupRowCollapsed={}; renderIDQA(); }
 function toggleIDQAGroupRow(key){ _idqaGroupRowCollapsed[key]=!_idqaGroupRowCollapsed[key]; renderIDQA(); }
 function idqaSortBy(col){
@@ -24314,59 +24195,7 @@ function exportIDQACSV(){
   toast(`Exported ${_lastIDQAVisible.length} record${_lastIDQAVisible.length!==1?'s':''}.`,'success');
 }
 
-function renderIDQA(){
-  showIDQASubview('list');
-  const me=Auth.user, av=_idqaTabsAvail();
-  if(!av[_idqaTab]) _idqaTab='my';
-  const pool=_idqaPool(_idqaTab), myPending=_idqaPool('my').filter(r=>r.status==='pending_ack').length;
-  const tabs=document.getElementById('idqa-tabs');
-  if(tabs) tabs.innerHTML=[['my','user','My Reviews',myPending],['conducted','clipboard','Reviews I Conducted',0],['team','users','Team Reviews',0]].filter(t=>av[t[0]])
-    .map(([k,ic,l,b])=>`<button class="eval-tab${_idqaTab===k?' active':''}" onclick="setIDQATab('${k}')">${window._ico?window._ico(ic):''} ${l}${b?` <span class="eval-tab-badge">${b}</span>`:''}</button>`).join('');
-  const newBtn=document.getElementById('new-idqa-btn'); if(newBtn) newBtn.style.display=(me.isAdmin||Auth.formAccess(me).idqa)?'':'none';
-  const fill=(id,vals,label,fmt)=>{ const s=document.getElementById(id); if(!s) return; const cur=s.value; s.innerHTML=`<option value="all">${label}</option>`+vals.map(v=>`<option value="${Utils.esc(v)}">${Utils.esc(fmt?fmt(v):v)}</option>`).join(''); if(vals.includes(cur)) s.value=cur; };
-  fill('idqa-filter-designer',[...new Set(pool.map(r=>r.designerId).filter(Boolean))],'All Designers',id=>{ const u=DB.byId(id); return u?`${u.firstName} ${u.lastName}`:'(inactive)'; });
-  fill('idqa-filter-type',[...new Set(pool.map(r=>r.delivType).filter(Boolean))].sort(),'All Deliverable Types');
-  const gsel=document.getElementById('idqa-group'); if(gsel) gsel.value=_idqaGroupMode;
-  renderIDQASummary(pool);
-  const val=id=>(document.getElementById(id)||{}).value||'all';
-  const stF=val('idqa-filter-status'), dF=val('idqa-filter-designer'), tF=val('idqa-filter-type'), dtF=val('idqa-filter-date');
-  const q=((document.getElementById('idqa-q')||{}).value||'').trim().toLowerCase();
-  const clr=document.getElementById('idqa-clear-btn'); if(clr) clr.style.display=(stF!=='all'||dF!=='all'||tF!=='all'||dtF!=='all'||q||_idqaGroupMode!=='none')?'':'none';
-  const nm=id=>{ const u=DB.byId(id); return u?`${u.firstName} ${u.lastName}`:''; };
-  let visible=pool;
-  if(q) visible=visible.filter(r=>`${r.code||''} ${r.projectTitle||''} ${r.delivType||''} ${nm(r.designerId)} ${nm(r.reviewerId)}`.toLowerCase().includes(q));
-  if(stF!=='all') visible=visible.filter(r=>r.status===stF);
-  if(dF!=='all')  visible=visible.filter(r=>r.designerId===dF);
-  if(tF!=='all')  visible=visible.filter(r=>r.delivType===tF);
-  if(dtF!=='all'){
-    const now=new Date(); now.setHours(23,59,59,999); let fromDate=null, toDate=now;
-    if(dtF==='7d'){ fromDate=new Date(); fromDate.setDate(fromDate.getDate()-7); fromDate.setHours(0,0,0,0); }
-    else if(dtF==='1m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-1); fromDate.setHours(0,0,0,0); }
-    else if(dtF==='3m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-3); fromDate.setHours(0,0,0,0); }
-    else if(dtF==='custom'){ const fv=val('idqa-date-from'), tv=val('idqa-date-to'); if(fv&&fv!=='all') fromDate=new Date(fv+'T00:00:00'); if(tv&&tv!=='all') toDate=new Date(tv+'T23:59:59'); }
-    visible=visible.filter(r=>{ if(!r.reviewDate) return false; const d=new Date(r.reviewDate+'T00:00:00'); return !(fromDate&&d<fromDate)&&!(d>toDate); });
-  }
-  const {col,dir}=_idqaSort;
-  const key=r=>col==='date'?(r.reviewDate||''):col==='score'?(_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct||0):col==='designer'?nm(r.designerId):col==='reviewer'?nm(r.reviewerId):col==='title'?(r.projectTitle||''):col==='type'?(r.delivType||''):col==='code'?(r.code||''):'';
-  visible=[...visible].sort((a,b)=>{ const va=key(a), vb=key(b); return va<vb?(dir==='asc'?-1:1):va>vb?(dir==='asc'?1:-1):0; });
-  const cntEl=document.getElementById('idqa-count'); if(cntEl) cntEl.textContent=`${visible.length} review${visible.length!==1?'s':''}`;
-  _lastIDQAVisible=visible;
-  const body=document.getElementById('idqa-list-body'), pager=document.getElementById('idqa-pager'); if(!body) return;
-  if(!visible.length){ body.innerHTML='<div class="empty-state"><div class="empty-title">No reviews found</div><div style="font-size:13px;color:var(--text3);margin-top:4px">Adjust the filters, or start a new review.</div></div>'; if(pager) pager.innerHTML=''; return; }
-  const cfg=_idqaLtCfg(); _ltRowMenus={};
-  if(_idqaGroupMode!=='none'){
-    const groups={};
-    if(_idqaGroupMode==='designer') visible.forEach(r=>{ const k=r.designerId||'__none__'; (groups[k]=groups[k]||[]).push(r); });
-    else ['draft','pending_ack','completed'].forEach(s=>{ const rs=visible.filter(r=>r.status===s); if(rs.length) groups[s]=rs; });
-    body.innerHTML=Object.entries(groups).map(([k,rs])=>{ const col=!!_idqaGroupRowCollapsed[k], scs=rs.map(r=>_idqaScore(r.ratings||{},r.delivType,r.criteriaVersion).pct).filter(v=>v!=null), avg=scs.length?(scs.reduce((a,b)=>a+b,0)/scs.length).toFixed(1):null;
-      const head=_idqaGroupMode==='designer'?`<span class="lt-name">${Utils.esc(nm(k)||'Unknown')}</span>`:_idqaStatusBadge(k);
-      return `<div class="lt-group"><div class="lt-group-h" onclick="toggleIDQAGroupRow('${k}')"><span class="lt-chev${col?'':' open'}">›</span>${head}<span class="lt-muted">${rs.length} review${rs.length!==1?'s':''}</span><span style="flex:1"></span>${avg!==null?`<span class="lt-muted">Average <b style="color:var(--text)">${avg}%</b></span>`:''}</div>${col?'':_ltTable(cfg,rs)}</div>`; }).join('');
-    if(pager) pager.innerHTML='';
-  } else {
-    body.innerHTML=_ltTable(cfg,_ltSlice(cfg.key,visible));
-    if(pager) pager.innerHTML=_ltPager(cfg.key,visible.length);
-  }
-}
+function renderIDQA(){ showIDQASubview('list'); _qalRender('idqa'); }
 
 function _printOverlay(css, bodyHtml){
   // Remove any leftover overlay from a previous call
@@ -24626,12 +24455,7 @@ function showCQASubview(v){
   _pushAppHash(_computeCQAHash());
 }
 
-function setCQATab(tab){
-  _cqaTab=tab;
-  document.getElementById('cqa-tab-my')?.classList.toggle('active',tab==='my');
-  document.getElementById('cqa-tab-team')?.classList.toggle('active',tab==='team');
-  renderContentQA();
-}
+function setCQATab(tab){ qalTab('cqa',tab); }
 
 function clearCQAFilters(){
   ['cqa-filter-status','cqa-filter-author','cqa-filter-type','cqa-filter-date'].forEach(id=>{
@@ -24885,197 +24709,7 @@ function toggleCQACol(colId,visible){
   renderContentQA();
 }
 
-function renderContentQA(){
-  const me=Auth.user;
-  const all=ContentQADB.all();
-  // Tab UI
-  const cqaMyBtn=document.getElementById('cqa-tab-my');
-  const cqaTeamBtn=document.getElementById('cqa-tab-team');
-  if(cqaMyBtn) cqaMyBtn.classList.toggle('active',_cqaTab==='my');
-  if(cqaTeamBtn) cqaTeamBtn.classList.toggle('active',_cqaTab==='team');
-  // Scope by tab
-  const myRows=all.filter(r=>r.authorId===me.id);
-  const teamRows=me.isAdmin?all:all.filter(r=>r.reviewerId===me.id);
-  const myPending=myRows.filter(r=>r.status==='pending_ack').length;
-  if(cqaMyBtn) cqaMyBtn.innerHTML=`👤 My Reviews${myPending?' <span class="eval-tab-badge">'+myPending+'</span>':''}`;
-  if(cqaTeamBtn) cqaTeamBtn.innerHTML=`📋 Team Reviews`;
-  const tabPool=_cqaTab==='my'?myRows:teamRows;
-  // new button visibility
-  const newBtn=document.getElementById('new-cqa-btn');
-  if(newBtn) newBtn.style.display=(me.isAdmin||_cqaTab==='team')?'':'none';
-  // Populate author dropdown
-  const authSel=document.getElementById('cqa-filter-author');
-  if(authSel){
-    const authIds=[...new Set(tabPool.map(r=>r.authorId).filter(Boolean))];
-    const cur=authSel.value;
-    authSel.innerHTML='<option value="all">All Authors</option>'+authIds.map(id=>{const u=DB.byId(id)||{firstName:'?',lastName:'(inactive)'};return `<option value="${id}">${Utils.esc(u.firstName+' '+u.lastName)}</option>`;}).join('');
-    if(authIds.includes(cur)) authSel.value=cur;
-  }
-  // Populate type dropdown
-  const typeSel=document.getElementById('cqa-filter-type');
-  if(typeSel){
-    const cur=typeSel.value;
-    const cdFiltTypes=Sel.all(Store.DELIVERABLES).filter(d=>d.isCD&&d.isActive).sort((a,b)=>a.name.localeCompare(b.name));
-    typeSel.innerHTML='<option value="all">All Content Types</option>'+cdFiltTypes.map(d=>`<option value="${Utils.esc(d.name)}">${Utils.esc(d.name)}</option>`).join('');
-    if(cdFiltTypes.some(d=>d.name===cur)) typeSel.value=cur;
-  }
-  // Summary (pre-filter, tab-scoped)
-  renderCQASummary(tabPool);
-  // Filters
-  const stsVal=(document.getElementById('cqa-filter-status')||{}).value||'all';
-  const authVal=(document.getElementById('cqa-filter-author')||{}).value||'all';
-  const typeVal=(document.getElementById('cqa-filter-type')||{}).value||'all';
-  const dtVal=(document.getElementById('cqa-filter-date')||{}).value||'all';
-  const hasFilter=stsVal!=='all'||authVal!=='all'||typeVal!=='all'||dtVal!=='all'||_cqaGroupMode!=='none';
-  const clrBtn=document.getElementById('cqa-clear-btn');
-  if(clrBtn) clrBtn.style.display=hasFilter?'':'none';
-  let rows=tabPool;
-  if(stsVal!=='all') rows=rows.filter(r=>r.status===stsVal);
-  if(authVal!=='all') rows=rows.filter(r=>r.authorId===authVal);
-  if(typeVal!=='all') rows=rows.filter(r=>r.contentType===typeVal);
-  if(dtVal!=='all'){
-    const now=new Date(); now.setHours(23,59,59,999);
-    let fromDate=null, toDate=now;
-    if(dtVal==='7d'){ fromDate=new Date(); fromDate.setDate(fromDate.getDate()-7); fromDate.setHours(0,0,0,0); }
-    else if(dtVal==='1m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-1); fromDate.setHours(0,0,0,0); }
-    else if(dtVal==='3m'){ fromDate=new Date(); fromDate.setMonth(fromDate.getMonth()-3); fromDate.setHours(0,0,0,0); }
-    else if(dtVal==='custom'){
-      const fv=(document.getElementById('cqa-date-from')||{}).value;
-      const tv=(document.getElementById('cqa-date-to')||{}).value;
-      if(fv) fromDate=new Date(fv+'T00:00:00');
-      if(tv) toDate=new Date(tv+'T23:59:59');
-    }
-    rows=rows.filter(r=>{
-      if(!r.reviewDate) return false;
-      const d=new Date(r.reviewDate+'T00:00:00');
-      if(fromDate&&d<fromDate) return false;
-      if(d>toDate) return false;
-      return true;
-    });
-  }
-  // Sort
-  const {col,dir}=_cqaSort;
-  rows=[...rows].sort((a,b)=>{
-    let va,vb;
-    if(col==='date'){va=a.reviewDate||'';vb=b.reviewDate||'';}
-    else if(col==='score'){va=_cqaScore(a.ratings,a.contentType,a.criteriaVersion).pct||0;vb=_cqaScore(b.ratings,b.contentType,b.criteriaVersion).pct||0;}
-    else if(col==='author'){const u=DB.byId(a.authorId),v=DB.byId(b.authorId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:''; }
-    else if(col==='reviewer'){const u=DB.byId(a.reviewerId),v=DB.byId(b.reviewerId);va=u?`${u.lastName} ${u.firstName}`:'';vb=v?`${v.lastName} ${v.firstName}`:''; }
-    else if(col==='title'){va=a.projectTitle||'';vb=b.projectTitle||'';}
-    else if(col==='type'){va=a.contentType||'';vb=b.contentType||'';}
-    else if(col==='code'){va=a.code||'';vb=b.code||'';}
-    else{va='';vb='';}
-    if(va<vb) return dir==='asc'?-1:1;
-    if(va>vb) return dir==='asc'?1:-1;
-    return 0;
-  });
-  // Count + last visible
-  const cntEl=document.getElementById('cqa-count');
-  if(cntEl) cntEl.textContent=`${rows.length} review${rows.length!==1?'s':''}`;
-  _lastCQAVisible=rows;
-  const body=document.getElementById('cqa-list-body');
-  if(!body) return;
-  if(!rows.length){
-    body.innerHTML=`<div class="empty-state"><div class="empty-ico">✦</div><div class="empty-title">No reviews found</div><div class="empty-sub">Adjust filters or start a new review.</div></div>`;
-    return;
-  }
-  const visCols=_getCQAVisibleCols();
-  function sortTh(s){ const a=_cqaSort.col===s; return a?(_cqaSort.dir==='asc'?'sort-asc':'sort-desc'):''; }
-  const thead=`<thead><tr>${visCols.map(c=>c.sort
-    ?`<th class="${sortTh(c.sort)}" onclick="cqaSortBy('${c.sort}')">${c.label}</th>`
-    :`<th>${c.label}</th>`
-  ).join('')}</tr></thead>`;
-  function cqaCellFor(col,r,authorName,revName,sc,tl){
-    if(col==='code')       return `<td><span class="eval-code">${Utils.esc(r.code||'—')}</span></td>`;
-    if(col==='author')     return `<td><strong style="color:var(--text)">${Utils.esc(authorName)}</strong></td>`;
-    if(col==='reviewer')   return `<td>${Utils.esc(revName)}</td>`;
-    if(col==='title')      return `<td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.esc(r.projectTitle||'—')}</td>`;
-    if(col==='type')       return `<td>${Utils.esc(r.contentType||'—')}</td>`;
-    if(col==='date')       return `<td style="white-space:nowrap">${Utils.formatDate(r.reviewDate)}</td>`;
-    if(col==='score')      return `<td>${sc.pct!=null?`<strong style="color:${sc.dispColor};font-family:var(--mono)">${sc.pct.toFixed(1)}%</strong>`:'<span class="txt-muted">—</span>'}</td>`;
-    if(col==='disp')       return `<td>${sc.disposition?`<span style="font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;background:${sc.dispBg};color:${sc.dispColor}">${sc.disposition}</span>`:'<span class="txt-muted">—</span>'}</td>`;
-    if(col==='timeliness') return `<td style="color:${_cqaTimelinessColor(tl)};font-weight:600">${tl}</td>`;
-    if(col==='status')     return `<td>${_cqaStatusBadge(r.status)}</td>`;
-    if(col==='actions'){
-      const canEdit=r.status==='draft'&&(me.isAdmin||r.reviewerId===me.id);
-      const canAck=r.status==='pending_ack'&&r.authorId===me.id;
-      let btns='';
-      if(canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openCQA('${r.id}')" style="min-width:60px;text-align:center">Edit</button>`;
-      if(canAck)  btns+=`<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openCQA('${r.id}')">✓ Acknowledge</button>`;
-      else if(!canEdit) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openCQA('${r.id}')" style="min-width:60px;text-align:center">View</button>`;
-      if(r.status==='completed') btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();exportCQAPDF('${r.id}')" style="color:var(--pri);border-color:var(--pri);min-width:60px;text-align:center" title="PDF">📄 PDF</button>`;
-      if(me.isAdmin&&(r.status==='pending_ack'||r.status==='completed')) btns+=`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();reopenCQA('${r.id}')" title="Reopen" style="color:var(--text3)">↩</button>`;
-      if(canEdit||me.isAdmin) btns+=`<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();deleteCQADraft('${r.id}')" title="${r.status==='draft'?'Delete draft':'Admin: delete record'}" style="color:#dc2626;border-color:#dc2626;min-width:60px;text-align:center">🗑 Delete</button>`;
-      return `<td><div class="td-acts">${btns||'<span class="txt-muted" style="font-size:12px">—</span>'}</div></td>`;
-    }
-    return '<td></td>';
-  }
-  function cqaRowHtml(r){
-    const author=DB.byId(r.authorId), reviewer=DB.byId(r.reviewerId);
-    const authorName=author?`${author.firstName} ${author.lastName}`:'—';
-    const revName=reviewer?`${reviewer.firstName} ${reviewer.lastName}`:'—';
-    const sc=_cqaScore(r.ratings,r.contentType,r.criteriaVersion);
-    const tl=_cqaTimeliness(r);
-    return `<tr style="cursor:pointer" onclick="openCQA('${r.id}')" title="Click to open">${visCols.map(col=>cqaCellFor(col.id,r,authorName,revName,sc,tl)).join('')}</tr>`;
-  }
-  function cqaGroupAccordion(groups,headerFn){
-    let html='';
-    Object.entries(groups).forEach(([key,rows])=>{
-      const collapsed=!!_cqaGroupRowCollapsed[key];
-      const avgRows=rows.filter(r=>_cqaScore(r.ratings,r.contentType,r.criteriaVersion).pct!=null);
-      const avg=avgRows.length?(avgRows.reduce((s,r)=>s+_cqaScore(r.ratings,r.contentType,r.criteriaVersion).pct,0)/avgRows.length).toFixed(1):null;
-      html+=`<div style="margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
-        <div class="eval-group-hdr" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:${collapsed?'none':'1px solid var(--border)'}" onclick="toggleCQAGroupRow('${key}')">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:13px">${collapsed?'▶':'▼'}</span>
-            ${headerFn(key,rows)}
-            <span style="font-weight:400;color:var(--text3)">${rows.length} review${rows.length!==1?'s':''}</span>
-          </div>
-          ${avg!==null?`<div style="font-size:12.5px;color:var(--text2)">Avg: <strong>${avg}%</strong></div>`:''}
-        </div>
-        ${collapsed?'':`<div class="eval-tbl-wrap"><table class="eval-tbl">${thead}<tbody>${rows.map(cqaRowHtml).join('')}</tbody></table></div>`}
-      </div>`;
-    });
-    return html||'<div class="empty-state"><div class="empty-ico">✦</div><div class="empty-title">No reviews found</div></div>';
-  }
-  if(_cqaGroupMode==='author'){
-    const groups={};
-    rows.forEach(r=>{ const id=r.authorId||'__none__'; if(!groups[id]) groups[id]=[]; groups[id].push(r); });
-    body.innerHTML=cqaGroupAccordion(groups,(k)=>{ const u=DB.byId(k); return `<span>👤 ${Utils.esc(u?`${u.firstName} ${u.lastName}`:'Unknown')}</span>`; });
-  } else if(_cqaGroupMode==='status'){
-    const order=['draft','pending_ack','completed'];
-    const groups={};
-    order.forEach(s=>{ const rs=rows.filter(r=>r.status===s); if(rs.length) groups[s]=rs; });
-    body.innerHTML=cqaGroupAccordion(groups,(k)=>_cqaStatusBadge(k));
-  } else {
-    body.innerHTML='<div class="eval-tbl-wrap"><table class="eval-tbl">'+thead+'<tbody>'+rows.map(cqaRowHtml).join('')+'</tbody></table></div>';
-  }
-  setTimeout(()=>document.querySelectorAll('#cqa-list-body .eval-tbl').forEach(tbl=>{
-    if(!tbl) return;
-    tbl.querySelectorAll('thead th').forEach(th=>{
-      const idx=th.cellIndex;
-      if(_cqaColWidths[idx]) th.style.width=_cqaColWidths[idx];
-      if(th.querySelector('.col-rsz')) return;
-      const r=document.createElement('div'); r.className='col-rsz'; th.appendChild(r);
-      r.addEventListener('mousedown',e=>{
-        const startX=e.pageX, startW=th.offsetWidth;
-        let dragged=false;
-        r.classList.add('rsz-active');
-        const onMove=ev=>{ dragged=true; th.style.width=Math.max(48,startW+ev.pageX-startX)+'px'; };
-        const onUp=()=>{
-          r.classList.remove('rsz-active');
-          _cqaColWidths[idx]=th.style.width;
-          document.removeEventListener('mousemove',onMove);
-          document.removeEventListener('mouseup',onUp);
-          if(dragged){const nc=ev=>{ev.stopImmediatePropagation();th.removeEventListener('click',nc,true);};th.addEventListener('click',nc,true);}
-        };
-        document.addEventListener('mousemove',onMove);
-        document.addEventListener('mouseup',onUp);
-        e.preventDefault(); e.stopPropagation();
-      });
-    });
-  }),50);
-}
+function renderContentQA(){ showCQASubview('list'); _qalRender('cqa'); }
 
 /* ── DROPDOWNS ──────────────────────── */
 function _populateCQADropdowns(rec){
@@ -26953,9 +26587,8 @@ function _kbSnippet(e,q){ const t=String(e.content).replace(/[#*|@{}\[\]]/g,' ')
 function kbGo(page,id,q){ _kbR={page,id,q}; _kbEdit=null; _kbHist=null; if(page==='search') _kbQ=q||''; if(document.getElementById('view-knowledge-base')?.classList.contains('hidden')) showView('knowledge-base'); else renderKnowledgeBase(); _pushAppHash(_kbHash()); try{ document.querySelector('.main')?.scrollTo?.(0,0); window.scrollTo(0,0); }catch(e){} }
 function _kbHash(){ const r=_kbR; if(r.page==='article'){ const e=_kbByNum(r.id); return '#knowledge-base/article/'+(e?_kbNum(e.articleNumber):r.id); } if(r.page==='category') return '#knowledge-base/category/'+r.id; if(r.page==='search') return '#knowledge-base/search/'+encodeURIComponent(r.q||''); if(r.page==='archive') return '#knowledge-base/archive'; return '#knowledge-base'; }
 function kbSearchKey(ev,el){ if(ev.key==='Enter'){ const q=el.value.trim(); if(q) kbGo('search',null,q); else kbGo('home'); } }
-function openKnowledgeBase(){ // v5.19: one global KB control in the header
-  const cur=(localStorage.getItem('leap_view')||'');
-  if(window.LEAP_CHANNEL==='preview'&&typeof kbOpenHelp==='function'){ if(cur&&cur!=='knowledge-base'&&typeof KB_HELP!=='undefined'&&KB_HELP[cur]){ showView('knowledge-base'); kbOpenHelp(cur); } else showView('knowledge-base'); }
+function openKnowledgeBase(){ // v5.19c (per Sandra): shortcut to the Knowledge Base home (search from there)
+  if(window.LEAP_CHANNEL==='preview'&&Perms.canView('knowledge-base')){ if(typeof kbGo==='function') kbGo('home'); else showView('knowledge-base'); }
   else window.open('LEAP_KB.html','_blank','noopener');
 }
 function kbOpenHelp(view){ const e=_kbBySlug(KB_HELP[view]); if(e&&_kbVisible(e)) kbGo('article',e.articleNumber); else kbGo('search',null,(PAGE_TITLES[view]||view)); }
