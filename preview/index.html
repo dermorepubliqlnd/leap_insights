@@ -1894,6 +1894,8 @@
             .pdp-tl{position:relative}.pdp-ev{display:flex;gap:12px;position:relative;padding-bottom:16px}.pdp-ev:not(:last-child)::before{content:'';position:absolute;left:15px;top:32px;bottom:2px;width:1.5px;background:#e2e8f0}
             .pdp-evi{width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0}.pdp-evh{display:flex;justify-content:space-between;gap:8px;font-size:13px;flex-wrap:wrap}
             .pdp-av{width:28px;height:28px;border-radius:50%;background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+            .tp-pdp-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.tp-pdp-chip{border:1px solid var(--border);background:#fff;border-radius:6px;padding:5px 10px;font-size:12.5px;cursor:pointer;font-family:var(--font);color:var(--text2,#334155)}.tp-pdp-chip span{color:var(--text3);margin-left:2px}.tp-pdp-chip.on{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;font-weight:600}.tp-pdp-chip.on span{color:#1d4ed8}
+            #tp-pdp-box .mp-tbl tbody tr:hover{background:#f8fafc}
             .mp-team{display:flex;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px}.mp-team:hover{background:var(--surface-1,#f8fafc)}
           </style>
           <div id="mp-root"></div>
@@ -26166,7 +26168,9 @@ function _pdpTag(t,tone){ return `<span class="lt-tag tone-${tone}">${Utils.esc(
 function _pdpById(id){ return (Cache.data.pdp_items||[]).find(x=>x.id===id)||null; }
 function _pdpReq(id){ return (Cache.data.pdp_date_requests||[]).find(r=>r.pdpId===id&&r.status==='pending')||null; }
 function _pdpOverdue(x){ return ['planned','ongoing','returned'].includes(x.status)&&!!x.targetDate&&x.targetDate<_todayStr(); }
-function _pdpRO(){ return !!(_mpHost==='tp'?_tpAs:_mpAs); }
+function _pdpInTeam(){ const v=document.getElementById('view-team-performance'); return !!v&&!v.classList.contains('hidden'); }
+function _pdpRO(){ return !!(_pdpInTeam()?_tpAs:_mpAs); }
+function _pdpRerender(){ if(_pdpInTeam()&&!_tpPerson) renderTeamPerformance(); else renderMyPerformance(); }
 function _pdpIsOwner(x){ return !_pdpRO()&&!!x&&!!Auth.user&&x.profileId===Auth.user.id; }
 function _pdpCanVerify(pid){ if(_pdpRO()||!Auth.user) return false; const me=Auth.user, p=DB.byId(pid); if(!p) return false;
   return p.supervisorId===me.id||(!!me.isAdmin&&(pid!==me.id||!p.supervisorId)); }
@@ -26331,7 +26335,7 @@ function _pdpRender(){
 }
 
 /* ── writes ── */
-function _pdpRefresh(){ _pdp.events=null; renderMyPerformance(); if(_pdp.id&&!document.getElementById('pdp-dr-bg')?.classList.contains('hidden')){ _pdpRender(); if(_pdp.tab==='activity') _pdpLoadEvents(); } }
+function _pdpRefresh(){ _pdp.events=null; _pdpRerender(); if(_pdp.id&&!document.getElementById('pdp-dr-bg')?.classList.contains('hidden')){ _pdpRender(); if(_pdp.tab==='activity') _pdpLoadEvents(); } }
 function _pdpErr(m){ toast(m,'error'); }
 async function pdpSave(){ if(_pdpRO()){ _mpRO(); return; }
   _pdpMsSync(); const v=id=>(document.getElementById(id)?.value||'').trim();
@@ -26371,7 +26375,7 @@ function pdpReturn(){ return _pdpReasonWrite('returned','returnReason','Returned
 function pdpDelete(id){ if(_pdpRO()){ _mpRO(); return; } const x=_pdpById(id); if(!x) return;
   confirm$('Delete PDP',`Delete "${Utils.esc(x.title)}"? It hasn’t started, so it is removed from the list. The deletion stays in the history.`,'Delete',async()=>{
     const {error}=await sb.from('pdp_items').delete().eq('id',id); if(error){ _surfaceDbError(error,'Delete PDP'); return; }
-    Cache.data.pdp_items=Cache.data.pdp_items.filter(r=>r.id!==id); await AuditLog.record('delete','PDP',id,`Deleted PDP "${x.title}"`); pdpClose(); renderMyPerformance(); }); }
+    Cache.data.pdp_items=Cache.data.pdp_items.filter(r=>r.id!==id); await AuditLog.record('delete','PDP',id,`Deleted PDP "${x.title}"`); pdpClose(); _pdpRerender(); }); }
 async function pdpRequestDate(){ if(_pdpRO()){ _mpRO(); return; } const x=_pdpById(_pdp.id); if(!x) return; const nd=(document.getElementById('pdp-newdate')?.value||''), r=(document.getElementById('pdp-reason')?.value||'').trim();
   if(!nd) return _pdpErr('Pick the new target date.'); if(nd===x.targetDate) return _pdpErr('Pick a different date.'); if(!r) return _pdpErr('Add a reason.');
   const {data,error}=await sb.from('pdp_date_requests').insert(patchToSnake('pdp_date_requests',{pdpId:x.id,profileId:x.profileId,proposedDate:nd,reason:r})).select().single();
@@ -26980,6 +26984,28 @@ function _tpSpark(vals){
   const W=70,H=22,n=v.length-1||1; const P=pts.map(([i,x])=>`${(i/n*W).toFixed(1)},${(H-((x-1)/4)*H).toFixed(1)}`).join(' ');
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline points="${P}" fill="none" stroke="#2563eb" stroke-width="1.6"/></svg>`;
 }
+
+/* v5.19h (2026-11-11, per Sandra): Team PDPs — one list of the team's PDPs in Team Performance (scope follows the page) */
+let _tpPdpF='open';
+function tpPdpFilter(f){ _tpPdpF=f; renderTeamPerformance(); }
+function _tpPdpHtml(team){
+  const esc=Utils.esc, curQ=_scQuarterOf(_todayStr()), qr=_scPeriodRange('quarter',curQ), ids=new Set(team.map(u=>u.id));
+  const all=(Cache.data.pdp_items||[]).filter(x=>ids.has(x.profileId));
+  const F={open:['Active',x=>_scPdpActive(x)],submitted:['To verify',x=>x.status==='submitted'],overdue:['Overdue',x=>_pdpOverdue(x)],date:['Date change pending',x=>!!_pdpReq(x.id)],done:[`Completed Q${curQ.slice(6)}`,x=>_scPdpDoneIn(x,qr)],all:['All',x=>true]};
+  const f=F[_tpPdpF]?_tpPdpF:'open', list=all.filter(F[f][1]);
+  const rank={submitted:0,returned:1,ongoing:2,planned:3,verified:4,cancelled:5};
+  list.sort((a,b)=>(_pdpOverdue(b)-_pdpOverdue(a))||(rank[a.status]-rank[b.status])||String(a.targetDate||'').localeCompare(String(b.targetDate||'')));
+  const nm=id=>{ const u=DB.byId(id); return u?`${u.firstName} ${u.lastName}`:'—'; };
+  const chips=Object.entries(F).map(([k,[l,fn]])=>{ const n=all.filter(fn).length; return `<button class="tp-pdp-chip${k===f?' on':''}" onclick="tpPdpFilter('${k}')">${esc(l)} <span>${n}</span></button>`; }).join('');
+  const withPlan=team.filter(u=>_scPdpHasPlan(u.id,qr)).length;
+  const rows=list.map(x=>{ const s=PDP_ST[x.status]||[x.status,'neutral'], ver=_pdpCanVerify(x.profileId), req=_pdpReq(x.id), ms=_pdpMs(x);
+    const act=ver&&x.status==='submitted'?`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}','verify')">Verify</button>`:ver&&req?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}')">Review date</button>`:`<button class="lt-ibtn" data-tip="View" aria-label="View" onclick="event.stopPropagation();pdpOpen('${x.id}')">${LT_ICO.eye}</button>`;
+    const upd=x.updatedAt?Utils.formatDate(_mnlDateOf(x.updatedAt)):'—';
+    return `<tr onclick="pdpOpen('${x.id}')" style="cursor:pointer"><td><span class="lt-name">${esc(nm(x.profileId))}</span></td><td><div style="font-weight:500">${esc(x.title)}</div>${ms.length?`<div class="mp-sub">${ms.filter(m=>m.done).length}/${ms.length} milestones</div>`:''}</td><td>${_pdpTag(s[0],s[1])}</td><td>${x.targetDate?Utils.formatDate(x.targetDate):'—'}<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${_pdpTags(x)}</div></td><td>${x.status==='verified'&&_scPdpDone(x)?Utils.formatDate(_scPdpDone(x)):'<span class="mp-sub">—</span>'}</td><td class="mp-sub">${upd}</td><td style="text-align:right">${act}</td></tr>`; }).join('');
+  return `<div class="mp-c" id="tp-pdp-box" style="margin-bottom:14px"><div class="mp-ch"><span class="mp-ct">Team PDPs</span><span class="mp-sub">${withPlan} of ${team.length} with an active or completed PDP this quarter</span></div>
+    <div class="tp-pdp-chips">${chips}</div>
+    ${list.length?`<div style="overflow-x:auto"><table class="mp-tbl"><thead><tr><th>Person</th><th>PDP</th><th>Status</th><th>Target date</th><th>Completed</th><th>Last update</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="mp-empty"><div class="mp-sub">No PDPs in this view.</div></div>`}</div>`;
+}
 function renderTeamPerformance(keepFocus){
   const root=document.getElementById('tp-root'); if(!root) return;
   if(_tpPerson){ _mpHost='tp'; renderMyPerformance(); return; } // v5.15b drill-down
@@ -27043,7 +27069,7 @@ function renderTeamPerformance(keepFocus){
   const pdpBox=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Development Plan Progress · Q${curQ.slice(6)}</span></div><div style="display:flex;gap:16px;align-items:center">${donut(pdpPct,'#16a34a')}<div><div class="mp-big" style="font-size:20px">${withPdp} of ${rows.length}</div><div class="mp-sub">employees with a PDP</div><div class="mp-sub" style="margin-top:6px"><span style="color:#16a34a">●</span> With PDP (${withPdp}) · <span style="color:#cbd5e1">●</span> No PDP (${rows.length-withPdp})<br>${verified} verified · ${toVerify} waiting for verification</div></div></div></div>`;
   const qa=(icon,t,d,on)=>`<button class="tp-qa" onclick="${on}">${_tdIconSvg(icon,'#2563eb',18)}<span><b>${t}</b><br><span class="mp-sub">${d}</span></span></button>`;
   const quick=`<div class="mp-c"><div class="mp-ch"><span style="font-size:14px">Quick Actions</span></div><div class="tp-qas">${qa('list','View team scorecards','Detailed KPI breakdown',"document.getElementById('tp-q')?.scrollIntoView({behavior:'smooth',block:'center'})")}${qa('users','Manage team PDP','Verify and track plans',`tpOpenPerson('${(rows.find(x=>_scPdps(x.u.id).some(p=>p.status==='submitted'))||rows[0]).u.id}')`)}${qa('award','View evaluations','Training, ID and CD QA',"showView(Auth.canViewReports?'reports':'evaluations')")}${qa('calendar','Open Training Calendar','Upcoming sessions',"showView('training-delivery')")}</div></div>`;
-  root.innerHTML=`${head}${row1}<div class="mp-r2">${table}${charts}</div><div class="mp-r3">${attBox}${pdpBox}${quick}</div>`;
+  root.innerHTML=`${head}${row1}<div class="mp-r2">${table}${charts}</div><div class="mp-r3">${attBox}${pdpBox}${quick}</div>${_tpPdpHtml(team)}`; // v5.19h Team PDPs
   if(keepFocus){ const q=document.getElementById('tp-q'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }
   try{ Object.values(_tpCharts).forEach(c=>c&&c.destroy()); _tpCharts={}; const labels=trendKeys.map(k=>new Date(Number(k.slice(0,4)),Number(k.slice(5,7))-1,1).toLocaleDateString('en-US',{month:'short'}));
     if(typeof Chart!=='undefined'){ const t=document.getElementById('tp-trend'), c=document.getElementById('tp-cov');
