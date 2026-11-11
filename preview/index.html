@@ -1131,6 +1131,26 @@
     .cal-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
     .cal-tbl th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);padding:10px 12px;background:#f8fafc;border-bottom:1px solid var(--border)}
     .cal-tbl td{padding:12px;border-bottom:1px solid #f1f5f9;color:var(--text)}
+    /* v5.18h calibration results tabs */
+    .cal-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+    .cal-stat{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+    .cal-stat-l{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}.cal-stat-v{font-family:var(--font-heading,var(--font));font-size:22px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+    .cal-dot{width:8px;height:8px;border-radius:50%;display:inline-block}.cal-dot-green{background:#16a34a}.cal-dot-amber{background:#d97706}.cal-dot-red{background:#dc2626}.cal-dot-purple{background:#7c3aed}.cal-dot-blue{background:#2563eb}
+    .cal-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}.cal-segn{font-size:11px;color:var(--text3);font-weight:600;margin-left:2px}
+    .cal-sel{width:auto;font-size:12.5px;padding:6px 8px;height:auto}
+    .cal-mixw{display:flex;align-items:center;gap:10px}.cal-mix{display:flex;width:110px;height:8px;border-radius:4px;overflow:hidden;background:#f1f5f9;flex:none}
+    .cal-mix .m2{background:#16a34a}.cal-mix .m1{background:#f59e0b}.cal-mix .m0{background:#dc2626}.cal-mix .mna{background:#cbd5e1}
+    .cal-mixl{font-size:12px;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}.cal-mixl b{color:var(--text)}
+    .cal-tbl tr.cal-grp td{background:#f8fafc;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:7px 12px}
+    .cal-tbl tr.cal-row-c{cursor:pointer}.cal-tbl tr.cal-row-c:hover td{background:#f8fafc}
+    .cal-tbl td.cal-num{font-family:var(--mono);font-size:11px;color:var(--text3)}.cal-tbl td.cal-chev{color:var(--text3);text-align:center}
+    .cal-tbl tr.cal-det td{background:#fcfcfd;font-size:12.5px;padding-top:6px}.cal-crit-txt{color:var(--text2);margin-bottom:6px}
+    .cal-evrow{display:flex;gap:10px;align-items:flex-start;padding:5px 0;border-top:1px dashed var(--border-lt)}.cal-evname{min-width:130px;font-weight:600}.cal-evrm{white-space:pre-wrap;color:var(--text2);font-size:12.5px}
+    .cal-empty{color:var(--text3);text-align:center;padding:22px!important}.cal-rmdot{font-size:9px;color:var(--text3);vertical-align:super}
+    .cal-pick{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}.cal-pick button{border:none;background:var(--white);padding:6px 11px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--text2);border-right:1px solid var(--border);font-family:var(--font)}.cal-pick button:last-child{border-right:none}.cal-pick button.on{background:#1d4ed8;color:#fff}
+    .cal-unr{font-size:12px;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer}
+    .cal-prog-card{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}.cal-prog{height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden}.cal-prog>span{display:block;height:100%;background:#2563eb;border-radius:4px}
+    .cal-ro{white-space:pre-wrap;font-size:12.5px;border:1px solid var(--border-lt);border-radius:6px;padding:8px 10px;min-height:40px}
     .cal-seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;padding:3px;background:#f8fafc;gap:2px;flex-wrap:wrap}
     .cal-seg button{border:none;background:none;padding:7px 14px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;font-family:var(--font)}
     .cal-seg button.on{background:var(--white);color:#1d4ed8;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.1)}
@@ -25361,7 +25381,7 @@ function calDelete(id){ confirm$('Delete Draft','Delete this draft calibration?'
 function calStatus(id,to){
   const e=_calById(id); if(!e) return; const esc=Utils.esc;
   const msg={released:`Release the results of <b>${esc(e.title)}</b> to the team?<br><br><b>Becomes visible to everyone on the roster:</b> every submitted rating, remark, N/A reason and general observation, the outcome distribution and agreement metrics — shown as Evaluator A, B, C…<br><br><b>Stays hidden:</b> evaluator names, who did or didn't submit, and the person being evaluated (you and admins only).`,
-    finalized:`Finalize <b>${esc(e.title)}</b>? Agreed ratings, applicability recommendations and the calibration summary become read-only for everyone.`,
+    finalized:`Finalize <b>${esc(e.title)}</b>? Agreed ratings, applicability recommendations and the calibration summary become read-only for everyone.${(()=>{ try{ if(!_cal.res||_cal.res.exId!==e.id) return ''; const st=_calStats(e,_cal.res.rows).filter(s=>s.flag&&!(_calHas((_cal.dec[s.c.id]||{}).agreedRating)||(_cal.dec[s.c.id]||{}).unresolved)); return st.length?`<br><br><b style="color:#b45309">${st.length} criteria for discussion have no decision yet:</b> ${st.slice(0,6).map(s=>esc(s.c.param)).join(', ')}${st.length>6?'…':''}. They will be finalized without an agreed rating.`:''; }catch(x){ return ''; } })()}`, /* v5.18h: warn about undecided criteria */
     reopen:`Reopen the discussion for <b>${esc(e.title)}</b>? It returns to Released so decisions can be edited. This is recorded in the Audit Log.`}[to];
   const label={released:'Release Results',finalized:'Finalize',reopen:'Reopen'}[to];
   setTimeout(()=>{ const b=document.getElementById('mc-ok'); if(b) b.className='btn btn-primary'; },0);
@@ -25776,70 +25796,157 @@ function _calOutcomesHtml(e,ev,stats){
       ${ev.map(x=>`<div style="padding:10px 0;border-top:1px solid var(--border-lt);font-size:13px;margin-top:10px"><b>${esc(x.disp)}</b><div style="white-space:pre-wrap;color:var(--text2);margin-top:4px">${esc(_calTxt(x.observations))||'—'}</div></div>`).join('')}
     </details>`;
 }
-function _calScoresHtml(e,ev,stats){
-  const esc=Utils.esc; let last='';
-  const rows=stats.filter(s=>!_cal.flagOnly||s.flag).map(s=>{
-    let g=''; if(s.c.group!==last){ last=s.c.group; g=`<tr><td colspan="${ev.length+5}" style="background:#f8fafc;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:${CQA_GROUP_COLORS[s.c.group]||'#6366f1'}">${esc(s.c.group)}</td></tr>`; }
-    const k='s_'+s.c.id, open=!!_cal.open[k], dec=_cal.dec[s.c.id];
-    const main=`<tr class="${s.flag?'cal-flag':''}" style="cursor:pointer" onclick="calToggle('${k}')">
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${s.n}</td>
-      <td><div class="cqa-param-name">${esc(s.c.param)}</div></td>
-      ${ev.map(x=>`<td style="text-align:center;white-space:nowrap">${_calChip((x.ratings||{})[s.c.id])}${(x.remarks||{})[s.c.id]?'<span title="Has remarks" style="font-size:9px;color:var(--text3);vertical-align:super">●</span>':''}</td>`).join('')}
-      <td style="text-align:center;font-family:var(--mono);white-space:nowrap">${s.spread==null?'—':s.spread}${s.split?' <span class="cal-tag" style="background:#e2e8f0;color:#334155">N/A split</span>':''}</td>
-      <td style="text-align:center">${dec&&_calHas(dec.agreedRating)?_calChip(dec.agreedRating==='NA'?'NA':Number(dec.agreedRating)):(dec&&dec.unresolved?'<span class="cal-tag" style="background:#fee2e2;color:#b91c1c">Unresolved</span>':'<span style="color:var(--text3)">—</span>')}</td>
-      <td style="color:var(--text3)">${open?'▴':'▾'}</td></tr>`;
-    const det=open?`<tr><td></td><td colspan="${ev.length+4}" style="background:#fcfcfd;font-size:12.5px">
-      <div style="color:var(--text2);margin-bottom:6px">${esc(s.c.text)}</div>
-      ${ev.map(x=>{ const v=(x.ratings||{})[s.c.id], rm=(x.remarks||{})[s.c.id]; return `<div style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-top:1px dashed var(--border-lt)"><span style="min-width:120px;font-weight:600">${esc(x.disp)}</span>${_calChip(v)}<span style="white-space:pre-wrap;color:var(--text2)">${rm?esc(rm):'<span style="color:var(--text3)">No remarks</span>'}</span></div>`; }).join('')}
-    </td></tr>`:'';
-    return g+main+det; }).join('');
-  return `<div class="card" style="padding:14px 16px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      <div style="font-size:12px;color:var(--text3);flex:1">Spread = highest minus lowest rating (N/A left out). Highlighted rows have any score difference or a split between rating and N/A. Click a row for remarks.</div>
-      <label style="font-size:12px;display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" ${_cal.flagOnly?'checked':''} onchange="_cal.flagOnly=this.checked;_calRenderDetail(document.getElementById('cal-root'))"> Flagged only</label>
-    </div>
-    <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>#</th><th>Criterion</th>${ev.map(x=>`<th style="text-align:center;white-space:nowrap">${esc(x.disp)}</th>`).join('')}<th style="text-align:center">Spread</th><th style="text-align:center">Agreed</th><th></th></tr></thead><tbody>${rows||`<tr><td colspan="${ev.length+5}" style="color:var(--text3)">No flagged criteria — full agreement.</td></tr>`}</tbody></table></div>
-  </div>`;
+/* v5.18h (2026-11-12, per Sandra: "just go ahead, we'll fix the interface later"): Score Comparison,
+   Applicability Review and Calibration Decisions redesigned on the UI/UX standards — compact stat tiles,
+   filter by "for discussion", rating mix bars instead of one column per evaluator (matrix kept as a view),
+   one tone palette, segmented agreed-rating picker, decision progress, bulk-accept full agreement. */
+function _calMix(s){
+  const c={2:0,1:0,0:0,NA:0}; s.vals.forEach(v=>{ if(v==='NA') c.NA++; else if([0,1,2].includes(v)) c[v]++; });
+  const tot=c[2]+c[1]+c[0]+c.NA; if(!tot) return '<span class="cal-muted">No ratings</span>';
+  const seg=(k,cls)=>c[k]?`<span class="${cls}" style="width:${c[k]/tot*100}%"></span>`:'';
+  const lbl=[[2,'2'],[1,'1'],[0,'0'],['NA','N/A']].filter(([k])=>c[k]).map(([k,l])=>`<b>${l}</b>×${c[k]}`).join(' · ');
+  return `<div class="cal-mixw"><span class="cal-mix">${seg(2,'m2')}${seg(1,'m1')}${seg(0,'m0')}${seg('NA','mna')}</span><span class="cal-mixl">${lbl}</span></div>`;
 }
+function _calAgreeTag(s){
+  const t=[];
+  if(s.spread==null) t.push(s.na?'':'<span class="lt-tag tone-neutral">Not rated</span>');
+  else if(s.nums.length<2) t.push('<span class="lt-tag tone-neutral">One rating</span>');
+  else if(s.spread===0) t.push('<span class="lt-tag tone-ok">Agree</span>');
+  else if(s.spread===1) t.push('<span class="lt-tag tone-warn">Differ by 1</span>');
+  else t.push('<span class="lt-tag tone-bad">Differ by 2</span>');
+  if(s.split) t.push('<span class="lt-tag tone-purple">N/A split</span>');
+  return t.filter(Boolean).join(' ')||'<span class="lt-tag tone-neutral">All N/A</span>';
+}
+function _calDecTag(d){
+  if(d&&_calHas(d.agreedRating)) return _calChip(d.agreedRating==='NA'?'NA':Number(d.agreedRating));
+  if(d&&d.unresolved) return '<span class="lt-tag tone-bad">Unresolved</span>';
+  return '<span class="cal-muted">—</span>';
+}
+function _calFilterBar(key,opts,extra){
+  const cur=_cal[key]||opts[0][0];
+  return `<div class="cal-toolbar"><div class="cal-seg">${opts.map(([k,l,n])=>`<button class="${cur===k?'on':''}" onclick="_cal['${key}']='${k}';_calRenderDetail(document.getElementById('cal-root'))">${l}${n!=null?` <span class="cal-segn">${n}</span>`:''}</button>`).join('')}</div><span style="flex:1"></span>${extra||''}</div>`;
+}
+function _calStatTiles(items){
+  return `<div class="cal-stats">${items.map(([tone,l,v,sub])=>`<div class="cal-stat"><div class="cal-stat-l"><span class="cal-dot cal-dot-${tone}"></span>${l}</div><div class="cal-stat-v">${v}</div>${sub?`<div class="cal-muted" style="font-size:11.5px">${sub}</div>`:''}</div>`).join('')}</div>`;
+}
+function _calGroupRow(s,last,cols){
+  if(s.c.group===last.g) return ''; last.g=s.c.group;
+  return `<tr class="cal-grp"><td colspan="${cols}" style="color:${CQA_GROUP_COLORS[s.c.group]||'#6366f1'}">${Utils.esc(s.c.group)}</td></tr>`;
+}
+const _calRR=()=>_calRenderDetail(document.getElementById('cal-root'));
+
+/* ── Score Comparison ── */
+function _calScoresHtml(e,ev,stats){
+  const esc=Utils.esc;
+  const multi=stats.filter(s=>s.nums.length>=2);
+  const agree=stats.filter(s=>!s.flag), disc=stats.filter(s=>s.flag);
+  const d1=stats.filter(s=>s.spread===1).length, d2=stats.filter(s=>s.spread!=null&&s.spread>=2).length, sp=stats.filter(s=>s.split).length;
+  const tiles=_calStatTiles([
+    ['green','In agreement',agree.length,`of ${stats.length} criteria`],
+    ['amber','Differ by 1',d1,'one evaluator a step apart'],
+    ['red','Differ by 2',d2,'full range — discuss first'],
+    ['purple','N/A splits',sp,'rated by some, N/A for others'],
+    ['blue','Exact score agreement',multi.length?Math.round(multi.filter(s=>s.spread===0).length/multi.length*100)+'%':'—',`${multi.filter(s=>s.spread===0).length} of ${multi.length} rated criteria`]]);
+  const view=_cal.sv||'crit';
+  const extra=`<select class="form-control cal-sel" onchange="_cal.ss=this.value;_calRR()"><option value="order"${(_cal.ss||'order')==='order'?' selected':''}>Criterion order</option><option value="spread"${_cal.ss==='spread'?' selected':''}>Biggest difference first</option></select>
+    <div class="cal-seg"><button class="${view==='crit'?'on':''}" onclick="_cal.sv='crit';_calRR()">By criterion</button><button class="${view==='matrix'?'on':''}" onclick="_cal.sv='matrix';_calRR()">By evaluator</button></div>`;
+  const bar=_calFilterBar('sf',[['disc','For discussion',disc.length],['all','All criteria',stats.length],['agree','In agreement',agree.length]],extra);
+  let list=(_cal.sf||'disc')==='disc'?disc:(_cal.sf==='agree'?agree:stats);
+  if(_cal.ss==='spread') list=list.slice().sort((a,b)=>((b.spread??-1)+(b.split?.5:0))-((a.spread??-1)+(a.split?.5:0))||a.n-b.n);
+  if(view==='matrix') return tiles+bar+_calScoresMatrix(e,ev,list);
+  const last={g:null}, grouped=_cal.ss!=='spread';
+  const rows=list.map(s=>{ const k='s_'+s.c.id, open=!!_cal.open[k];
+    const det=open?`<tr class="cal-det"><td></td><td colspan="5"><div class="cal-crit-txt">${esc(s.c.text)}</div>
+      ${ev.map(x=>{ const v=(x.ratings||{})[s.c.id], rm=(x.remarks||{})[s.c.id]; return `<div class="cal-evrow"><span class="cal-evname">${esc(x.disp)}</span>${_calChip(v)}<span class="cal-evrm">${rm?esc(rm):'<span class="cal-muted">No remarks</span>'}</span></div>`; }).join('')}</td></tr>`:'';
+    return (grouped?_calGroupRow(s,last,6):'')+`<tr class="cal-row-c" onclick="calToggle('${k}')">
+      <td class="cal-num">${s.n}</td><td><div class="cqa-param-name">${esc(s.c.param)}</div>${grouped?'':`<div class="cal-muted" style="font-size:11px">${esc(s.c.group)}</div>`}</td>
+      <td>${_calMix(s)}</td><td>${_calAgreeTag(s)}</td><td style="text-align:center">${_calDecTag(_cal.dec[s.c.id])}</td>
+      <td class="cal-chev">${open?'▴':'▾'}</td></tr>${det}`; }).join('');
+  return tiles+bar+`<div class="cal-card" style="padding:0;overflow:hidden"><table class="cal-tbl"><thead><tr><th style="width:40px">#</th><th>Criterion</th><th style="width:280px">Ratings</th><th style="width:190px">Agreement</th><th style="width:90px;text-align:center">Agreed</th><th style="width:34px"></th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="6" class="cal-empty">${(_cal.sf||'disc')==='disc'?'Nothing to discuss — every criterion has full agreement.':'No criteria to show.'}</td></tr>`}</tbody></table></div>
+    <div class="cal-muted" style="font-size:11.5px;margin-top:8px">Difference = highest minus lowest rating, N/A left out. Click a row to see each evaluator's rating and remarks.</div>`;
+}
+function _calScoresMatrix(e,ev,list){
+  const esc=Utils.esc;
+  const rows=list.map(s=>`<tr class="${s.flag?'cal-flag':''}"><td class="cal-num">${s.n}</td><td><div class="cqa-param-name">${esc(s.c.param)}</div></td>
+    ${ev.map(x=>`<td style="text-align:center;white-space:nowrap">${_calChip((x.ratings||{})[s.c.id])}${(x.remarks||{})[s.c.id]?'<span title="Has remarks" class="cal-rmdot">●</span>':''}</td>`).join('')}
+    <td>${_calAgreeTag(s)}</td></tr>`).join('');
+  return `<div class="cal-card" style="padding:0;overflow:auto"><table class="cal-tbl"><thead><tr><th style="width:40px">#</th><th>Criterion</th>${ev.map(x=>`<th style="text-align:center;white-space:nowrap">${esc(x.disp)}</th>`).join('')}<th>Agreement</th></tr></thead><tbody>${rows||`<tr><td colspan="${ev.length+3}" class="cal-empty">No criteria to show.</td></tr>`}</tbody></table></div>`;
+}
+
+/* ── Applicability Review ── */
 function _calApplicHtml(e,ev,stats){
   const esc=Utils.esc, n=ev.length, ed=_calIsOwner(e)&&e.status==='released';
-  const rows=stats.map(s=>{
-    const k='a_'+s.c.id, open=!!_cal.open[k], dec=_cal.dec[s.c.id]||{};
-    const tags=[s.split?'<span class="cal-tag" style="background:#fef3c7;color:#92400e">Team split</span>':'',s.differs?'<span class="cal-tag" style="background:#fee2e2;color:#b91c1c">Differs from form</span>':''].filter(Boolean).join(' ')||'<span style="color:var(--text3);font-size:12px">—</span>';
-    const rec=ed?`<select class="form-control" style="font-size:12px;padding:3px 6px" onclick="event.stopPropagation()" onchange="calDec('${s.c.id}','matrix_rec',this.value)"><option value="">— Select —</option>${Object.entries(CAL_REC).map(([kk,v])=>`<option value="${kk}"${dec.matrixRec===kk?' selected':''}>${v}</option>`).join('')}</select>`:esc(CAL_REC[dec.matrixRec]||'—');
+  const review=stats.filter(s=>s.split||s.differs), ok=stats.filter(s=>!s.split&&!s.differs);
+  const recs=review.filter(s=>(_cal.dec[s.c.id]||{}).matrixRec).length;
+  const tiles=_calStatTiles([
+    ['green','Consistent',ok.length,'team agrees and matches the real form'],
+    ['amber','Team split',stats.filter(s=>s.split).length,'some rated, some marked N/A'],
+    ['red','Differs from real form',stats.filter(s=>s.differs).length,`for ${esc(e.contentType||'this content type')}`],
+    ['purple','Recommendations recorded',`${recs} of ${review.length}`,review.length?'for criteria that need review':'nothing to review']]);
+  const bar=_calFilterBar('af',[['review','Needs review',review.length],['all','All criteria',stats.length]]);
+  const list=(_cal.af||'review')==='review'?review:stats, last={g:null};
+  const rows=list.map(s=>{ const k='a_'+s.c.id, open=!!_cal.open[k], dec=_cal.dec[s.c.id]||{};
+    const st=s.differs?'<span class="lt-tag tone-bad">Differs from form</span>':s.split?'<span class="lt-tag tone-warn">Team split</span>':'<span class="lt-tag tone-ok">Consistent</span>';
+    const pct=n?Math.round(s.scored/n*100):0;
+    const team=`<div class="cal-mixw"><span class="cal-mix"><span class="m2" style="width:${pct}%"></span><span class="mna" style="width:${100-pct}%"></span></span><span class="cal-mixl">Scored <b>${s.scored}</b> · N/A <b>${s.na}</b></span></div>`;
+    const rec=ed?`<select class="form-control cal-sel" style="width:100%" onclick="event.stopPropagation()" onchange="calDec('${s.c.id}','matrix_rec',this.value)"><option value="">— Select —</option>${Object.entries(CAL_REC).map(([kk,v])=>`<option value="${kk}"${dec.matrixRec===kk?' selected':''}>${v}</option>`).join('')}</select>`:(dec.matrixRec?esc(CAL_REC[dec.matrixRec]):'<span class="cal-muted">—</span>');
     const reasons=ev.filter(x=>(x.ratings||{})[s.c.id]==='NA');
-    return `<tr class="${s.split||s.differs?'cal-flag':''}" style="cursor:pointer" onclick="calToggle('${k}')">
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${s.n}</td>
-      <td><div class="cqa-param-name">${esc(s.c.param)}</div><div style="font-size:11px;color:var(--text3)">${esc(s.c.group)}</div></td>
-      <td style="text-align:center;white-space:nowrap">${s.scored} <span style="color:var(--text3)">· ${n?Math.round(s.scored/n*100):0}%</span></td>
-      <td style="text-align:center;white-space:nowrap">${s.na} <span style="color:var(--text3)">· ${n?Math.round(s.na/n*100):0}%</span></td>
-      <td style="text-align:center">${s.shown?'<span class="cal-tag" style="background:#dbeafe;color:#1d4ed8">Shown</span>':'<span class="cal-tag" style="background:#f1f5f9;color:#64748b">Hidden (N/A)</span>'}</td>
-      <td>${tags}</td><td style="min-width:200px">${rec}</td><td style="color:var(--text3)">${reasons.length?(open?'▴':'▾'):''}</td></tr>
-      ${open&&reasons.length?`<tr><td></td><td colspan="7" style="background:#fcfcfd;font-size:12.5px">${reasons.map(x=>`<div style="padding:3px 0"><b>${esc(x.disp)}</b> marked N/A: <span style="color:var(--text2)">${esc((x.remarks||{})[s.c.id]||'—')}</span></div>`).join('')}</td></tr>`:''}`; }).join('');
-  return `<div class="card" style="padding:14px 16px">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">How each evaluator judged applicability, compared with what the real CD QA form does for <b>${esc(e.contentType||'—')}</b> (criteria version ${esc(String((e.matrixSnapshot&&e.matrixSnapshot.criteriaVersion)||e.criteriaVersion||''))}, saved when the calibration was published). Recommendations here never change the real form — matrix changes go through the usual QA form review.</div>
-    <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>#</th><th>Criterion</th><th style="text-align:center">Scored</th><th style="text-align:center">N/A</th><th style="text-align:center">Real Form</th><th>Flags</th><th>Recommendation</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
-  </div>`;
+    return _calGroupRow(s,last,7)+`<tr class="cal-row-c" onclick="calToggle('${k}')"><td class="cal-num">${s.n}</td><td><div class="cqa-param-name">${esc(s.c.param)}</div></td>
+      <td>${team}</td><td>${s.shown?'<span class="lt-tag tone-info">Shown</span>':'<span class="lt-tag tone-neutral">Hidden</span>'}</td><td>${st}</td><td>${rec}</td><td class="cal-chev">${reasons.length?(open?'▴':'▾'):''}</td></tr>
+      ${open&&reasons.length?`<tr class="cal-det"><td></td><td colspan="6"><div class="cal-muted" style="font-size:11.5px;margin-bottom:4px">Why evaluators marked it N/A</div>${reasons.map(x=>`<div class="cal-evrow"><span class="cal-evname">${esc(x.disp)}</span><span class="cal-evrm">${esc((x.remarks||{})[s.c.id]||'No reason given')}</span></div>`).join('')}</td></tr>`:''}`; }).join('');
+  const ver=String((e.matrixSnapshot&&e.matrixSnapshot.criteriaVersion)||e.criteriaVersion||'');
+  return tiles+bar+`<div class="cal-card" style="padding:0;overflow:hidden"><table class="cal-tbl"><thead><tr><th style="width:40px">#</th><th>Criterion</th><th style="width:250px">Team view</th><th style="width:110px">Real form</th><th style="width:170px">Status</th><th style="width:260px">Recommendation</th><th style="width:34px"></th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" class="cal-empty">Nothing to review — the team agreed on every criterion and it matches the real form.</td></tr>'}</tbody></table></div>
+    <div class="cal-muted" style="font-size:11.5px;margin-top:8px">"Real form" = what the CD QA form does for ${esc(e.contentType||'—')}${ver?` (criteria version ${esc(ver)}`:''}${ver?', saved when published)':''}. Recommendations never change the real form; matrix changes go through the usual QA form review.${ed?'':' Recommendations are recorded by the calibration owner after results are released.'}</div>`;
 }
+
+/* ── Calibration Decisions ── */
 function _calDecisionsHtml(e,ev,stats){
   const esc=Utils.esc, ed=_calIsOwner(e)&&e.status==='released', sm=e.summary||{};
-  const rows=stats.map(s=>{ const d=_cal.dec[s.c.id]||{};
-    const agreed=ed?`<select class="form-control" style="font-size:12px;padding:3px 6px;width:86px" onchange="calDec('${s.c.id}','agreed_rating',this.value)"><option value="">—</option>${['2','1','0','NA'].map(v=>`<option value="${v}"${d.agreedRating===v?' selected':''}>${v==='NA'?'N/A':v}</option>`).join('')}</select>`:(_calHas(d.agreedRating)?_calChip(d.agreedRating==='NA'?'NA':Number(d.agreedRating)):'—');
-    const unres=ed?`<input type="checkbox" ${d.unresolved?'checked':''} onchange="calDec('${s.c.id}','unresolved',this.checked)">`:(d.unresolved?'<span class="cal-tag" style="background:#fee2e2;color:#b91c1c">Unresolved</span>':'');
-    const rat=ed?`<textarea class="form-control" rows="2" style="font-size:12px;min-width:220px" placeholder="Why — evidence, examples, interpretation of the criterion" onchange="calDec('${s.c.id}','rationale',this.value)">${esc(d.rationale||'')}</textarea>`:`<div style="white-space:pre-wrap;font-size:12.5px">${d.rationale?esc(d.rationale):'<span style="color:var(--text3)">—</span>'}</div>`;
-    const fu=d.unresolved?(ed?`<input class="form-control" style="font-size:12px;margin-top:4px" placeholder="Reason / follow-up action" value="${esc(d.followUp||'')}" onchange="calDec('${s.c.id}','follow_up',this.value)">`:`<div style="font-size:12px;color:#b91c1c;margin-top:3px">Follow-up: ${esc(d.followUp||'—')}</div>`):'';
-    return `<tr class="${s.flag?'cal-flag':''}"><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${s.n}</td>
-      <td><div class="cqa-param-name">${esc(s.c.param)}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${ev.map(x=>_calChip((x.ratings||{})[s.c.id])).join('')}</div></td>
-      <td style="text-align:center">${agreed}</td><td style="text-align:center">${unres}</td><td>${rat}${fu}</td></tr>`; }).join('');
-  const sumHtml=CAL_SUMMARY.map(([k,l])=>`<div class="form-group" style="margin:0"><label class="form-label">${l}</label>${ed?`<textarea class="form-control" rows="3" style="font-size:12.5px" onchange="calSum('${k}',this.value)">${esc(sm[k]||'')}</textarea>`:`<div style="white-space:pre-wrap;font-size:12.5px;border:1px solid var(--border-lt);border-radius:6px;padding:8px 10px;min-height:40px">${sm[k]?esc(sm[k]):'<span style="color:var(--text3)">—</span>'}</div>`}</div>`).join('');
-  return `<div class="card" style="padding:14px 16px">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">${ed?'Record what the team agreed for each criterion after discussing the evidence — not an average or a majority vote. Changes save automatically.':e.status==='finalized'?'Finalized — read-only.':'Decisions are recorded by the calibration owner once results are released.'}</div>
-    <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>#</th><th>Criterion · team ratings</th><th style="text-align:center">Agreed Rating</th><th style="text-align:center">Unresolved</th><th>Rationale &amp; Supporting Examples</th></tr></thead><tbody>${rows}</tbody></table></div>
-  </div>
-  <div class="card" style="padding:14px 16px;margin-top:12px"><div style="font-weight:700;font-size:13px;margin-bottom:10px">Calibration summary</div>
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px" class="cal-two">${sumHtml}</div>
-    ${ed?`<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-primary" onclick="calStatus('${e.id}','finalized')">Finalize Calibration</button></div>`:''}</div>`;
+  const done=s=>{ const d=_cal.dec[s.c.id]||{}; return _calHas(d.agreedRating)||!!d.unresolved; };
+  const disc=stats.filter(s=>s.flag), discDone=disc.filter(done).length, allDone=stats.filter(done).length, unres=stats.filter(s=>(_cal.dec[s.c.id]||{}).unresolved).length;
+  const easy=stats.filter(s=>!s.flag&&s.nums.length>=1&&s.spread===0&&!done(s));
+  const pct=stats.length?Math.round(allDone/stats.length*100):0;
+  const head=`<div class="cal-card cal-prog-card"><div style="flex:1;min-width:240px"><div class="cal-sec-title" style="margin:0 0 6px">Decision progress</div>
+      <div class="cal-prog"><span style="width:${pct}%"></span></div>
+      <div class="cal-muted" style="font-size:12px;margin-top:6px"><b style="color:var(--text)">${allDone} of ${stats.length}</b> criteria decided · For discussion <b style="color:var(--text)">${discDone} of ${disc.length}</b>${unres?` · <span style="color:#b91c1c">${unres} unresolved</span>`:''}</div></div>
+    ${ed&&easy.length?`<button class="btn btn-secondary btn-sm" onclick="calDecAcceptAgreed()">Accept ${easy.length} full-agreement rating${easy.length!==1?'s':''}</button>`:''}</div>`;
+  const bar=_calFilterBar('df',[['disc','For discussion',disc.length],['open','Not decided',stats.length-allDone],['all','All criteria',stats.length]]);
+  const f=_cal.df||'disc', list=f==='disc'?disc:f==='open'?stats.filter(s=>!done(s)):stats, last={g:null};
+  const rows=list.map(s=>{ const d=_cal.dec[s.c.id]||{};
+    const pick=ed?`<div class="cal-pick">${['2','1','0','NA'].map(v=>`<button class="${d.agreedRating===v?'on':''}" onclick="calDec('${s.c.id}','agreed_rating','${d.agreedRating===v?'':v}')">${v==='NA'?'N/A':v}</button>`).join('')}</div>`:_calDecTag(d);
+    const unr=ed?`<label class="cal-unr"><input type="checkbox" ${d.unresolved?'checked':''} onchange="calDec('${s.c.id}','unresolved',this.checked)"> Unresolved</label>`:'';
+    const rat=ed?`<textarea class="form-control" rows="2" style="font-size:12.5px" placeholder="Why: evidence, examples, how the team reads the criterion" onchange="calDec('${s.c.id}','rationale',this.value)">${esc(d.rationale||'')}</textarea>`:`<div class="cal-evrm">${d.rationale?esc(d.rationale):'<span class="cal-muted">No rationale recorded</span>'}</div>`;
+    const fu=d.unresolved?(ed?`<input class="form-control" style="font-size:12.5px;margin-top:6px" placeholder="Follow-up: who does what next" value="${esc(d.followUp||'')}" onchange="calDec('${s.c.id}','follow_up',this.value)">`:`<div style="font-size:12px;color:#b91c1c;margin-top:4px">Follow-up: ${esc(d.followUp||'—')}</div>`):'';
+    return _calGroupRow(s,last,4)+`<tr><td class="cal-num">${s.n}</td>
+      <td><div class="cqa-param-name">${esc(s.c.param)}</div><div style="margin-top:6px">${_calMix(s)}</div><div style="margin-top:6px">${_calAgreeTag(s)}</div></td>
+      <td>${pick}${unr?`<div style="margin-top:8px">${unr}</div>`:''}</td><td>${rat}${fu}</td></tr>`; }).join('');
+  const sumHtml=CAL_SUMMARY.map(([k,l])=>`<div class="form-group" style="margin:0"><label class="form-label">${l}</label>${ed?`<textarea class="form-control" rows="3" style="font-size:12.5px" onchange="calSum('${k}',this.value)">${esc(sm[k]||'')}</textarea>`:`<div class="cal-ro">${sm[k]?esc(sm[k]):'<span class="cal-muted">—</span>'}</div>`}</div>`).join('');
+  const note=ed?'Record what the team agreed after discussing the evidence, not an average or a majority vote. Changes save automatically.':e.status==='finalized'?'Finalized: read-only.':'The calibration owner records decisions once results are released.';
+  return head+bar+`<div class="cal-muted" style="font-size:12px;margin:-4px 0 8px">${note}</div>
+    <div class="cal-card" style="padding:0;overflow:hidden"><table class="cal-tbl"><thead><tr><th style="width:40px">#</th><th style="width:34%">Criterion · team ratings</th><th style="width:210px">Agreed rating</th><th>Rationale &amp; supporting examples</th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="4" class="cal-empty">${f==='disc'?'No criteria need discussion.':f==='open'?'Every criterion has a decision.':'No criteria.'}</td></tr>`}</tbody></table></div>
+    <div class="cal-card" style="margin-top:16px"><div class="cal-sec-title">Calibration summary</div>
+      <div class="cal-two" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px">${sumHtml}</div>
+      ${ed?`<div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px">${disc.length-discDone?`<span class="cal-muted" style="font-size:12px">${disc.length-discDone} criteria for discussion still have no decision</span>`:''}<button class="btn btn-primary" onclick="calStatus('${e.id}','finalized')">Finalize Calibration</button></div>`:''}</div>`;
 }
+async function calDecAcceptAgreed(){
+  const e=_calById(_cal.id); if(!e||!_cal.res) return;
+  const ev=_cal.res.rows, stats=_calStats(e,ev);
+  const done=s=>{ const d=_cal.dec[s.c.id]||{}; return _calHas(d.agreedRating)||!!d.unresolved; };
+  const easy=stats.filter(s=>!s.flag&&s.nums.length>=1&&s.spread===0&&!done(s)); if(!easy.length) return;
+  confirm$('Accept Full-Agreement Ratings',`Set the agreed rating for <b>${easy.length}</b> criteria where every evaluator gave the same rating and nobody marked N/A? You can still change any of them before finalizing.`,'Accept',async()=>{
+    const now=new Date().toISOString();
+    const rows=easy.map(s=>{ const cur=_cal.dec[s.c.id]||{}; return {exercise_id:e.id,criterion_id:s.c.id,agreed_rating:String(s.nums[0]),matrix_rec:cur.matrixRec??null,rationale:cur.rationale??null,unresolved:false,follow_up:cur.followUp??null,updated_by:Auth.user.id,updated_at:now}; });
+    const {data,error}=await sb.from('calibration_decisions').upsert(rows,{onConflict:'exercise_id,criterion_id'}).select();
+    if(error) return _surfaceDbError(error,'Accept agreed ratings');
+    (data||[]).forEach(r=>{ const c=_calCamel(r); _cal.dec[c.criterionId]=c; });
+    toast(`${easy.length} agreed rating${easy.length!==1?'s':''} recorded.`,'success'); _calRR();
+  });
+  setTimeout(()=>{ const b=document.getElementById('mc-ok'); if(b) b.className='btn btn-primary'; },0);
+}
+
 async function calDec(cid,field,val){
   const e=_calById(_cal.id); if(!e) return; const cur=_cal.dec[cid]||{};
   const row={exercise_id:e.id,criterion_id:cid,agreed_rating:cur.agreedRating??null,matrix_rec:cur.matrixRec??null,rationale:cur.rationale??null,unresolved:!!cur.unresolved,follow_up:cur.followUp??null,updated_by:Auth.user.id,updated_at:new Date().toISOString()};
@@ -25847,7 +25954,7 @@ async function calDec(cid,field,val){
   const {data,error}=await sb.from('calibration_decisions').upsert(row,{onConflict:'exercise_id,criterion_id'}).select().single();
   if(error) return _surfaceDbError(error,'Save calibration decision');
   _cal.dec[cid]=_calCamel(data);
-  if(field==='unresolved'||field==='agreed_rating') _calRenderDetail(document.getElementById('cal-root'));
+  if(field==='unresolved'||field==='agreed_rating'||field==='matrix_rec') _calRenderDetail(document.getElementById('cal-root'));
 }
 async function calSum(k,v){
   const e=_calById(_cal.id); if(!e) return; const sm={...(e.summary||{}),[k]:v};
