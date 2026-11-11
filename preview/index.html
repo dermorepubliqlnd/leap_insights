@@ -939,6 +939,21 @@
     .r-btn.r-na{width:44px;font-size:11px}
     .r-btn.active-na{background:#e2e8f0;border-color:#64748b;color:#334155}
     .cal-grid-table{grid-template-columns:28px 1fr 196px 320px}
+    .cal-setup .form-control{border-radius:3px}
+    .cal-sec{border:1px solid var(--border);margin-bottom:14px;background:var(--white)}
+    .cal-sec-h{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .cal-sec-ico{display:inline-flex}.cal-sec-t{font-weight:700;font-size:13.5px;color:var(--text)}.cal-sec-s{font-size:11.5px;color:var(--text3)}
+    .cal-sec-b{padding:14px}
+    .cal-sec-blue .cal-sec-h{background:#eff6ff}.cal-sec-blue .cal-sec-ico{color:#2563eb}
+    .cal-sec-purple .cal-sec-h{background:#f5f3ff}.cal-sec-purple .cal-sec-ico{color:#7c3aed}
+    .cal-sec-amber .cal-sec-h{background:#fff7ed}.cal-sec-amber .cal-sec-ico{color:#d97706}
+    .cal-sec-green .cal-sec-h{background:#f0fdf4}.cal-sec-green .cal-sec-ico{color:#16a34a}
+    .cal-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+    .cal-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+    .cal-g2>.cal-sec{margin-bottom:0}
+    .cal-res-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px 16px;margin-bottom:6px}
+    .cal-sec .cal-g2:first-child{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 38px}
+    @media(max-width:900px){.cal-g3,.cal-g2{grid-template-columns:1fr!important}}
     input[type=date].cal-date{display:flex;align-items:center;max-width:220px} /* v5.18a: keep the picker icon on the same line as the MMM DD, YYYY text */
     .cal-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
     .cal-kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px}
@@ -25399,38 +25414,68 @@ function calE(path,v){ const d=_cal.edit; if(!d) return; d[path]=v; if(path==='s
 function calRes(i,k,v){ _cal.edit.resources[i][k]=v; }
 function calResAdd(){ _cal.edit.resources.push({title:'',url:''}); _calRenderEdit(document.getElementById('cal-root')); }
 function calResDel(i){ _cal.edit.resources.splice(i,1); if(!_cal.edit.resources.length) _cal.edit.resources.push({title:'',url:''}); _calRenderEdit(document.getElementById('cal-root')); }
+// v5.18c (2026-11-11, per Sandra's mockup): setup page in sections — Evaluation Details / Reference Materials / Schedule + Instructions;
+// square-edged section boxes with tinted headers and icons; person picker is a searchable dropdown.
+const CAL_ICO={
+  details:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>',
+  links:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
+  sched:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+  instr:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 6.5h5M15.5 10h5M17.5 13.5h3"/></svg>',
+  target:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
+  info:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>'
+};
+function _calPeople(){ return DB.all().filter(u=>u.isActive).map(u=>({id:u.id,name:`${u.firstName||''} ${u.lastName||''}`.trim()})).sort((a,b)=>a.name.localeCompare(b.name)); }
+function calPickPerson(v){ const d=_cal.edit; if(!d) return; v=(v||'').trim(); const was=d.subjectProfileId;
+  if(!v) d.subjectProfileId=''; else if(v==='Not a LEAP user') d.subjectProfileId='__other'; else { const p=_calPeople().find(x=>x.name.toLowerCase()===v.toLowerCase()); d.subjectProfileId=p?p.id:''; }
+  if(was!==d.subjectProfileId||(v&&!d.subjectProfileId)) _calRenderEdit(document.getElementById('cal-root')); }
 function _calRenderEdit(root){
   const d=_cal.edit, esc=Utils.esc, locked=d.status!=='draft';
   const cdTypes=Sel.all(Store.DELIVERABLES).filter(x=>x.isCD&&(x.isActive||x.name===d.contentType)).sort((a,b)=>a.name.localeCompare(b.name));
-  const people=DB.all().filter(u=>u.isActive).sort((a,b)=>(a.firstName||'').localeCompare(b.firstName||''));
+  const people=_calPeople();
+  const personVal=d.subjectProfileId==='__other'?'Not a LEAP user':(people.find(p=>p.id===d.subjectProfileId)?.name||'');
   const lab=(t,req,hint)=>`<label class="form-label">${t}${req?' <span class="req">*</span>':''}${hint?` <span style="font-weight:400;color:var(--text3);font-size:11px">${hint}</span>`:''}</label>`;
-  root.innerHTML=`<div class="card" style="padding:18px 22px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-sm" onclick="calGo(${d.isNew?"'list'":`'detail','${d.id}'`})">← Back</button>
-      <div style="font-weight:700;font-size:15px">${d.isNew?'New Calibration':'Edit Calibration'}</div>${d.isNew?'':_calBadge(d.status)}
-    </div>
-    ${locked?'<div style="font-size:12px;background:#fefce8;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-bottom:12px">Published: the form, content type and roster are locked. You can still update the material name, dates, links, instructions and the person being evaluated.</div>':''}
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px" class="cal-two">
-      <div class="form-group" style="margin:0;grid-column:1/-1">${lab('Material / Module Being Evaluated',1)}<input class="form-control" value="${esc(d.title)}" placeholder="e.g. Foundational Leadership — Module 1 slide deck" onchange="calE('title',this.value)"></div>
+  const sec=(tone,ico,title,sub,body)=>`<div class="cal-sec cal-sec-${tone}"><div class="cal-sec-h"><span class="cal-sec-ico">${CAL_ICO[ico]}</span><span class="cal-sec-t">${title}</span>${sub?`<span class="cal-sec-s">${sub}</span>`:''}</div><div class="cal-sec-b">${body}</div></div>`;
+  const details=`
+    <div class="form-group" style="margin:0 0 12px">${lab('Material / Module Being Evaluated',1)}<input class="form-control" value="${esc(d.title)}" placeholder="e.g. Foundational Leadership — Module 1 slide deck" onchange="calE('title',this.value)"></div>
+    <div class="cal-g3">
       <div class="form-group" style="margin:0">${lab('Evaluation Form',1)}<select class="form-control" ${locked?'disabled':''} onchange="calE('formType',this.value)">${Object.entries(CAL_FORMS).map(([k,v])=>`<option value="${k}"${d.formType===k?' selected':''}>${v}</option>`).join('')}<option disabled>Instructional Design QA (coming next)</option><option disabled>Trainer Evaluation (coming next)</option></select></div>
       <div class="form-group" style="margin:0">${lab('Content Type',1)}<select class="form-control" ${locked?'disabled':''} onchange="calE('contentType',this.value)"><option value="">— Select Content Type —</option>${cdTypes.map(x=>`<option value="${esc(x.name)}"${d.contentType===x.name?' selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
-      <div class="form-group" style="margin:0">${lab('Person Being Evaluated','','visible only to you and admins')}
-        <select class="form-control" onchange="calE('subjectProfileId',this.value)"><option value="">— Select —</option>${people.map(u=>`<option value="${u.id}"${d.subjectProfileId===u.id?' selected':''}>${esc(`${u.firstName||''} ${u.lastName||''}`.trim())}</option>`).join('')}<option value="__other"${d.subjectProfileId==='__other'?' selected':''}>Not a LEAP user</option></select>
-        ${d.subjectProfileId!=='__other'?'':`<input class="form-control" style="margin-top:6px" value="${esc(d.subjectName)}" placeholder="Name (optional)" onchange="calE('subjectName',this.value)">`}</div>
-      <div class="form-group" style="margin:0">${lab('Meeting Link')}<input class="form-control" value="${esc(d.meetingLink)}" placeholder="https://teams.microsoft.com/…" onchange="calE('meetingLink',this.value)"></div>
-      <div class="form-group" style="margin:0;grid-column:1/-1">${lab('Reference Materials','','links only')}
-        ${d.resources.map((r,i)=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;gap:8px;margin-bottom:6px"><input class="form-control" placeholder="Title (e.g. Slide deck)" value="${esc(r.title)}" onchange="calRes(${i},'title',this.value)"><input class="form-control" placeholder="https://…" value="${esc(r.url)}" onchange="calRes(${i},'url',this.value)"><button class="btn btn-ghost btn-sm" title="Remove" onclick="calResDel(${i})">✕</button></div>`).join('')}
-        <button class="btn btn-xs btn-ghost" onclick="calResAdd()">+ Add link</button></div>
-      <div class="form-group" style="margin:0">${lab('Submission Deadline',1,'open until 11:59 PM (PH time) of this date')}<input type="date" class="form-control cal-date" value="${d.dl}" onchange="calE('dl',this.value)"></div>
-      <div class="form-group" style="margin:0">${lab('Calibration Session',1,'must be after the deadline')}<input type="date" class="form-control cal-date" value="${d.ds}" onchange="calE('ds',this.value)"></div>
-      <div class="form-group" style="margin:0;grid-column:1/-1">${lab('Instructions to Evaluators')}<textarea class="form-control" rows="3" placeholder="What to review, what to focus on…" onchange="calE('instructions',this.value)">${esc(d.instructions)}</textarea></div>
+      <div class="form-group" style="margin:0">${lab('Person Being Evaluated','','private')}
+        <input class="form-control" list="cal-people-dl" value="${esc(personVal)}" placeholder="Type to search…" onchange="calPickPerson(this.value)">
+        <datalist id="cal-people-dl">${people.map(p=>`<option value="${esc(p.name)}"></option>`).join('')}<option value="Not a LEAP user"></option></datalist>
+        ${d.subjectProfileId==='__other'?`<input class="form-control" style="margin-top:6px" value="${esc(d.subjectName)}" placeholder="Name (optional)" onchange="calE('subjectName',this.value)">`:''}
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Visible to you and admins only — never shown to evaluators.</div></div>
+    </div>`;
+  const links=`
+    <div class="cal-g2" style="margin-bottom:4px"><label class="form-label" style="margin:0">Reference Material Name</label><label class="form-label" style="margin:0">Hyperlink</label></div>
+    ${d.resources.map((r,i)=>`<div class="cal-res-row"><input class="form-control" placeholder="e.g. Module 1 slide deck" value="${esc(r.title)}" onchange="calRes(${i},'title',this.value)"><input class="form-control" placeholder="https://…" value="${esc(r.url)}" onchange="calRes(${i},'url',this.value)"><button class="btn btn-ghost btn-sm" title="Remove" onclick="calResDel(${i})">✕</button></div>`).join('')}
+    <button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="calResAdd()">+ Add Resource</button>`;
+  const sched=`
+    <div class="form-group" style="margin:0 0 12px">${lab('Submission Deadline',1)}<input type="date" class="form-control cal-date" value="${d.dl}" onchange="calE('dl',this.value)"><div style="font-size:11px;color:var(--text3);margin-top:4px">Open until 11:59 PM (Philippine time) on this date.</div></div>
+    <div class="form-group" style="margin:0">${lab('Calibration Session Date',1)}<input type="date" class="form-control cal-date" value="${d.ds}" onchange="calE('ds',this.value)"><div style="font-size:11px;color:var(--text3);margin-top:4px">Must be after the deadline. Send the invite and meeting link via Outlook.</div></div>`;
+  const instr=`
+    <textarea class="form-control" rows="6" maxlength="500" placeholder="What to review, what to focus on, and any additional guidance…" oninput="document.getElementById('cal-instr-n').textContent=this.value.length" onchange="calE('instructions',this.value)">${esc(d.instructions)}</textarea>
+    <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:3px"><span id="cal-instr-n">${(d.instructions||'').length}</span> / 500</div>`;
+  root.innerHTML=`<div class="card cal-setup" style="padding:16px 20px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="calGo(${d.isNew?"'list'":`'detail','${d.id}'`})">← Back</button>
+      <span style="color:#2563eb;display:inline-flex">${CAL_ICO.target}</span>
+      <div><div style="font-weight:700;font-size:15.5px;color:var(--text)">${d.isNew?'Create Calibration':'Edit Calibration'}</div><div style="font-size:12px;color:var(--text3)">Set up the material, reference links, and schedule for this calibration.</div></div>
+      <div style="margin-left:auto">${_calBadge(d.status)}</div>
     </div>
-    <div style="font-size:11.5px;color:var(--text3);margin-top:12px">Everyone with an active LEAP account at publishing time can evaluate (the roster is saved then). Evaluators see the material, links and the full CD QA form — not the person being evaluated, not each other, and not which criteria the real form would hide.</div>
+    ${locked?'<div style="font-size:12px;background:#fefce8;border:1px solid #fde68a;color:#92400e;padding:8px 12px;margin-bottom:12px">Published: the form, content type and roster are locked. You can still update the material name, dates, links, instructions and the person being evaluated.</div>':''}
+    ${sec('blue','details','Evaluation Details','What are we evaluating, and which QA form is used?',details)}
+    ${sec('purple','links','Reference Materials','Materials everyone will review independently — links only',links)}
+    <div class="cal-g2" style="gap:14px">
+      ${sec('amber','sched','Schedule','',sched)}
+      ${sec('green','instr','Instructions to Evaluators','Open to all active LEAP users at publishing',instr)}
+    </div>
     <div class="modal-err hidden" id="cal-edit-err" style="margin-top:10px"></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-      ${!d.isNew&&d.status==='draft'?`<button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="calDelete('${d.id}')">Delete Draft</button>`:''}
+    <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center;font-size:12px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;padding:7px 12px;flex:1;min-width:260px"><span style="display:inline-flex">${CAL_ICO.info}</span>Calibration evaluations do not affect QA scores, performance ratings, or KPI calculations.</div>
+      ${!d.isNew&&d.status==='draft'?`<button class="btn btn-ghost" style="color:var(--red)" onclick="calDelete('${d.id}')">Delete Draft</button>`:''}
       <button class="btn btn-secondary" onclick="calSave(false)">${d.status==='draft'?'💾 Save Draft':'💾 Save Changes'}</button>
-      ${d.status==='draft'?'<button class="btn btn-primary" onclick="calSave(true)">Publish</button>':''}
+      ${d.status==='draft'?'<button class="btn btn-primary" onclick="calSave(true)">Publish Calibration</button>':''}
     </div></div>`;
   armLeaveGuard('cal-root');
 }
