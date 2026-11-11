@@ -1852,7 +1852,7 @@
             .mp-att{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px}.mp-count{display:inline-flex;min-width:20px;height:20px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;align-items:center;justify-content:center;margin-left:6px}
             .mp-qa{display:flex;gap:10px;align-items:center;width:100%;border:1px solid var(--border);background:#fff;border-radius:8px;padding:9px 10px;margin-bottom:8px;font-size:13px;cursor:pointer;text-align:left}.mp-qa:hover{background:#f1f5f9}
             .mp-scale{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px}
-            @media print{body.mp-printing .sidebar,body.mp-printing .topbar,body.mp-printing .mp-as,body.mp-printing .mp-qa,body.mp-printing .mp-seg,body.mp-printing .mp-sel{display:none!important}body.mp-printing .main{margin:0!important}}
+            @media print{@page{size:A4 landscape;margin:10mm}body.mp-printing .sidebar,body.mp-printing .topbar,body.mp-printing .mp-as,body.mp-printing .mp-qa,body.mp-printing .mp-seg,body.mp-printing .mp-sel,body.mp-printing .mp-r3,body.mp-printing .mp-i,body.mp-printing .mp-link,body.mp-printing .mp-chev,body.mp-printing #pdp-dr-bg,body.mp-printing .preview-badge{display:none!important}body.mp-printing .main,body.mp-printing .content,body.mp-printing .view,body.mp-printing #mp-root{margin:0!important;padding:0!important;width:100%!important;max-width:none!important}body.mp-printing .mp-r1{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important}body.mp-printing .mp-r2{grid-template-columns:minmax(0,1.9fr) minmax(0,1fr)!important}body.mp-printing .mp-c{box-shadow:none!important;break-inside:avoid}body.mp-printing .mp-tbl td,body.mp-printing .mp-tbl th{padding:5px 6px!important;font-size:11.5px!important}body.mp-printing .mp-chart{min-height:200px!important;max-height:240px!important}body.mp-printing{-webkit-print-color-adjust:exact;print-color-adjust:exact}} /* v5.19n: landscape, full width, no actions/attention/PDP */
             .mp-info{display:inline-flex;width:14px;height:14px;border-radius:50%;font-size:10px;color:var(--text3);cursor:help;align-items:center;justify-content:center}
             /* v5.19e (2026-11-11, per Sandra's mockup + brief): My Performance refresh — compact tinted summary cards, one info icon, rounded-square chips/ratings, trend fills its card */
             .mp-r1 .mp-k{display:flex;gap:12px;align-items:center;padding:14px 16px;min-height:88px;background:#fff;border:1px solid var(--border)} /* v5.19f (per Sandra): white cards like the other pages; color lives in the icon tile */
@@ -4194,7 +4194,7 @@ const _FIELD_MAPS = {
   // v5.02 (2026-10-14, per Sandra): Setup Mode flag, prerequisite list, SME & External Contacts, program SMEs/facilitators.
   app_flags:{ key:'key', value:'value', updatedAt:'updated_at', updatedBy:'updated_by' },
   // v5.15a (2026-10-30, per Sandra): PDP + quarter-end scorecard inputs (EEI / LEI)
-  pdp_items:{ id:'id', profileId:'profile_id', title:'title', provider:'provider', quarter:'quarter', targetDate:'target_date', status:'status', completedOn:'completed_on', proofUrl:'proof_url', notes:'notes', returnReason:'return_reason', verifiedBy:'verified_by', verifiedAt:'verified_at', createdBy:'created_by', createdAt:'created_at', updatedAt:'updated_at', description:'description', completionNotes:'completion_notes', supportingUrl:'supporting_url', originalTargetDate:'original_target_date', startedAt:'started_at', submittedAt:'submitted_at', cancelledAt:'cancelled_at', cancelReason:'cancel_reason', milestones:'milestones' },
+  pdp_items:{ id:'id', profileId:'profile_id', title:'title', provider:'provider', quarter:'quarter', targetDate:'target_date', status:'status', completedOn:'completed_on', proofUrl:'proof_url', notes:'notes', returnReason:'return_reason', verifiedBy:'verified_by', verifiedAt:'verified_at', createdBy:'created_by', createdAt:'created_at', updatedAt:'updated_at', description:'description', completionNotes:'completion_notes', supportingUrl:'supporting_url', originalTargetDate:'original_target_date', startedAt:'started_at', submittedAt:'submitted_at', cancelledAt:'cancelled_at', cancelReason:'cancel_reason', milestones:'milestones', approvedBy:'approved_by', approvedAt:'approved_at', approvalNote:'approval_note', approvalRequestedAt:'approval_requested_at' },
   pdp_date_requests:{ id:'id', pdpId:'pdp_id', profileId:'profile_id', requestedBy:'requested_by', fromDate:'from_date', proposedDate:'proposed_date', reason:'reason', status:'status', decidedBy:'decided_by', decidedAt:'decided_at', decisionNote:'decision_note', createdAt:'created_at' }, // v5.19g
   pdp_events:{ id:'id', pdpId:'pdp_id', profileId:'profile_id', actorId:'actor_id', kind:'kind', body:'body', before:'before', after:'after', createdAt:'created_at' }, // v5.19g
   scorecard_inputs:{ id:'id', profileId:'profile_id', kpiCode:'kpi_code', quarter:'quarter', value:'value', notes:'notes', enteredBy:'entered_by', enteredAt:'entered_at' },
@@ -25956,7 +25956,7 @@ function _scPdps(pid){ return (Cache.data.pdp_items||[]).filter(x=>x.profileId==
 /* v5.19g (2026-11-11, per Sandra): continuous PDP list — a PDP counts in the quarter of its verified completion date */
 function _scPdpDone(x){ return x&&x.status==='verified'?(x.completedOn||(x.verifiedAt?_mnlDateOf(x.verifiedAt):null)):null; }
 function _scPdpDoneIn(x,qr){ const d=_scPdpDone(x); return !!d&&d>=qr.start&&d<=qr.end; }
-function _scPdpActive(x){ return ['planned','ongoing','returned','submitted'].includes(x.status); }
+function _scPdpActive(x){ return ['draft','pending_approval','planned','ongoing','returned','submitted'].includes(x.status); }
 function _scPdpHasPlan(pid,qr){ return _scPdps(pid).some(x=>_scPdpActive(x)||_scPdpDoneIn(x,qr)); }
 function _scInput(pid,code,quarter){ return (Cache.data.scorecard_inputs||[]).find(x=>x.profileId===pid&&x.kpiCode===code&&x.quarter===quarter)||null; }
 function _scSessionsFor(pid,r,coToo=true){ return TrSessionDB.all().filter(s=>_tdStatus(s)==='Completed'&&(s.trainerId===pid||(coToo&&s.coFacilitatorId===pid))&&_scIn(_tdSessionEndDate(s)||s.trainingDate,r)); }
@@ -26079,6 +26079,8 @@ function _scState(k,pid,r){
   return r.end>=_todayStr()?['Pending data','neutral']:['No activity','neutral'];
 }
 function mpToggle(what){ if(what==='scale') _mpShowScale=!_mpShowScale; if(what==='allpdp') _mpAllPdp=!_mpAllPdp; renderMyPerformance(); }
+// v5.19n: open the person's own Received tab for their role (ID → ID QA, CD → CD QA, everyone else → Trainer Evaluation)
+function mpGoMyEvals(){ const role=_scRoleOf(Auth.user), m=role==='id'?['id-qa','idqa']:role==='cd'?['content-qa','cqa']:['evaluations','ef']; showView(m[0]); try{ qalTab(m[1],'my'); }catch(e){} }
 function mpDownloadScorecard(){ document.body.classList.add('mp-printing'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('mp-printing'),500); },50); }
 
 /* v5.15b (2026-10-30, per Sandra): My Performance = the signed-in person's own scorecard only (supervisors and
@@ -26117,11 +26119,13 @@ function renderMyPerformance(){
   if(role==='trainer'){ const late=TrSessionDB.all().filter(s=>_tdSlaOwnerId(s)===_mpPerson&&_isReportPending(s)).length; if(late) att.push({tone:'warning',t:`${late} training report${late!==1?'s':''} to submit`,d:'Reports count toward Timeliness once submitted.',go:"showView('training-delivery')"});
     const l3=TrSessionDB.all().filter(s=>(s.trainerId===_mpPerson)&&_l3DueSoonOrOverdue(s)).length; if(l3) att.push({tone:'warning',t:`${l3} L3 follow-up${l3!==1?'s':''} due`,d:'Due within 14 days or overdue.',go:"showView('training-delivery')"}); }
   // v5.19g: PDP items — overdue / returned (owner); to verify + date requests from direct reports (supervisor)
-  _scPdps(_mpPerson).forEach(x=>{ if(_pdpOverdue(x)) att.push({tone:'danger',t:`PDP overdue: ${x.title}`,d:`Target was ${Utils.formatDate(x.targetDate)}${_pdpReq(x.id)?' · date change pending':''}.`,go:`pdpOpen('${x.id}')`});
+  _scPdps(_mpPerson).forEach(x=>{ if(x.status==='draft'&&x.approvalNote) att.push({tone:'warning',t:`PDP sent back: ${x.title}`,d:x.approvalNote,go:`pdpOpen('${x.id}')`}); else if(x.status==='pending_approval') att.push({tone:'accent',t:`PDP waiting for approval: ${x.title}`,d:`Sent ${_pdpWaitDays(x)} day${_pdpWaitDays(x)!==1?'s':''} ago to ${_pdpApprover(x)}.`,go:`pdpOpen('${x.id}')`}); else if(_pdpOverdue(x)) att.push({tone:'danger',t:`PDP overdue: ${x.title}`,d:`Target was ${Utils.formatDate(x.targetDate)}${_pdpReq(x.id)?' · date change pending':''}.`,go:`pdpOpen('${x.id}')`});
     else if(x.status==='returned') att.push({tone:'warning',t:`PDP returned: ${x.title}`,d:x.returnReason||'Fix and resubmit.',go:`pdpOpen('${x.id}')`}); });
   const directs=DB.all().filter(u=>u.supervisorId===_mpPerson&&u.isActive!==false&&u.id!==_mpPerson);
   const toVerify=directs.flatMap(u=>_scPdps(u.id).filter(x=>x.status==='submitted'));
   if(toVerify.length) att.push({tone:'accent',t:`${toVerify.length} PDP${toVerify.length!==1?'s':''} to verify`,d:'Submitted by your direct reports. Open the person in Team Performance.',go:toVerify.length===1?`pdpOpen('${toVerify[0].id}','verify')`:(inTp?'':"showView('team-performance')")});
+  const toApprove=directs.flatMap(u=>_scPdps(u.id).filter(x=>x.status==='pending_approval'));
+  if(toApprove.length) att.push({tone:'accent',t:`${toApprove.length} PDP${toApprove.length!==1?'s':''} to approve`,d:'Plans submitted by your direct reports.',go:`pdpOpen('${toApprove[0].id}')`});
   const dReq=(Cache.data.pdp_date_requests||[]).filter(q=>q.status==='pending'&&directs.some(u=>u.id===q.profileId));
   if(dReq.length) att.push({tone:'accent',t:`${dReq.length} PDP date change${dReq.length!==1?'s':''} to review`,d:'Approve or reject the new target date.',go:`pdpOpen('${dReq[0].pdpId}')`});
   const curQ=_scQuarterOf(_todayStr()), qEnd=_scPeriodRange('quarter',curQ).end, qrCur=_scPeriodRange('quarter',curQ);
@@ -26159,7 +26163,7 @@ function renderMyPerformance(){
   const pdpBox=_pdpCardHtml(_mpPerson,isOwner); // v5.19g
   const attBox=`<div class="mp-c" id="mp-att-box"><div class="mp-ch"><span class="mp-ct">Needs Attention ${att.length?`<span class="mp-count">${att.length}</span>`:''}</span></div>${att.length?att.map(a=>`<div class="mp-att"${a.go?` onclick="${a.go}" style="cursor:pointer"`:''}>${attIcon(a.tone)}<div style="flex:1;min-width:0"><div class="t">${esc(a.t)}</div><div class="d">${esc(a.d)}</div></div>${a.go?chev:''}</div>`).join(''):'<div class="mp-empty"><div class="mp-sub">Nothing needs your attention.</div></div>'}</div>`;
   const qa=(icon,label,on)=>`<button class="mp-qa" onclick="${on}">${I(icon,16)}<span>${label}</span></button>`;
-  const quick=inTp?`<div class="mp-c"><div class="mp-ch"><span class="mp-ct">Quick Actions</span></div>${qa(IC.back,'Back to Team Performance','tpBack()')}${qa(IC.cal,'View Training Calendar',"showView('training-delivery')")}${qa(IC.dl,'Download Scorecard (PDF)','mpDownloadScorecard()')}</div>`:`<div class="mp-c"><div class="mp-ch"><span class="mp-ct">Quick Actions</span></div>${isOwner?qa(IC.clip,'Add Development Plan (PDP)',"pdpOpen('new')"):''}${qa(IC.cal,'View Training Calendar',"showView('training-delivery')")}${qa(IC.trend,'View My Evaluations',"showView(Auth.isAdmin||Auth.formAccess(Auth.user).trainerEval?'evaluations':'reports')")}${qa(IC.dl,'Download Scorecard (PDF)','mpDownloadScorecard()')}</div>`;
+  const quick=inTp?`<div class="mp-c"><div class="mp-ch"><span class="mp-ct">Quick Actions</span></div>${qa(IC.back,'Back to Team Performance','tpBack()')}${qa(IC.dl,'Download Scorecard (PDF)','mpDownloadScorecard()')}</div>`:`<div class="mp-c"><div class="mp-ch"><span class="mp-ct">Quick Actions</span></div>${qa(IC.trend,'View My Evaluations','mpGoMyEvals()')}${qa(IC.dl,'Download Scorecard (PDF)','mpDownloadScorecard()')}</div>`; // v5.19n (per Sandra): only these two for now
   /* supervisor team — v5.15b: moved out of My Performance (Team Performance covers the team) */
   let teamBox='';
   if(false&&role==='supervisor'){ const team=_scDownline(_mpPerson).filter(u=>_scRoleOf(u)); const tsc=team.map(u=>({u,s:_scScorecard(u.id,_mpKind,_mpKey)}));
@@ -26182,7 +26186,7 @@ function renderMyPerformance(){
    date changes only through a request the supervisor approves (pdp_date_requests / RPC pdp_decide_date).
    Verifier = direct supervisor, admin as backup. Full history + comments in pdp_events (written by the database).
    Optional milestones checklist. Overdue = approved target date passed and not yet submitted. Right-side drawer. */
-const PDP_ST={planned:['Not Started','neutral'],ongoing:['Ongoing','info'],submitted:['Submitted','purple'],verified:['Verified','ok'],returned:['Returned','warn'],cancelled:['Cancelled','neutral']};
+const PDP_ST={draft:['Draft','neutral'],pending_approval:['Pending Approval','warn'],planned:['Not Started','neutral'],ongoing:['Ongoing','info'],submitted:['Submitted','purple'],verified:['Verified','ok'],returned:['Returned','warn'],cancelled:['Cancelled','neutral']};
 const PDP_I={cap:'<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5M22 9v6"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',
   check:'<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16.2 9.5"/>',send:'<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>',play:'<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5.5 3.5-5.5 3.5z"/>',
   pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',ban:'<circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/>',
@@ -26193,7 +26197,7 @@ function _pdpSvg(k,z){ return `<svg width="${z||16}" height="${z||16}" viewBox="
 function _pdpTag(t,tone){ return `<span class="lt-tag tone-${tone}">${Utils.esc(t)}</span>`; }
 function _pdpById(id){ return (Cache.data.pdp_items||[]).find(x=>x.id===id)||null; }
 function _pdpReq(id){ return (Cache.data.pdp_date_requests||[]).find(r=>r.pdpId===id&&r.status==='pending')||null; }
-function _pdpOverdue(x){ return ['planned','ongoing','returned'].includes(x.status)&&!!x.targetDate&&x.targetDate<_todayStr(); }
+function _pdpOverdue(x){ return ['draft','pending_approval','planned','ongoing','returned'].includes(x.status)&&!!x.targetDate&&x.targetDate<_todayStr(); }
 function _pdpInTeam(){ const v=document.getElementById('view-team-performance'); return !!v&&!v.classList.contains('hidden'); }
 function _pdpRO(){ return !!(_pdpInTeam()?_tpAs:_mpAs); }
 function _pdpRerender(){ if(_pdpInTeam()&&!_tpPerson) renderTeamPerformance(); else renderMyPerformance(); }
@@ -26218,6 +26222,16 @@ function _pdpCountdown(x){ if(!x||!x.targetDate) return null;
   if(x.status==='submitted') return {t:'Awaiting verification',tone:'purple'};
   const n=_pdpDaysTo(x.targetDate); return n>1?{t:`${n} days left`,tone:n<=7?'warn':'info'}:n===1?{t:'Due tomorrow',tone:'warn'}:n===0?{t:'Due today',tone:'warn'}:{t:`${-n} day${n===-1?'':'s'} overdue`,tone:'bad'}; }
 // v5.19l: no Start button — one-time PDPs: owner sets the status (Not Started → Ongoing); milestone-based: first milestone In Progress makes the PDP Ongoing
+// v5.19n (2026-11-11, per Sandra): plan approval — Draft → Pending Approval → Approved (Not Started)
+function _pdpApprover(x){ const p=DB.byId(x.profileId), sup=p&&p.supervisorId?DB.byId(p.supervisorId):null; return sup?`${sup.firstName} ${sup.lastName}`:'an admin'; }
+function _pdpWaitDays(x){ return x.approvalRequestedAt?Math.max(0,-_pdpDaysTo(_mnlDateOf(x.approvalRequestedAt))):0; }
+function _pdpPreStart(x){ return !!x&&['draft','pending_approval','planned'].includes(x.status)&&!x.startedAt; }
+async function _pdpSetStatusRow(id,patch,okMsg,audit){ if(_pdpRO()){ _mpRO(); return null; } const x=_pdpById(id); if(!x) return null;
+  const row=await _mpPdpWrite(sb.from('pdp_items').update(patchToSnake('pdp_items',patch)).eq('id',id)); if(row){ await AuditLog.record('update','PDP',id,`PDP "${x.title}" ${audit}`); toast(okMsg,'success'); _pdp.mode=null; _pdpRefresh(); } return row; }
+function pdpRequestApproval(id){ return _pdpSetStatusRow(id,{status:'pending_approval',approvalNote:null},'Sent to your supervisor for approval.','submitted for approval'); }
+function pdpWithdraw(id){ return _pdpSetStatusRow(id,{status:'draft'},'Withdrawn. You can edit it now.','withdrawn from approval'); }
+function pdpApprove(id){ return _pdpSetStatusRow(id,{status:'planned',approvalNote:null},'Plan approved.','approved'); }
+function pdpSendBack(){ const r=(document.getElementById('pdp-reason')?.value||'').trim(); if(!r) return _pdpErr('Say what needs to change.'); return _pdpSetStatusRow(_pdp.id,{status:'draft',approvalNote:r},'Sent back to the owner.','sent back: '+r); }
 function _pdpStatusCtl(x){ const s=PDP_ST[x.status]||[x.status,'neutral'];
   if(_pdpIsOwner(x)&&x.status==='planned'&&!_pdpMs(x).length) return `<select class="pdp-st-sel" aria-label="PDP status" onclick="event.stopPropagation()" onchange="event.stopPropagation();pdpSetStatus('${x.id}',this.value)"><option value="planned" selected>Not Started</option><option value="ongoing">Ongoing</option></select>`;
   return _pdpTag(s[0],s[1]); }
@@ -26232,7 +26246,7 @@ function _pdpHeroHtml(x){
   const ring=`<svg width="78" height="78" viewBox="0 0 78 78" aria-hidden="true"><circle cx="39" cy="39" r="${R}" fill="none" stroke="#ede9fe" stroke-width="8"/><circle cx="39" cy="39" r="${R}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct/100)}" transform="rotate(-90 39 39)"/><text x="39" y="44" text-anchor="middle" font-size="16" font-weight="600" fill="#0f172a" style="font-family:var(--font)">${pct}%</text></svg>`;
   const cd=_pdpCountdown(x);
   const nextMs=ms.find(m=>m.status!=='completed');
-  const next=x.status==='planned'?(mb?'Next: set your first milestone to <b>In Progress</b> when you begin.':'Next: change the status to <b>Ongoing</b> when you begin.'):x.status==='returned'?'Next: fix what your supervisor flagged and resubmit.':x.status==='submitted'?'Waiting for your supervisor to verify.':x.status==='verified'?`Done. Counts toward Q${_scQuarterOf(_scPdpDone(x)).slice(6)} ${String(_scPdpDone(x)).slice(0,4)}.`:x.status==='cancelled'?'This PDP was cancelled.':mb&&nextMs?`Next milestone: <b>${esc(nextMs.title||'')}</b>${nextMs.targetDate?` · due ${Utils.formatDate(nextMs.targetDate)}`:''}`:mb?'All milestones done. Next: <b>Submit completion</b>.':`Next: <b>Submit completion</b> by ${Utils.formatDate(x.targetDate)}.`;
+  const next=x.status==='draft'?'Next: <b>Submit for approval</b>. Your supervisor approves the plan before you start.':x.status==='pending_approval'?`Waiting for ${esc(_pdpApprover(x))} to approve the plan.`:x.status==='planned'?(mb?'Next: set your first milestone to <b>In Progress</b> when you begin.':'Next: change the status to <b>Ongoing</b> when you begin.'):x.status==='returned'?'Next: fix what your supervisor flagged and resubmit.':x.status==='submitted'?'Waiting for your supervisor to verify.':x.status==='verified'?`Done. Counts toward Q${_scQuarterOf(_scPdpDone(x)).slice(6)} ${String(_scPdpDone(x)).slice(0,4)}.`:x.status==='cancelled'?'This PDP was cancelled.':mb&&nextMs?`Next milestone: <b>${esc(nextMs.title||'')}</b>${nextMs.targetDate?` · due ${Utils.formatDate(nextMs.targetDate)}`:''}`:mb?'All milestones done. Next: <b>Submit completion</b>.':`Next: <b>Submit completion</b> by ${Utils.formatDate(x.targetDate)}.`;
   const steps=[['Not Started'],['Ongoing'],['Submitted'],['Verified']];
   const stepper=x.status==='cancelled'?'':`<div class="pdp-steps">${steps.map(([l],i)=>{ const st=i<cur?'done':i===cur?'cur':''; const lab=i===1&&x.status==='returned'?'Returned':l; return `<div class="pdp-step ${st}${i===1&&x.status==='returned'?' ret':''}"><span class="d">${i<cur||x.status==='verified'?_pdpSvg('check',12).replace('<circle cx="12" cy="12" r="9"/>',''):i+1}</span><span class="l">${lab}</span></div>`; }).join('<span class="pdp-step-ln"></span>')}</div>`;
   return `<div class="pdp-hero"><div class="pdp-hero-top">${ring}<div style="flex:1;min-width:0"><div class="pdp-hero-k">${mb?`${done} of ${ms.length} milestones completed`:'One-time PDP'}</div><div class="pdp-hero-meta">${_pdpStatusCtl(x)}${_pdpTag(mb?'Milestone-based':'One-time','purple')}${cd?_pdpTag(cd.t,cd.tone):''}${x.targetDate?`<span class="mp-sub">${_pdpSvg('cal',13)} Target ${Utils.formatDate(x.targetDate)}</span>`:''}</div><div class="pdp-hero-next">${next}</div></div></div>${stepper}</div>`;
@@ -26252,20 +26266,23 @@ function _pdpTags(x){ const t=[]; if(_pdpOverdue(x)) t.push(_pdpTag('Overdue','b
 function _pdpCardHtml(pid,isOwner){
   const esc=Utils.esc, curQ=_scQuarterOf(_todayStr()), qr=_scPeriodRange('quarter',curQ);
   const all=_scPdps(pid), done=all.filter(x=>_scPdpDoneIn(x,qr)).length;
-  const rank={returned:0,ongoing:1,planned:2,submitted:3,verified:4,cancelled:5};
+  const rank={draft:-1,pending_approval:-0.5,returned:0,ongoing:1,planned:2,submitted:3,verified:4,cancelled:5};
   const list=all.filter(x=>_mpAllPdp||_scPdpActive(x)).sort((a,b)=>(rank[a.status]-rank[b.status])||String(a.targetDate||'').localeCompare(String(b.targetDate||'')));
   const row=x=>{ const s=PDP_ST[x.status]||[x.status,'neutral'], ms=_pdpMs(x), md=ms.filter(m=>m.done).length, own=isOwner&&_pdpIsOwner(x), ver=_pdpCanVerify(x.profileId), req=_pdpReq(x.id);
     let prim='';
-    if(own&&(x.status==='ongoing'||x.status==='returned')) prim=`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}','submit')">${x.status==='returned'?'Resubmit':'Submit'}</button>`;
+    if(own&&x.status==='draft') prim=`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpRequestApproval('${x.id}')">Submit for approval</button>`;
+    else if(ver&&x.status==='pending_approval') prim=`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}')">Review</button>`;
+    else if(own&&(x.status==='ongoing'||x.status==='returned')) prim=`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}','submit')">${x.status==='returned'?'Resubmit':'Submit'}</button>`;
     else if(ver&&x.status==='submitted') prim=`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}','verify')">Verify</button>`;
     else if(ver&&req) prim=`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}')">Review date</button>`;
     const menu=[{label:'View details',icon:'eye',run:()=>pdpOpen(x.id)},{label:'Activity',icon:'file',run:()=>pdpOpen(x.id,null,'activity')}];
-    if(own&&['planned','ongoing','returned'].includes(x.status)) menu.push({label:'Edit',icon:'pencil',run:()=>pdpOpen(x.id,'edit')});
+    if(own&&['draft','planned'].includes(x.status)) menu.push({label:'Edit',icon:'pencil',run:()=>pdpOpen(x.id,'edit')});
+    if(own&&x.status==='pending_approval') menu.push({label:'Withdraw to edit',icon:'reopen',run:()=>pdpWithdraw(x.id)});
     if(own&&['ongoing','returned'].includes(x.status)&&!req) menu.push({label:'Request date change',icon:'reopen',run:()=>pdpOpen(x.id,'date')});
-    if(own&&x.status==='planned'&&!x.startedAt) menu.push({label:'Delete',icon:'trash',danger:true,run:()=>pdpDelete(x.id)});
+    if(own&&_pdpPreStart(x)) menu.push({label:'Delete',icon:'trash',danger:true,run:()=>pdpDelete(x.id)});
     if(own&&['ongoing','returned','submitted'].includes(x.status)) menu.push({label:'Cancel PDP',icon:'trash',danger:true,run:()=>pdpOpen(x.id,'cancel')});
     _ltRowMenus['pdp|'+x.id]=menu;
-    const msOver=ms.filter(_pdpMsOverdue).length, cd=_pdpCountdown(x); const meta=[ms.length?'Milestone-based':'One-time',x.targetDate?`Target ${Utils.formatDate(x.targetDate)}`:null,msOver?`${msOver} milestone${msOver!==1?'s':''} overdue`:null,x.status==='verified'&&_scPdpDone(x)?`Completed ${Utils.formatDate(_scPdpDone(x))}`:null].filter(Boolean).join(' · ');
+    const msOver=ms.filter(_pdpMsOverdue).length, cd=_pdpCountdown(x); const meta=[ms.length?'Milestone-based':'One-time',x.status==='pending_approval'?`waiting ${_pdpWaitDays(x)} day${_pdpWaitDays(x)!==1?'s':''} for approval`:null,x.status==='draft'&&x.approvalNote?'sent back for changes':null,x.targetDate?`Target ${Utils.formatDate(x.targetDate)}`:null,msOver?`${msOver} milestone${msOver!==1?'s':''} overdue`:null,x.status==='verified'&&_scPdpDone(x)?`Completed ${Utils.formatDate(_scPdpDone(x))}`:null].filter(Boolean).join(' · ');
     return `<div class="pdp-row" onclick="pdpOpen('${x.id}')"><span class="pdp-ic">${_pdpSvg('cap',18)}</span><div style="flex:1;min-width:0"><div class="pdp-rt">${esc(x.title)}</div><div class="pdp-rm">${esc(meta)}${cd&&!_pdpOverdue(x)&&['planned','ongoing','returned'].includes(x.status)?_pdpTag(cd.t,cd.tone):''}${_pdpTags(x)}</div>${_pdpMsBar(ms,true)}</div>${_pdpStatusCtl(x)}${prim}<button class="lt-ibtn" data-tip="Manage" aria-label="Manage" onclick="event.stopPropagation();ltMenu(event,'pdp|${x.id}')">${LT_ICO.more}</button></div>`; };
   const empty=`<div class="mp-empty"><span class="ic">${_pdpSvg('cap',22)}</span><div style="font-weight:600;font-size:13px;margin-top:8px">${_mpAllPdp?'No PDPs yet.':'No active PDP.'}</div><div class="mp-sub">${isOwner?'Add one to plan your development and track progress.':'Nothing in progress.'}</div>${isOwner&&!_pdpRO()?`<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="pdpOpen('new')">+ Add PDP</button>`:''}</div>`;
   const tip='Not Started → Ongoing → Submitted (with completion notes) → Verified by your supervisor. A PDP counts in the quarter it was actually completed, once verified. Target: 1 per quarter.';
@@ -26296,7 +26313,7 @@ async function _pdpLoadEvents(){ const id=_pdp.id; if(!id||id==='new') return;
 function _pdpField(label,html,req,hint){ return `<label class="pdp-f"><span class="pdp-l">${label}${req?' <span style="color:var(--red)">*</span>':''}</span>${html}${hint?`<span class="pdp-h">${hint}</span>`:''}</label>`; }
 function _pdpCount(id,max){ return `oninput="const c=document.getElementById('${id}-c'); if(c) c.textContent=this.value.length+' / ${max}'"`; }
 function _pdpFormHtml(x){
-  const esc=Utils.esc, isNew=!x, started=!!x&&x.status!=='planned', today=_todayStr(), lockedTarget=started?x.targetDate:'';
+  const esc=Utils.esc, isNew=!x, started=!!x&&!_pdpPreStart(x), today=_todayStr(), lockedTarget=started?x.targetDate:'';
   const ms=_pdp.ms||[]; if(_pdp.draft) x=Object.assign({},x||{},_pdp.draft,{status:x?x.status:'planned'});
   const mb=!!_pdp.adv;
   const card=(val,icon,t,d)=>`<button type="button" class="pdp-type${mb===(val==='ms')?' on':''}"${started?' disabled':''} onclick="_pdpSetType('${val}')"><span class="pdp-type-ic">${_pdpSvg(icon,18)}</span><span class="pdp-type-tx"><b>${t}</b><span>${d}</span></span></button>`;
@@ -26310,7 +26327,7 @@ function _pdpFormHtml(x){
     ${_pdpField('Short Description',`<textarea id="pdp-desc" class="form-control" rows="4" maxlength="500" placeholder="What you want to accomplish and how it helps your work" ${_pdpCount('pdp-desc',500)}>${esc(x?.description||'')}</textarea><span class="pdp-h" id="pdp-desc-c" style="text-align:right">${(x?.description||'').length} / 500</span>`,true)}
     ${target}
     ${_pdpField('Supporting Link',`<input id="pdp-link" class="form-control" placeholder="https://" value="${esc(x?.supportingUrl||'')}">`,false,'Course page, program, learning resource or other reference.')}
-  </div>${msHtml}<div class="pdp-note">${_pdpSvg('info',14)}<span>${!isNew?'Changes are recorded in the activity history.':'Your PDP starts as Not Started. When you begin, set it to Ongoing (milestone-based: set a milestone to In Progress). Your supervisor verifies it when you submit completion.'}</span></div>`;
+  </div>${msHtml}<div class="pdp-note">${_pdpSvg('info',14)}<span>${!isNew?(x.status==='planned'?'This plan is approved. Saving changes sends it back to your supervisor for approval.':'Changes are recorded in the activity history.'):'Save it as a draft or submit it for approval. Once your supervisor approves the plan, set it to Ongoing when you begin (milestone-based: set a milestone to In Progress).'}</span></div>`;
 }
 function _pdpMsSync(){ document.querySelectorAll('.pdp-ms-r').forEach((row,i)=>{ const m=_pdp.ms[i]; if(!m) return; m.title=row.querySelector('.ms-t')?.value??m.title; m.targetDate=row.querySelector('.ms-d')?.value??m.targetDate; m.status=row.querySelector('.ms-s')?.value||m.status||'not_started'; });
   const g=id=>document.getElementById(id); if(g('pdp-title')) _pdp.draft={title:g('pdp-title').value,description:g('pdp-desc').value,targetDate:g('pdp-target').value,supportingUrl:g('pdp-link').value}; }
@@ -26327,6 +26344,7 @@ function _pdpModeHtml(x){
     ${_pdpField('Reason',`<textarea id="pdp-reason" class="form-control" rows="3" maxlength="500" placeholder="Why the date needs to move"></textarea>`,true)}
   </div><div class="pdp-note">${_pdpSvg('info',14)}<span>The current date stays until your supervisor approves the change.</span></div>`;
   if(_pdp.mode==='cancel') return `<div class="pdp-sec"><div class="pdp-st">Cancel PDP</div>${_pdpField('Reason',`<textarea id="pdp-reason" class="form-control" rows="3" maxlength="500" placeholder="Why this PDP is being cancelled"></textarea>`,true,'Cancelled PDPs stay in the history and don’t count toward the KPI.')}</div>`;
+  if(_pdp.mode==='sendback') return `<div class="pdp-sec"><div class="pdp-st">Send Back for Changes</div>${_pdpField('What should change',`<textarea id="pdp-reason" class="form-control" rows="3" maxlength="500" placeholder="e.g., make the target more specific, add a milestone"></textarea>`,true)}</div>`;
   if(_pdp.mode==='return') return `<div class="pdp-sec"><div class="pdp-st">Return for Correction</div>${_pdpField('What needs to be fixed',`<textarea id="pdp-reason" class="form-control" rows="3" maxlength="500"></textarea>`,true)}</div>`;
   if(_pdp.mode==='verify') return `<div class="pdp-sec"><div class="pdp-st">Verify Completion</div>
     ${_pdpSubmissionHtml(x)}
@@ -26347,7 +26365,7 @@ function _pdpDetailsHtml(x){ // v5.19m (2026-11-11, per Sandra's mockup): Progre
   const done=ms.filter(m=>m.status==='completed').length, ip=ms.filter(m=>m.status==='in_progress').length;
   const pct=x.status==='verified'?100:mb?Math.round(done/ms.length*100):[0,33,67,100][cur];
   const cd=_pdpCountdown(x), nextMs=ms.find(m=>m.status!=='completed');
-  const next=x.status==='planned'?(mb?'Next: set your first milestone to <b>In Progress</b> when you begin.':'Next: change the status to <b>Ongoing</b> when you begin.'):x.status==='returned'?'Next: fix what your supervisor flagged and resubmit.':x.status==='submitted'?'Waiting for your supervisor to verify.':x.status==='verified'?`Done. Counts toward Q${_scQuarterOf(_scPdpDone(x)).slice(6)} ${String(_scPdpDone(x)).slice(0,4)}.`:x.status==='cancelled'?'':mb&&nextMs?`Next milestone: <b>${esc(nextMs.title||'')}</b>${nextMs.targetDate?` · due ${Utils.formatDate(nextMs.targetDate)}`:''}`:mb?'All milestones done. Next: <b>Submit completion</b>.':`Next: <b>Submit completion</b> by ${Utils.formatDate(x.targetDate)}.`;
+  const next=x.status==='draft'?'Next: <b>Submit for approval</b>. Your supervisor approves the plan before you start.':x.status==='pending_approval'?`Waiting for ${esc(_pdpApprover(x))} to approve the plan.`:x.status==='planned'?(mb?'Next: set your first milestone to <b>In Progress</b> when you begin.':'Next: change the status to <b>Ongoing</b> when you begin.'):x.status==='returned'?'Next: fix what your supervisor flagged and resubmit.':x.status==='submitted'?'Waiting for your supervisor to verify.':x.status==='verified'?`Done. Counts toward Q${_scQuarterOf(_scPdpDone(x)).slice(6)} ${String(_scPdpDone(x)).slice(0,4)}.`:x.status==='cancelled'?'':mb&&nextMs?`Next milestone: <b>${esc(nextMs.title||'')}</b>${nextMs.targetDate?` · due ${Utils.formatDate(nextMs.targetDate)}`:''}`:mb?'All milestones done. Next: <b>Submit completion</b>.':`Next: <b>Submit completion</b> by ${Utils.formatDate(x.targetDate)}.`;
   const R=30, C=2*Math.PI*R, col=x.status==='cancelled'?'#94a3b8':x.status==='verified'?'#16a34a':'#6d28d9';
   const ring=`<svg width="78" height="78" viewBox="0 0 78 78" aria-hidden="true" style="flex-shrink:0"><circle cx="39" cy="39" r="${R}" fill="none" stroke="#ede9fe" stroke-width="8"/><circle cx="39" cy="39" r="${R}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct/100)}" transform="rotate(-90 39 39)"/><text x="39" y="44" text-anchor="middle" font-size="16" font-weight="600" fill="#0f172a" style="font-family:var(--font)">${pct}%</text></svg>`;
   const live=!['verified','cancelled'].includes(x.status);
@@ -26368,9 +26386,12 @@ function _pdpDetailsHtml(x){ // v5.19m (2026-11-11, per Sandra's mockup): Progre
   const ret=x.status==='returned'&&x.returnReason?`<div class="pdp-banner warn"><span>${I('undo')}</span><div><b>Returned for correction</b><div style="white-space:pre-wrap">${esc(x.returnReason)}</div></div></div>`:'';
   const can=x.status==='cancelled'?`<div class="pdp-banner bad"><span>${I('ban')}</span><div><b>Reason${x.cancelledAt?` · ${Utils.formatDate(_mnlDateOf(x.cancelledAt))}`:''}</b><div style="white-space:pre-wrap">${esc(x.cancelReason||'No reason recorded.')}</div></div></div>`:'';
   /* supporting link (bottom) */
-  return `${prog}${can}${reqBox}${ret}${plan}${msBox}${comp}`;
+  const pend=x.status==='pending_approval'?`<div class="pdp-banner info"><span>${I('clock')}</span><div><b>Waiting for approval · ${_pdpWaitDays(x)} day${_pdpWaitDays(x)!==1?'s':''}</b><div>Sent to ${esc(_pdpApprover(x))}${x.approvalRequestedAt?' on '+Utils.formatDate(_mnlDateOf(x.approvalRequestedAt)):''}.</div></div></div>`:'';
+  const back=x.status==='draft'&&x.approvalNote?`<div class="pdp-banner warn"><span>${I('undo')}</span><div><b>Sent back for changes</b><div style="white-space:pre-wrap">${esc(x.approvalNote)}</div></div></div>`:'';
+  const appr=x.approvedBy&&!['draft','pending_approval'].includes(x.status)?`<div class="mp-sub" style="margin:-4px 0 12px;display:flex;gap:6px;align-items:center">${I('check')} Plan approved by ${esc(_pdpName(x.approvedBy))}${x.approvedAt?' on '+Utils.formatDate(_mnlDateOf(x.approvedAt)):''}</div>`:'';
+  return `${prog}${appr}${pend}${back}${can}${reqBox}${ret}${plan}${msBox}${comp}`;
 }
-const PDP_EV={created:['Created','pencil','#475569'],edited:['Updated','pencil','#475569'],ongoing:['Started','play','#2563eb'],submitted:['Submitted for verification','send','#7c3aed'],verified:['Verified','check','#16a34a'],returned:['Returned for correction','undo','#b45309'],cancelled:['Cancelled','ban','#b91c1c'],deleted:['Deleted','trash','#b91c1c'],date_request:['Date change requested','cal','#b45309'],date_approved:['Date change approved','cal','#16a34a'],date_rejected:['Date change rejected','cal','#b91c1c'],comment:['Comment','chat','#475569'],status:['Status changed','flag','#475569']};
+const PDP_EV={approval_requested:['Submitted for approval','send','#b45309'],approved:['Plan approved','check','#16a34a'],sent_back:['Sent back for changes','undo','#b45309'],withdrawn:['Withdrawn for edits','undo','#475569'],created:['Created','pencil','#475569'],edited:['Updated','pencil','#475569'],ongoing:['Started','play','#2563eb'],submitted:['Submitted for verification','send','#7c3aed'],verified:['Verified','check','#16a34a'],returned:['Returned for correction','undo','#b45309'],cancelled:['Cancelled','ban','#b91c1c'],deleted:['Deleted','trash','#b91c1c'],date_request:['Date change requested','cal','#b45309'],date_approved:['Date change approved','cal','#16a34a'],date_rejected:['Date change rejected','cal','#b91c1c'],comment:['Comment','chat','#475569'],status:['Status changed','flag','#475569']};
 function _pdpEvSub(e){
   const a=e.after||{}, b=e.before||{}, d=v=>v?Utils.formatDate(v):'—';
   if(e.kind==='created') return a.target_date?`Target completion ${d(a.target_date)}.`:'';
@@ -26395,8 +26416,9 @@ function _pdpActivityHtml(x){
 }
 function _pdpFooter(x){
   const b=(cls,label,on,icon)=>`<button class="btn ${cls} btn-sm" onclick="${on}">${icon?_pdpSvg(icon,15)+' ':''}${label}</button>`;
-  if(_pdp.id==='new') return b('btn-ghost','Cancel','pdpClose()')+b('btn-primary','Create PDP','pdpSave()');
-  if(_pdp.mode==='edit') return b('btn-ghost','Cancel','pdpMode(null)')+b('btn-primary','Save changes','pdpSave()');
+  if(_pdp.id==='new') return b('btn-ghost','Cancel','pdpClose()')+b('btn-secondary','Save as draft','pdpSave(false)')+b('btn-primary','Submit for approval','pdpSave(true)','send');
+  if(_pdp.mode==='edit'){ const xd=_pdpById(_pdp.id); return b('btn-ghost','Cancel','pdpMode(null)')+(xd&&xd.status==='draft'?b('btn-secondary','Save draft','pdpSave(false)')+b('btn-primary','Submit for approval','pdpSave(true)','send'):b('btn-primary',xd&&xd.status==='planned'?'Save & resubmit for approval':'Save changes','pdpSave(false)')); }
+  if(_pdp.mode==='sendback') return b('btn-ghost','Back','pdpMode(null)')+b('btn-secondary','Send back','pdpSendBack()','undo');
   if(_pdp.mode==='submit') return b('btn-ghost','Cancel','pdpMode(null)')+b('btn-primary','Submit for verification','pdpSubmit()','send');
   if(_pdp.mode==='date') return b('btn-ghost','Cancel','pdpMode(null)')+b('btn-primary','Send request','pdpRequestDate()','cal');
   if(_pdp.mode==='cancel') return b('btn-ghost','Back','pdpMode(null)')+b('btn-danger','Cancel PDP','pdpCancel()');
@@ -26404,8 +26426,12 @@ function _pdpFooter(x){
   if(_pdp.mode==='verify') return b('btn-ghost','Back','pdpMode(null)')+b('btn-secondary','Return','pdpMode(\'return\')','undo')+b('btn-primary','Verify','pdpVerify()','check');
   if(_pdp.tab==='activity'&&!_pdpRO()) return b('btn-ghost','Close','pdpClose()')+b('btn-primary','Post Comment','pdpComment()','chat');
   const own=_pdpIsOwner(x), ver=_pdpCanVerify(x.profileId), out=[];
-  if(own&&x.status==='planned'){ if(!x.startedAt) out.push(`<button class="btn btn-ghost btn-sm" style="color:var(--red);margin-right:auto" onclick="pdpDelete('${x.id}')">${_pdpSvg('trash',15)} Delete</button>`); out.push(b('btn-primary','Edit',"pdpMode('edit')",'pencil')); }
-  else if(own&&['ongoing','returned'].includes(x.status)){ out.push(`<button class="btn btn-ghost btn-sm" style="color:var(--red);margin-right:auto" onclick="pdpMode('cancel')">Cancel PDP</button>`); if(!_pdpReq(x.id)) out.push(b('btn-secondary','Request date change',"pdpMode('date')",'cal')); out.push(b('btn-secondary','Edit',"pdpMode('edit')",'pencil'),b('btn-primary',x.status==='returned'?'Resubmit':'Submit Completion',"pdpMode('submit')",'send')); }
+  const del=`<button class="btn btn-ghost btn-sm" style="color:var(--red);margin-right:auto" onclick="pdpDelete('${x.id}')">${_pdpSvg('trash',15)} Delete</button>`;
+  if(ver&&x.status==='pending_approval') out.push(b('btn-secondary','Send back',"pdpMode('sendback')",'undo'),b('btn-primary','Approve plan',`pdpApprove('${x.id}')`,'check'));
+  else if(own&&x.status==='draft') out.push(del,b('btn-secondary','Edit',"pdpMode('edit')",'pencil'),b('btn-primary','Submit for approval',`pdpRequestApproval('${x.id}')`,'send'));
+  else if(own&&x.status==='pending_approval') out.push(del,b('btn-secondary','Withdraw to edit',`pdpWithdraw('${x.id}')`,'undo'),b('btn-secondary','Close','pdpClose()'));
+  else if(own&&x.status==='planned'){ if(!x.startedAt) out.push(del); out.push(b('btn-secondary','Edit',"pdpMode('edit')",'pencil')); }
+  else if(own&&['ongoing','returned'].includes(x.status)){ out.push(`<button class="btn btn-ghost btn-sm" style="color:var(--red);margin-right:auto" onclick="pdpMode('cancel')">Cancel PDP</button>`); if(!_pdpReq(x.id)) out.push(b('btn-secondary','Request date change',"pdpMode('date')",'cal')); out.push(b('btn-primary',x.status==='returned'?'Resubmit':'Submit Completion',"pdpMode('submit')",'send')); }
   else if(ver&&x.status==='submitted') out.push(b('btn-secondary','Return',"pdpMode('return')",'undo'),b('btn-primary','Verify',"pdpMode('verify')",'check'));
   else if(own&&x.status==='submitted') out.push(`<button class="btn btn-ghost btn-sm" style="color:var(--red);margin-right:auto" onclick="pdpMode('cancel')">Cancel PDP</button>`,b('btn-secondary','Close','pdpClose()'));
   else out.push(b('btn-secondary','Close','pdpClose()'));
@@ -26424,25 +26450,27 @@ function _pdpRender(){
 /* ── writes ── */
 function _pdpRefresh(){ _pdp.events=null; _pdpRerender(); if(_pdp.id&&!document.getElementById('pdp-dr-bg')?.classList.contains('hidden')){ _pdpRender(); if(_pdp.tab==='activity') _pdpLoadEvents(); } }
 function _pdpErr(m){ toast(m,'error'); }
-async function pdpSave(){ if(_pdpRO()){ _mpRO(); return; }
+async function pdpSave(submit){ if(_pdpRO()){ _mpRO(); return; }
   _pdpMsSync(); const v=id=>(document.getElementById(id)?.value||'').trim();
   const title=v('pdp-title'), description=v('pdp-desc'), supportingUrl=v('pdp-link'); let targetDate=v('pdp-target');
   if(!title) return _pdpErr('Add a PDP title.'); if(!description) return _pdpErr('Add a short description.');
   const isNew=_pdp.id==='new', x=isNew?null:_pdpById(_pdp.id);
   if(_pdp.adv){ const msChk=(_pdp.ms||[]).filter(m=>(m.title||'').trim()); if(msChk.length<2) return _pdpErr('A milestone-based PDP needs at least 2 milestones.'); if(msChk.some(m=>!m.targetDate)) return _pdpErr('Add a target date for each milestone.');
-    const last=_pdpLastMsDate(msChk); if(isNew||x.status==='planned') targetDate=last; else if(last>x.targetDate) return _pdpErr(`The last milestone can’t be after the target date (${Utils.formatDate(x.targetDate)}). Use Request date change first.`); }
+    const last=_pdpLastMsDate(msChk); if(isNew||_pdpPreStart(x)) targetDate=last; else if(last>x.targetDate) return _pdpErr(`The last milestone can’t be after the target date (${Utils.formatDate(x.targetDate)}). Use Request date change first.`); }
   if(isNew&&!targetDate) return _pdpErr('Add a target completion date.');
   if(isNew&&targetDate<_todayStr()) return _pdpErr(_pdp.adv?'The last milestone can’t be in the past.':'The target date can’t be in the past.');
   if(supportingUrl&&!_lpSafeResourceUrl(supportingUrl)) return _pdpErr('Enter a full link starting with https://');
   const msIn=_pdp.adv?(_pdp.ms||[]).filter(m=>(m.title||'').trim()):[]; if(msIn.some(m=>!m.targetDate)) return _pdpErr('Add a target date for each milestone.');
   const milestones=msIn.map(m=>{ const st=m.status||'not_started'; return {id:m.id||('m'+Math.random().toString(36).slice(2,8)),title:m.title.trim(),targetDate:m.targetDate,status:st,done:st==='completed',doneAt:st==='completed'?(m.doneAt||_todayStr()):null}; });
   const patch={title,description,supportingUrl:supportingUrl||null,milestones};
-  if(isNew||x.status==='planned') patch.targetDate=targetDate||x?.targetDate;
-  if(isNew){ Object.assign(patch,{profileId:Auth.user.id,status:'planned',quarter:_scQuarterOf(targetDate)}); }
+  if(isNew||_pdpPreStart(x)) patch.targetDate=targetDate||x?.targetDate;
+  if(isNew){ Object.assign(patch,{profileId:Auth.user.id,status:submit?'pending_approval':'draft',quarter:_scQuarterOf(targetDate)}); }
+  else if(x.status==='draft'&&submit){ patch.status='pending_approval'; patch.approvalNote=null; }
   const row=await _mpPdpWrite(isNew?sb.from('pdp_items').insert(patchToSnake('pdp_items',patch)):sb.from('pdp_items').update(patchToSnake('pdp_items',patch)).eq('id',x.id));
   if(!row) return; await AuditLog.record(isNew?'create':'update','PDP',row.id,`${isNew?'Added':'Edited'} PDP "${title}"`);
-  let saved=row; if(row.status==='planned'&&milestones.some(m=>m.status!=='not_started')){ const r2=await _mpPdpWrite(sb.from('pdp_items').update(patchToSnake('pdp_items',{status:'ongoing'})).eq('id',row.id)); if(r2) saved=r2; }
-  toast(isNew?'PDP created.':'Changes saved.','success'); _pdp.id=saved.id; _pdp.mode=null; _pdp.ms=JSON.parse(JSON.stringify(_pdpMs(saved))); _pdpRefresh();
+  let saved=row; if(!isNew&&x.status==='planned'&&row.status==='pending_approval') toast('The plan changed, so it went back to your supervisor for approval.','info');
+  if(row.status==='planned'&&milestones.some(m=>m.status!=='not_started')){ const r2=await _mpPdpWrite(sb.from('pdp_items').update(patchToSnake('pdp_items',{status:'ongoing'})).eq('id',row.id)); if(r2) saved=r2; }
+  toast(row.status==='pending_approval'&&(isNew||submit)?'Sent to your supervisor for approval.':isNew?'Draft saved.':'Changes saved.','success'); _pdp.id=saved.id; _pdp.mode=null; _pdp.ms=JSON.parse(JSON.stringify(_pdpMs(saved))); _pdpRefresh();
 }
 async function pdpStart(id){ if(_pdpRO()){ _mpRO(); return; } const x=_pdpById(id); if(!x) return;
   const row=await _mpPdpWrite(sb.from('pdp_items').update(patchToSnake('pdp_items',{status:'ongoing'})).eq('id',id));
@@ -27084,15 +27112,15 @@ function tpPdpFilter(f){ _tpPdpF=f; renderTeamPerformance(); }
 function _tpPdpHtml(team){
   const esc=Utils.esc, curQ=_scQuarterOf(_todayStr()), qr=_scPeriodRange('quarter',curQ), ids=new Set(team.map(u=>u.id));
   const all=(Cache.data.pdp_items||[]).filter(x=>ids.has(x.profileId));
-  const F={open:['Active',x=>_scPdpActive(x)],submitted:['To verify',x=>x.status==='submitted'],overdue:['Overdue',x=>_pdpOverdue(x)],date:['Date change pending',x=>!!_pdpReq(x.id)],done:[`Completed Q${curQ.slice(6)}`,x=>_scPdpDoneIn(x,qr)],all:['All',x=>true]};
+  const F={approve:['To approve',x=>x.status==='pending_approval'],open:['Active',x=>_scPdpActive(x)],submitted:['To verify',x=>x.status==='submitted'],overdue:['Overdue',x=>_pdpOverdue(x)],date:['Date change pending',x=>!!_pdpReq(x.id)],done:[`Completed Q${curQ.slice(6)}`,x=>_scPdpDoneIn(x,qr)],all:['All',x=>true]};
   const f=F[_tpPdpF]?_tpPdpF:'open', list=all.filter(F[f][1]);
-  const rank={submitted:0,returned:1,ongoing:2,planned:3,verified:4,cancelled:5};
+  const rank={pending_approval:-1,submitted:0,returned:1,ongoing:2,planned:3,draft:3.5,verified:4,cancelled:5};
   list.sort((a,b)=>(_pdpOverdue(b)-_pdpOverdue(a))||(rank[a.status]-rank[b.status])||String(a.targetDate||'').localeCompare(String(b.targetDate||'')));
   const nm=id=>{ const u=DB.byId(id); return u?`${u.firstName} ${u.lastName}`:'—'; };
   const chips=Object.entries(F).map(([k,[l,fn]])=>{ const n=all.filter(fn).length; return `<button class="tp-pdp-chip${k===f?' on':''}" onclick="tpPdpFilter('${k}')">${esc(l)} <span>${n}</span></button>`; }).join('');
   const withPlan=team.filter(u=>_scPdpHasPlan(u.id,qr)).length;
   const rows=list.map(x=>{ const s=PDP_ST[x.status]||[x.status,'neutral'], ver=_pdpCanVerify(x.profileId), req=_pdpReq(x.id), ms=_pdpMs(x);
-    const act=ver&&x.status==='submitted'?`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}','verify')">Verify</button>`:ver&&req?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}')">Review date</button>`:`<button class="lt-ibtn" data-tip="View" aria-label="View" onclick="event.stopPropagation();pdpOpen('${x.id}')">${LT_ICO.eye}</button>`;
+    const act=ver&&x.status==='pending_approval'?`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}')">Review</button>`:ver&&x.status==='submitted'?`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}','verify')">Verify</button>`:ver&&req?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();pdpOpen('${x.id}')">Review date</button>`:`<button class="lt-ibtn" data-tip="View" aria-label="View" onclick="event.stopPropagation();pdpOpen('${x.id}')">${LT_ICO.eye}</button>`;
     const upd=x.updatedAt?Utils.formatDate(_mnlDateOf(x.updatedAt)):'—';
     return `<tr onclick="pdpOpen('${x.id}')" style="cursor:pointer"><td><span class="lt-name">${esc(nm(x.profileId))}</span></td><td><div style="font-weight:500">${esc(x.title)}</div>${ms.length?_pdpMsBar(ms,true):''}</td><td>${_pdpTag(s[0],s[1])}</td><td>${x.targetDate?Utils.formatDate(x.targetDate):'—'}<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${_pdpTags(x)}</div></td><td>${x.status==='verified'&&_scPdpDone(x)?Utils.formatDate(_scPdpDone(x)):'<span class="mp-sub">—</span>'}</td><td class="mp-sub">${upd}</td><td style="text-align:right">${act}</td></tr>`; }).join('');
   return `<div class="mp-c" id="tp-pdp-box" style="margin-bottom:14px"><div class="mp-ch"><span class="mp-ct">Team PDPs</span><span class="mp-sub">${withPlan} of ${team.length} with an active or completed PDP this quarter</span></div>
