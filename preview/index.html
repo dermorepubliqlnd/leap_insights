@@ -26327,7 +26327,7 @@ function _pdpFormHtml(x){
     ${_pdpField('Short Description',`<textarea id="pdp-desc" class="form-control" rows="4" maxlength="500" placeholder="What you want to accomplish and how it helps your work" ${_pdpCount('pdp-desc',500)}>${esc(x?.description||'')}</textarea><span class="pdp-h" id="pdp-desc-c" style="text-align:right">${(x?.description||'').length} / 500</span>`,true)}
     ${target}
     ${_pdpField('Supporting Link',`<input id="pdp-link" class="form-control" placeholder="https://" value="${esc(x?.supportingUrl||'')}">`,false,'Course page, program, learning resource or other reference.')}
-  </div>${msHtml}<div class="pdp-note">${_pdpSvg('info',14)}<span>${!isNew?(x.status==='planned'?'This plan is approved. Saving changes sends it back to your supervisor for approval.':'Changes are recorded in the activity history.'):'Save it as a draft or submit it for approval. Once your supervisor approves the plan, set it to Ongoing when you begin (milestone-based: set a milestone to In Progress).'}</span></div>`;
+  </div>${msHtml}<div class="pdp-note">${_pdpSvg('info',14)}<span>${!isNew?(x.status==='pending_approval'?'You are editing this plan before approving it. The owner sees your changes in the activity history.':x.status==='planned'?'This plan is approved. Saving changes sends it back to your supervisor for approval.':'Changes are recorded in the activity history.'):'Save it as a draft or submit it for approval. Once your supervisor approves the plan, set it to Ongoing when you begin (milestone-based: set a milestone to In Progress).'}</span></div>`;
 }
 function _pdpMsSync(){ document.querySelectorAll('.pdp-ms-r').forEach((row,i)=>{ const m=_pdp.ms[i]; if(!m) return; m.title=row.querySelector('.ms-t')?.value??m.title; m.targetDate=row.querySelector('.ms-d')?.value??m.targetDate; m.status=row.querySelector('.ms-s')?.value||m.status||'not_started'; });
   const g=id=>document.getElementById(id); if(g('pdp-title')) _pdp.draft={title:g('pdp-title').value,description:g('pdp-desc').value,targetDate:g('pdp-target').value,supportingUrl:g('pdp-link').value}; }
@@ -26336,7 +26336,7 @@ function _pdpModeHtml(x){
   if(_pdp.mode==='submit') return `<div class="pdp-sec"><div class="pdp-st">Submit Completion</div>
     ${_pdpField('Actual Completion Date',`<input id="pdp-done" type="date" class="form-control" style="max-width:220px" max="${today}" value="${esc(x.completedOn||today)}">`,true)}
     ${_pdpField('Completion Notes',`<textarea id="pdp-notes" class="form-control" rows="4" maxlength="500" placeholder="What you completed and the result" ${_pdpCount('pdp-notes',500)}>${esc(x.completionNotes||'')}</textarea><span class="pdp-h" id="pdp-notes-c" style="text-align:right">${(x.completionNotes||'').length} / 500</span>`,true)}
-    ${_pdpField('Supporting Link',`<input id="pdp-link2" class="form-control" placeholder="https:// certificate, DermoU record or other proof" value="${esc(x.supportingUrl||'')}">`,false)}
+    ${_pdpField('Proof of Completion (link)',`<input id="pdp-link2" class="form-control" placeholder="https:// certificate, DermoU record or other proof" value="${esc(x.supportingUrl||'')}">`,true,'Required. Your supervisor checks this before verifying.')/* v5.19o: proof required (per Sandra) */}
   </div><div class="pdp-note">${_pdpSvg('info',14)}<span>Your supervisor verifies it. It counts in the quarter you completed it, once verified.</span></div>`;
   if(_pdp.mode==='date') return `<div class="pdp-sec"><div class="pdp-st">Request Date Change</div>
     <div class="pdp-kv"><span>Current target</span><b>${Utils.formatDate(x.targetDate)}</b></div>
@@ -26427,7 +26427,8 @@ function _pdpFooter(x){
   if(_pdp.tab==='activity'&&!_pdpRO()) return b('btn-ghost','Close','pdpClose()')+b('btn-primary','Post Comment','pdpComment()','chat');
   const own=_pdpIsOwner(x), ver=_pdpCanVerify(x.profileId), out=[];
   const del=`<button class="btn btn-ghost btn-sm" style="color:var(--red);margin-right:auto" onclick="pdpDelete('${x.id}')">${_pdpSvg('trash',15)} Delete</button>`;
-  if(ver&&x.status==='pending_approval') out.push(b('btn-secondary','Send back',"pdpMode('sendback')",'undo'),b('btn-primary','Approve plan',`pdpApprove('${x.id}')`,'check'));
+  if(ver&&!own&&x.status==='pending_approval') out.push(b('btn-secondary','Edit',"pdpMode('edit')",'pencil'),b('btn-secondary','Send back',"pdpMode('sendback')",'undo'),b('btn-primary','Approve plan',`pdpApprove('${x.id}')`,'check')); /* v5.19o: supervisor may edit a plan waiting for approval (per Sandra) */
+  else if(ver&&x.status==='pending_approval') out.push(b('btn-secondary','Send back',"pdpMode('sendback')",'undo'),b('btn-primary','Approve plan',`pdpApprove('${x.id}')`,'check'));
   else if(own&&x.status==='draft') out.push(del,b('btn-secondary','Edit',"pdpMode('edit')",'pencil'),b('btn-primary','Submit for approval',`pdpRequestApproval('${x.id}')`,'send'));
   else if(own&&x.status==='pending_approval') out.push(del,b('btn-secondary','Withdraw to edit',`pdpWithdraw('${x.id}')`,'undo'),b('btn-secondary','Close','pdpClose()'));
   else if(own&&x.status==='planned'){ if(!x.startedAt) out.push(del); out.push(b('btn-secondary','Edit',"pdpMode('edit')",'pencil')); }
@@ -26478,7 +26479,7 @@ async function pdpStart(id){ if(_pdpRO()){ _mpRO(); return; } const x=_pdpById(i
 async function pdpSubmit(){ if(_pdpRO()){ _mpRO(); return; } const x=_pdpById(_pdp.id); if(!x) return; const v=id=>(document.getElementById(id)?.value||'').trim();
   const done=v('pdp-done'), notes=v('pdp-notes'), link=v('pdp-link2');
   if(!done) return _pdpErr('Add the actual completion date.'); if(done>_todayStr()) return _pdpErr('The completion date can’t be in the future.'); if(!notes) return _pdpErr('Add completion notes.');
-  if(link&&!_lpSafeResourceUrl(link)) return _pdpErr('Enter a full link starting with https://');
+  if(!link) return _pdpErr('Add a link to your proof of completion.'); if(!_lpSafeResourceUrl(link)) return _pdpErr('Enter a full link starting with https://');
   const row=await _mpPdpWrite(sb.from('pdp_items').update(patchToSnake('pdp_items',{status:'submitted',completedOn:done,completionNotes:notes,supportingUrl:link||x.supportingUrl||null,proofUrl:link||x.proofUrl||null})).eq('id',x.id));
   if(row){ await AuditLog.record('update','PDP',x.id,`PDP "${x.title}" submitted for verification`); toast('Submitted for verification.','success'); _pdp.mode=null; _pdpRefresh(); } }
 async function pdpVerify(){ if(_pdpRO()){ _mpRO(); return; } const x=_pdpById(_pdp.id); if(!x) return; const d=(document.getElementById('pdp-vdate')?.value||''), note=(document.getElementById('pdp-vnote')?.value||'').trim();
