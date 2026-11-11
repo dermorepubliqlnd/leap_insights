@@ -25392,7 +25392,7 @@ async function calEdit(id){
   _cal.edit={isNew:false,id,status:_calStatus(e),title:e.title||'',formType:e.formType||'cdqa',contentType:e.contentType||'',
     resources:(Array.isArray(e.resources)&&e.resources.length?e.resources:[{title:'',url:''}]).map(r=>({title:r.title||'',url:r.url||''})),instructions:e.instructions||'',
     dl:_calParts(e.deadlineAt).d,ds:_calParts(e.discussionAt).d,meetingLink:e.meetingLink||'',
-    subjectProfileId:data?.subject_profile_id||'',subjectName:data?.subject_name||''};
+    subjectProfileId:data?.subject_profile_id||(data?.subject_name?'__other':''),subjectName:data?.subject_name||''};
   _cal.view='edit'; _cal.id=id; _calRenderEdit(document.getElementById('cal-root')); _pushAppHash(_calHash());
 }
 function calE(path,v){ const d=_cal.edit; if(!d) return; d[path]=v; if(path==='subjectProfileId') _calRenderEdit(document.getElementById('cal-root')); }
@@ -25415,8 +25415,8 @@ function _calRenderEdit(root){
       <div class="form-group" style="margin:0">${lab('Evaluation Form',1)}<select class="form-control" ${locked?'disabled':''} onchange="calE('formType',this.value)">${Object.entries(CAL_FORMS).map(([k,v])=>`<option value="${k}"${d.formType===k?' selected':''}>${v}</option>`).join('')}<option disabled>Instructional Design QA (coming next)</option><option disabled>Trainer Evaluation (coming next)</option></select></div>
       <div class="form-group" style="margin:0">${lab('Content Type',1)}<select class="form-control" ${locked?'disabled':''} onchange="calE('contentType',this.value)"><option value="">— Select Content Type —</option>${cdTypes.map(x=>`<option value="${esc(x.name)}"${d.contentType===x.name?' selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
       <div class="form-group" style="margin:0">${lab('Person Being Evaluated','','visible only to you and admins')}
-        <select class="form-control" onchange="calE('subjectProfileId',this.value)"><option value="">— Not a LEAP user / type a name —</option>${people.map(u=>`<option value="${u.id}"${d.subjectProfileId===u.id?' selected':''}>${esc(`${u.firstName||''} ${u.lastName||''}`.trim())}</option>`).join('')}</select>
-        ${d.subjectProfileId?'':`<input class="form-control" style="margin-top:6px" value="${esc(d.subjectName)}" placeholder="Name (optional)" onchange="calE('subjectName',this.value)">`}</div>
+        <select class="form-control" onchange="calE('subjectProfileId',this.value)"><option value="">— Select —</option>${people.map(u=>`<option value="${u.id}"${d.subjectProfileId===u.id?' selected':''}>${esc(`${u.firstName||''} ${u.lastName||''}`.trim())}</option>`).join('')}<option value="__other"${d.subjectProfileId==='__other'?' selected':''}>Not a LEAP user</option></select>
+        ${d.subjectProfileId!=='__other'?'':`<input class="form-control" style="margin-top:6px" value="${esc(d.subjectName)}" placeholder="Name (optional)" onchange="calE('subjectName',this.value)">`}</div>
       <div class="form-group" style="margin:0">${lab('Meeting Link')}<input class="form-control" value="${esc(d.meetingLink)}" placeholder="https://teams.microsoft.com/…" onchange="calE('meetingLink',this.value)"></div>
       <div class="form-group" style="margin:0;grid-column:1/-1">${lab('Reference Materials','','links only')}
         ${d.resources.map((r,i)=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;gap:8px;margin-bottom:6px"><input class="form-control" placeholder="Title (e.g. Slide deck)" value="${esc(r.title)}" onchange="calRes(${i},'title',this.value)"><input class="form-control" placeholder="https://…" value="${esc(r.url)}" onchange="calRes(${i},'url',this.value)"><button class="btn btn-ghost btn-sm" title="Remove" onclick="calResDel(${i})">✕</button></div>`).join('')}
@@ -25459,7 +25459,7 @@ async function calSave(publish){
       let id=d.id;
       if(d.isNew){ const r=await sb.from('calibration_exercises').insert({...row,created_by:Auth.user.id}).select().single(); if(r.error) throw r.error; id=r.data.id; d.isNew=false; d.id=id; }
       else { const r=await sb.from('calibration_exercises').update(row).eq('id',id).select().single(); if(r.error) throw r.error; }
-      const sr=await sb.from('calibration_subjects').upsert({exercise_id:id,subject_profile_id:d.subjectProfileId||null,subject_name:d.subjectProfileId?null:(d.subjectName.trim()||null),updated_at:new Date().toISOString()},{onConflict:'exercise_id'});
+      const sr=await sb.from('calibration_subjects').upsert({exercise_id:id,subject_profile_id:(d.subjectProfileId&&d.subjectProfileId!=='__other')?d.subjectProfileId:null,subject_name:d.subjectProfileId==='__other'?(d.subjectName.trim()||null):null,updated_at:new Date().toISOString()},{onConflict:'exercise_id'});
       if(sr.error) throw sr.error;
       if(publish){
         const matrix={criteriaVersion:QA_CRITERIA_VERSION_CURRENT,contentType:d.contentType,applicable:CQA_CRITERIA.filter(c=>_cqaApplies(c,d.contentType,QA_CRITERIA_VERSION_CURRENT)).map(c=>c.id)};
