@@ -26209,7 +26209,7 @@ let _pdp={id:null,mode:null,tab:'details',events:null,ms:null,adv:false};
 function pdpOpen(id,mode,tab){
   if(id==='new'&&_pdpRO()){ _mpRO(); return; }
   const x=id==='new'?null:_pdpById(id); if(id!=='new'&&!x) return;
-  _pdp={id,mode:id==='new'?'edit':(mode||null),tab:tab||'details',events:null,ms:x?JSON.parse(JSON.stringify(_pdpMs(x))):[],adv:x?_pdpMs(x).length>0:false};
+  _pdp={draft:null,id,mode:id==='new'?'edit':(mode||null),tab:tab||'details',events:null,ms:x?JSON.parse(JSON.stringify(_pdpMs(x))):[],adv:x?_pdpMs(x).length>0:false};
   let bg=document.getElementById('pdp-dr-bg');
   if(!bg){ bg=document.createElement('div'); bg.id='pdp-dr-bg'; bg.className='pdp-bg'; bg.innerHTML='<aside class="pdp-dr" role="dialog" aria-modal="true" aria-labelledby="pdp-dr-t"><div id="pdp-dr-in" style="display:contents"></div></aside>';
     bg.addEventListener('mousedown',e=>{ if(e.target===bg) pdpClose(); }); document.body.appendChild(bg);
@@ -26219,7 +26219,7 @@ function pdpOpen(id,mode,tab){
 }
 function pdpClose(){ const bg=document.getElementById('pdp-dr-bg'); if(bg) bg.classList.add('hidden'); document.body.style.overflow=''; _pdp.id=null; }
 function pdpTab(t){ _pdp.tab=t; _pdp.mode=null; _pdpRender(); if(t==='activity'&&!_pdp.events) _pdpLoadEvents(); }
-function pdpMode(m){ _pdp.mode=m; _pdp.tab='details'; _pdpRender(); }
+function pdpMode(m){ _pdp.draft=null; _pdp.mode=m; _pdp.tab='details'; _pdpRender(); }
 async function _pdpLoadEvents(){ const id=_pdp.id; if(!id||id==='new') return;
   const {data,error}=await sb.from('pdp_events').select('*').eq('pdp_id',id).order('created_at',{ascending:false});
   if(_pdp.id!==id) return; _pdp.events=error?[]:rowsToCamel('pdp_events',data||[]); if(error) console.warn('pdp events',error.message); _pdpRender(); }
@@ -26227,18 +26227,19 @@ async function _pdpLoadEvents(){ const id=_pdp.id; if(!id||id==='new') return;
 function _pdpField(label,html,req,hint){ return `<label class="pdp-f"><span class="pdp-l">${label}${req?' <span style="color:var(--red)">*</span>':''}</span>${html}${hint?`<span class="pdp-h">${hint}</span>`:''}</label>`; }
 function _pdpCount(id,max){ return `oninput="const c=document.getElementById('${id}-c'); if(c) c.textContent=this.value.length+' / ${max}'"`; }
 function _pdpFormHtml(x){
-  const esc=Utils.esc, started=!!x&&x.status!=='planned', today=_todayStr();
-  const ms=_pdp.ms||[];
-  const msHtml=_pdp.adv?`<div class="pdp-ms-ed">${ms.map((m,i)=>`<div class="pdp-ms-r"><span class="pdp-ms-n">${i+1}</span><input class="form-control" value="${esc(m.title||'')}" maxlength="140" placeholder="Milestone" oninput="_pdp.ms[${i}].title=this.value"><button type="button" class="lt-ibtn" aria-label="Remove milestone" onclick="_pdp.ms.splice(${i},1);_pdpRender()">${_pdpSvg('x',14)}</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-xs" onclick="_pdpMsSync();_pdp.ms.push({id:'m'+Date.now(),title:'',done:false});_pdpRender()">${_pdpSvg('plus',14)} Add milestone</button></div>`:'';
+  const esc=Utils.esc, isNew=!x, started=!!x&&x.status!=='planned', today=_todayStr();
+  const ms=_pdp.ms||[]; if(_pdp.draft) x=Object.assign({},x||{},_pdp.draft,{status:x?x.status:'planned'});
+  const msHtml=_pdp.adv?`<div class="pdp-ms-ed">${ms.map((m,i)=>`<div class="pdp-ms-r"><span class="pdp-ms-n">${i+1}</span><input class="form-control" value="${esc(m.title||'')}" maxlength="140" placeholder="Milestone" oninput="_pdp.ms[${i}].title=this.value"><button type="button" class="lt-ibtn" aria-label="Remove milestone" onclick="_pdpMsSync();_pdp.ms.splice(${i},1);_pdpRender()">${_pdpSvg('x',14)}</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-xs" onclick="_pdpMsSync();_pdp.ms.push({id:'m'+Date.now(),title:'',done:false});_pdpRender()">${_pdpSvg('plus',14)} Add milestone</button></div>`:'';
   return `<div class="pdp-sec"><div class="pdp-st">PDP Details</div>
     ${_pdpField('PDP Title',`<input id="pdp-title" class="form-control" maxlength="200" placeholder="e.g., Advanced Storyline course" value="${esc(x?.title||'')}">`,true)}
     ${_pdpField('Short Description',`<textarea id="pdp-desc" class="form-control" rows="4" maxlength="500" placeholder="What you want to accomplish and how it helps your work" ${_pdpCount('pdp-desc',500)}>${esc(x?.description||'')}</textarea><span class="pdp-h" id="pdp-desc-c" style="text-align:right">${(x?.description||'').length} / 500</span>`,true)}
-    ${_pdpField('Target Completion Date',`<input id="pdp-target" type="date" class="form-control" style="max-width:220px" value="${esc(x?.targetDate||'')}" min="${x?'':today}"${started?' disabled':''}>`,true,started?'Locked once started. Use <b>Request date change</b>; your supervisor approves it.':'')}
+    ${_pdpField('Target Completion Date',`<input id="pdp-target" type="date" class="form-control" style="max-width:220px" value="${esc(x?.targetDate||'')}" min="${isNew?today:''}"${started?' disabled':''}>`,true,started?'Locked once started. Use <b>Request date change</b>; your supervisor approves it.':'')}
     ${_pdpField('Supporting Link',`<input id="pdp-link" class="form-control" placeholder="https://" value="${esc(x?.supportingUrl||'')}">`,false,'Course page, program, learning resource or other reference.')}
     <label class="pdp-chk"><input type="checkbox" ${_pdp.adv?'checked':''} onchange="_pdpMsSync();_pdp.adv=this.checked;if(this.checked&&!_pdp.ms.length)_pdp.ms.push({id:'m'+Date.now(),title:'',done:false});_pdpRender()"> Add milestones (optional)</label>${msHtml}
-  </div><div class="pdp-note">${_pdpSvg('info',14)}<span>${x?'Changes are recorded in the activity history.':'Your PDP starts as Not Started. Click Start when you begin; your supervisor verifies it when you submit completion.'}</span></div>`;
+  </div><div class="pdp-note">${_pdpSvg('info',14)}<span>${!isNew?'Changes are recorded in the activity history.':'Your PDP starts as Not Started. Click Start when you begin; your supervisor verifies it when you submit completion.'}</span></div>`;
 }
-function _pdpMsSync(){ document.querySelectorAll('.pdp-ms-r input').forEach((el,i)=>{ if(_pdp.ms[i]) _pdp.ms[i].title=el.value; }); }
+function _pdpMsSync(){ document.querySelectorAll('.pdp-ms-r input').forEach((el,i)=>{ if(_pdp.ms[i]) _pdp.ms[i].title=el.value; });
+  const g=id=>document.getElementById(id); if(g('pdp-title')) _pdp.draft={title:g('pdp-title').value,description:g('pdp-desc').value,targetDate:g('pdp-target').value,supportingUrl:g('pdp-link').value}; }
 function _pdpModeHtml(x){
   const esc=Utils.esc, today=_todayStr();
   if(_pdp.mode==='submit') return `<div class="pdp-sec"><div class="pdp-st">Submit Completion</div>
@@ -26291,7 +26292,10 @@ function _pdpEvSub(e){
 function _pdpActivityHtml(x){
   const esc=Utils.esc; if(!_pdp.events) return '<div class="mp-sub" style="padding:20px 0">Loading activity…</div>';
   // hide the automatic target-date "Updated" entry written alongside an approved date change
-  const ev=_pdp.events.filter(e=>!(e.kind==='edited'&&Object.keys(e.after||{}).join()==='target_date'&&_pdp.events.some(o=>o.kind==='date_approved'&&Math.abs(new Date(o.createdAt)-new Date(e.createdAt))<10000)));
+  const near=(e,kinds)=>_pdp.events.some(o=>kinds.includes(o.kind)&&Math.abs(new Date(o.createdAt)-new Date(e.createdAt))<10000);
+  const ev=_pdp.events.filter(e=>{ if(e.kind!=='edited') return true; const k=Object.keys(e.after||{});
+    if(k.join()==='target_date'&&near(e,['date_approved'])) return false;
+    if(k.every(f=>['completed_on','supporting_url'].includes(f))&&near(e,['submitted','verified'])) return false; return true; });
   const items=ev.map(e=>{ const m=PDP_EV[e.kind]||[e.kind,'flag','#475569'], sub=_pdpEvSub(e);
     const body=e.body&&e.kind!=='created'&&e.kind!=='deleted'?`<div class="pdp-q" style="display:flex;gap:10px"><span class="pdp-av">${esc(_pdpIni(e.actorId))}</span><div style="min-width:0"><div style="font-weight:600;font-size:12.5px">${esc(_pdpName(e.actorId))}</div><div style="white-space:pre-wrap">${esc(e.body)}</div></div></div>`:'';
     return `<div class="pdp-ev"><span class="pdp-evi" style="color:${m[2]}">${_pdpSvg(m[1],15)}</span><div style="flex:1;min-width:0"><div class="pdp-evh"><b>${e.kind==='comment'?esc(_pdpName(e.actorId)):`${m[0]} by ${esc(_pdpName(e.actorId))}`}</b><span class="mp-sub">${_pdpTs(e.createdAt)}</span></div>${sub?`<div class="mp-sub">${esc(sub)}</div>`:''}${body}</div></div>`; }).join('');
