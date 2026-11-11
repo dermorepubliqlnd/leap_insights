@@ -23518,7 +23518,7 @@ function _qalCols(M){
   if(M.eval) return [
     {id:'code',label:'Eval ID',w:150,sort:'code',fixed:'first',render:r=>`<span class="lt-code">${esc(r.code||'—')}</span>`,csv:r=>r.code||''},
     {id:'sessioncode',label:'Session ID',w:130,sort:'sessioncode',render:r=>{ const c=r.sessionId?(TrSessionDB.byId(r.sessionId)||{}).code:''; return c?`<span class="lt-code">${esc(c)}</span>`:'<span class="lt-muted">—</span>'; },csv:r=>r.sessionId?((TrSessionDB.byId(r.sessionId)||{}).code||''):''},
-    {id:'mode',label:'Evaluation Type',w:130,render:r=>_qalMode(r.evaluationMode),csv:r=>r.evaluationMode==='live'?'Live':r.evaluationMode==='virtual'?'Virtual':''},
+    {id:'mode',label:'Evaluation Type',w:160,render:r=>_qalMode(r.evaluationMode),csv:r=>r.evaluationMode==='live'?'Live':r.evaluationMode==='virtual'?'Virtual':''},
     {id:'trainer',label:'Trainer',w:190,sort:'trainer',render:r=>`<span class="lt-name">${esc(nm(r.trainerId)||'—')}</span>`,csv:r=>nm(r.trainerId)},
     {id:'evaluator',label:'Evaluator',w:170,sort:'evaluator',render:r=>esc(nm(r.evaluatorId)||'—'),csv:r=>nm(r.evaluatorId)},
     {id:'program',label:'Training Program',w:260,sort:'program',render:r=>`<span title="${esc(r.trainingProgram||'')}">${esc(r.trainingProgram||'—')}</span>`,csv:r=>r.trainingProgram||''},
