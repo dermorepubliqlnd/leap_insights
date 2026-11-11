@@ -23504,13 +23504,13 @@ function _qalMode(m){ const ico=n=>window._ico?window._ico(n):''; return m==='li
 function _qalScoreHtml(M,r){
   if(M.eval){ const sc=r.overallScore; if(sc==null) return '<span class="lt-muted">—</span>'; return `<span class="txt-${_qalEvalTone(sc)}" style="font-weight:600">${sc.toFixed(1)}</span><span class="lt-muted">/5</span>`; }
   const sc=M.score(r); return sc.pct!=null?`<span class="txt-${_qalDispTone(sc.disposition)}" style="font-weight:600">${sc.pct.toFixed(1)}%</span>`:'<span class="lt-muted">—</span>'; }
-function _qalActions(M,r){
+function _qalActions(M,r){ // v5.19d (per Sandra): Team tab view-only for everyone except admins (Reopen/Delete on every tab)
   const me=Auth.user, st=_qalSt(M.p), team=st.tab==='team', canEdit=!team&&M.canEdit(r), canAck=!team&&r.status==='pending_ack'&&r[M.subj]===me.id;
   const prim=canEdit?{icon:'pencil',title:`Continue ${M.noun}`,fn:M.open(r)}:canAck?{icon:'check',title:`Acknowledge ${M.noun}`,fn:M.open(r),accent:true}:{icon:'eye',title:M.view,fn:M.open(r)};
   const menu=[];
   if(r.status==='completed') menu.push({label:'Download PDF',icon:'file',run:()=>M.pdf(r)});
-  if(!team&&me.isAdmin&&M.canReopen(r)) menu.push({label:`Reopen ${M.noun}`,icon:'reopen',run:()=>M.reopen(r)});
-  if(!team&&(canEdit||me.isAdmin)) menu.push({label:r.status==='draft'?'Delete Draft':`Delete ${M.noun}`,icon:'trash',danger:true,run:()=>M.del(r)});
+  if(me.isAdmin&&M.canReopen(r)) menu.push({label:`Reopen ${M.noun}`,icon:'reopen',run:()=>M.reopen(r)});
+  if(canEdit||me.isAdmin) menu.push({label:r.status==='draft'?'Delete Draft':`Delete ${M.noun}`,icon:'trash',danger:true,run:()=>M.del(r)});
   return _ltActions(M.p,r.id,prim,menu);
 }
 function _qalCols(M){
