@@ -22,6 +22,70 @@
     function scan(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type=date]'))sync(n);if(n.querySelectorAll){var l=n.querySelectorAll('input[type=date]');for(var i=0;i<l.length;i++)sync(l[i]);}}
     new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var a=ms[i].addedNodes;for(var j=0;j<a.length;j++)scan(a[j]);}}).observe(document.documentElement,{childList:true,subtree:true});
   }catch(e){}})();</script>
+  <!-- v5.18f (2026-11-11, per Sandra): emojis → consistent line SVG icons app-wide (display only). Text nodes with a mapped emoji are
+       swapped for an inline <svg class="eico"> (same icon for the same meaning); <option> text just drops the emoji (no SVG possible);
+       typed content (inputs, textareas, rich-text editors) is never touched. window._ico(name) returns the same SVG for code. -->
+  <style>svg.eico{width:1.1em;height:1.1em;vertical-align:-0.18em;flex-shrink:0;display:inline-block}</style>
+  <script>(function(){try{
+    var P={
+      clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/>',
+      file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+      user:'<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>',
+      users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.2 2.9-5 6-5s5.4 1.8 6 5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M18 14.6c1.6.6 2.7 2.2 3 4.9"/>',
+      hourglass:'<path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/>',
+      pencil:'<path d="M16.5 3.9a2.1 2.1 0 0 1 3 3L7.9 18.5l-4 1 1-4z"/>',
+      lock:'<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+      unlock:'<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 7.7-1.5"/>',
+      eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+      eyeoff:'<path d="M3 3l18 18M10.6 6.1A9.7 9.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-3 3.6M6.6 6.6A16 16 0 0 0 2.5 12S6 18 12 18a9.6 9.6 0 0 0 4.4-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+      checkc:'<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16.2 9.5"/>',
+      save:'<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3M7 21v-7h10v7"/>',
+      chart:'<path d="M4 20h16M7 20v-7M12 20V6M17 20v-10"/>',
+      trend:'<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+      video:'<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10.5l5-3v9l-5-3"/>',
+      star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+      key:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
+      ruler:'<path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
+      trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+      archive:'<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/>',
+      printer:'<path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7"/>',
+      clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      handshake:'<path d="M3 12l4-4 4 2 3-2 7 5-3 3-4-3M7 8l-4 4 6 6 3-2 2 2 3-1"/>',
+      mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+      upload:'<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
+      download:'<path d="M12 4v12M7 11l5 5 5-5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
+      book:'<path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H3zM21 5.5A1.5 1.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h7z"/>',
+      mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/>',
+      refresh:'<path d="M20 11a8 8 0 0 0-14.5-4.6L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.6L20 16M20 20v-4h-4"/>',
+      alert:'<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2h.01"/>',
+      folder:'<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+      calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+      arrowr:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+      search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+      rocket:'<path d="M14 4c3-1 6-1 6-1s0 3-1 6l-6 6-4-4z"/><path d="M9 11l-4 1-2 3 4 1M13 15l-1 4-3 2-1-4M15 9h.01"/>',
+      sparkles:'<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+      menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+      grid:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'
+    };
+    var M={'📋':'clipboard','🗒':'clipboard','📄':'file','📜':'file','📝':'pencil','👤':'user','🧑':'user','👥':'users','⏳':'hourglass','✏':'pencil','✎':'pencil','🔒':'lock','🔐':'lock','🔓':'unlock','👁':'eye','🙈':'eyeoff','✅':'checkc','💾':'save','📊':'chart','📈':'trend','🎥':'video','📹':'video','⭐':'star','★':'star','☆':'star','🔑':'key','📐':'ruler','🗑':'trash','🗄':'archive','🖨':'printer','🕒':'clock','🕐':'clock','🕘':'clock','⏱':'clock','⏰':'clock','🤝':'handshake','✉':'mail','📧':'mail','📤':'upload','⬆':'upload','⇪':'upload','⇧':'upload','⬇':'download','⇩':'download','📥':'download','📖':'book','📚':'book','🎤':'mic','🔄':'refresh','⚠':'alert','🗂':'folder','📁':'folder','📂':'folder','🗓':'calendar','📅':'calendar','📆':'calendar','👉':'arrowr','🔍':'search','🔎':'search','🚀':'rocket','✨':'sparkles','☰':'menu','▦':'grid'};
+    function svg(n){ var p=P[n]; return p?'<svg class="eico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>':''; }
+    window._ico=svg;
+    var keys=Object.keys(M).sort(function(a,b){return b.length-a.length;}).map(function(k){return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');});
+    var RE=new RegExp('('+keys.join('|')+')\\uFE0F?','g'), TEST=new RegExp(keys.join('|'));
+    var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,NOSCRIPT:1,TITLE:1};
+    function doText(t){ var v=t.nodeValue; if(!v||!TEST.test(v)) return; var par=t.parentNode; if(!par||SKIP[par.nodeName]) return;
+      if(par.nodeName==='OPTION'){ t.nodeValue=v.replace(RE,'').replace(/^\s+/,''); return; }
+      if(par.isContentEditable) return;
+      var span=document.createElement('span'); span.style.display='contents';
+      span.innerHTML=v.replace(/[&<>]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':'&gt;';}).replace(RE,function(m,e){ return svg(M[e]); });
+      par.replaceChild(span,t); }
+    function scan(n){ if(!n) return; if(n.nodeType===3){ doText(n); return; } if(n.nodeType!==1||SKIP[n.nodeName]) return;
+      var w=document.createTreeWalker(n,NodeFilter.SHOW_TEXT,null), list=[], x; while((x=w.nextNode())) if(TEST.test(x.nodeValue)) list.push(x); list.forEach(doText); }
+    window._icoScan=scan;
+    new MutationObserver(function(ms){ for(var i=0;i<ms.length;i++){ var m=ms[i]; if(m.type==='characterData') doText(m.target); else for(var j=0;j<m.addedNodes.length;j++) scan(m.addedNodes[j]); } })
+      .observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+    document.addEventListener('DOMContentLoaded',function(){ scan(document.body); });
+  }catch(e){}})();</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2072%2072%22%3E%3Crect%20width%3D%2272%22%20height%3D%2272%22%20rx%3D%2218%22%20fill%3D%22%231e1b4b%22%2F%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2243%22%20r%3D%223.5%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.5%22%2F%3E%3Ccircle%20cx%3D%2227%22%20cy%3D%2249%22%20r%3D%222.5%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.35%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%2248%22%20r%3D%222%22%20fill%3D%22%23a5b4fc%22%20opacity%3D%220.35%22%2F%3E%3Cpolyline%20points%3D%2224%2C45%2036%2C22%2048%2C45%22%20fill%3D%22none%22%20stroke%3D%22%23c7d2fe%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolyline%20points%3D%2230%2C34%2036%2C22%2042%2C34%22%20fill%3D%22%23818cf8%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -568,7 +632,7 @@
     .dmain-tabs .eval-tab{white-space:nowrap;flex-shrink:0}
     .dmain-tabs .eval-tab svg{width:15px;height:15px;flex-shrink:0}
     .dash-subtabs{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 20px}
-    .dash-subtabs .eval-tab{border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;margin-bottom:0;background:var(--white)}
+    .dash-subtabs .eval-tab{border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12.5px;margin-bottom:0;background:var(--white)}
     .dash-subtabs .eval-tab.active{background:var(--pri);border-color:var(--pri);color:#fff}
     .dash-topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
     .dash-page-title{font-family:var(--font-heading);font-size:17px;font-weight:600;color:var(--text)}
@@ -906,7 +970,7 @@
     .cqa-chip-section{padding:14px 24px 0;border-bottom:1px solid var(--border-lt)}
     .cqa-chip-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:10px}
     .cqa-chip-row{display:flex;flex-wrap:wrap;gap:7px;padding-bottom:14px}
-    .cqa-chip{display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);font-size:12.5px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s;font-family:'DM Sans',var(--font);white-space:nowrap}
+    .cqa-chip{display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:6px;border:1.5px solid var(--border);background:var(--white);font-size:12.5px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s;font-family:'DM Sans',var(--font);white-space:nowrap}
     .cqa-chip:hover{border-color:var(--pri);color:var(--pri)}
     .cqa-chip.selected{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:700}
     .cqa-chip.ro-chip{cursor:default;pointer-events:none}
@@ -966,6 +1030,61 @@
     .cal-res-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px 16px;margin-bottom:6px}
     .cal-sec .cal-g2:first-child{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 38px}
     @media(max-width:900px){.cal-g3,.cal-g2{grid-template-columns:1fr!important}}
+    /* v5.18e calibration detail + results summary */
+    #cal-root .btn,#cal-root .eval-toggle-btn{border-radius:6px}
+    .cal-page{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 24px 20px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+    .cal-back{margin:0 0 8px -10px}
+    .cal-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .cal-title-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .cal-code{font-size:12.5px;color:var(--text3);font-variant-numeric:tabular-nums;padding-right:10px;border-right:1px solid var(--border)}
+    .cal-h1{font-size:22px;font-weight:700;color:var(--text);line-height:1.25}
+    .cal-sub{font-size:13px;color:var(--text3);margin-top:4px}
+    .cal-actions{display:flex;gap:8px;align-items:center}
+    .cal-icon-btn{padding:8px 10px}
+    .cal-more{position:relative}
+    .cal-more-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:60;min-width:200px;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.12);padding:6px}
+    .cal-more-item{display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;border-radius:6px;font-size:13px;color:var(--text);cursor:pointer;font-family:var(--font)}
+    .cal-more-item:hover{background:#f1f5f9}.cal-more-item.danger{color:#dc2626}
+    .cal-guide{display:flex;align-items:center;gap:12px;margin-top:16px;padding:12px 16px;background:#eff6ff;border:1px solid #dbeafe;border-radius:10px;flex-wrap:wrap}
+    .cal-guide-ico{color:#2563eb;display:inline-flex}.cal-guide-t{font-weight:600;font-size:13.5px;color:#1e3a8a;padding-right:14px;border-right:1px solid #bfdbfe}
+    .cal-guide ul{margin:0;padding-left:18px;font-size:12.5px;color:#1e3a8a;line-height:1.6}
+    .cal-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:16px}
+    .cal-tile{display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:#fbfcfe}
+    .cal-tile-ico{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;flex-shrink:0}
+    .cal-t-blue{background:#eff6ff;color:#2563eb}.cal-t-purple{background:#f5f3ff;color:#7c3aed}.cal-t-amber{background:#fff7ed;color:#d97706}.cal-t-green{background:#f0fdf4;color:#16a34a}.cal-t-slate{background:#f1f5f9;color:#64748b}.cal-t-red{background:#fef2f2;color:#dc2626}
+    .cal-tile-l{font-size:11.5px;color:var(--text3)}.cal-tile-v{font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cal-muted{color:var(--text3)}
+    .cal-row{display:flex;gap:16px;align-items:center;margin-top:8px;padding:9px 14px;background:#f8fafc;border-radius:8px;font-size:13px;flex-wrap:wrap}
+    .cal-row-l{display:inline-flex;align-items:center;gap:6px;color:var(--text2);font-weight:500;min-width:170px}
+    .cal-row-private{background:#fffbeb}
+    .cal-link{color:#2563eb;margin-right:14px;text-decoration:none}.cal-link:hover{text-decoration:underline}
+    .cal-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:20px 0 16px}
+    .cal-tab{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:none;background:none;font-size:13.5px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--font)}
+    .cal-tab.on{color:#2563eb;border-bottom-color:#2563eb}
+    .cal-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 20px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+    .cal-sec-title{font-weight:700;font-size:15px;color:var(--text);margin-bottom:12px}
+    .cal-prog{display:flex;align-items:center;gap:14px}.cal-prog-n{font-size:26px;font-weight:800;color:var(--text)}.cal-prog-t{font-size:13px;color:var(--text3);white-space:nowrap}
+    .cal-prog-bar{flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;min-width:120px}.cal-prog-bar>div{height:100%;background:#2563eb;border-radius:4px}
+    .cal-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+    .cal-tbl th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);padding:10px 12px;background:#f8fafc;border-bottom:1px solid var(--border)}
+    .cal-tbl td{padding:12px;border-bottom:1px solid #f1f5f9;color:var(--text)}
+    .cal-seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;padding:3px;background:#f8fafc;gap:2px;flex-wrap:wrap}
+    .cal-seg button{border:none;background:none;padding:7px 14px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;font-family:var(--font)}
+    .cal-seg button.on{background:var(--white);color:#1d4ed8;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.1)}
+    .cal-kpis2{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .cal-kpi2{display:flex;gap:12px;align-items:center;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+    .cal-kpi2-v{font-size:26px;font-weight:800;color:var(--text);line-height:1.15}
+    .cal-dist{display:grid;grid-template-columns:150px 1fr 74px;gap:12px;align-items:center;margin-bottom:10px}
+    .cal-dist-l{font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;text-align:center}
+    .cal-dist-bar{height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden}.cal-dist-bar>div{height:100%;border-radius:5px}
+    .cal-dist-n{font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text2)}
+    .cal-take{display:grid;grid-template-columns:200px repeat(3,minmax(0,1fr));gap:20px;background:#fbfaff}
+    .cal-take-h{display:flex;gap:10px;align-items:center}
+    .cal-take-c{border-left:1px solid var(--border);padding-left:18px}
+    .cal-take-t{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13.5px;margin-bottom:6px}
+    .cal-take ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--text2);line-height:1.7}
+    @media(max-width:1200px){.cal-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.cal-kpis2{grid-template-columns:repeat(3,minmax(0,1fr))}.cal-take{grid-template-columns:1fr}.cal-take-c{border-left:none;padding-left:0}}
+    @media(max-width:700px){.cal-tiles,.cal-kpis2{grid-template-columns:1fr}}
     input[type=date].cal-date{display:flex;align-items:center;max-width:220px} /* v5.18a: keep the picker icon on the same line as the MMM DD, YYYY text */
     .cal-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
     .cal-kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px}
@@ -1450,7 +1569,7 @@
        Buttons: iOS-style rounded capsules. Filter/input boxes: soft rectangles, 10px radius.
        Dropdown panels: 12px. Segmented toggles: iOS track + raised white thumb. Placed last in the
        stylesheet so it wins over the older per-component radii without touching each rule. */
-    .btn,.btn-xs,.btn-sm,.btn-lg,.btn-sb,.dash-refresh-btn,.eval-toggle-btn,.qa-soon-badge{border-radius:999px}
+    .btn,.btn-xs,.btn-sm,.btn-lg,.btn-sb,.dash-refresh-btn,.eval-toggle-btn{border-radius:6px} /* v5.18f per Sandra: no pill buttons */
     .form-control,.search-input,.dash-date-sel,.eval-select,.status-display,.eval-readonly,
     select,textarea,
     input[type=text],input[type=date],input[type=number],input[type=search],input[type=email],input[type=password],input[type=tel],input[type=time],input[type=month],input[type=url],input:not([type]){border-radius:10px}
@@ -22792,7 +22911,7 @@ function _renderIDQAReports(rows, body){
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:26px;font-weight:800;color:${scoreColor};line-height:1">${avg!=null?avg.toFixed(1)+'%':'—'}</div>
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px">avg score</div>
-          <button style="font-size:10px;color:var(--pri);background:none;border:1px solid var(--border);border-radius:12px;padding:2px 9px;cursor:pointer;font-family:var(--font)" onclick="(function(btn){const s=document.getElementById('idqacs-${uid}'),d=document.getElementById('idqacd-${uid}'),on=d.style.display==='none';d.style.display=on?'block':'none';s.style.display=on?'none':'block';btn.textContent=on?'Summary \u25b2':'Detail \u25be';})(this)">Detail &#9662;</button>
+          <button style="font-size:10px;color:var(--pri);background:none;border:1px solid var(--border);border-radius:6px;padding:2px 9px;cursor:pointer;font-family:var(--font)" onclick="(function(btn){const s=document.getElementById('idqacs-${uid}'),d=document.getElementById('idqacd-${uid}'),on=d.style.display==='none';d.style.display=on?'block':'none';s.style.display=on?'none':'block';btn.textContent=on?'Summary \u25b2':'Detail \u25be';})(this)">Detail &#9662;</button>
         </div>
       </div>
       <div id="idqacs-${uid}" class="rpt-cri-bars">${criBar}</div>
@@ -23050,7 +23169,7 @@ function _renderCQAReports(rows, body){
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:26px;font-weight:800;color:${scoreColor};line-height:1">${avg!=null?avg.toFixed(1)+'%':'—'}</div>
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px">avg score</div>
-          <button style="font-size:10px;color:var(--pri);background:none;border:1px solid var(--border);border-radius:12px;padding:2px 9px;cursor:pointer;font-family:var(--font)" onclick="(function(btn){const s=document.getElementById('cqacs-${uid}'),d=document.getElementById('cqacd-${uid}'),on=d.style.display==='none';d.style.display=on?'block':'none';s.style.display=on?'none':'block';btn.textContent=on?'Summary \u25b2':'Detail \u25be';})(this)">Detail &#9662;</button>
+          <button style="font-size:10px;color:var(--pri);background:none;border:1px solid var(--border);border-radius:6px;padding:2px 9px;cursor:pointer;font-family:var(--font)" onclick="(function(btn){const s=document.getElementById('cqacs-${uid}'),d=document.getElementById('cqacd-${uid}'),on=d.style.display==='none';d.style.display=on?'block':'none';s.style.display=on?'none':'block';btn.textContent=on?'Summary \u25b2':'Detail \u25be';})(this)">Detail &#9662;</button>
         </div>
       </div>
       <div id="cqacs-${uid}" class="rpt-cri-bars">${criBar}</div>
@@ -25273,7 +25392,7 @@ function _calCamel(r){ const o={}; Object.keys(r||{}).forEach(k=>{ o[k.replace(/
 function _calStatus(e){ return (e&&e.status==='open'&&e.deadlineAt&&Date.now()>=Date.parse(e.deadlineAt))?'closed':(e?e.status:''); }
 function _calBadge(st){ const m=CAL_ST[st]||[st,'#f1f5f9','#475569']; return `<span class="badge" style="background:${m[1]};color:${m[2]}">${m[0]}</span>`; }
 function _calFmt(iso,withTime=true){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleString('en-US',Object.assign({timeZone:'Asia/Manila',month:'short',day:'2-digit',year:'numeric'},withTime?{hour:'numeric',minute:'2-digit'}:{})); }
-function _calDl(iso){ if(!iso) return '—'; const t=_calTime(iso); return /^11:59\s*PM$/i.test(t)?`${_calFmt(iso,false)} · end of day`:_calFmt(iso); } // v5.18a: deadlines are end-of-day dates
+function _calDl(iso){ if(!iso) return '—'; const t=_calTime(iso); return /^11:59\s*PM$/i.test(t)?_calFmt(iso,false):_calFmt(iso); } // v5.18e: end of day is implied (date only)
 function _calTime(iso){ if(!iso) return ''; return new Date(iso).toLocaleTimeString('en-US',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}); }
 function _calParts(iso){ if(!iso) return {d:'',t:''}; const p={}; new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(iso)).forEach(x=>{p[x.type]=x.value;}); return {d:`${p.year}-${p.month}-${p.day}`,t:`${p.hour}:${p.minute}`}; }
 function _calIso(d,t){ return (d&&t)?new Date(`${d}T${t}:00+08:00`).toISOString():null; } // entered in Philippine time
@@ -25753,61 +25872,94 @@ async function _calLoadDetail(e){
 function calTab(t){ _cal.tab=t; _calRenderDetail(document.getElementById('cal-root')); }
 function calRTab(t){ _cal.rtab=t; _calRenderDetail(document.getElementById('cal-root')); }
 function calToggle(k){ _cal.open[k]=!_cal.open[k]; _calRenderDetail(document.getElementById('cal-root')); }
+// v5.18e (2026-11-11, per Sandra's mockups + UI standards): calm detail page — back link above title, ONE primary action +
+// "More" menu, guidelines note, metadata tiles, reference materials row, private subject row; rectangular buttons.
+const CAL_ICO2={
+  form:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>',
+  layers:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+  cal:CAL_ICO.sched.replace(/17/g,'18'),
+  users:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.2 2.9-5 6-5s5.4 1.8 6 5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M18 14.6c1.6.6 2.7 2.2 3 4.9"/></svg>',
+  user:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>',
+  clip:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M20 11.5l-8.3 8.3a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>',
+  target:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2h.01" stroke-linecap="round"/></svg>',
+  check:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16.2 9.5"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+  clipboard:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M9 4h6v3H9zM9 13l2 2 4-4"/></svg>',
+  more:'<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>'
+};
+function calMenu(ev){ ev.stopPropagation(); const p=document.getElementById('cal-more-pop'); if(p) p.classList.toggle('hidden'); }
+document.addEventListener('click',e=>{ if(!e.target.closest||!e.target.closest('.cal-more')){ const p=document.getElementById('cal-more-pop'); if(p) p.classList.add('hidden'); } });
 async function _calRenderDetail(root){
   const e=_calById(_cal.id); if(!e){ _cal.view='list'; return _calRenderList(root); }
   const canRes=await _calLoadDetail(e);
-  if(_cal.view!=='detail'||_cal.id!==e.id) return; // navigated away while loading
+  if(_cal.view!=='detail'||_cal.id!==e.id) return;
   const esc=Utils.esc, st=_calStatus(e), own=_calIsOwner(e), c=_cal.counts[e.id]||{roster:(e.roster||[]).length,sub:0,draft:0};
   const pct=c.roster?Math.round(c.sub/c.roster*100):0, m=_cal.mine[e.id], inR=_calInRoster(e);
   const res=(Array.isArray(e.resources)?e.resources:[]).filter(r=>r.url);
-  let acts='';
-  if(own&&st==='draft') acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('edit','${e.id}')">Edit / Publish</button><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="calDelete('${e.id}')">Delete</button>`;
-  if(own&&st==='open') acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('edit','${e.id}')">Edit Details</button><button class="btn btn-secondary btn-sm" onclick="calCloseNow('${e.id}')">Close Submissions Now</button>`;
-  if(own&&st==='closed') acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('edit','${e.id}')">Edit Details</button><button class="btn btn-primary btn-sm" onclick="calStatus('${e.id}','released')">Release Results to Team</button>`;
-  if(own&&st==='released') acts+=`<button class="btn btn-primary btn-sm" onclick="calStatus('${e.id}','finalized')">Finalize</button>`;
-  if(Auth.isAdmin&&st==='finalized') acts+=`<button class="btn btn-secondary btn-sm" onclick="calStatus('${e.id}','reopen')">Reopen Discussion</button>`;
-  if(own&&st!=='draft') acts+=`<button class="btn btn-ghost btn-sm" onclick="calArchive('${e.id}',${!e.archived})">${e.archived?'Unarchive':'Archive'}</button>`;
-  if(inR&&st==='open'&&!(m&&m.status==='submitted')) acts+=`<button class="btn btn-primary btn-sm" onclick="calGo('form','${e.id}')">${m?'Continue My Evaluation':'Start My Evaluation'}</button>`;
-  else if(m) acts+=`<button class="btn btn-secondary btn-sm" onclick="calGo('form','${e.id}')">View My Evaluation</button>`;
-  const disc=_calFmt(e.discussionAt,false);
-  const meta=(l,v,full)=>`<div${full?' style="grid-column:1/-1"':''}><label>${l}</label><span>${v}</span></div>`;
+  // one primary action
+  let primary='';
+  if(own&&st==='draft') primary=`<button class="btn btn-primary" onclick="calGo('edit','${e.id}')">Edit &amp; Publish</button>`;
+  else if(inR&&st==='open'&&!(m&&m.status==='submitted')) primary=`<button class="btn btn-primary" onclick="calGo('form','${e.id}')">${m?'Continue My Evaluation':'Start My Evaluation'}</button>`;
+  else if(own&&st==='closed') primary=`<button class="btn btn-primary" onclick="calStatus('${e.id}','released')">Release Results to Team</button>`;
+  else if(own&&st==='released') primary=`<button class="btn btn-primary" onclick="calStatus('${e.id}','finalized')">Finalize</button>`;
+  else if(m) primary=`<button class="btn btn-secondary" onclick="calGo('form','${e.id}')">View My Evaluation</button>`;
+  // everything else in "More"
+  const items=[];
+  if(m&&!primary.includes('My Evaluation')) items.push([`calGo('form','${e.id}')`,'View my evaluation']);
+  if(own&&['draft','open','closed'].includes(st)&&st!=='draft') items.push([`calGo('edit','${e.id}')`,'Edit details']);
+  if(own&&st==='open') items.push([`calCloseNow('${e.id}')`,'Close submissions now']);
+  if(Auth.isAdmin&&st==='finalized') items.push([`calStatus('${e.id}','reopen')`,'Reopen discussion']);
+  if(own&&st!=='draft') items.push([`calArchive('${e.id}',${!e.archived})`,e.archived?'Unarchive':'Archive']);
+  if(own&&st==='draft') items.push([`calDelete('${e.id}')`,'Delete draft','danger']);
+  const more=items.length?`<div class="cal-more"><button class="btn btn-secondary cal-icon-btn" title="More actions" onclick="calMenu(event)">${CAL_ICO2.more}</button>
+    <div class="cal-more-pop hidden" id="cal-more-pop">${items.map(([fn,l,k])=>`<button class="cal-more-item${k?' danger':''}" onclick="document.getElementById('cal-more-pop').classList.add('hidden');${fn}">${l}</button>`).join('')}</div></div>`:'';
+  const sub={draft:'Draft — publish it to open evaluations to the team.',open:'Rate the same output independently, then join the calibration session to compare and align on the QA standard.',
+    closed:own?'Submissions are closed. Review the results, then release them to the team.':'Submissions are closed. Results will be shared at the calibration session.',
+    released:'Results are shared. Use them in the calibration session and record the agreed decisions.',finalized:'Finalized — agreed decisions are recorded and read-only.'}[st]||'';
+  const tile=(tone,ico,l,v)=>`<div class="cal-tile"><span class="cal-tile-ico cal-t-${tone}">${CAL_ICO2[ico]}</span><div style="min-width:0"><div class="cal-tile-l">${l}</div><div class="cal-tile-v">${v}</div></div></div>`;
   const subjName=_cal.subj&&_cal.subj.exId===e.id?(_cal.subj.subjectProfileId?_calName(_cal.subj.subjectProfileId):(_cal.subj.subjectName||'Not specified')):'';
-  const head=`<div class="card" style="padding:16px 20px;margin-bottom:12px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-      <button class="btn btn-ghost btn-sm" onclick="calGo('list')">← All Calibrations</button>
-      <span style="font-family:var(--mono);font-size:12px;color:var(--text3)">${esc(e.code||'')}</span>
-      <strong style="font-size:15.5px;color:var(--text)">${esc(e.title)}</strong>${_calBadge(st)}${e.archived?'<span class="badge" style="background:#f1f5f9;color:#64748b">Archived</span>':''}
-      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">${acts}</div>
+  const head=`<div class="cal-page">
+    <button class="btn btn-ghost btn-sm cal-back" onclick="calGo('list')">← All Calibrations</button>
+    <div class="cal-title-row">
+      <div style="min-width:0"><div class="cal-title-line"><span class="cal-code">${esc(e.code||'')}</span><span class="cal-h1">${esc(e.title)}</span>${_calBadge(st)}${e.archived?'<span class="badge" style="background:#f1f5f9;color:#64748b">Archived</span>':''}</div>
+        <div class="cal-sub">${sub}</div></div>
+      <div class="cal-actions">${more}${primary}</div>
     </div>
-    <div class="cal-meta">
-      ${meta('Evaluation Form',esc(CAL_FORMS[e.formType]||e.formType))}${meta('Content Type',esc(e.contentType||'—'))}${meta('Calibration Session',disc)}${meta('Participation',e.status==='draft'?'—':`<b>${c.sub}</b> of ${c.roster} submitted · ${pct}%`)}
-      ${meta('Submission Deadline (PH)',`${_calDl(e.deadlineAt)}${st==='open'?` <span style="color:var(--text3)">· ${_calLeft(e.deadlineAt)}</span>`:''}`)}
-      ${meta('Meeting',e.meetingLink?`<a href="${esc(e.meetingLink)}" target="_blank" rel="noopener noreferrer">Join link</a>`:'—')}${meta('Created by',esc(_calName(e.createdBy)))}
-      ${meta('Reference Materials',res.length?res.map(r=>`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.url)}</a>`).join(' · '):'—',true)}
-      ${e.instructions?meta('Instructions',`<span style="white-space:pre-wrap;font-weight:400">${esc(e.instructions)}</span>`,true):''}
+    <div class="cal-guide"><span class="cal-guide-ico">${CAL_ICO.info.replace(/15/g,'18')}</span><span class="cal-guide-t">Calibration guidelines</span>
+      <ul><li>Everyone rates independently.</li><li>Ratings stay hidden from everyone until the submission deadline.</li><li>This calibration <b>does not affect</b> production QA scores.</li></ul></div>
+    <div class="cal-tiles">
+      ${tile('blue','form','Evaluation Form',esc(CAL_FORMS[e.formType]||e.formType))}
+      ${tile('purple','layers','Content Type',esc(e.contentType||'—'))}
+      ${tile('amber','cal','Submission Deadline',`${_calDl(e.deadlineAt)}${st==='open'?` <span class="cal-muted">· ${_calLeft(e.deadlineAt)}</span>`:''}`)}
+      ${tile('amber','cal','Calibration Session',_calFmt(e.discussionAt,false))}
+      ${tile('green','users','Participation',e.status==='draft'?'—':`${c.sub} of ${c.roster} submitted · ${pct}%`)}
+      ${tile('slate','user','Created By',esc(_calName(e.createdBy)))}
     </div>
-    ${own?`<div style="margin-top:12px;font-size:12px;background:#f8fafc;border:1px dashed var(--border);border-radius:8px;padding:7px 12px;color:var(--text2)">🔒 Person being evaluated: <b>${esc(subjName||'—')}</b> <span style="color:var(--text3)">· visible only to you and admins</span></div>`:''}
+    <div class="cal-row"><span class="cal-row-l">${CAL_ICO2.clip} Reference Materials</span><span>${res.length?res.map(r=>`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" class="cal-link">${esc(r.title||r.url)}</a>`).join(''):'<span class="cal-muted">None</span>'}</span></div>
+    ${e.instructions?`<div class="cal-row" style="align-items:flex-start"><span class="cal-row-l">${CAL_ICO2.chat.replace(/17/g,'15')} Instructions</span><span style="white-space:pre-wrap">${esc(e.instructions)}</span></div>`:''}
+    ${own?`<div class="cal-row cal-row-private"><span class="cal-row-l">${CAL_ICO2.lock} Person being evaluated</span><span><b>${esc(subjName||'—')}</b> <span class="cal-muted">· visible only to you and admins</span></span></div>`:''}
   </div>`;
   if(_cal.tab==='results'&&!canRes) _cal.tab='overview';
-  const tabs=`<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin:0 0 12px">
-    <button class="eval-tab${_cal.tab==='overview'?' active':''}" onclick="calTab('overview')">👥 Participation</button>
-    ${canRes?`<button class="eval-tab${_cal.tab==='results'?' active':''}" onclick="calTab('results')">📊 Results &amp; Discussion</button>`:''}</div>`;
+  const tabs=`<div class="cal-tabs">
+    <button class="cal-tab${_cal.tab==='overview'?' on':''}" onclick="calTab('overview')">${CAL_ICO2.users.replace(/18/g,'16')} Participation</button>
+    ${canRes?`<button class="cal-tab${_cal.tab==='results'?' on':''}" onclick="calTab('results')"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg> Results &amp; Discussion</button>`:''}</div>`;
   root.innerHTML=head+tabs+(_cal.tab==='results'?_calResultsHtml(e):_calPartHtml(e,c));
 }
 function _calPartHtml(e,c){
   const st=_calStatus(e), own=_calIsOwner(e), esc=Utils.esc;
-  if(e.status==='draft') return '<div class="card" style="padding:18px 20px;font-size:13px;color:var(--text3)">Draft — not published yet. Publish it to open evaluations to the team.</div>';
-  const note=st==='open'?'Ratings stay hidden from everyone until the deadline.':st==='closed'?(own?'Submissions are closed. Results are visible only to you until you release them to the team.':'Submissions are closed. Results will be shared when the owner releases them.'):'Results have been released to the team.';
-  const bar=`<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="font-size:26px;font-weight:800;font-family:var(--mono)">${c.roster?Math.round(c.sub/c.roster*100):0}%</div>
-    <div style="flex:1;min-width:200px"><div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden"><div style="height:100%;width:${c.roster?c.sub/c.roster*100:0}%;background:#2563eb"></div></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:4px">${c.sub} of ${c.roster} submitted${c.draft?` · ${c.draft} draft${c.draft!==1?'s':''} in progress`:''} · ${note}</div></div></div>`;
-  if(!own) return `<div class="card" style="padding:18px 20px">${bar}</div>`;
-  const p=_cal.part&&_cal.part.exId===e.id?_cal.part:null;
-  const lbl={submitted:['Submitted','#dcfce7','#15803d'],draft:['Draft — not submitted','#fef9c3','#a16207'],not_started:['Not started','#f1f5f9','#475569']};
-  const rows=(p?p.rows:[]).map(r=>({...r,name:_calName(r.profileId)})).sort((a,b)=>((a.status==='submitted')-(b.status==='submitted'))||a.name.localeCompare(b.name));
-  return `<div class="card" style="padding:18px 20px">${bar}
-    <div style="font-weight:700;font-size:13px;margin:16px 0 8px">Roster <span style="font-weight:400;color:var(--text3);font-size:12px">· only you and admins see names</span></div>
-    ${p&&p.err?`<div style="color:var(--red);font-size:12.5px">${esc(p.err)}</div>`:`<div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>Team Member</th><th>Status</th><th>Submitted</th></tr></thead><tbody>${rows.map(r=>{ const mm=lbl[r.status]||lbl.not_started; return `<tr><td>${esc(r.name)}</td><td><span class="cal-tag" style="background:${mm[1]};color:${mm[2]}">${mm[0]}</span></td><td style="white-space:nowrap">${r.submittedAt?_calFmt(r.submittedAt):'—'}</td></tr>`; }).join('')}</tbody></table></div>`}
+  if(e.status==='draft') return '<div class="cal-card cal-muted" style="font-size:13px">Draft — not published yet. Publish it to open evaluations to the team.</div>';
+  const p100=c.roster?Math.round(c.sub/c.roster*100):0;
+  const note=st==='open'?'Ratings stay hidden from everyone until the deadline.':st==='closed'?(own?'Results are visible only to you until you release them.':'Results will be shared when the owner releases them.'):'Results have been released to the team.';
+  const bar=`<div class="cal-prog"><div class="cal-prog-n">${p100}%</div><div class="cal-prog-t">${c.sub} of ${c.roster} submitted${c.draft?` · ${c.draft} in progress`:''}</div><div class="cal-prog-bar"><div style="width:${p100}%"></div></div></div><div class="cal-muted" style="font-size:12px;margin-top:6px">${note}</div>`;
+  if(!own) return `<div class="cal-card">${bar}</div>`;
+  const pp=_cal.part&&_cal.part.exId===e.id?_cal.part:null;
+  const lbl={submitted:['Submitted','#dcfce7','#15803d'],draft:['In progress','#fef9c3','#a16207'],not_started:['Not started','#f1f5f9','#475569']};
+  const rows=(pp?pp.rows:[]).map(r=>({...r,name:_calName(r.profileId)})).sort((a,b)=>((a.status==='submitted')-(b.status==='submitted'))||a.name.localeCompare(b.name));
+  return `<div class="cal-card">${bar}
+    <div class="cal-sec-title" style="margin-top:20px">Roster <span class="cal-muted" style="font-weight:400;font-size:12px">· only you and admins see names</span></div>
+    ${pp&&pp.err?`<div style="color:var(--red);font-size:12.5px">${esc(pp.err)}</div>`:`<table class="cal-tbl"><thead><tr><th>Team Member</th><th>Status</th><th>Submitted</th></tr></thead><tbody>${rows.map(r=>{ const mm=lbl[r.status]||lbl.not_started; return `<tr><td>${esc(r.name)}</td><td><span class="cal-tag" style="background:${mm[1]};color:${mm[2]}">${mm[0]}</span></td><td>${r.submittedAt?_calFmt(r.submittedAt):'<span class="cal-muted">—</span>'}</td></tr>`; }).join('')}</tbody></table>`}
   </div>`;
 }
 // per-criterion stats across submitted evaluations
@@ -25830,8 +25982,8 @@ function _calResultsHtml(e){
   const own=_calIsOwner(e), showNames=own&&_cal.names;
   const ev=r.rows.map(x=>({...x,disp:x.label+(x.isMe?' (You)':'')+(showNames&&x.evaluatorId?` · ${_calName(x.evaluatorId)}`:'')}));
   const stats=_calStats(e,ev);
-  const sub=[['outcomes','Outcomes'],['scores','Score Comparison'],['applic','Applicability Review'],['decisions','Calibration Decisions']];
-  const sw=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sub.map(([k,l])=>`<button class="eval-toggle-btn${_cal.rtab===k?' on':''}" onclick="calRTab('${k}')">${l}</button>`).join('')}
+  const sub=[['outcomes','Summary'],['scores','Score Comparison'],['applic','Applicability Review'],['decisions','Calibration Decisions']];
+  const sw=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div class="cal-seg">${sub.map(([k,l])=>`<button class="${_cal.rtab===k?'on':''}" onclick="calRTab('${k}')">${l}</button>`).join('')}</div>
     <span style="flex:1"></span>${own?`<label style="font-size:12px;color:var(--text3);display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" ${_cal.names?'checked':''} onchange="_cal.names=this.checked;_calRenderDetail(document.getElementById('cal-root'))"> Show names (only you)</label>`:''}</div>`;
   let body='';
   if(_cal.rtab==='scores') body=_calScoresHtml(e,ev,stats);
@@ -25840,6 +25992,13 @@ function _calResultsHtml(e){
   else body=_calOutcomesHtml(e,ev,stats);
   return sw+body;
 }
+// v5.18e: Results summary — KPI tiles, outcome distribution, evaluators (first 5), auto key takeaways, observations collapsed.
+function _calTakeaways(e,stats){
+  const agree=stats.filter(s=>s.nums.length>=2&&s.spread===0&&!s.split).map(s=>s.c.param);
+  const disc=stats.filter(s=>s.spread!=null&&s.spread>=1).sort((a,b)=>b.spread-a.spread).map(s=>`${s.c.param} (spread ${s.spread})`);
+  const appl=stats.filter(s=>s.split||s.differs).map(s=>`${s.c.param}: N/A by ${s.na} of ${s.na+s.scored}${s.differs?` — real form ${s.shown?'shows':'hides'} it for ${e.contentType}`:''}`);
+  return {agree,disc,appl};
+}
 function _calOutcomesHtml(e,ev,stats){
   const esc=Utils.esc, n=ev.length, c=_cal.counts[e.id]||{roster:(e.roster||[]).length,sub:n};
   const scores=ev.map(x=>x.scorePct==null?null:Number(x.scorePct)).filter(v=>v!=null);
@@ -25847,34 +26006,37 @@ function _calOutcomesHtml(e,ev,stats){
   const top=dist.slice().sort((a,b)=>b.k-a.k)[0];
   const multi=stats.filter(s=>s.nums.length>=2), exact=multi.filter(s=>s.spread===0).length;
   const applAgree=stats.filter(s=>!s.split).length, flagged=stats.filter(s=>s.flag).length;
-  const kpi=(l,v,s)=>`<div class="cal-kpi"><div class="cal-kpi-l">${l}</div><div class="cal-kpi-v">${v}</div>${s?`<div class="cal-kpi-s">${s}</div>`:''}</div>`;
-  return `<div class="cal-kpis">
-      ${kpi('Outcome agreement',n?Math.round(top.k/n*100)+'%':'—',top.k===n?'everyone chose the same outcome':`${top.k} of ${n} chose ${esc(top.d)}`)}
-      ${kpi('Exact score agreement',multi.length?Math.round(exact/multi.length*100)+'%':'—',`${exact} of ${multi.length} rated criteria`)}
-      ${kpi('Applicability agreement',Math.round(applAgree/stats.length*100)+'%',`${applAgree} of ${stats.length} criteria`)}
-      ${kpi('Participation',c.roster?Math.round(n/c.roster*100)+'%':'—',`${n} of ${c.roster} submitted`)}
+  const kpi=(tone,ico,l,v,s)=>`<div class="cal-kpi2"><span class="cal-tile-ico cal-t-${tone}" style="width:38px;height:38px">${CAL_ICO2[ico]}</span><div><div class="cal-tile-l">${l}</div><div class="cal-kpi2-v">${v}</div><div class="cal-muted" style="font-size:11.5px">${s}</div></div></div>`;
+  const tk=_calTakeaways(e,stats), lst=(a,empty)=>a.length?`<ul>${a.slice(0,5).map(x=>`<li>${esc(x)}</li>`).join('')}${a.length>5?`<li class="cal-muted">+${a.length-5} more</li>`:''}</ul>`:`<div class="cal-muted" style="font-size:12.5px">${empty}</div>`;
+  const shown=_cal.allEv?ev:ev.slice(0,5);
+  return `<div class="cal-kpis2">
+      ${kpi('blue','users','Participation',c.roster?Math.round(n/c.roster*100)+'%':'—',`${n} of ${c.roster} submitted`)}
+      ${kpi('green','target','Outcome Agreement',n?Math.round(top.k/n*100)+'%':'—',top.k===n?'all chose the same outcome':`${top.k} of ${n} chose ${esc(top.d)}`)}
+      ${kpi('purple','layers','Exact Score Agreement',multi.length?Math.round(exact/multi.length*100)+'%':'—',`${exact} of ${multi.length} rated criteria`)}
+      ${kpi('amber','clipboard','Applicability Agreement',Math.round(applAgree/stats.length*100)+'%',`${applAgree} of ${stats.length} criteria`)}
+      ${kpi('red','alert','Criteria for Discussion',flagged,'score or applicability differences')}
     </div>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px" class="cal-two">
-      <div class="card" style="padding:16px 18px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:10px">Outcome distribution</div>
-        ${dist.map(x=>`<div style="display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin-bottom:8px">
-          <span class="cqa-disp-chip" style="background:${x.bg};color:${x.fg};text-align:center">${esc(x.d)}</span>
-          <div style="height:12px;background:#f1f5f9;border-radius:6px;overflow:hidden"><div style="height:100%;width:${n?x.k/n*100:0}%;background:${x.fg}"></div></div>
-          <span style="font-size:12.5px;font-family:var(--mono);text-align:right">${x.k} · ${n?Math.round(x.k/n*100):0}%</span></div>`).join('')}
-        <div style="font-size:12px;color:var(--text3);margin-top:10px">Score range: <b style="color:var(--text)">${scores.length?Math.min(...scores).toFixed(1)+'% – '+Math.max(...scores).toFixed(1)+'%':'—'}</b>${scores.length?` · spread ${(Math.max(...scores)-Math.min(...scores)).toFixed(1)} pts · average ${(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1)}%`:''}</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">${flagged} of ${stats.length} criteria flagged for discussion (any score difference, or a split between rating and N/A).</div>
+    <div class="cal-g2" style="gap:16px;margin-top:16px">
+      <div class="cal-card"><div class="cal-sec-title">Outcome Distribution</div>
+        ${dist.map(x=>`<div class="cal-dist"><span class="cal-dist-l" style="background:${x.bg};color:${x.fg}">${esc(x.d)}</span><div class="cal-dist-bar"><div style="width:${n?x.k/n*100:0}%;background:${x.fg}"></div></div><span class="cal-dist-n">${x.k} · ${n?Math.round(x.k/n*100):0}%</span></div>`).join('')}
+        <div style="font-size:12.5px;margin-top:12px">Score range: <b>${scores.length?Math.min(...scores).toFixed(1)+'% – '+Math.max(...scores).toFixed(1)+'%':'—'}</b>${scores.length?` <span class="cal-muted">· Average</span> <b>${(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1)}%</b> <span class="cal-muted">· Spread</span> <b>${(Math.max(...scores)-Math.min(...scores)).toFixed(1)} pts</b>`:''}</div>
       </div>
-      <div class="card" style="padding:16px 18px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:10px">Each evaluator</div>
-        <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>Evaluator</th><th style="text-align:right">Score</th><th>Outcome</th><th style="text-align:center">N/A</th></tr></thead><tbody>
-        ${ev.map(x=>`<tr><td>${esc(x.disp)}</td><td style="text-align:right;font-family:var(--mono)">${x.scorePct==null?'—':Number(x.scorePct).toFixed(1)+'%'}</td><td>${_calDispChip(x.disposition)}</td><td style="text-align:center">${CQA_CRITERIA.filter(cc=>(x.ratings||{})[cc.id]==='NA').length}</td></tr>`).join('')}
-        </tbody></table></div>
+      <div class="cal-card"><div class="cal-sec-title">Each Evaluator</div>
+        <table class="cal-tbl"><thead><tr><th>Evaluator</th><th style="text-align:right">Score</th><th>Outcome</th><th style="text-align:right">N/A</th></tr></thead><tbody>
+        ${shown.map(x=>`<tr><td>${esc(x.disp)}</td><td style="text-align:right;font-variant-numeric:tabular-nums">${x.scorePct==null?'—':Number(x.scorePct).toFixed(1)+'%'}</td><td>${_calDispChip(x.disposition)}</td><td style="text-align:right">${CQA_CRITERIA.filter(cc=>(x.ratings||{})[cc.id]==='NA').length}</td></tr>`).join('')}
+        </tbody></table>
+        ${ev.length>5?`<button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="_cal.allEv=!_cal.allEv;_calRenderDetail(document.getElementById('cal-root'))">${_cal.allEv?'Show fewer':`Show all ${ev.length} evaluators`}</button>`:''}
       </div>
     </div>
-    <div class="card" style="padding:16px 18px;margin-top:12px">
-      <div style="font-weight:700;font-size:13px;margin-bottom:8px">General observations</div>
-      ${ev.map(x=>`<div style="padding:8px 0;border-top:1px solid var(--border-lt);font-size:12.5px"><b>${esc(x.disp)}</b><div style="white-space:pre-wrap;color:var(--text2);margin-top:3px">${esc(_calTxt(x.observations))||'—'}</div></div>`).join('')}
-    </div>`;
+    <div class="cal-card cal-take" style="margin-top:16px">
+      <div class="cal-take-h"><span class="cal-tile-ico cal-t-purple" style="width:38px;height:38px">${CAL_ICO2.target}</span><div><div class="cal-sec-title" style="margin:0">Key Takeaways</div><div class="cal-muted" style="font-size:11.5px">Generated from the ratings</div></div></div>
+      <div class="cal-take-c"><div class="cal-take-t" style="color:#15803d">${CAL_ICO2.check} In Agreement</div>${lst(tk.agree,'No criterion had identical ratings yet.')}</div>
+      <div class="cal-take-c"><div class="cal-take-t" style="color:#b45309">${CAL_ICO2.chat} For Discussion</div>${lst(tk.disc,'No score differences.')}</div>
+      <div class="cal-take-c"><div class="cal-take-t" style="color:#6d28d9">${CAL_ICO.info.replace(/15/g,'17')} Applicability Note</div>${lst(tk.appl,'Everyone agreed on what applies.')}</div>
+    </div>
+    <details class="cal-card" style="margin-top:16px"><summary class="cal-sec-title" style="cursor:pointer;margin:0">General observations <span class="cal-muted" style="font-weight:400;font-size:12px">· ${ev.length} evaluator${ev.length!==1?'s':''}</span></summary>
+      ${ev.map(x=>`<div style="padding:10px 0;border-top:1px solid var(--border-lt);font-size:13px;margin-top:10px"><b>${esc(x.disp)}</b><div style="white-space:pre-wrap;color:var(--text2);margin-top:4px">${esc(_calTxt(x.observations))||'—'}</div></div>`).join('')}
+    </details>`;
 }
 function _calScoresHtml(e,ev,stats){
   const esc=Utils.esc; let last='';
