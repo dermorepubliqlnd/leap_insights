@@ -25459,7 +25459,7 @@ function calGo(view,id){
     if(view==='form') return calOpenForm(id);
     if(view==='edit') return calEdit(id);
     _cal.view=view; _cal.id=id||null;
-    if(view==='detail'){ _cal.res=null; _cal.part=null; _cal.subj=null; _cal.open={}; }
+    if(view==='detail'){ _cal.res=null; _cal.part=null; _cal.subj=null; _cal.open={}; _cal.amd=null; }
     await renderQACalibration(view==='list'); _pushAppHash(_calHash()); window.scrollTo(0,0);
   });
 }
@@ -25539,6 +25539,8 @@ async function calEdit(id){
     resources:(Array.isArray(e.resources)&&e.resources.length?e.resources:[{title:'',url:''}]).map(r=>({title:r.title||'',url:r.url||''})),instructions:e.instructions||'',
     dl:_calParts(e.deadlineAt).d,ds:_calParts(e.discussionAt).d,meetingLink:e.meetingLink||'',
     subjectProfileId:data?.subject_profile_id||(data?.subject_name?'__other':''),subjectName:data?.subject_name||''};
+  const cc=_cal.counts[id]||{}; _cal.edit.started=((cc.sub||0)+(cc.draft||0))>0; _cal.edit.dlPassed=!!e.deadlineAt&&Date.now()>=Date.parse(e.deadlineAt);
+  _cal.edit.origDl=_cal.edit.dl; _cal.edit.origSubj=_cal.edit.subjectProfileId+'|'+_cal.edit.subjectName; // v5.18g
   _cal.view='edit'; _cal.id=id; _calRenderEdit(document.getElementById('cal-root')); _pushAppHash(_calHash());
 }
 function calE(path,v){ const d=_cal.edit; if(!d) return; d[path]=v; if(path==='subjectProfileId') _calRenderEdit(document.getElementById('cal-root')); }
@@ -25575,31 +25577,34 @@ function calComboPick(key,v){ const d=_cal.edit; if(!d) return; if(key==='ct') d
 document.addEventListener('click',e=>{ if(!e.target.closest||!e.target.closest('.cal-combo')) _calComboClose(); });
 function _calRenderEdit(root){
   const d=_cal.edit, esc=Utils.esc, locked=d.status!=='draft';
+  // v5.18g (per Sandra): progressive editing — material, links and person lock once anyone starts; instructions never replaced
+  // after publishing (clarifications instead); deadline can only be extended before it passes. Enforced again in the DB.
+  const lockMat=locked&&!!d.started, lockDl=locked&&!!d.dlPassed, dis=b=>b?'disabled':'';
   const cdTypes=Sel.all(Store.DELIVERABLES).filter(x=>x.isCD&&(x.isActive||x.name===d.contentType)).sort((a,b)=>a.name.localeCompare(b.name));
   const people=_calPeople();
   const personVal=d.subjectProfileId==='__other'?'Not a LEAP user':(people.find(p=>p.id===d.subjectProfileId)?.name||'');
   const lab=(t,req,hint)=>`<label class="form-label">${t}${req?' <span class="req">*</span>':''}${hint?` <span style="font-weight:400;color:var(--text3);font-size:11px">${hint}</span>`:''}</label>`;
   const sec=(tone,ico,title,sub,body)=>`<div class="cal-sec cal-sec-${tone}"><div class="cal-sec-h"><span class="cal-sec-ico">${CAL_ICO[ico]}</span><span class="cal-sec-t">${title}</span>${sub?`<span class="cal-sec-s">${sub}</span>`:''}</div><div class="cal-sec-b">${body}</div></div>`;
   const details=`
-    <div class="form-group" style="margin:0 0 12px">${lab('Material / Module Being Evaluated',1)}<input class="form-control" value="${esc(d.title)}" placeholder="e.g. Foundational Leadership — Module 1 slide deck" onchange="calE('title',this.value)"></div>
+    <div class="form-group" style="margin:0 0 12px">${lab('Material / Module Being Evaluated',1)}<input class="form-control" ${dis(lockMat)} value="${esc(d.title)}" placeholder="e.g. Foundational Leadership — Module 1 slide deck" onchange="calE('title',this.value)"></div>
     <div class="cal-g3">
       <div class="form-group" style="margin:0">${lab('Evaluation Form',1)}<select class="form-control" ${locked?'disabled':''} onchange="calE('formType',this.value)">${Object.entries(CAL_FORMS).map(([k,v])=>`<option value="${k}"${d.formType===k?' selected':''}>${v}</option>`).join('')}<option disabled>Instructional Design QA (coming next)</option><option disabled>Trainer Evaluation (coming next)</option></select></div>
       <div class="form-group" style="margin:0">${lab('Content Type',1)}${_calCombo('ct',cdTypes.map(x=>({v:x.name,l:x.name})),d.contentType,'— Select Content Type —',locked)}</div>
       <div class="form-group" style="margin:0">${lab('Person Being Evaluated','','private')}
-        ${_calCombo('person',[...people.map(p=>({v:p.id,l:p.name})),{v:'__other',l:'Not a LEAP user',sep:true}],d.subjectProfileId,'— Select Team Member —',false)}
-        ${d.subjectProfileId==='__other'?`<input class="form-control" style="margin-top:6px" value="${esc(d.subjectName)}" placeholder="Name (optional)" onchange="calE('subjectName',this.value)">`:''}
+        ${_calCombo('person',[...people.map(p=>({v:p.id,l:p.name})),{v:'__other',l:'Not a LEAP user',sep:true}],d.subjectProfileId,'— Select Team Member —',lockMat)}
+        ${d.subjectProfileId==='__other'?`<input class="form-control" style="margin-top:6px" value="${esc(d.subjectName)}" placeholder="Name (optional)" ${dis(lockMat)} onchange="calE('subjectName',this.value)">`:''}
         <div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Visible to you and admins only — never shown to evaluators.</div></div>
     </div>`;
   const links=`
     <div class="cal-g2" style="margin-bottom:4px"><label class="form-label" style="margin:0">Reference Material Name</label><label class="form-label" style="margin:0">Hyperlink</label></div>
-    ${d.resources.map((r,i)=>`<div class="cal-res-row"><input class="form-control" placeholder="e.g. Module 1 slide deck" value="${esc(r.title)}" onchange="calRes(${i},'title',this.value)"><input class="form-control" placeholder="https://…" value="${esc(r.url)}" onchange="calRes(${i},'url',this.value)"><button class="btn btn-ghost btn-sm" title="Remove" onclick="calResDel(${i})">✕</button></div>`).join('')}
-    <button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="calResAdd()">+ Add Resource</button>`;
+    ${d.resources.map((r,i)=>`<div class="cal-res-row"><input class="form-control" ${dis(lockMat)} placeholder="e.g. Module 1 slide deck" value="${esc(r.title)}" onchange="calRes(${i},'title',this.value)"><input class="form-control" ${dis(lockMat)} placeholder="https://…" value="${esc(r.url)}" onchange="calRes(${i},'url',this.value)">${lockMat?'<span></span>':`<button class="btn btn-ghost btn-sm" title="Remove" onclick="calResDel(${i})">✕</button>`}</div>`).join('')}
+    ${lockMat?'':'<button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="calResAdd()">+ Add Resource</button>'}`;
   const sched=`
-    <div class="cal-g2"><div class="form-group" style="margin:0">${lab('Submission Deadline',1)}<input type="date" class="form-control cal-date" value="${d.dl}" onchange="calE('dl',this.value)"><div style="font-size:11px;color:var(--text3);margin-top:4px">Open until 11:59 PM (Philippine time) on this date.</div></div>
+    <div class="cal-g2"><div class="form-group" style="margin:0">${lab('Submission Deadline',1)}<input type="date" class="form-control cal-date" ${dis(lockDl)} value="${d.dl}" onchange="calE('dl',this.value)"><div style="font-size:11px;color:var(--text3);margin-top:4px">${lockDl?'Submissions are closed; the deadline can no longer change.':locked?'Can only be extended (recorded and shown to the team).':'Open until 11:59 PM (Philippine time) on this date.'}</div></div>
     <div class="form-group" style="margin:0">${lab('Calibration Session Date',1)}<input type="date" class="form-control cal-date" value="${d.ds}" onchange="calE('ds',this.value)"><div style="font-size:11px;color:var(--text3);margin-top:4px">Must be after the deadline. Send the invite and meeting link via Outlook.</div></div></div>`;
   const instr=`
-    <textarea class="form-control" rows="3" maxlength="500" style="min-height:74px" placeholder="What to review, what to focus on, and any additional guidance…" oninput="document.getElementById('cal-instr-n').textContent=this.value.length" onchange="calE('instructions',this.value)">${esc(d.instructions)}</textarea>
-    <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:3px"><span id="cal-instr-n">${(d.instructions||'').length}</span> / 500</div>`;
+    <textarea class="form-control" ${dis(locked)} rows="3" maxlength="500" style="min-height:74px" placeholder="What to review, what to focus on, and any additional guidance…" oninput="document.getElementById('cal-instr-n').textContent=this.value.length" onchange="calE('instructions',this.value)">${esc(d.instructions)}</textarea>
+    <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:3px"><span id="cal-instr-n">${(d.instructions||'').length}</span> / 500</div>${locked?'<div style="font-size:11px;color:var(--text3);margin-top:2px">Locked after publishing. Use <b>Add clarification</b> on the calibration page.</div>':''}`;
   root.innerHTML=`<div class="card cal-setup" style="padding:16px 20px">
     <button class="btn btn-ghost btn-sm" style="margin:0 0 8px -8px" onclick="calGo(${d.isNew?"'list'":`'detail','${d.id}'`})">← Back</button>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -25607,7 +25612,7 @@ function _calRenderEdit(root){
       <div><div style="font-weight:700;font-size:15.5px;color:var(--text)">${d.isNew?'Create Calibration':'Edit Calibration'}</div><div style="font-size:12px;color:var(--text3)">Set up the material, reference links, and schedule for this calibration.</div></div>
       <div style="margin-left:auto">${_calBadge(d.status)}</div>
     </div>
-    ${locked?'<div style="font-size:12px;background:#fefce8;border:1px solid #fde68a;color:#92400e;padding:8px 12px;margin-bottom:12px">Published: the form, content type and roster are locked. You can still update the material name, dates, links, instructions and the person being evaluated.</div>':''}
+    ${locked?`<div style="font-size:12px;background:#fefce8;border:1px solid #fde68a;color:#92400e;padding:8px 12px;margin-bottom:12px;border-radius:8px">Published: form, content type, roster and instructions are locked.${lockMat?' Evaluations have started, so the material, reference links and person being evaluated are locked too. If the material changed, create a new calibration (admins can record a correction).':' Until someone starts evaluating, you can still correct the material name, links and person being evaluated.'}</div>`:''}
     ${sec('blue','details','Evaluation Details','What are we evaluating, and which QA form is used?',details)}
     ${sec('purple','links','Reference Materials','Materials everyone will review independently — links only',links)}
     <div class="cal-g2" style="gap:14px">
@@ -25635,21 +25640,27 @@ async function calSave(publish){
   if(res.some(r=>!/^https?:\/\//i.test(r.url))) return show('Reference material links must start with http:// or https://');
   if(d.meetingLink&&!/^https?:\/\//i.test(d.meetingLink.trim())) return show('Meeting link must start with http:// or https://');
   if(d.dl&&d.ds&&d.ds<=d.dl) return show('The calibration session must be on a date after the submission deadline.');
+  if(d.status!=='draft'&&!d.dlPassed&&d.dl&&d.origDl&&d.dl<d.origDl) return show('The deadline can only be extended, not moved earlier. Use Close submissions now to end early.');
   if(publish||d.status!=='draft'){
     if(!d.contentType) return show('Content type is required.');
     if(!dl) return show('Submission deadline is required.');
     if(!ds) return show('Calibration session date is required.');
     if(d.status==='draft'&&d.dl<_todayStr()) return show('The submission deadline cannot be in the past.');
   }
-  const row={title:d.title.trim(),item_title:d.title.trim(),resources:res,instructions:d.instructions.trim()||null,deadline_at:dl,discussion_at:ds,discussion_end_at:null,meeting_link:d.meetingLink.trim()||null};
-  if(d.status==='draft'){ row.form_type=d.formType; row.content_type=d.contentType||null; }
+  const pub=d.status!=='draft', lockMat=pub&&!!d.started; // v5.18g: send only what may change
+  const row={discussion_at:ds};
+  if(!lockMat){ row.title=d.title.trim(); row.item_title=d.title.trim(); row.resources=res; }
+  if(!pub){ row.instructions=d.instructions.trim()||null; row.discussion_end_at=null; row.form_type=d.formType; row.content_type=d.contentType||null; }
+  if(!(pub&&d.dlPassed)&&!(pub&&d.dl===d.origDl)) row.deadline_at=dl;
   const go=async()=>{
     try{
       let id=d.id;
       if(d.isNew){ const r=await sb.from('calibration_exercises').insert({...row,created_by:Auth.user.id}).select().single(); if(r.error) throw r.error; id=r.data.id; d.isNew=false; d.id=id; }
       else { const r=await sb.from('calibration_exercises').update(row).eq('id',id).select().single(); if(r.error) throw r.error; }
-      const sr=await sb.from('calibration_subjects').upsert({exercise_id:id,subject_profile_id:(d.subjectProfileId&&d.subjectProfileId!=='__other')?d.subjectProfileId:null,subject_name:d.subjectProfileId==='__other'?(d.subjectName.trim()||null):null,updated_at:new Date().toISOString()},{onConflict:'exercise_id'});
+      const subjChanged=!pub||(d.subjectProfileId+'|'+d.subjectName)!==d.origSubj;
+      const sr=subjChanged&&!lockMat?await sb.from('calibration_subjects').upsert({exercise_id:id,subject_profile_id:(d.subjectProfileId&&d.subjectProfileId!=='__other')?d.subjectProfileId:null,subject_name:d.subjectProfileId==='__other'?(d.subjectName.trim()||null):null,updated_at:new Date().toISOString()},{onConflict:'exercise_id'}):{error:null};
       if(sr.error) throw sr.error;
+      if(pub&&row.deadline_at&&d.dl!==d.origDl) await AuditLog.record('extend','QA Calibration',id,`Deadline extended to ${_calFmt(dl,false)}: ${d.title.trim()}`);
       if(publish){
         const matrix={criteriaVersion:QA_CRITERIA_VERSION_CURRENT,contentType:d.contentType,applicable:CQA_CRITERIA.filter(c=>_cqaApplies(c,d.contentType,QA_CRITERIA_VERSION_CURRENT)).map(c=>c.id)};
         const r=await sb.from('calibration_exercises').update({status:'open',criteria_version:QA_CRITERIA_VERSION_CURRENT,matrix_snapshot:matrix}).eq('id',id).select().single(); if(r.error) throw r.error;
@@ -25669,10 +25680,11 @@ function calDelete(id){ confirm$('Delete Draft','Delete this draft calibration?'
 /* ── status actions ── */
 function calStatus(id,to){
   const e=_calById(id); if(!e) return; const esc=Utils.esc;
-  const msg={released:`Release the results of <b>${esc(e.title)}</b> to the team? Everyone on the roster will see all submitted ratings and remarks as Evaluator A, B, C… (no names).`,
-    finalized:`Finalize <b>${esc(e.title)}</b>? Agreed ratings, recommendations and notes become read-only.`,
+  const msg={released:`Release the results of <b>${esc(e.title)}</b> to the team?<br><br><b>Becomes visible to everyone on the roster:</b> every submitted rating, remark, N/A reason and general observation, the outcome distribution and agreement metrics — shown as Evaluator A, B, C…<br><br><b>Stays hidden:</b> evaluator names, who did or didn't submit, and the person being evaluated (you and admins only).`,
+    finalized:`Finalize <b>${esc(e.title)}</b>? Agreed ratings, applicability recommendations and the calibration summary become read-only for everyone.`,
     reopen:`Reopen the discussion for <b>${esc(e.title)}</b>? It returns to Released so decisions can be edited. This is recorded in the Audit Log.`}[to];
   const label={released:'Release Results',finalized:'Finalize',reopen:'Reopen'}[to];
+  setTimeout(()=>{ const b=document.getElementById('mc-ok'); if(b) b.className='btn btn-primary'; },0);
   confirm$(label,msg,label,async()=>{ try{
     const r=await sb.from('calibration_exercises').update({status:to==='reopen'?'released':to}).eq('id',id).select().single(); if(r.error) throw r.error;
     await AuditLog.record(to==='reopen'?'reopen':to==='released'?'release':'finalize','QA Calibration',id,`${label}: ${e.code||''} ${e.title}`);
@@ -25693,6 +25705,7 @@ async function calOpenForm(id){
   const {data,error}=await sb.from('calibration_submissions').select('*').eq('exercise_id',id).eq('evaluator_id',Auth.user.id).maybeSingle();
   if(error){ _surfaceDbError(error,'Load calibration evaluation'); return; }
   _cal.sub=data?_calCamel(data):null;
+  try{ const am=await sb.from('calibration_amendments').select('*').eq('exercise_id',id).in('kind',['clarification','correction','deadline_extended']).order('created_at',{ascending:false}); _cal.formAmd=(am.data||[]).map(_calCamel); }catch(_){ _cal.formAmd=[]; }
   _calLive={ratings:{...(_cal.sub?.ratings||{})},remarks:{...(_cal.sub?.remarks||{})}}; _calGrpCollapsed={}; _calDirty=false;
   _cal.view='form'; _cal.id=id; _calRenderForm(document.getElementById('cal-root')); _pushAppHash(_calHash()); window.scrollTo(0,0);
 }
@@ -25722,6 +25735,7 @@ function _calRenderForm(root){
           <div class="cqa-meta-item"><label>Submission Deadline (PH time)</label><div class="cqa-meta-val">${_calDl(e.deadlineAt)} <span style="font-weight:400;color:#94a3b8;font-size:12px">· ${_calLeft(e.deadlineAt)}</span></div></div>
           <div class="cqa-meta-item" style="grid-column:1/-1"><label>Reference Materials</label><div class="cqa-meta-val" style="display:flex;gap:14px;flex-wrap:wrap">${res.length?res.map(r=>`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" style="${linkSt}">${esc(r.title||r.url)}</a>`).join(''):'<span style="color:#94a3b8;font-weight:400">None provided</span>'}</div></div>
           ${e.instructions?`<div class="cqa-meta-item" style="grid-column:1/-1"><label>Instructions</label><div class="cqa-meta-val" style="font-weight:400;white-space:pre-wrap">${esc(e.instructions)}</div></div>`:''}
+          ${(_cal.formAmd||[]).length?`<div class="cqa-meta-item" style="grid-column:1/-1"><label>Updates</label><div class="cqa-meta-val" style="font-weight:400">${_cal.formAmd.map(x=>`<div><b>${CAL_AMD[x.kind]||x.kind}</b>${x.kind==='deadline_extended'?` — now ${esc(_calDl(x.newValue))}`:''}${x.note?` — <span style="white-space:pre-wrap">${esc(x.note)}</span>`:''}</div>`).join('')}</div></div>`:''}
         </div>
         <div class="cqa-score-widget" style="align-self:center">
           <div class="cqa-score-big" id="cal-score-val">—</div>
@@ -25863,6 +25877,7 @@ async function _calLoadDetail(e){
   const jobs=[];
   if(own&&(!_cal.subj||_cal.subj.exId!==e.id)) jobs.push(sb.from('calibration_subjects').select('*').eq('exercise_id',e.id).maybeSingle().then(({data})=>{ _cal.subj={exId:e.id,...(data?_calCamel(data):{})}; }));
   if(own&&e.status!=='draft'&&(!_cal.part||_cal.part.exId!==e.id)) jobs.push(sb.rpc('calibration_participation',{p_ex:e.id}).then(({data,error})=>{ _cal.part={exId:e.id,rows:(data||[]).map(_calCamel),err:error?error.message:null}; }));
+  if(e.status!=='draft'&&(!_cal.amd||_cal.amd.exId!==e.id)) jobs.push(sb.from('calibration_amendments').select('*').eq('exercise_id',e.id).order('created_at',{ascending:false}).then(({data})=>{ _cal.amd={exId:e.id,rows:(data||[]).map(_calCamel)}; }));
   if(canRes&&(!_cal.res||_cal.res.exId!==e.id)) jobs.push(Promise.all([sb.rpc('calibration_results',{p_ex:e.id}),sb.from('calibration_decisions').select('*').eq('exercise_id',e.id)]).then(([r,d])=>{
       _cal.res={exId:e.id,rows:(r.data||[]).map(_calCamel),err:r.error?r.error.message:null};
       _cal.dec={}; (d.data||[]).forEach(x=>{ const o=_calCamel(x); _cal.dec[o.criterionId]=o; }); }));
@@ -25891,6 +25906,31 @@ const CAL_ICO2={
 };
 function calMenu(ev){ ev.stopPropagation(); const p=document.getElementById('cal-more-pop'); if(p) p.classList.toggle('hidden'); }
 document.addEventListener('click',e=>{ if(!e.target.closest||!e.target.closest('.cal-more')){ const p=document.getElementById('cal-more-pop'); if(p) p.classList.add('hidden'); } });
+function _calActions(e){
+  const st=_calStatus(e), own=_calIsOwner(e), m=_cal.mine[e.id], inR=_calInRoster(e), id=e.id, started=((_cal.counts[id]||{}).sub||0)+((_cal.counts[id]||{}).draft||0)>0;
+  const hasDec=Object.keys(_cal.dec||{}).length>0&&_cal.res&&_cal.res.exId===id;
+  let primary=null;
+  if(st==='draft'&&own) primary={label:'Publish Calibration',fn:`calGo('edit','${id}')`};
+  else if(st==='open'&&inR) primary=m&&m.status==='submitted'?{label:'View My Evaluation',fn:`calGo('form','${id}')`,quiet:true}:{label:m?'Continue My Evaluation':'Start My Evaluation',fn:`calGo('form','${id}')`};
+  else if(st==='closed'&&own) primary={label:'Release Results',fn:`calStatus('${id}','released')`};
+  else if(st==='closed'&&m) primary={label:'View My Evaluation',fn:`calGo('form','${id}')`,quiet:true};
+  else if(st==='released'&&own) primary={label:hasDec?'Continue Calibration':'Begin Calibration',fn:`_cal.tab='results';_cal.rtab='${hasDec?'decisions':'outcomes'}';_calRenderDetail(document.getElementById('cal-root'))`};
+  else if(st==='released'&&inR) primary={label:'View Results',fn:`calTab('results')`};
+  else if(st==='finalized'&&(own||inR)) primary={label:'View Calibration Summary',fn:`_cal.tab='results';_cal.rtab='outcomes';_calRenderDetail(document.getElementById('cal-root'))`};
+  const menu=[];
+  if(m&&!(primary&&/My Evaluation/.test(primary.label))&&st!=='draft') menu.push([`calGo('form','${id}')`,'View my evaluation']);
+  if(own){
+    if(['open','closed','released'].includes(st)) menu.push([`calGo('edit','${id}')`,'Edit details']);
+    if(['open','released'].includes(st)) menu.push([`calClarify('${id}')`,'Add clarification']);
+    if(st==='open') menu.push([`calCloseNow('${id}')`,'Close submissions now']);
+    if(st==='released') menu.push([`calStatus('${id}','finalized')`,'Finalize calibration']);
+    if(Auth.isAdmin&&started&&['open','closed','released'].includes(st)) menu.push([`calCorrect('${id}')`,'Record a correction (admin)']);
+    if(Auth.isAdmin&&st==='finalized') menu.push([`calStatus('${id}','reopen')`,'Reopen calibration']);
+    if(st==='finalized'||e.archived) menu.push([`calArchive('${id}',${!e.archived})`,e.archived?'Unarchive':'Archive']);
+    if(st==='draft') menu.push([`calDelete('${id}')`,'Delete draft','danger']);
+  }
+  return {primary,menu};
+}
 async function _calRenderDetail(root){
   const e=_calById(_cal.id); if(!e){ _cal.view='list'; return _calRenderList(root); }
   const canRes=await _calLoadDetail(e);
@@ -25898,21 +25938,8 @@ async function _calRenderDetail(root){
   const esc=Utils.esc, st=_calStatus(e), own=_calIsOwner(e), c=_cal.counts[e.id]||{roster:(e.roster||[]).length,sub:0,draft:0};
   const pct=c.roster?Math.round(c.sub/c.roster*100):0, m=_cal.mine[e.id], inR=_calInRoster(e);
   const res=(Array.isArray(e.resources)?e.resources:[]).filter(r=>r.url);
-  // one primary action
-  let primary='';
-  if(own&&st==='draft') primary=`<button class="btn btn-primary" onclick="calGo('edit','${e.id}')">Edit &amp; Publish</button>`;
-  else if(inR&&st==='open'&&!(m&&m.status==='submitted')) primary=`<button class="btn btn-primary" onclick="calGo('form','${e.id}')">${m?'Continue My Evaluation':'Start My Evaluation'}</button>`;
-  else if(own&&st==='closed') primary=`<button class="btn btn-primary" onclick="calStatus('${e.id}','released')">Release Results to Team</button>`;
-  else if(own&&st==='released') primary=`<button class="btn btn-primary" onclick="calStatus('${e.id}','finalized')">Finalize</button>`;
-  else if(m) primary=`<button class="btn btn-secondary" onclick="calGo('form','${e.id}')">View My Evaluation</button>`;
-  // everything else in "More"
-  const items=[];
-  if(m&&!primary.includes('My Evaluation')) items.push([`calGo('form','${e.id}')`,'View my evaluation']);
-  if(own&&['draft','open','closed'].includes(st)&&st!=='draft') items.push([`calGo('edit','${e.id}')`,'Edit details']);
-  if(own&&st==='open') items.push([`calCloseNow('${e.id}')`,'Close submissions now']);
-  if(Auth.isAdmin&&st==='finalized') items.push([`calStatus('${e.id}','reopen')`,'Reopen discussion']);
-  if(own&&st!=='draft') items.push([`calArchive('${e.id}',${!e.archived})`,e.archived?'Unarchive':'Archive']);
-  if(own&&st==='draft') items.push([`calDelete('${e.id}')`,'Delete draft','danger']);
+  // v5.18g (per Sandra): ONE contextual primary action; everything else in the "More" menu; evaluators never see admin controls.
+  const A=_calActions(e); const primary=A.primary?`<button class="btn ${A.primary.quiet?'btn-secondary':'btn-primary'}" onclick="${A.primary.fn}">${A.primary.label}</button>`:''; const items=A.menu;
   const more=items.length?`<div class="cal-more"><button class="btn btn-secondary cal-icon-btn" title="More actions" onclick="calMenu(event)">${CAL_ICO2.more}</button>
     <div class="cal-more-pop hidden" id="cal-more-pop">${items.map(([fn,l,k])=>`<button class="cal-more-item${k?' danger':''}" onclick="document.getElementById('cal-more-pop').classList.add('hidden');${fn}">${l}</button>`).join('')}</div></div>`:'';
   const sub={draft:'Draft — publish it to open evaluations to the team.',open:'Rate the same output independently, then join the calibration session to compare and align on the QA standard.',
@@ -25939,6 +25966,7 @@ async function _calRenderDetail(root){
     </div>
     <div class="cal-row"><span class="cal-row-l">${CAL_ICO2.clip} Reference Materials</span><span>${res.length?res.map(r=>`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" class="cal-link">${esc(r.title||r.url)}</a>`).join(''):'<span class="cal-muted">None</span>'}</span></div>
     ${e.instructions?`<div class="cal-row" style="align-items:flex-start"><span class="cal-row-l">${CAL_ICO2.chat.replace(/17/g,'15')} Instructions</span><span style="white-space:pre-wrap">${esc(e.instructions)}</span></div>`:''}
+    ${_calUpdatesHtml(e)}
     ${own?`<div class="cal-row cal-row-private"><span class="cal-row-l">${CAL_ICO2.lock} Person being evaluated</span><span><b>${esc(subjName||'—')}</b> <span class="cal-muted">· visible only to you and admins</span></span></div>`:''}
   </div>`;
   if(_cal.tab==='results'&&!canRes) _cal.tab='overview';
@@ -25946,6 +25974,36 @@ async function _calRenderDetail(root){
     <button class="cal-tab${_cal.tab==='overview'?' on':''}" onclick="calTab('overview')">${CAL_ICO2.users.replace(/18/g,'16')} Participation</button>
     ${canRes?`<button class="cal-tab${_cal.tab==='results'?' on':''}" onclick="calTab('results')"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg> Results &amp; Discussion</button>`:''}</div>`;
   root.innerHTML=head+tabs+(_cal.tab==='results'?_calResultsHtml(e):_calPartHtml(e,c));
+}
+const CAL_AMD={deadline_extended:'Deadline extended',closed_early:'Submissions closed early',session_changed:'Calibration session moved',meeting_changed:'Meeting link updated',clarification:'Clarification',correction:'Correction',archived:'Archived',unarchived:'Unarchived'};
+function _calAmdVal(k,v){ if(!v) return ''; if(['deadline_extended','closed_early'].includes(k)) return _calDl(v); if(k==='session_changed') return _calFmt(v,false); return ''; }
+function _calUpdatesHtml(e){
+  const a=_cal.amd&&_cal.amd.exId===e.id?_cal.amd.rows.filter(x=>!['archived','unarchived','meeting_changed'].includes(x.kind)):[]; if(!a.length) return '';
+  const esc=Utils.esc;
+  return `<div class="cal-row" style="align-items:flex-start;background:#fff7ed"><span class="cal-row-l">${CAL_ICO2.alert.replace(/20/g,'15')} Updates</span><div style="display:flex;flex-direction:column;gap:4px">${a.map(x=>`<div><b>${CAL_AMD[x.kind]||x.kind}</b>${x.kind==='deadline_extended'||x.kind==='session_changed'?` — ${esc(_calAmdVal(x.kind,x.oldValue))} → ${esc(_calAmdVal(x.kind,x.newValue))}`:''}${x.note?` — <span style="white-space:pre-wrap">${esc(x.note)}</span>`:''} <span class="cal-muted">· ${_calFmt(x.createdAt)}</span></div>`).join('')}</div></div>`;
+}
+function calClarify(id){ const e=_calById(id); if(!e) return;
+  confirm$('Add Clarification',`<div style="font-size:13px;margin-bottom:8px">Clarifications are added below the original instructions and shown to everyone as an update. The original instructions stay unchanged.</div><textarea id="cal-clar" class="form-control" rows="4" maxlength="500" placeholder="e.g. Rate the version in the shared folder dated Nov 12."></textarea>`,'Add Clarification',async()=>{
+    const t=(document.getElementById('cal-clar')?.value||'').trim(); if(!t){ toast('Type the clarification first.','error'); return; }
+    try{ const r=await sb.from('calibration_amendments').insert({exercise_id:id,kind:'clarification',note:t,created_by:Auth.user.id}); if(r.error) throw r.error;
+      await AuditLog.record('clarify','QA Calibration',id,`Clarification added: ${e.code||''}`); _cal.amd=null; toast('Clarification added.','success'); _calRenderDetail(document.getElementById('cal-root'));
+    }catch(x){ _surfaceDbError(x,'Add clarification'); } });
+  setTimeout(()=>{ const b=document.getElementById('mc-ok'); if(b) b.className='btn btn-primary'; },0);
+}
+function calCorrect(id){ const e=_calById(id); if(!e) return; const esc=Utils.esc;
+  const links=(Array.isArray(e.resources)?e.resources:[]).map(r=>`${r.title||''} | ${r.url||''}`).join('\n');
+  confirm$('Record a Correction',`<div style="font-size:13px;margin-bottom:8px">Use only for exceptional fixes (e.g., a broken link to the <b>same</b> material). If the material itself changed, create a new calibration instead. The change and reason are shown to everyone and logged.</div>
+    <label class="form-label">Material / Module</label><input id="cal-cor-t" class="form-control" value="${esc(e.title)}">
+    <label class="form-label" style="margin-top:8px">Reference links <span class="cal-muted" style="font-weight:400">— one per line: Name | https://…</span></label><textarea id="cal-cor-l" class="form-control" rows="3">${esc(links)}</textarea>
+    <label class="form-label" style="margin-top:8px">Reason <span class="req">*</span></label><textarea id="cal-cor-r" class="form-control" rows="2"></textarea>`,'Record Correction',async()=>{
+    const t=document.getElementById('cal-cor-t').value.trim(), reason=document.getElementById('cal-cor-r').value.trim();
+    const res=document.getElementById('cal-cor-l').value.split('\n').map(l=>l.split('|')).filter(x=>x.join('').trim()).map(x=>({title:(x[0]||'').trim(),url:(x.slice(1).join('|')||'').trim()}));
+    if(!reason){ toast('A reason is required.','error'); return; }
+    if(res.some(r=>!/^https?:\/\//i.test(r.url))){ toast('Each link must start with http:// or https://','error'); return; }
+    try{ const r=await sb.rpc('calibration_amend',{p_ex:id,p_title:t,p_resources:res,p_reason:reason}); if(r.error) throw r.error;
+      await AuditLog.record('correct','QA Calibration',id,`Correction recorded: ${reason}`); _cal.amd=null; toast('Correction recorded.','success'); await renderQACalibration(true);
+    }catch(x){ _surfaceDbError(x,'Record correction'); } });
+  setTimeout(()=>{ const b=document.getElementById('mc-ok'); if(b) b.className='btn btn-primary'; },0);
 }
 function _calPartHtml(e,c){
   const st=_calStatus(e), own=_calIsOwner(e), esc=Utils.esc;
@@ -25996,7 +26054,7 @@ function _calResultsHtml(e){
 function _calTakeaways(e,stats){
   const agree=stats.filter(s=>s.nums.length>=2&&s.spread===0&&!s.split).map(s=>s.c.param);
   const disc=stats.filter(s=>s.spread!=null&&s.spread>=1).sort((a,b)=>b.spread-a.spread).map(s=>`${s.c.param} (spread ${s.spread})`);
-  const appl=stats.filter(s=>s.split||s.differs).map(s=>`${s.c.param}: N/A by ${s.na} of ${s.na+s.scored}${s.differs?` — real form ${s.shown?'shows':'hides'} it for ${e.contentType}`:''}`);
+  const appl=stats.filter(s=>s.split||s.differs).map(s=>s.split?`${s.c.param}: marked N/A by ${s.na} of ${s.na+s.scored} evaluators${s.differs?` (real form ${s.shown?'shows':'hides'} it)`:''}`:(s.team==='applies'?`${s.c.param}: rated by the team, but the real form hides it for ${e.contentType}`:`${s.c.param}: marked N/A, but the real form shows it for ${e.contentType}`));
   return {agree,disc,appl};
 }
 function _calOutcomesHtml(e,ev,stats){
@@ -26099,7 +26157,8 @@ function _calDecisionsHtml(e,ev,stats){
     <div class="eval-tbl-wrap"><table class="eval-tbl"><thead><tr><th>#</th><th>Criterion · team ratings</th><th style="text-align:center">Agreed Rating</th><th style="text-align:center">Unresolved</th><th>Rationale &amp; Supporting Examples</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div>
   <div class="card" style="padding:14px 16px;margin-top:12px"><div style="font-weight:700;font-size:13px;margin-bottom:10px">Calibration summary</div>
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px" class="cal-two">${sumHtml}</div></div>`;
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px" class="cal-two">${sumHtml}</div>
+    ${ed?`<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-primary" onclick="calStatus('${e.id}','finalized')">Finalize Calibration</button></div>`:''}</div>`;
 }
 async function calDec(cid,field,val){
   const e=_calById(_cal.id); if(!e) return; const cur=_cal.dec[cid]||{};
