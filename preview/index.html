@@ -1148,6 +1148,7 @@
     .cal-take ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--text2);line-height:1.7}
     @media(max-width:1200px){.cal-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.cal-kpis2{grid-template-columns:repeat(3,minmax(0,1fr))}.cal-take{grid-template-columns:1fr}.cal-take-c{border-left:none;padding-left:0}}
     @media(max-width:700px){.cal-tiles,.cal-kpis2{grid-template-columns:1fr}}
+    .pdp-dr input[type=date]{display:flex;align-items:center} /* v5.19i: picker icon stays on the date line in the PDP panel */
     input[type=date].cal-date{display:flex;align-items:center;max-width:220px} /* v5.18a: keep the picker icon on the same line as the MMM DD, YYYY text */
     .cal-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
     .cal-kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px}
