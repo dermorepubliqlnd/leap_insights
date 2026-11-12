@@ -25375,7 +25375,25 @@ async function calSave(publish){
     confirm$('Publish Calibration',`Publish <b>${Utils.esc(d.title.trim())}</b>? All ${n} active LEAP users can then evaluate it until <b>${_calFmt(dl,false)}, 11:59 PM</b> (Philippine time). The form and content type lock after publishing.`,'Publish',go); }
   else go();
 }
-function calDelete(id){ confirm$('Delete Draft','Delete this draft calibration?','Delete',async()=>{ try{ const r=await sb.from('calibration_exercises').delete().eq('id',id); if(r.error) throw r.error; await AuditLog.record('delete','QA Calibration',id,'Deleted draft calibration'); disarmLeaveGuard(); _cal.view='list'; _cal.id=null; _cal.edit=null; await renderQACalibration(true); _pushAppHash(_calHash()); }catch(e){ _surfaceDbError(e,'Delete calibration'); } }); }
+/* v5.18i (2026-11-12, per Sandra): admins may delete a calibration in any status. With data → permanent-deletion
+   warning listing what goes; without data → simple confirm. Both end with a "deleted" message + Audit Log row. */
+async function calDelete(id){
+  const e=_calById(id); if(!e) return; const esc=Utils.esc;
+  const cnt=async(t)=>{ try{ const r=await sb.from(t).select('exercise_id',{count:'exact',head:true}).eq('exercise_id',id); return r.error?null:(r.count||0); }catch(x){ return null; } };
+  const c=_cal.counts[id]||{}; const subs=(c.sub||0)+(c.draft||0);
+  const [dec,amd]=await Promise.all([cnt('calibration_decisions'),cnt('calibration_amendments')]);
+  const parts=[subs?`${subs} evaluation${subs!==1?'s':''} (submitted and drafts), with every rating, remark and observation`:'',dec?`${dec} calibration decision${dec!==1?'s':''} and the calibration summary`:'',amd?`${amd} recorded update${amd!==1?'s':''} and correction${amd!==1?'s':''}`:''].filter(Boolean);
+  const hasData=parts.length>0;
+  const name=`<b>${esc((e.code?e.code+' · ':'')+(e.title||'this calibration'))}</b>`;
+  const msg=hasData?`Delete ${name}?<br><br><b style="color:#b91c1c">This permanently deletes everything in it and cannot be undone:</b><ul style="margin:6px 0 0 18px">${parts.map(p=>`<li>${p}</li>`).join('')}<li>the calibration details, roster and reference links</li></ul>`:`Delete ${name}? No one has submitted an evaluation yet, so nothing else is lost.`;
+  confirm$(hasData?'Delete Calibration Permanently':'Delete Calibration',msg,hasData?'Delete permanently':'Delete',async()=>{ try{
+    const r=await sb.from('calibration_exercises').delete().eq('id',id).select('id'); if(r.error) throw r.error;
+    if(!r.data||!r.data.length) throw new Error('This calibration could not be deleted. Only admins can delete a calibration that is no longer a draft.');
+    await AuditLog.record('delete','QA Calibration',id,`Deleted calibration ${e.code||''} ${e.title||''} (status ${e.status}${parts.length?'; removed: '+parts.map(p=>p.replace(/<[^>]+>/g,'')).join('; '):'; no data'})`);
+    disarmLeaveGuard(); _cal.view='list'; _cal.id=null; _cal.edit=null; _cal.res=null; await renderQACalibration(true); _pushAppHash(_calHash());
+    toast(hasData?'Calibration and all its data deleted.':'Calibration deleted.','success');
+  }catch(x){ _surfaceDbError(x,'Delete calibration'); } });
+}
 
 /* ── status actions ── */
 function calStatus(id,to){
@@ -25629,6 +25647,7 @@ function _calActions(e){
     if(st==='finalized'||e.archived) menu.push([`calArchive('${id}',${!e.archived})`,e.archived?'Unarchive':'Archive']);
     if(st==='draft') menu.push([`calDelete('${id}')`,'Delete draft','danger']);
   }
+  if(Auth.isAdmin&&st!=='draft') menu.push([`calDelete('${id}')`,'Delete calibration (admin)','danger']); /* v5.18i */
   return {primary,menu};
 }
 async function _calRenderDetail(root){
