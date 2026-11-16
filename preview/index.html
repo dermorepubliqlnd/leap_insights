@@ -1291,7 +1291,17 @@
     .lp-gcard:hover{box-shadow:var(--sh-lg)}
     .lp-gtitle{font-weight:700;font-size:14px;color:var(--text);margin-top:10px}
     .lp-gmeta{font-size:11.5px;color:var(--text3);margin-top:2px}
-    /* v5.19s (2026-11-16, per Sandra): create form + readiness strip */
+    /* v5.19u (2026-11-16, per Sandra's mockup): readiness card, collapsible sections, program summary */
+.lp-rd{display:flex;align-items:center;gap:18px;padding:14px 18px;margin:12px 0 6px;flex-wrap:wrap}.lp-rd-head{display:flex;align-items:center;gap:12px;min-width:230px;padding-right:18px;border-right:1px solid var(--border-lt)}
+.lp-rd-badge{width:42px;height:42px;border-radius:10px;background:#ecfdf5;color:#15803d;display:inline-flex;align-items:center;justify-content:center}.lp-rd-title{font-family:var(--font-heading,inherit);font-weight:600;font-size:14.5px}.lp-rd-sub{font-size:12px;color:#64748b;max-width:200px}
+.lp-rd-items{display:flex;flex:1;gap:8px;flex-wrap:wrap}.lp-rd-it{display:flex;align-items:center;gap:9px;background:none;border:0;padding:6px 10px;border-radius:8px;cursor:pointer;text-align:left;min-width:150px}.lp-rd-it:hover{background:#f8fafc}.lp-rd-static{cursor:default}.lp-rd-static:hover{background:none}
+.lp-rd-it>span:last-child{display:flex;flex-direction:column}.lp-rd-t{font-size:13px;font-weight:600;color:#0f172a}.lp-rd-s{font-size:12px;color:#64748b}.lp-rd-s.is-missing{color:#b45309}
+.lp-rd-ic{flex:0 0 22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:2px solid #cbd5e1}.lp-rd-ic.is-done{background:#16a34a;border-color:#16a34a}.lp-rd-ic.is-missing{border-color:#f59e0b}.lp-rd-ic.is-optional{border-style:dashed}.lp-rd-ic.is-pending{border-style:dashed;border-color:#94a3b8}.lp-rd-ic.is-ready{border-color:#2563eb;background:#dbeafe}
+.lp-rd-count{background:#f1f5f9;border-radius:10px;padding:8px 16px;text-align:center;display:flex;flex-direction:column;min-width:96px}.lp-rd-count b{font-size:17px}.lp-rd-count span{font-size:12px;color:#64748b}
+.lp-acc{padding:0;margin-top:12px}.lp-acc>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer}.lp-acc>summary::-webkit-details-marker{display:none}.lp-acc-ic{color:#475569;display:inline-flex}.lp-acc-chev{margin-left:auto;width:8px;height:8px;border-right:2px solid #64748b;border-bottom:2px solid #64748b;transform:rotate(45deg);transition:transform .15s}.lp-acc[open]>summary .lp-acc-chev{transform:rotate(-135deg)}
+.lp-acc-body{padding:0 16px 16px}.lp-acc[open]>summary{border-bottom:1px solid var(--border-lt);margin-bottom:12px}.lp-team-grid-2{grid-template-columns:1fr 1fr!important}.lp-aud-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:800px){.lp-aud-grid{grid-template-columns:1fr}}
+.lp-sum-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-lt);font-size:13px}.lp-sum-row:last-child{border-bottom:0}.lp-sum-l{color:#64748b}.lp-sum-v{text-align:right}
+/* v5.19s (2026-11-16, per Sandra): create form + readiness strip */
 .lp-create-wrap{display:grid;grid-template-columns:minmax(0,720px) 320px;gap:20px;align-items:start;margin:8px 0 24px}@media(max-width:1100px){.lp-create-wrap{grid-template-columns:1fr}}.lp-create-guide{padding:20px}.lp-cg-hd{font-family:var(--font-heading,inherit);font-weight:600;font-size:16px;margin-bottom:12px}.lp-cg-steps{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:10px}.lp-cg-steps li{display:flex;align-items:center;gap:10px;font-size:13px}.lp-cg-n{flex:0 0 26px;height:26px;border-radius:50%;background:#eff6ff;color:#1d4ed8;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}.lp-cg-note{background:#eff6ff;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#1e3a8a}.lp-create{padding:24px}.lp-create .lp-info-edit{margin-bottom:14px}.lp-create .lp-info-edit label{font-weight:600}
 .lp-create-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:640px){.lp-create-row{grid-template-columns:1fr}}
 .lp-create-own{display:flex;gap:10px;flex-wrap:wrap}.lp-own-opt{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:500!important;min-width:180px}.lp-own-opt.on{border-color:var(--primary,#2563eb);background:#eff6ff}
@@ -6243,6 +6253,34 @@ function _lpPrereqChips(d,editing){
   const all=[...progs,...items];
   return all.length?all.join(''):'<span class="lp-muted" style="font-size:12.5px">None</span>';
 }
+
+/* v5.19u (2026-11-16, per Sandra's mockup): collapsible Overview sections (open while editing). */
+let _lpAccOpen={};
+const LP_ACC_IC={users:'<path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M20 19v-1.4a3 3 0 0 0-2.2-2.9M15.5 4.9a3.2 3.2 0 0 1 0 6.2"/>',target:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/>'};
+function _lpAcc(key,title,ic,body,id=''){
+  const open=(_lpEditMode&&_lpOverviewEditing())||!!_lpAccOpen[key];
+  return `<details class="card lp-card lp-acc"${id?` id="${id}"`:''}${open?' open':''} ontoggle="_lpAccOpen['${key}']=this.open"><summary class="lp-acc-hd"><span class="lp-acc-ic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${LP_ACC_IC[ic]||''}</svg></span><span class="lp-card-t">${title}</span><span class="lp-acc-chev" aria-hidden="true"></span></summary><div class="lp-acc-body">${body}</div></details>`;
+}
+function _lpResSection(p,resEditHtml){
+  const esc=Utils.esc, res=(p.learningResources||[]).filter(x=>(x.title||'').trim());
+  const body=resEditHtml||(res.length?res.map(x=>`<div class="lp-res-row">${_lpResIcon(x)}<span class="lp-res-t">${esc(x.title)}<span class="lp-res-f">${esc(_lpResFmtLabel(x))}</span></span><span class="lp-res-d">${x.updatedAt?'Updated '+esc(Utils.formatDate(String(x.updatedAt).slice(0,10))):''}</span></div>`).join(''):'<div class="lp-muted" style="font-size:12.5px">No learning resources yet.</div>');
+  return _lpAcc('res',`Learning Resources${res.length?` <span class="lp-count-chip">${res.length}</span>`:''}`,'book',body+'<div class="lp-muted" style="font-size:11px;margin-top:8px">Titles only; files stay in the Program Folder. No version change.</div>');
+}
+function _lpSummaryHtml(p,o){
+  const esc=Utils.esc, row=(ic,l,v)=>`<div class="lp-sum-row"><span class="lp-sum-l">${l}</span><span class="lp-sum-v">${v}</span></div>`;
+  const draft=p.status==='draft';
+  const dates=draft?(p.supersedesProgramId?`Planned ${esc(Utils.formatDate(p.effectiveFrom))}`:'<span class="lp-muted">Set when activated</span>'):`${esc(Utils.formatDate(p.effectiveFrom))} – ${p.effectiveTo?esc(Utils.formatDate(p.effectiveTo)):'Present'}`;
+  const folder=_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-resource-link" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer">Open folder ↗</a>`:'<span class="lp-muted">Not linked</span>';
+  return `<div class="card lp-card lp-side-card lp-sum"><div class="lp-card-hd"><span class="lp-card-t">Program Summary</span></div>
+    ${row('','Version',`${esc(_lpVerLabel(p))} <span class="lp-muted">(${draft?'Draft':p.status==='inactive'?'Archived':'Active'})</span>`)}
+    ${row('','Total Duration',esc(_lpDurationText(o.minutes))+' <span class="lp-muted">from Curriculum</span>')}
+    ${row('','Total Topics',`${o.topics} <span class="lp-muted">(${o.parts} part${o.parts===1?'':'s'})</span>`)}
+    ${row('','Implementations',o.impl?`<button type="button" class="lp-link-btn" style="margin:0" onclick="lpSetTab('impl')">${o.impl} session${o.impl===1?'':'s'}</button>`:'0')}
+    ${row('','Effective Dates',dates)}
+    ${row('','Program Folder',folder)}
+    ${row('','Last Updated',p.updatedAt?`${esc(Utils.formatDate(p.updatedAt.slice(0,10)))}${p.updatedBy?` <span class="lp-muted">· ${esc(_lpName(p.updatedBy))}</span>`:''}`:'—')}
+  </div>`;
+}
 function _lpTeamHtml(p){
   const esc=Utils.esc;
   const shell=(body,right='')=>`<div class="card lp-card lp-team-card" id="lp-team-card"><div class="lp-card-hd"><div><span class="lp-card-t">Program Ownership &amp; Delivery Team</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Who owns the program, its subject matter experts, and who is accredited to facilitate it. Changes here never create a new version.</div></div>${right}</div>${body}</div>`;
@@ -6253,21 +6291,19 @@ function _lpTeamHtml(p){
   const depts=Sel.active(Store.DEPARTMENTS), curDept=d.ownerDepartmentId&&!depts.some(x=>x.id===d.ownerDepartmentId)?Sel.byId(Store.DEPARTMENTS,d.ownerDepartmentId):null;
   const auds=Sel.active(Store.AUDIENCES), audIds=d.audienceIds||[];
   const audView=audIds.length?audIds.map(id=>`<span class="lp-chip">${esc(Sel.nameOf(Store.AUDIENCES,id)||'Audience unavailable')}</span>`).join(''):'<span class="lp-muted" style="font-size:12.5px">Not set</span>';
-  const col1=`<div class="lp-team-col">
-    <div class="lp-team-block"><div class="lp-team-h">Program Ownership${editing?' <span class="req">*</span>':''}</div><div class="lp-team-sub">Accountability for the program, not who facilitates it.</div>
+  const ownBlock=`<div class="lp-team-block"><div class="lp-team-h">Program Ownership${editing?' <span class="req">*</span>':''}</div><div class="lp-team-sub">Accountability for the program, not who facilitates it.</div>
       ${editing?`<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><input type="radio" name="lp-own" value="ld" ${d.ownership==='ld'?'checked':''} onchange="lpTeamSetOwnership('ld')"> L&amp;D</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><input type="radio" name="lp-own" value="non_ld" ${d.ownership==='non_ld'?'checked':''} onchange="lpTeamSetOwnership('non_ld')"> Non-L&amp;D</label>
         ${d.ownership==='non_ld'?`<select id="lp-own-dept" class="form-control" onchange="_lpTeamDraft.ownerDepartmentId=this.value||null"><option value="">— Select department —</option>${[...depts,...(curDept?[curDept]:[])].map(x=>`<option value="${esc(x.id)}" ${x.id===d.ownerDepartmentId?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`:''}
         ${!d.ownership?'<div class="lp-muted" style="font-size:11.5px;margin-top:4px">Currently not classified.</div>':''}`:_lpOwnershipText(d)}
-    </div>
-    <div class="lp-team-block"><div class="lp-team-h">Target Audience</div>
+    </div>`;
+  const audBlock=`<div class="lp-team-block"><div class="lp-team-h">Target Audience</div>
       ${editing?`<div class="lp-checklist">${auds.length?auds.map(a=>`<label><input type="checkbox" ${audIds.includes(a.id)?'checked':''} onchange="lpTeamToggleAudience('${esc(a.id)}',this.checked)"> ${esc(a.name)}</label>`).join(''):'<span class="lp-muted" style="font-size:12px">No audiences in Settings → Lists.</span>'}</div>`:`<div style="margin-top:4px">${audView}</div>`}
     </div>
     <div class="lp-team-block" style="margin-bottom:0"><div class="lp-team-h">Prerequisites</div>
       <div id="lp-prereq-chips" style="margin-top:4px">${_lpPrereqChips(d,editing)}</div>
       ${editing?`<div class="lp-pick"><input type="text" class="form-control" id="lp-pick-prereq" placeholder="Search programs or type a prerequisite…" autocomplete="off" oninput="lpPickInput('prereq',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lpTeamPrereqAddTyped();}"><div class="lp-pick-res" id="lp-pick-res-prereq"></div></div>`:''}
-    </div>
-  </div>`;
+    </div>`;
   // Columns 2-3: SMEs and facilitators (saved immediately; available whenever the program is editable)
   /* v5.04 (2026-10-15, per Sandra): compact person rows -- avatar, name, role/source, accreditation badge (facilitators)
      and a three-dot menu. Status changes go through Edit Accreditation; removing only unlinks the person from this program. */
@@ -6289,7 +6325,12 @@ function _lpTeamHtml(p){
     </div>`;
   };
   const draftPeople=`<div class="lp-team-col"><div class="lp-team-h">Subject Matter Experts</div><div class="lp-team-sub">Added after the draft is first saved.</div></div><div class="lp-team-col"><div class="lp-team-h">Accredited Facilitators</div><div class="lp-team-sub">Added after the draft is first saved.</div></div>`;
-  return shell(`<div class="lp-team-grid">${col1}${isDraft?draftPeople:peopleCol('sme')+peopleCol('facilitator')}</div>${can?'<div class="lp-muted" style="font-size:11px;margin-top:8px">SME and facilitator changes are saved as you make them. Ownership, audience and prerequisites are saved with the page.</div>':''}`,right);
+  // v5.19u (2026-11-16, per Sandra's mockup): two collapsible sections; facilitators hidden for self-led unless already set (H8).
+  const slt=!!p.deliveryType&&_lpProgramTypeValue(p.deliveryType)==='SLT', showFac=!slt||LpPeopleDB.forFamily(fid,'facilitator').length>0;
+  const note=can?'<div class="lp-muted" style="font-size:11px;margin-top:8px">SMEs and facilitators are saved instantly and apply to all versions. Ownership is saved with the page.</div>':'';
+  const own=_lpAcc('team','Ownership &amp; Delivery Team','users',`<div class="lp-team-grid${showFac?'':' lp-team-grid-2'}"><div class="lp-team-col">${ownBlock}</div>${isDraft?draftPeople:peopleCol('sme')+(showFac?peopleCol('facilitator'):'')}</div>${note}`,'lp-team-card');
+  const aud=_lpAcc('aud','Target Audience &amp; Prerequisites','target',`<div class="lp-aud-grid">${audBlock}</div>`);
+  return own+aud;
 }
 function _lpBindTeamDraft(w){
   if(!w){ _lpTeamDraft=null; return; }
@@ -7032,39 +7073,33 @@ function _lpDetailHtml(p){
   const durationText=_lpDurationText(_lpAgendaMinutes(p.agenda));
   const help=(tip)=>`<span class="lp-help" tabindex="0" data-tip="${esc(tip)}" aria-label="Help">i</span>`;
   const readField=(label,value,tip='')=>`<div class="lp-pi-read"><div class="lp-info-l">${label}${tip?help(tip):''}</div><div class="lp-info-v">${value}</div></div>`;
+  const resEditHtml=ed?(_lpV504Ready()?`<div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Learning Resources ${help('Titles of the materials used in this program (e.g., Facilitator Guide, Learner Handout). Titles only; files stay in the program folder. Shown on the Curriculum & Agenda tab. No version change.')}</div>
+        <div id="lp-res-edit" class="lp-res-edit">${(p.learningResources||[]).map((x,i)=>`<div class="lp-res-erow">${_lpResIcon(x)}<select class="form-control lp-tin" style="width:190px;flex-shrink:0" aria-label="Resource format" onchange="lpResFormat(${i},this.value)"${dis(edDetails)}>${LP_RES_FORMATS.map(f=>`<option value="${f[0]}"${(x.format||'online')===f[0]?' selected':''}>${esc(f[1])}</option>`).join('')}</select>${x.format==='other'?`<input class="form-control lp-tin" style="width:150px;flex-shrink:0" type="text" maxlength="60" value="${esc(x.formatOther||'')}" placeholder="Specify format" oninput="lpResFormatOther(${i},this.value)"${dis(edDetails)}>`:''}<input class="form-control lp-tin" type="text" maxlength="150" value="${esc(x.title||'')}" placeholder="Resource title (e.g., Facilitator Guide)" oninput="lpResEdit(${i},this.value)"${dis(edDetails)}>${edDetails?`<button type="button" class="lp-icon-btn" title="Remove resource" aria-label="Remove resource" onclick="lpResRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</div>`).join('')}</div>
+        ${edDetails?`<button type="button" class="lp-add-topic" style="margin-top:6px" onclick="lpResAdd()">+ Add Resource</button>`:''}</div>`:''):''; // v5.19u: resources edited in their own section
   const info=`<div class="card lp-card lp-program-info"><div class="lp-card-hd lp-info-header"><span class="lp-card-t">Program Information</span></div><div class="lp-program-info-body">
     ${ed?`<div class="lp-program-info-sub">Provide the basic details about this learning program.</div><div class="lp-pi-grid">
-      <div class="lp-pi-field lp-pi-span-12"><label for="lp-d-title">Program Title *</label><input id="lp-d-title" class="form-control" type="text" value="${esc(p.title||'')}"${dis(edRev)}></div>
+      <div class="lp-pi-field lp-pi-span-8"><label for="lp-d-title">Program Title *</label><input id="lp-d-title" class="form-control" type="text" value="${esc(p.title||'')}"${dis(edRev)}></div>
+      <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Program ID ${help('Generated automatically when the program is first saved.')}</div><input class="form-control" type="text" value="${esc(p.code||'—')}" readonly aria-label="Program ID, read only"></div>
       <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-cat','Category'+(p.status==='draft'?'':' *'),[...cats,...(currentCat?[currentCat]:[])].map(c=>[c.id,c.name]),p.categoryId,dis(edDetails))}</div>
       <div class="lp-pi-field lp-pi-span-6">${draftSelect('lp-d-type','Delivery Type'+(p.status==='draft'?'':' *'),types.map(t=>[t,_lpProgramTypeLabel(t)]),programType,'onchange="lpProgramTypeChanged(this.value)"'+dis(edFull))}</div>
-      <div id="lp-checklist-row" class="lp-pi-field lp-pi-span-6">${selfLedType?`<div class="lp-pi-label">Default Trainer Checklist ${help('Trainer checklists apply only to instructor-led programs.')}</div><input class="form-control" type="text" value="Not applicable" readonly aria-label="Default Trainer Checklist, not applicable for self-led programs" style="background:#f1f5f9;color:#64748b">`:draftSelect('lp-d-checklist','Default Trainer Checklist',checklistOptions.map(t=>[t.id,t.title+(t.isActive?'':' (inactive)')]),p.checklistTemplateId,dis(edDetails))}</div>
+      <div id="lp-checklist-row" class="lp-pi-field lp-pi-span-6">${selfLedType?`<div class="lp-pi-label">Default Trainer Checklist</div><div class="lp-muted" style="padding:7px 0">Not applicable for self-led programs</div>`:draftSelect('lp-d-checklist','Default Trainer Checklist',checklistOptions.map(t=>[t.id,t.title+(t.isActive?'':' (inactive)')]),p.checklistTemplateId,dis(edDetails))}</div>
 
-      <div class="lp-pi-divider"><div class="lp-pi-section-title">Program Details</div><div class="lp-pi-section-sub">System-generated and additional information for this program.</div></div>
-
-      <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Program ID ${help('Generated automatically when the program is first saved.')}</div><input class="form-control" type="text" value="${esc(draft?'Assigned when saved':p.code||'—')}" readonly aria-label="Program ID, read only"></div>
-      <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Version ${help('This identifies the current program version. Used implementations are version locked; content changes then require a new version.')}</div><input class="form-control" type="text" value="${esc(_lpVerLabel(p))}" readonly aria-label="Version, read only"></div>
-      <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Duration ${help('Calculated automatically from the total duration of agenda topics. Enter each agenda topic duration in minutes; LEAP calculates the total.')}</div><input id="lp-duration-value" class="form-control" type="text" value="${esc(durationText)}" readonly aria-label="Duration, calculated from agenda"></div>
-
-      ${p.status==='draft'?`<div class="lp-pi-field lp-pi-span-12"><label>Starts</label><div class="lp-muted" style="padding:7px 0">${p.supersedesProgramId?`Planned ${esc(Utils.formatDate(p.effectiveFrom))} · confirmed when activated`:'Set when the program is activated'}</div></div>`:`<div class="lp-pi-field lp-pi-span-6"><label for="lp-d-from">Effective From *</label><input id="lp-d-from" class="form-control" type="date" value="${esc(p.effectiveFrom||'')}"${dis(edFull&&!smart)}></div>
+      ${p.status==='draft'?'':`<div class="lp-pi-field lp-pi-span-6"><label for="lp-d-from">Effective From *</label><input id="lp-d-from" class="form-control" type="date" value="${esc(p.effectiveFrom||'')}"${dis(edFull&&!smart)}></div>
       <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-to">Effective To</label><input id="lp-d-to" class="form-control" type="date" value="${esc(p.effectiveTo||'')}"${dis(edFull&&!smart)}><div class="lp-pi-helper">Leave blank while the program remains current.</div></div>`}
 
       <div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Program Folder ${help('Link to the shared folder with the program source files, facilitator materials and references.')}</div><div class="lp-pi-resource-wrap"><input id="lp-resource-url" class="form-control" aria-label="Program folder link" type="url" inputmode="url" value="${esc(p.resourceUrl||'')}" placeholder="https://…"${dis(edDetails)}>${_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-pi-resource-open" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer" title="Open program folder">↗</a>`:''}</div><div class="lp-pi-helper">Link to the shared folder with the program's source files, facilitator materials and references.</div></div>
-      ${_lpV504Ready()?`<div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Learning Resources ${help('Titles of the materials used in this program (e.g., Facilitator Guide, Learner Handout). Titles only; files stay in the program folder. Shown on the Curriculum & Agenda tab. No version change.')}</div>
-        <div id="lp-res-edit" class="lp-res-edit">${(p.learningResources||[]).map((x,i)=>`<div class="lp-res-erow">${_lpResIcon(x)}<select class="form-control lp-tin" style="width:190px;flex-shrink:0" aria-label="Resource format" onchange="lpResFormat(${i},this.value)"${dis(edDetails)}>${LP_RES_FORMATS.map(f=>`<option value="${f[0]}"${(x.format||'online')===f[0]?' selected':''}>${esc(f[1])}</option>`).join('')}</select>${x.format==='other'?`<input class="form-control lp-tin" style="width:150px;flex-shrink:0" type="text" maxlength="60" value="${esc(x.formatOther||'')}" placeholder="Specify format" oninput="lpResFormatOther(${i},this.value)"${dis(edDetails)}>`:''}<input class="form-control lp-tin" type="text" maxlength="150" value="${esc(x.title||'')}" placeholder="Resource title (e.g., Facilitator Guide)" oninput="lpResEdit(${i},this.value)"${dis(edDetails)}>${edDetails?`<button type="button" class="lp-icon-btn" title="Remove resource" aria-label="Remove resource" onclick="lpResRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</div>`).join('')}</div>
-        ${edDetails?`<button type="button" class="lp-add-topic" style="margin-top:6px" onclick="lpResAdd()">+ Add Resource</button>`:''}</div>`:''}
+
 
       <div class="lp-pi-field lp-pi-span-12"><label for="lp-desc">Program Description</label><textarea id="lp-desc" class="form-control lp-pi-desc" rows="4"${dis(edDetails)} placeholder="What the program is for, who it's for, and the outcomes it targets.">${esc(p.description||'')}</textarea></div>
       ${_lpDraftError?`<div class="lp-form-error lp-pi-span-12" role="alert">${esc(_lpDraftError)}</div>`:''}
     </div>`:`<div class="lp-pi-grid lp-pi-compact">
-      <div class="lp-pi-span-12">${readField('Program Title',esc(p.title||'—'))}</div>
+      <div class="lp-pi-span-8">${readField('Program Title',esc(p.title||'—'))}</div>
+      <div class="lp-pi-span-4">${readField('Program ID',esc(p.code||'—'))}</div>
       <div class="lp-pi-span-4">${readField('Category',esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—'))}</div>
-      <div class="lp-pi-span-4">${readField('Delivery Type',esc(_lpProgramTypeLabel(p.deliveryType)))}</div>
-      <div class="lp-pi-span-4">${readField('Duration',esc(durationText)+(Number(p.deliveryParts||1)>1?` <span class="lp-muted">(${Number(p.deliveryParts)} delivery parts)</span>`:'')+' <span class="lp-muted">· from Curriculum</span>','Calculated from the agenda.')}</div>
-      <div class="lp-pi-span-12">${readField('Program Description',p.description?esc(p.description).replace(/\n/g,'<br>'):'<span class="lp-muted">No description yet.</span>')}</div>
-      <div class="lp-pi-span-4">${readField('Default Trainer Checklist',selfLedType?'Not applicable':esc(checklistName),'Trainer checklists apply only to instructor-led programs.')}</div>
-      <div class="lp-pi-span-4">${readField('Effective From',p.effectiveFrom?Utils.formatDate(p.effectiveFrom):'—')}</div>
-      <div class="lp-pi-span-4">${readField('Effective To',p.effectiveTo?Utils.formatDate(p.effectiveTo):'No end date')}</div>
+      <div class="lp-pi-span-4">${readField('Delivery Type',p.deliveryType?esc(_lpProgramTypeLabel(p.deliveryType)):'<span class="lp-muted">Not selected</span>')}</div>
+      <div class="lp-pi-span-4">${selfLedType?'':readField('Default Trainer Checklist',esc(checklistName))}</div>
       <div class="lp-pi-span-12">${readField('Program Folder',_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-resource-link" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer">Open program folder ↗</a>`:'<span class="lp-muted">No folder linked</span>','Shared folder with the program source files, facilitator materials and references.')}</div>
+      <div class="lp-pi-span-12">${readField('Program Description',p.description?esc(p.description).replace(/\n/g,'<br>'):'<span class="lp-muted">No description yet.</span>')}</div>
     </div>`}
   </div></div>`;
   // Contributors are dated assignments (v5.00). Managed directly on the page (saved immediately)
@@ -7223,7 +7258,8 @@ function _lpDetailHtml(p){
     const qd=(l,v)=>`<div class="lp-qd-row"><span>${l}</span><span>${v}</span></div>`;
     const quick=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Quick Details</span></div>
       ${qd('Program ID',esc(draft?'Assigned when saved':p.code||'—'))}${qd('Version',esc(_lpVerLabel(p)))}${qd('Status',_lpStatusBadge(p))}${qd('Delivery Type',p.deliveryType?esc(_lpProgramTypeLabel(p.deliveryType)):'<span class="lp-muted">— Not selected —</span>')}${qd('Total Topics',`${totalTopicCount} <span class="lp-muted">(${partCount} part${partCount===1?'':'s'})</span>`)}${qd('Total Duration',esc(_lpDurationText(totalAgendaMinutes)))}${qd('Last Updated',p.updatedAt?`${esc(Utils.formatDate(p.updatedAt.slice(0,10)))}${p.updatedBy?`<br><span class="lp-muted">${esc(_lpName(p.updatedBy))}</span>`:''}`:'—')}</div>`;
-    body=`<div class="lp-ov2"><div class="lp-ov2-main">${info}${_lpTeamHtml(p)}</div><div class="lp-ov2-side">${contrib}${implCard}${quick}</div></div>`;
+    const summary=_lpSummaryHtml(p,{minutes:totalAgendaMinutes,topics:totalTopicCount,parts:partCount,impl:sess.length});
+    body=`<div class="lp-ov2"><div class="lp-ov2-main">${info}${_lpTeamHtml(p)}${_lpV504Ready()?_lpResSection(p,resEditHtml):''}</div><div class="lp-ov2-side">${summary}${contrib}</div></div>`;
   }
   return head+body;
 }
@@ -7306,10 +7342,18 @@ function _lpReadiness(p){
   });
 }
 function _lpReadinessHtml(p){
+  // v5.19u (2026-11-16, per Sandra's mockup): Program Readiness card with grouped areas and a count box.
   if(!p||p.status!=='draft') return '';
-  const r=_lpReadiness(p), req=r.filter(x=>x.state==='done'||x.state==='missing'), done=req.filter(x=>x.state==='done').length, esc=Utils.esc;
-  const ic={done:'&#10003;',missing:'&#9675;',optional:'&#8211;',na:'&#8211;'}, st={done:'Done',missing:'Missing',optional:'Optional',na:'Not applicable'};
-  return `<div class="lp-ready" role="region" aria-label="Ready to activate"><div class="lp-ready-hd"><b>Ready to activate?</b> <span class="lp-muted">${done} of ${req.length} required done</span></div><div class="lp-ready-items">${r.map(x=>`<button type="button" class="lp-ready-it is-${x.state}" onclick="lpSetTab('${x.tab}')"${x.msgs.length?` data-tip="${esc(x.msgs.join(' · ')).replace(/"/g,'&quot;')}"`:''}><span class="lp-ready-ic">${ic[x.state]}</span>${esc(x.label)} <span class="lp-ready-st">${st[x.state]}${x.msgs.length>1?` (${x.msgs.length})`:''}</span></button>`).join('')}</div></div>`;
+  const r=_lpReadiness(p), by=k=>r.find(x=>x.k===k), esc=Utils.esc;
+  const grp=(label,keys,tab)=>{ const xs=keys.map(by).filter(x=>x&&x.state!=='na'); const miss=xs.filter(x=>x.state==='missing'); const opt=xs.length&&xs.every(x=>x.state==='optional');
+    return {label,tab,state:miss.length?'missing':opt?'optional':'done',msgs:miss.flatMap(x=>x.msgs)}; };
+  const g=[grp('Program Information',['info','folder','delivery'],'overview'),grp('Ownership & Team',['own','contrib'],'overview'),grp('Curriculum & Agenda',['curr'],'curriculum'),grp('Evaluations',['evals'],'evals')];
+  const req=g.filter(x=>x.state!=='optional'), done=req.filter(x=>x.state==='done').length, ready=done===req.length;
+  const sub={done:'Completed',missing:'Needs attention',optional:'Optional'};
+  const ic=st=>st==='done'?'<span class="lp-rd-ic is-done"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>':st==='pending'?'<span class="lp-rd-ic is-pending"></span>':st==='ready'?'<span class="lp-rd-ic is-ready"></span>':`<span class="lp-rd-ic is-${st}"></span>`;
+  const item=x=>`<button type="button" class="lp-rd-it" onclick="lpSetTab('${x.tab}')"${x.msgs.length?` data-tip="${esc(x.msgs.join(' · ')).replace(/"/g,'&quot;')}"`:''}>${ic(x.state)}<span><span class="lp-rd-t">${esc(x.label)}</span><span class="lp-rd-s is-${x.state}">${sub[x.state]}${x.msgs.length>1?` (${x.msgs.length})`:''}</span></span></button>`;
+  const act=`<div class="lp-rd-it lp-rd-static">${ic(ready?'ready':'pending')}<span><span class="lp-rd-t">Activation</span><span class="lp-rd-s">${ready?'Ready to activate':'Pending'}</span></span></div>`;
+  return `<div class="lp-rd card" role="region" aria-label="Program readiness"><div class="lp-rd-head"><span class="lp-rd-badge"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 13l2 2 4-4"/></svg></span><div><div class="lp-rd-title">Program Readiness</div><div class="lp-rd-sub">Complete the key requirements before activating.</div></div></div><div class="lp-rd-items">${g.map(item).join('')}${act}</div><div class="lp-rd-count"><b>${done} of ${req.length}</b><span>completed</span></div></div>`;
 }
 function _lpActivateBtn(p){
   if(!p||p.status!=='draft'||!lpCanEdit()||_lpEditMode) return '';
