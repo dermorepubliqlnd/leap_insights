@@ -6777,10 +6777,9 @@ function _lpRowMenu(p,detail=false){
       ${detail?'':`<div class="td-viewmenu-item" onclick="lpOpen('${p.id}')">Open</div>`}
       ${detail&&can?(()=>{ /* v5.04c (2026-10-15, per Sandra): edit lives in the Actions menu (one entry per tab). */
         const lk=_lpVersionLocked(p), it=(tab,scope,label,title='')=>`<div class="td-viewmenu-item" ${title?`title="${Utils.esc(title)}"`:''} onclick="lpStartEdit('${p.id}',false,'${scope}','${tab}')">${label}</div>`;
-        return it('overview',lk?'details':'full','Edit Overview',lk?'Program details, ownership, SMEs, facilitators and contributors. No version change.':'')
-          +(lk?it('curriculum','revision','Log Minor Revision',`Curriculum wording, timing or order with the same topics and total duration. Saved as ${(p.version||'v1')+'.'+(Number(p.revision||0)+1)}.`):it('curriculum','full','Edit Curriculum &amp; Agenda'))
-          +(lk?'':it('evals','full','Edit Evaluations'))
-          +'<div style="border-top:1px solid var(--border-lt);margin:4px 0"></div>';
+        // v5.19r (2026-11-16, per Sandra; Assessment 04 H10): editing moved to the visible Edit button in the header;
+        // Actions keeps the lifecycle items (minor revision, new version / discontinue, delete).
+        return lk?it('curriculum','revision','Log Minor Revision',`Curriculum wording, timing or order with the same topics and total duration. Saved as ${(p.version||'v1')+'.'+(Number(p.revision||0)+1)}.`)+'<div style="border-top:1px solid var(--border-lt);margin:4px 0"></div>':'';
       })():''}
       ${can&&!detail&&!_lpVersionLocked(p)?`<div class="td-viewmenu-item" onclick="lpOpenForm('${p.id}')" title="${_lpHasUsedSessions(p)?'Setup Mode: versioning is paused, so changes save in place on this version.':'Active programs can be corrected until their first Scheduled or Completed implementation.'}">${p.status==='active'?(_lpHasUsedSessions(p)?'Edit Program (Setup Mode)':'Edit Program Setup'):'Edit Draft'}</div>`:''}
       ${can&&!detail&&p.status==='active'&&_lpVersionLocked(p)?`${detail?'':`<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'details')" title="Resource link, description, category and default checklist. No version change.">Edit Details</div>`}<div class="td-viewmenu-item" onclick="lpStartEdit('${p.id}',false,'revision','curriculum')" title="Title and agenda wording, timing or order. Same topics, same total duration. Saved as ${Utils.esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}.">Log Minor Revision</div>`:''}
@@ -6938,6 +6937,28 @@ function lpUnmapSession(id){
   });
 }
 function _lpInfoRow(icon,label,val,valueId='',valueClass=''){ return `<div class="lp-info-row"><span class="lp-info-ic">${_lpIc(icon)}</span><span class="lp-info-l">${label}</span><span class="lp-info-v${valueClass?' '+valueClass:''}"${valueId?` id="${valueId}"`:''}>${val}</span></div>`; }
+/* v5.19r (2026-11-16, per Sandra; Assessment 04 Phase 1) */
+// Header Edit button: edits the tab you are on (Overview / Curriculum / Evaluations). Hidden on Implementations and Audit Log.
+function _lpHeaderEditBtn(p,editBtn){
+  if(!['overview','curriculum','evals'].includes(_lpTab)) return '';
+  if(_lpTab==='curriculum'&&_lpVersionLocked(p)) return ''; // in use: "Log Minor Revision" stays in Actions
+  return editBtn(_lpTab)||'';
+}
+// Shows how this version relates to its sibling: a draft that will replace the live version, or a live version with a newer draft.
+function _lpVersionRelChip(p){
+  if(!p||p.id==='__draft__') return '';
+  const esc=Utils.esc, fam=_lpFamilyId(p), all=LearningProgramDB.all().filter(v=>_lpFamilyId(v)===fam&&v.id!==p.id);
+  const chip=(t,tip,bg,fg)=>`<span class="badge" style="background:${bg};color:${fg}" title="${esc(tip)}">${esc(t)}</span>`;
+  if(p.status==='draft'&&p.supersedesProgramId){
+    const pred=LearningProgramDB.byId(p.supersedesProgramId);
+    if(pred&&pred.status==='active') return chip(`${pred.version} is live`,`${pred.code} ${pred.version} stays active and schedulable until this version is activated; it then ends the day before this version starts.`,'#dcfce7','#15803d');
+  }
+  if(p.status==='active'){
+    const next=all.find(v=>v.status==='draft'&&v.supersedesProgramId===p.id);
+    if(next) return chip(`Draft ${next.version} in progress`,`A newer version (${next.version}) is being prepared. This version stays live until it is activated.`,'#fef3c7','#92400e');
+  }
+  return '';
+}
 function _lpDetailHtml(p){
   const can=lpCanEdit(), esc=Utils.esc;
   const draft=p.id==='__draft__';
@@ -6972,12 +6993,12 @@ function _lpDetailHtml(p){
     <div class="lp-dhead">
       <div style="min-width:0">
         ${!draft&&p.code?`<div class="lp-code" style="margin-bottom:2px">${esc(p.code)}</div>`:''}
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${draft?'New Learning Program':esc(p.title)}</h2>${draft?'':_lpStatusBadge(p)}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="lp-dtitle">${draft?'New Learning Program':esc(p.title)}</h2>${draft?'':_lpStatusBadge(p)}${draft?'':_lpVersionRelChip(p)}</div>
         <div class="lp-dmeta">${draft?'Create the program record first. Contributors, curriculum and evaluations can be completed before activation.':`${esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—')} · ${esc(_lpProgramTypeLabel(p.deliveryType))} · Version ${esc(_lpVerLabel(p).replace(/^v/i,''))} ${helpTip(verTip)}${implCount?` · <a href="javascript:void(0)" class="lp-impl-link" onclick="lpSetTab('impl')">${implCount} implementation${implCount===1?'':'s'} →</a>`:''}`}${lpSetupModeForMe()&&!archived?` <span class="badge lp-setup-chip" title="Versioning is paused for everyone who can edit programs. Changes save in place on this version and are tagged [Setup Mode] in the Audit Log. An admin can turn it off in Settings → Learning Programs.">SETUP MODE · versioning paused</span>`:''}</div>
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
       </div>
       <div class="lp-hd-actions">
-        ${ed?`<button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${saveLabel}</button>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700" title="Archived program details cannot be edited. Administrators may link past sessions on Implementations.">READ ONLY</span>':can?_lpRowMenu(p,true):'')}
+        ${ed?`<button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${saveLabel}</button>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700" title="Archived program details cannot be edited. Administrators may link past sessions on Implementations.">READ ONLY</span>':can?_lpHeaderEditBtn(p,editBtn)+_lpRowMenu(p,true):'')}
       </div>
     </div>
     ${ed&&scope==='details'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Editing Overview</b> · Category, description, program folder, checklist, ownership, SMEs, facilitators and contributors. No version change; changes are recorded in the Audit Log.</div>`:''}
@@ -7024,7 +7045,7 @@ function _lpDetailHtml(p){
       <div class="lp-pi-span-12">${readField('Program Title',esc(p.title||'—'))}</div>
       <div class="lp-pi-span-4">${readField('Category',esc(Sel.nameOf(Store.CATEGORIES,p.categoryId)||'—'))}</div>
       <div class="lp-pi-span-4">${readField('Delivery Type',esc(_lpProgramTypeLabel(p.deliveryType)))}</div>
-      <div class="lp-pi-span-4">${readField('Duration',esc(durationText)+(Number(p.deliveryParts||1)>1?` <span class="lp-muted">(${Number(p.deliveryParts)} delivery parts)</span>`:''),'Calculated from the agenda.')}</div>
+      <div class="lp-pi-span-4">${readField('Duration',esc(durationText)+(Number(p.deliveryParts||1)>1?` <span class="lp-muted">(${Number(p.deliveryParts)} delivery parts)</span>`:'')+' <span class="lp-muted">· from Curriculum</span>','Calculated from the agenda.')}</div>
       <div class="lp-pi-span-12">${readField('Program Description',p.description?esc(p.description).replace(/\n/g,'<br>'):'<span class="lp-muted">No description yet.</span>')}</div>
       <div class="lp-pi-span-4">${readField('Default Trainer Checklist',selfLedType?'Not applicable':esc(checklistName),'Trainer checklists apply only to instructor-led programs.')}</div>
       <div class="lp-pi-span-4">${readField('Effective From',p.effectiveFrom?Utils.formatDate(p.effectiveFrom):'—')}</div>
@@ -7187,7 +7208,7 @@ function _lpDetailHtml(p){
       <div class="lp-muted" style="font-size:11px;margin-top:8px">All versions of this program.</div></div>`;
     const qd=(l,v)=>`<div class="lp-qd-row"><span>${l}</span><span>${v}</span></div>`;
     const quick=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Quick Details</span></div>
-      ${qd('Program ID',esc(draft?'Assigned when saved':p.code||'—'))}${qd('Version',esc(_lpVerLabel(p)))}${qd('Status',_lpStatusBadge(p))}${qd('Delivery Type',esc(_lpProgramTypeLabel(p.deliveryType)))}${qd('Total Topics',`${totalTopicCount} <span class="lp-muted">(${partCount} part${partCount===1?'':'s'})</span>`)}${qd('Total Duration',esc(_lpDurationText(totalAgendaMinutes)))}${qd('Last Updated',p.updatedAt?`${esc(Utils.formatDate(p.updatedAt.slice(0,10)))}${p.updatedBy?`<br><span class="lp-muted">${esc(_lpName(p.updatedBy))}</span>`:''}`:'—')}</div>`;
+      ${qd('Program ID',esc(draft?'Assigned when saved':p.code||'—'))}${qd('Version',esc(_lpVerLabel(p)))}${qd('Status',_lpStatusBadge(p))}${qd('Delivery Type',p.deliveryType?esc(_lpProgramTypeLabel(p.deliveryType)):'<span class="lp-muted">— Not selected —</span>')}${qd('Total Topics',`${totalTopicCount} <span class="lp-muted">(${partCount} part${partCount===1?'':'s'})</span>`)}${qd('Total Duration',esc(_lpDurationText(totalAgendaMinutes)))}${qd('Last Updated',p.updatedAt?`${esc(Utils.formatDate(p.updatedAt.slice(0,10)))}${p.updatedBy?`<br><span class="lp-muted">${esc(_lpName(p.updatedBy))}</span>`:''}`:'—')}</div>`;
     body=`<div class="lp-ov2"><div class="lp-ov2-main">${info}${_lpTeamHtml(p)}</div><div class="lp-ov2-side">${contrib}${implCard}${quick}</div></div>`;
   }
   return head+body;
@@ -7760,7 +7781,9 @@ function _lpCapturePageFields(){
 }
 function lpCancelDraft(){
   if(!_lpDraft&&!_lpWorking) return;
-  confirm$('Discard program changes?','Leave without saving the changes on this page?','Discard',()=>{
+  // v5.19r (2026-11-16, per Sandra; Assessment 04 Phase 1): say what Discard does not undo.
+  const keepNote=_lpDraft?'':' SMEs, accredited facilitators and L1 targets you changed were saved as you made them and will stay.';
+  confirm$('Discard program changes?','Leave without saving the changes on this page?'+keepNote,'Discard',()=>{
     const wasNew=!!_lpDraft;
     _lpDraft=null; _lpWorking=null; _lpTeamDraft=null; if(wasNew) _lpDetailId=null;
     _lpEditMode=false; _lpEditScope='full'; _lpDraftError=''; renderLearningPrograms(); _syncHashForCurrentView();
@@ -8004,7 +8027,7 @@ function renderLearningPrograms(){
   root.innerHTML=p?_lpDetailHtml(p):_lpListHtml();
   if(!document.getElementById('view-learning-programs')?.classList.contains('hidden')) document.getElementById('topbar-acts').innerHTML=_lpTopbarHtml();
 }
-function _lpTopbarHtml(){ return lpCanEdit()&&!_lpDetailId?`<button class="btn btn-primary" onclick="lpStartDraft()">+ Add Training Program</button>`:''; }
+function _lpTopbarHtml(){ return lpCanEdit()&&!_lpDetailId?`<button class="btn btn-primary" onclick="lpStartDraft()">+ Add Learning Program</button>`:''; }
 
 function onDashRangeChange(){
   const v=document.getElementById('dash-range')?.value;
