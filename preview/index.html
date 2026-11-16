@@ -7604,7 +7604,8 @@ function lpToggleStatus(id){
   const nextDay=_isoLocal(next);
   const futureCount=_lpMappedSessions(id).filter(s=>s.trainingDate&&s.trainingDate>=_todayStr()).length;
   // v5.19p (2026-11-16, per Sandra; Assessment 01 F5) — Preview: a new version is drafted WITHOUT closing this one.
-  if(window.LEAP_CHANNEL==='preview') return _lpNewVersionDialogPv(p,nextDay);
+  // v5.19q (2026-11-16, per Sandra): released to Live — all channels use the new flow.
+  return _lpNewVersionDialogPv(p,nextDay);
   confirm$('Close program version',`<p>Choose what happens to <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b>. Existing sessions remain linked to this version.${futureCount?` Review ${futureCount} linked upcoming session${futureCount===1?'':'s'} after the transition.`:''}</p>
     <label style="display:block;margin:10px 0"><input type="radio" name="lp-close-type" value="replace" checked onchange="document.getElementById('lp-next-start').disabled=false;document.getElementById('lp-copy-content').disabled=false"> Create a new draft version with the same Program ID</label>
     <label style="display:block;margin:4px 0 10px 24px;font-size:12.5px"><input type="checkbox" id="lp-copy-content" checked> Start from a copy of the current content (agenda, evaluations, resources, description and current contributors)</label>
@@ -7695,7 +7696,7 @@ async function lpPublishVersion(id){
     return;
   }
   // v5.19p (2026-11-16, per Sandra): on Preview, activating a newer version ends the previous one the day before.
-  const pred=(window.LEAP_CHANNEL==='preview'&&p.supersedesProgramId)?LearningProgramDB.byId(p.supersedesProgramId):null;
+  const pred=(p.supersedesProgramId)?LearningProgramDB.byId(p.supersedesProgramId):null;
   const predActive=!!(pred&&pred.status==='active');
   const predEnd=predActive&&p.effectiveFrom?_addDaysStr(p.effectiveFrom,-1):'';
   const predNote=predActive?` <b>${Utils.esc(pred.code)} ${Utils.esc(pred.version)}</b> will end on ${Utils.formatDate(predEnd)}${p.effectiveFrom<=_todayStr()?' and be archived now':' and stay schedulable until then'}.`:'';
@@ -15235,7 +15236,7 @@ function openTrainingTypePicker(){
 function _tdPopulateInternalPrograms(){
   const select=document.getElementById('td-ilt-program'); if(!select) return;
   // v5.19p (2026-11-16, per Sandra): on Preview, ended versions are hidden and overlapping versions show their dates.
-  const pv=window.LEAP_CHANNEL==='preview';
+  const pv=true; // v5.19q (2026-11-16): released to Live
   const programs=LearningProgramDB.all().filter(p=>p.status==='active'&&!(pv&&_lpVersionEnded(p))&&['ILT','VILT','ILT/VILT','Blended','SLT','Self-led'].includes(p.deliveryType))
     .sort((a,b)=>(a.title||'').localeCompare(b.title||'')||(a.effectiveFrom||'').localeCompare(b.effectiveFrom||''));
   const dates=p=>!pv?'':p.effectiveTo?` — until ${Utils.formatDate(p.effectiveTo)}`:_lpVersionUpcoming(p)?` — from ${Utils.formatDate(p.effectiveFrom)}`:'';
@@ -15597,7 +15598,7 @@ async function tdDetailSave(){
   };
   // v5.19p (2026-11-16, per Sandra): on Preview, a program session's date must fall inside its version's dates
   // (the database enforces the same rule; this gives the clearer message first).
-  if(window.LEAP_CHANNEL==='preview'&&programSession&&d.trainingDate&&d.trainingDate!==s.trainingDate){
+  if(programSession&&d.trainingDate&&d.trainingDate!==s.trainingDate){ // v5.19q: released to Live
     const vMsg=_lpVersionDateMsg(LearningProgramDB.byId(s.programId),d.trainingDate);
     if(vMsg){ toast(vMsg,'error'); return; }
   }
