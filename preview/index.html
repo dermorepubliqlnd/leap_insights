@@ -1291,7 +1291,17 @@
     .lp-gcard:hover{box-shadow:var(--sh-lg)}
     .lp-gtitle{font-weight:700;font-size:14px;color:var(--text);margin-top:10px}
     .lp-gmeta{font-size:11.5px;color:var(--text3);margin-top:2px}
-    .lp-dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:6px;flex-wrap:wrap}
+    /* v5.19s (2026-11-16, per Sandra): create form + readiness strip */
+.lp-create-wrap{max-width:720px;margin:8px 0 24px}.lp-create{padding:24px}.lp-create .lp-info-edit{margin-bottom:14px}.lp-create .lp-info-edit label{font-weight:600}
+.lp-create-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:640px){.lp-create-row{grid-template-columns:1fr}}
+.lp-create-own{display:flex;gap:10px;flex-wrap:wrap}.lp-own-opt{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:500!important;min-width:180px}.lp-own-opt.on{border-color:var(--primary,#2563eb);background:#eff6ff}
+.lp-field-err{color:#b91c1c;font-size:12px;margin-top:4px}.lp-create-note{background:#f1f5f9;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#475569;margin:6px 0 18px}
+.lp-create-acts{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--border-lt);padding-top:16px}
+.lp-ready{border:1px solid var(--border);border-radius:10px;background:#fff;padding:10px 12px;margin:10px 0 4px}.lp-ready-hd{font-size:13px;margin-bottom:8px}
+.lp-ready-items{display:flex;flex-wrap:wrap;gap:6px}.lp-ready-it{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-lt);background:#f8fafc;border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;color:#0f172a}
+.lp-ready-it:focus-visible{outline:2px solid #2563eb;outline-offset:1px}.lp-ready-ic{font-weight:700}.lp-ready-st{color:#64748b}
+.lp-ready-it.is-done .lp-ready-ic{color:#15803d}.lp-ready-it.is-missing{background:#fffbeb;border-color:#fde68a}.lp-ready-it.is-missing .lp-ready-ic,.lp-ready-it.is-missing .lp-ready-st{color:#b45309}.lp-ready-it.is-optional,.lp-ready-it.is-na{opacity:.75}
+.lp-dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:6px;flex-wrap:wrap}
     .lp-dhead .lp-code,.lp-info-v.lp-program-id{font-family:var(--font);font-size:13.5px;font-weight:600;color:var(--pri)}
     .lp-dtitle{font-family:var(--font-heading);font-size:22px;font-weight:700;color:var(--text);margin:0}
     .lp-dmeta{font-size:12.5px;color:var(--text3);margin-top:3px}
@@ -6960,6 +6970,7 @@ function _lpVersionRelChip(p){
   return '';
 }
 function _lpDetailHtml(p){
+  if(p&&p.id==='__draft__') return _lpCreateHtml(p); // v5.19s
   const can=lpCanEdit(), esc=Utils.esc;
   const draft=p.id==='__draft__';
   const archived=p.status==='inactive', ed=can&&!archived&&_lpEditMode;
@@ -6998,11 +7009,12 @@ function _lpDetailHtml(p){
         <div class="lp-dmeta" style="font-size:11.5px">${upd}</div>
       </div>
       <div class="lp-hd-actions">
-        ${ed?`<button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${saveLabel}</button>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700" title="Archived program details cannot be edited. Administrators may link past sessions on Implementations.">READ ONLY</span>':can?_lpHeaderEditBtn(p,editBtn)+_lpRowMenu(p,true):'')}
+        ${ed?`<button class="btn btn-secondary btn-sm" onclick="lpCancelDraft()">Discard</button><button class="btn btn-primary btn-sm" id="lp-create" onclick="lpSaveDraft()">${saveLabel}</button>`:(archived?'<span class="badge" style="background:#e2e8f0;color:#334155;font-weight:700" title="Archived program details cannot be edited. Administrators may link past sessions on Implementations.">READ ONLY</span>':can?_lpHeaderEditBtn(p,editBtn)+_lpActivateBtn(p)+_lpRowMenu(p,true):'')}
       </div>
     </div>
     ${ed&&scope==='details'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Editing Overview</b> · Category, description, program folder, checklist, ownership, SMEs, facilitators and contributors. No version change; changes are recorded in the Audit Log.</div>`:''}
     ${ed&&scope==='revision'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda wording, minutes and order. Keep the same topics and total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.</div>`:''}
+    ${_lpReadinessHtml(p)}
     <div class="dmain-tabs lp-tabs">${tabs.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>
     ${ed?_lpErrorBannerHtml():''}`;
   const draftField=(id,label,value,type='text',extra='')=>`<div class="lp-info-edit"><label for="${id}">${label}</label><input id="${id}" class="form-control" type="${type}" value="${esc(value??'')}" ${extra}></div>`;
@@ -7031,8 +7043,8 @@ function _lpDetailHtml(p){
       <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Version ${help('This identifies the current program version. Used implementations are version locked; content changes then require a new version.')}</div><input class="form-control" type="text" value="${esc(_lpVerLabel(p))}" readonly aria-label="Version, read only"></div>
       <div class="lp-pi-field lp-pi-system lp-pi-span-4"><div class="lp-pi-label">Duration ${help('Calculated automatically from the total duration of agenda topics. Enter each agenda topic duration in minutes; LEAP calculates the total.')}</div><input id="lp-duration-value" class="form-control" type="text" value="${esc(durationText)}" readonly aria-label="Duration, calculated from agenda"></div>
 
-      <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-from">Effective From *</label><input id="lp-d-from" class="form-control" type="date" value="${esc(p.effectiveFrom||'')}"${dis(edFull)}></div>
-      <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-to">Effective To</label><input id="lp-d-to" class="form-control" type="date" value="${esc(p.effectiveTo||'')}"${dis(edFull)}><div class="lp-pi-helper">Leave blank while the program remains current.</div></div>
+      ${p.status==='draft'?`<div class="lp-pi-field lp-pi-span-12"><label>Starts</label><div class="lp-muted" style="padding:7px 0">${p.supersedesProgramId?`Planned ${esc(Utils.formatDate(p.effectiveFrom))} · confirmed when activated`:'Set when the program is activated'}</div></div>`:`<div class="lp-pi-field lp-pi-span-6"><label for="lp-d-from">Effective From *</label><input id="lp-d-from" class="form-control" type="date" value="${esc(p.effectiveFrom||'')}"${dis(edFull)}></div>
+      <div class="lp-pi-field lp-pi-span-6"><label for="lp-d-to">Effective To</label><input id="lp-d-to" class="form-control" type="date" value="${esc(p.effectiveTo||'')}"${dis(edFull)}><div class="lp-pi-helper">Leave blank while the program remains current.</div></div>`}
 
       <div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Program Folder ${help('Link to the shared folder with the program source files, facilitator materials and references.')}</div><div class="lp-pi-resource-wrap"><input id="lp-resource-url" class="form-control" aria-label="Program folder link" type="url" inputmode="url" value="${esc(p.resourceUrl||'')}" placeholder="https://…"${dis(edDetails)}>${_lpSafeResourceUrl(p.resourceUrl)?`<a class="lp-pi-resource-open" href="${esc(_lpSafeResourceUrl(p.resourceUrl))}" target="_blank" rel="noopener noreferrer" title="Open program folder">↗</a>`:''}</div><div class="lp-pi-helper">Link to the shared folder with the program's source files, facilitator materials and references.</div></div>
       ${_lpV504Ready()?`<div class="lp-pi-field lp-pi-span-12"><div class="lp-pi-label">Learning Resources ${help('Titles of the materials used in this program (e.g., Facilitator Guide, Learner Handout). Titles only; files stay in the program folder. Shown on the Curriculum & Agenda tab. No version change.')}</div>
@@ -7235,44 +7247,114 @@ function _lpEvalError(p){
   if(ec.l4.enabled&&!ec.l4.items.length) return 'Add at least one L4 result item, or turn L4 off.';
   return '';
 }
-function _lpActivationError(p){
-  if(!p) return 'Program could not be validated.';
-  if(!(p.title||'').trim()) return 'Program Title is required before activation.';
-  if(!p.categoryId) return 'Category is required before activation.';
-  if(!p.deliveryType) return 'Delivery Type is required before activation.';
-  if(!p.effectiveFrom) return 'Effective From is required before activation.';
-  if(!(p.description||'').trim()) return 'Program Description is required before activation.';
+function _lpActivationIssues(p){ // v5.19s (2026-11-16, per Sandra): all activation issues, tagged by readiness area
+  const out=[]; const A=(area,msg)=>out.push({area,msg});
+  if(!p) return [{area:'info',msg:'Program could not be validated.'}];
+  if(!(p.title||'').trim()) A('info','Program Title is required before activation.');
+  if(!p.categoryId) A('info','Category is required before activation.');
+  if(!p.deliveryType) A('info','Delivery Type is required before activation.');
+  if(!p.effectiveFrom) A('info','Effective From is required before activation.');
+  if(!(p.description||'').trim()) A('info','Program Description is required before activation.');
   const resourceUrl=(p.resourceUrl||'').trim();
-  if(!resourceUrl) return 'Program Folder link is required before activation.';
-  if(!_lpSafeResourceUrl(resourceUrl)) return 'Program Folder link must be a full http:// or https:// URL.';
+  if(!resourceUrl) A('folder','Program Folder link is required before activation.');
+  if(resourceUrl&&!_lpSafeResourceUrl(resourceUrl)) A('folder','Program Folder link must be a full http:// or https:// URL.');
   // v5.02: ownership is required for programs created from v5.02 onward (existing ones may stay Not Classified).
-  if(_lpMetaReady()&&!p.ownership&&(p.createdAt||'').slice(0,10)>=LP_OWNERSHIP_REQUIRED_FROM) return 'Program Ownership is required before activation. Set it under Program Ownership & Delivery Team.';
+  if(_lpMetaReady()&&!p.ownership&&(p.createdAt||'').slice(0,10)>=LP_OWNERSHIP_REQUIRED_FROM) A('own','Program Ownership is required before activation. Set it under Program Ownership & Delivery Team.');
   const contributors=(p.contributors||[]).filter(c=>_lpContribCurrent(c));
-  if(!contributors.length) return 'Add at least one current Contributor before activation.';
-  if(!contributors.some(c=>c.primary)) return 'Mark a Main contributor before activation.';
-  if(!_lpAgendaMinutes(p.agenda)) return 'Add a valid agenda before activation.';
-  const deliveryError=_lpDeliveryPlanError(p); if(deliveryError) return deliveryError;
-  if(_lpProgramTypeValue(p.deliveryType)==='ILT'&&!p.checklistTemplateId) return 'Choose a Default Trainer Checklist before activation.';
-  const ec=_lpEvalConfig(p), evaluationError=_lpEvalError(p); if(evaluationError) return evaluationError;
+  if(!contributors.length) A('contrib','Add at least one current Contributor before activation.');
+  if(!contributors.some(c=>c.primary)) A('contrib','Mark a Main contributor before activation.');
+  if(!_lpAgendaMinutes(p.agenda)) A('curr','Add a valid agenda before activation.');
+  const deliveryError=_lpDeliveryPlanError(p); if(deliveryError) A('curr',deliveryError);
+  if(_lpProgramTypeValue(p.deliveryType)==='ILT'&&!p.checklistTemplateId) A('delivery','Choose a Default Trainer Checklist before activation.');
+  const ec=_lpEvalConfig(p), evaluationError=_lpEvalError(p); if(evaluationError) A('evals',evaluationError);
   if(ec.l2.enabled) for(const [i,a] of (p.assessments||[]).entries()){
     const name=(a.name||'').trim();
-    if(!name||(!a.pre&&!a.post)) return `L2 item ${i+1} needs a name and Pre, Post, or both.`;
-    if(a.post&&!_lpL2IsRating(a)&&(a.passingScore===null||a.passingScore===undefined||String(a.passingScore).trim()===''||Number(a.passingScore)<0||Number(a.passingScore)>100)) return `L2 item ${i+1} needs a passing percentage from 0 to 100.`;
-    if(a.retention){ const rd=Number(a.retentionDays); if(!a.post) return `L2 item ${i+1}: a retention test re-uses the post-test. Tick Post as well.`; if(!Number.isInteger(rd)||rd<1||rd>365) return `L2 item ${i+1} needs retention days after training (1–365).`; } // v5.10
+    if(!name||(!a.pre&&!a.post)) A('evals',`L2 item ${i+1} needs a name and Pre, Post, or both.`);
+    if(a.post&&!_lpL2IsRating(a)&&(a.passingScore===null||a.passingScore===undefined||String(a.passingScore).trim()===''||Number(a.passingScore)<0||Number(a.passingScore)>100)) A('evals',`L2 item ${i+1} needs a passing percentage from 0 to 100.`);
+    if(a.retention){ const rd=Number(a.retentionDays); if(!a.post) A('evals',`L2 item ${i+1}: a retention test re-uses the post-test. Tick Post as well.`); if(!Number.isInteger(rd)||rd<1||rd>365) return `L2 item ${i+1} needs retention days after training (1–365).`; } // v5.10
   }
   if(ec.l3.enabled) for(const [i,x] of ec.l3.items.entries()){
     const days=Number(x.daysAfter);
-    if(!(x.method||'').trim()) return `L3 item ${i+1} needs a method.`;
-    if(!_lpL3IsBaseline(x)&&(!Number.isInteger(days)||days<1||days>365)) return `L3 item ${i+1} needs days after training (1–365), or set it as a Baseline.`; // v5.11
+    if(!(x.method||'').trim()) A('evals',`L3 item ${i+1} needs a method.`);
+    if(!_lpL3IsBaseline(x)&&(!Number.isInteger(days)||days<1||days>365)) A('evals',`L3 item ${i+1} needs days after training (1–365), or set it as a Baseline.`); // v5.11
   }
   if(ec.l4.enabled) for(const [i,x] of ec.l4.items.entries()){
     const days=Number(x.daysAfter);
-    if(!(x.measure||'').trim()) return `L4 item ${i+1} needs a measure or behavior.`;
-    if(!(x.baseline||'').trim()) return `L4 item ${i+1} needs a baseline.`;
-    if(!(x.target||'').trim()) return `L4 item ${i+1} needs a target.`;
-    if(!Number.isInteger(days)||days<1||days>365) return `L4 item ${i+1} needs days after training (1–365).`;
+    if(!(x.measure||'').trim()) A('evals',`L4 item ${i+1} needs a measure or behavior.`);
+    if(!(x.baseline||'').trim()) A('evals',`L4 item ${i+1} needs a baseline.`);
+    if(!(x.target||'').trim()) A('evals',`L4 item ${i+1} needs a target.`);
+    if(!Number.isInteger(days)||days<1||days>365) A('evals',`L4 item ${i+1} needs days after training (1–365).`);
   }
-  return '';
+  return out;
+}
+function _lpActivationError(p){ const i=_lpActivationIssues(p); return i.length?i[0].msg:''; }
+
+/* v5.19s (2026-11-16, per Sandra; Assessment 04 Phase 2): readiness strip for drafts. Uses the same
+   checks as Activate (_lpActivationIssues), so the strip and the button can never disagree. */
+const LP_READY_AREAS=[['info','Program information','overview'],['folder','Program Folder','overview'],['own','Ownership','overview'],['contrib','Contributors','overview'],['curr','Curriculum','curriculum'],['delivery','Trainer checklist','overview'],['evals','Evaluations','evals']];
+function _lpReadiness(p){
+  const issues=_lpActivationIssues(p), slt=!!p.deliveryType&&_lpProgramTypeValue(p.deliveryType)==='SLT', ec=_lpEvalConfig(p);
+  const anyEval=ec.l1||ec.l2.enabled||ec.l3.enabled||ec.l4.enabled;
+  return LP_READY_AREAS.map(([k,label,tab])=>{
+    const mine=issues.filter(x=>x.area===k);
+    let state=mine.length?'missing':'done';
+    if(k==='delivery'&&slt) state='na';
+    else if(k==='evals'&&!anyEval&&!mine.length) state='optional';
+    return {k,label,tab,state,msgs:mine.map(x=>x.msg)};
+  });
+}
+function _lpReadinessHtml(p){
+  if(!p||p.status!=='draft') return '';
+  const r=_lpReadiness(p), req=r.filter(x=>x.state==='done'||x.state==='missing'), done=req.filter(x=>x.state==='done').length, esc=Utils.esc;
+  const ic={done:'&#10003;',missing:'&#9675;',optional:'&#8211;',na:'&#8211;'}, st={done:'Done',missing:'Missing',optional:'Optional',na:'Not applicable'};
+  return `<div class="lp-ready" role="region" aria-label="Ready to activate"><div class="lp-ready-hd"><b>Ready to activate?</b> <span class="lp-muted">${done} of ${req.length} required done</span></div><div class="lp-ready-items">${r.map(x=>`<button type="button" class="lp-ready-it is-${x.state}" onclick="lpSetTab('${x.tab}')"${x.msgs.length?` data-tip="${esc(x.msgs.join(' · ')).replace(/"/g,'&quot;')}"`:''}><span class="lp-ready-ic">${ic[x.state]}</span>${esc(x.label)} <span class="lp-ready-st">${st[x.state]}${x.msgs.length>1?` (${x.msgs.length})`:''}</span></button>`).join('')}</div></div>`;
+}
+function _lpActivateBtn(p){
+  if(!p||p.status!=='draft'||!lpCanEdit()||_lpEditMode) return '';
+  return _lpActivationIssues(p).length?`<button type="button" class="btn btn-primary btn-sm" disabled title="Complete the missing items in Ready to activate first.">Activate</button>`
+    :`<button type="button" class="btn btn-primary btn-sm" onclick="lpPublishVersion('${p.id}')">Activate</button>`;
+}
+/* v5.19s: short create form (Assessment 04 H1–H4): title, category, delivery type, ownership (+ department). */
+let _lpCreateErrs={};
+function _lpCreateHtml(p){
+  const esc=Utils.esc, e=_lpCreateErrs, err=k=>e[k]?`<div class="lp-field-err" role="alert">${esc(e[k])}</div>`:'';
+  const cats=Sel.active(Store.CATEGORIES), depts=Sel.active(Store.DEPARTMENTS), d=_lpTeamDraft||p;
+  return `<button type="button" class="ov-link" style="padding-left:0" onclick="lpBack()">${_lpIc(LP_IC.back)} Back to Learning Programs</button>
+  <div class="lp-create-wrap"><div class="card lp-card lp-create">
+    <h2 class="lp-dtitle" style="margin:0 0 4px">Create New Learning Program</h2>
+    <div class="lp-muted" style="margin-bottom:16px">Start with the essentials. You can complete the remaining setup after creating the draft.</div>
+    <div class="lp-info-edit"><label for="lp-d-title">Program Title *</label><input id="lp-d-title" class="form-control" type="text" maxlength="200" value="${esc(p.title||'')}" placeholder="Enter program title">${err('title')}</div>
+    <div class="lp-create-row">
+      <div class="lp-info-edit"><label for="lp-d-cat">Category *</label><select id="lp-d-cat" class="form-control"><option value="">— Select —</option>${cats.map(c=>`<option value="${esc(c.id)}"${c.id===p.categoryId?' selected':''}>${esc(c.name)}</option>`).join('')}</select>${err('cat')}</div>
+      <div class="lp-info-edit"><label for="lp-d-type">Delivery Type *</label><select id="lp-d-type" class="form-control"><option value="">— Select —</option>${_lpTypes().map(t=>`<option value="${t}"${p.deliveryType&&_lpProgramTypeValue(p.deliveryType)===t?' selected':''}>${_lpProgramTypeLabel(t)}</option>`).join('')}</select>${err('type')}</div>
+    </div>
+    <div class="lp-info-edit"><label>Program Ownership *</label>
+      <div class="lp-create-own">
+        <label class="lp-own-opt${d.ownership==='ld'?' on':''}"><input type="radio" name="lp-own" value="ld" ${d.ownership==='ld'?'checked':''} onchange="lpTeamSetOwnership('ld')"> L&amp;D-Owned</label>
+        <label class="lp-own-opt${d.ownership==='non_ld'?' on':''}"><input type="radio" name="lp-own" value="non_ld" ${d.ownership==='non_ld'?'checked':''} onchange="lpTeamSetOwnership('non_ld')"> Non-L&amp;D-Owned</label>
+      </div>${err('own')}
+      ${d.ownership==='non_ld'?`<label for="lp-own-dept" style="margin-top:10px;display:block">Owning Department *</label><select id="lp-own-dept" class="form-control" onchange="_lpTeamDraft.ownerDepartmentId=this.value||null"><option value="">— Select department —</option>${depts.map(x=>`<option value="${esc(x.id)}" ${x.id===d.ownerDepartmentId?'selected':''}>${esc(x.name)}</option>`).join('')}</select>${err('dept')}`:''}
+    </div>
+    <div class="lp-create-note">Next you'll add the description, curriculum, evaluations and team. The Program ID and version are assigned automatically. Nothing is available for scheduling until the program is activated.</div>
+    <div class="lp-create-acts"><button type="button" class="btn btn-secondary" onclick="lpBack()">Cancel</button><button type="button" class="btn btn-primary" id="lp-create" onclick="lpCreateDraft()">Create Draft &amp; Continue</button></div>
+  </div></div>`;
+}
+async function lpCreateDraft(){
+  const p=_lpDraft; if(!p) return;
+  _lpCapturePageFields();
+  const d=_lpTeamDraft||p, e={};
+  if(!(p.title||'').trim()) e.title='Enter a program title.';
+  else if(LearningProgramDB.all().some(x=>(x.title||'').trim().toLowerCase()===p.title.trim().toLowerCase())) e.title='A program with this title already exists.';
+  if(!p.categoryId) e.cat='Select a category.';
+  if(!p.deliveryType) e.type='Select a delivery type.';
+  if(!d.ownership) e.own='Choose who owns this program.';
+  else if(d.ownership==='non_ld'&&!d.ownerDepartmentId) e.dept='Select the owning department.';
+  _lpCreateErrs=e;
+  if(Object.keys(e).length){ renderLearningPrograms(); const k=Object.keys(e)[0], id={title:'lp-d-title',cat:'lp-d-cat',type:'lp-d-type',dept:'lp-own-dept'}[k]; requestAnimationFrame(()=>(id?document.getElementById(id):document.querySelector('input[name=lp-own]'))?.focus()); return; }
+  const btn=document.getElementById('lp-create'); if(btn){ if(btn.disabled) return; btn.disabled=true; btn.textContent='Creating…'; }
+  p.effectiveFrom=_todayStr(); // placeholder until activation; the activation dialog sets the real start date
+  await lpSaveDraft();
+  const b2=document.getElementById('lp-create'); if(b2&&_lpDraft){ b2.disabled=false; b2.textContent='Create Draft & Continue'; }
 }
 function lpAgendaAdd(part){
   const p=_lpCur(); if(!p||!_lpEditMode) return;
@@ -7721,8 +7803,13 @@ async function lpPublishVersion(id){
   const predActive=!!(pred&&pred.status==='active');
   const predEnd=predActive&&p.effectiveFrom?_addDaysStr(p.effectiveFrom,-1):'';
   const predNote=predActive?` <b>${Utils.esc(pred.code)} ${Utils.esc(pred.version)}</b> will end on ${Utils.formatDate(predEnd)}${p.effectiveFrom<=_todayStr()?' and be archived now':' and stay schedulable until then'}.`:'';
-  confirm$('Activate version',`Activate <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b> starting ${Utils.formatDate(p.effectiveFrom)}?${predNote} All required Program Information, Program Folder, Contributors, Agenda, Checklist and enabled Evaluations have been validated.`,'Activate',async()=>{
-    if(await _lpPersist(id,{status:'active'})){
+  // v5.19s (2026-11-16, per Sandra; Assessment 04 H4): the start date is chosen here, not when the draft is created.
+  const defStart=predActive?(p.effectiveFrom||_todayStr()):(p.effectiveFrom&&p.effectiveFrom>_todayStr()?p.effectiveFrom:_todayStr());
+  confirm$('Activate version',`Activate <b>${Utils.esc(p.code)} ${Utils.esc(p.version)}</b>?${predNote}<label class="form-label" for="lp-act-start" style="margin-top:12px;display:block">Available for scheduling from</label><input type="date" class="form-control" id="lp-act-start" value="${defStart}"><div class="lp-muted" style="font-size:12px;margin-top:6px">All required items in Ready to activate are complete.</div>`,'Activate',async()=>{
+    const start=document.getElementById('lp-act-start')?.value||'';
+    if(!start){ toast('Choose the date the program becomes available.','error'); setTimeout(()=>lpPublishVersion(id),0); return; }
+    if(predActive&&pred.effectiveFrom&&start<=pred.effectiveFrom){ toast(`The new version must start after ${pred.version} started (${Utils.formatDate(pred.effectiveFrom)}).`,'error'); setTimeout(()=>lpPublishVersion(id),0); return; }
+    if(await _lpPersist(id,{status:'active',effectiveFrom:start})){
       await AuditLog.record('update','Learning Program',id,`Activated ${p.code} ${p.version}${predActive?`; ${pred.code} ${pred.version} ends ${predEnd}`:''}`);
       if(predActive){
         const {data:pr}=await sb.from(Store.LEARNING_PROGRAMS).select('*').eq('id',pred.id).maybeSingle();
@@ -7777,14 +7864,16 @@ function _lpCapturePageFields(){
   const val=(id,fallback='')=>el(id)?.value??fallback;
   const deliveryType=val('lp-d-type',p.deliveryType||'');
   const selfLed=_lpProgramTypeValue(deliveryType)==='SLT';
-  Object.assign(p,{title:val('lp-d-title',p.title||''),categoryId:val('lp-d-cat',p.categoryId||''),deliveryType:_lpProgramTypeValue(deliveryType),version:p.version,effectiveFrom:val('lp-d-from',p.effectiveFrom||''),effectiveTo:val('lp-d-to',p.effectiveTo||''),description:val('lp-desc',p.description||''),resourceUrl:val('lp-resource-url',p.resourceUrl||''),checklistTemplateId:selfLed?null:(el('lp-d-checklist')?(val('lp-d-checklist')||null):(p.checklistTemplateId||null)),allowedModalities:[]});
+  Object.assign(p,{title:val('lp-d-title',p.title||''),categoryId:val('lp-d-cat',p.categoryId||''),deliveryType:deliveryType?_lpProgramTypeValue(deliveryType):'',version:p.version,effectiveFrom:val('lp-d-from',p.effectiveFrom||''),effectiveTo:val('lp-d-to',p.effectiveTo||''),description:val('lp-desc',p.description||''),resourceUrl:val('lp-resource-url',p.resourceUrl||''),checklistTemplateId:selfLed?null:(el('lp-d-checklist')?(val('lp-d-checklist')||null):(p.checklistTemplateId||null)),allowedModalities:[]});
 }
 function lpCancelDraft(){
   if(!_lpDraft&&!_lpWorking) return;
+  // v5.19s: a new, untouched create form closes without asking.
+  if(_lpDraft){ _lpCapturePageFields(); const d=_lpDraft; if(!(d.title||'').trim()&&!d.categoryId&&!d.deliveryType&&!d.ownership){ _lpDraft=null; _lpTeamDraft=null; _lpCreateErrs={}; _lpDetailId=null; _lpEditMode=false; renderLearningPrograms(); _syncHashForCurrentView(); return; } }
   // v5.19r (2026-11-16, per Sandra; Assessment 04 Phase 1): say what Discard does not undo.
   const keepNote=_lpDraft?'':' SMEs, accredited facilitators and L1 targets you changed were saved as you made them and will stay.';
   confirm$('Discard program changes?','Leave without saving the changes on this page?'+keepNote,'Discard',()=>{
-    const wasNew=!!_lpDraft;
+    const wasNew=!!_lpDraft; _lpCreateErrs={};
     _lpDraft=null; _lpWorking=null; _lpTeamDraft=null; if(wasNew) _lpDetailId=null;
     _lpEditMode=false; _lpEditScope='full'; _lpDraftError=''; renderLearningPrograms(); _syncHashForCurrentView();
   });
@@ -7964,7 +8053,7 @@ async function lpSaveDraft(){
   const changed=before?Object.keys(patch).filter(k=>JSON.stringify(before[k]??null)!==JSON.stringify(patch[k]??null)&&!['updatedAt','updatedBy'].includes(k)):[];
   const setupTag=before&&_lpHasUsedSessions(before)&&lpSetupModeForMe()?'[Setup Mode · no version change] ':'';
   AuditLog.record(isNew?'create':'update','Learning Program',saved.id,isNew?`Created program "${saved.title}"`:`${setupTag}Updated ${saved.code}: ${changed.length?changed.join(', '):'program details'}`);
-  lpOpen(saved.id); toast(isNew?'Draft program created. Complete its setup, then activate it.':versionDraft?'Draft version saved. Activate it when its details are ready.':'Program saved.','success');
+  lpOpen(saved.id); if(isNew){ _lpCreateErrs={}; lpStartEdit(saved.id,false,'full','overview'); } toast(isNew?'Draft created. Complete the setup below; Ready to activate shows what is left.':versionDraft?'Draft version saved. Activate it when its details are ready.':'Program saved.','success');
 }
 function _lpFriendlyError(message){
   const m=String(message||'');
