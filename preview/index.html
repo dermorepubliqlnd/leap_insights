@@ -7059,7 +7059,7 @@ function _lpDetailHtml(p){
     ${ed&&scope==='details'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Editing Overview</b> · Category, description, program folder, checklist, ownership, SMEs, facilitators and contributors. No version change; changes are recorded in the Audit Log.</div>`:''}
     ${ed&&scope==='revision'?`<div class="lp-editbar">${_lpIc(LP_IC.edit)} <b>Minor revision → ${esc((p.version||'v1')+'.'+(Number(p.revision||0)+1))}</b> · Edit the title and agenda wording, minutes and order. Keep the same topics and total duration (${esc(_lpDurationText(Number(p.durationMinutes)||_lpAgendaMinutes(LearningProgramDB.byId(p.id)?.agenda)||0))}). You will add a change note when you save.</div>`:''}
     ${_lpReadinessHtml(p)}
-    <div class="dmain-tabs lp-tabs">${tabs.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${l}</button>`).join('')}</div>
+    <div class="dmain-tabs lp-tabs">${tabs.map(([id,l])=>`<button class="eval-tab${id===_lpTab?' active':''}" onclick="lpSetTab('${id}')">${id==='curriculum'&&p.deliveryType&&_lpProgramTypeValue(p.deliveryType)==='SLT'?'Modules':l}</button>`).join('')}</div>
     ${ed?_lpErrorBannerHtml():''}`;
   const draftField=(id,label,value,type='text',extra='')=>`<div class="lp-info-edit"><label for="${id}">${label}</label><input id="${id}" class="form-control" type="${type}" value="${esc(value??'')}" ${extra}></div>`;
   const lockedField=(label,value)=>`<div class="lp-info-edit"><label>${label}</label><input class="form-control" type="text" value="${esc(value??'')}" readonly aria-label="${label}, read only"></div>`;
@@ -7134,6 +7134,8 @@ function _lpDetailHtml(p){
      across parts and part order on full edits). Planned curriculum only; actual delivery stays on the session. */
   const ag=p.agenda||[];
   const partCount=Number(p.deliveryParts)||1;
+  // v5.19v (2026-11-16, per Sandra; S1): self-led programs list modules with an estimated time; no parts or learning methods.
+  const sltCur=!!p.deliveryType&&_lpProgramTypeValue(p.deliveryType)==='SLT', oneList=sltCur&&partCount===1;
   const totalAgendaMinutes=ag.reduce((sum,a)=>sum+(_lpMinutes(a.duration)||0),0);
   const totalTopicCount=ag.length;
   const partTotals=Array.from({length:partCount},(_,i)=>ag.filter(a=>Number(a.part||1)===i+1).reduce((sum,a)=>sum+(_lpMinutes(a.duration)||0),0));
@@ -7145,35 +7147,35 @@ function _lpDetailHtml(p){
     const rows=indexed.map(({a,i},k)=>`<tr class="lp-trow"${edRev?` draggable="true" ondragstart="lpAgendaDragStart(event,${i})" ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,${i},${part})" ondragend="lpAgendaDragEnd()"`:''}>
       ${edRev?`<td class="lp-drag" title="${edFull&&partCount>1?'Drag to reorder or onto another part':'Drag to reorder'}">⋮⋮</td>`:''}
       <td class="lp-tnum">${k+1}</td>
-      <td>${edRev?tin(i,'topic',a.topic,'Topic or activity','text','maxlength="250"'):`<span class="lp-ttopic">${esc(a.topic||'—')}</span>`}</td>
-      <td>${_lpMethodCell(a,i,edRev)}</td>
+      <td>${edRev?tin(i,'topic',a.topic,sltCur?'Module title':'Topic or activity','text','maxlength="250"'):`<span class="lp-ttopic">${esc(a.topic||'—')}</span>`}</td>
+      ${sltCur?'':`<td>${_lpMethodCell(a,i,edRev)}</td>`}
       <td>${edRev?`<div class="lp-min-wrap">${tin(i,'duration',_lpMinutes(a.duration)??'','0','number','min="1" step="1"')}<span>min</span></div>`:esc(_lpDurationText(_lpMinutes(a.duration)))}</td>
       ${edFull?`<td class="lp-tact">${edFull?`<button class="lp-icon-btn" title="Remove topic" aria-label="Remove topic" onclick="lpAgendaRemove(${i})">${_lpIc(LP_IC.x)}</button>`:''}</td>`:''}
     </tr>`).join('');
-    const cols=(edRev?1:0)+4+(edFull?1:0); // v5.09: topic order by drag handle only (arrows removed per Sandra)
-    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${edRev?'40%':'44%'}"><col><col style="width:${edRev?'92px':'100px'}">${edFull?'<col style="width:44px">':''}</colgroup>
-      <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>Topic / Learning Activity</th><th>Learning Method</th><th>Duration</th>${edFull?'<th></th>':''}</tr></thead>`;
-    const empty=`<tr><td colspan="${cols}" class="lp-muted" style="text-align:center;padding:16px">No topics in this part yet.</td></tr>`;
+    const cols=(edRev?1:0)+(sltCur?3:4)+(edFull?1:0); // v5.09: topic order by drag handle only (arrows removed per Sandra)
+    const thead=`<colgroup>${edRev?'<col style="width:26px">':''}<col style="width:34px"><col style="width:${sltCur?'auto':edRev?'40%':'44%'}">${sltCur?'':'<col>'}<col style="width:${edRev?'110px':'120px'}">${edFull?'<col style="width:44px">':''}</colgroup>
+      <thead><tr>${edRev?'<th></th>':''}<th>#</th><th>${sltCur?'Module':'Topic / Learning Activity'}</th>${sltCur?'':'<th>Learning Method</th>'}<th>${sltCur?'Estimated Time':'Duration'}</th>${edFull?'<th></th>':''}</tr></thead>`;
+    const empty=`<tr><td colspan="${cols}" class="lp-muted" style="text-align:center;padding:16px">${sltCur?'No modules yet.':'No topics in this part yet.'}</td></tr>`;
     return `<section class="lp-part${collapsed?' collapsed':''}" ${edFull?`ondragover="lpAgendaDragOver(event)" ondrop="lpAgendaDrop(event,null,${part})"`:''}>
-      <div class="lp-part-hd">
+      ${oneList?'':`<div class="lp-part-hd">
         <button type="button" class="lp-part-toggle" onclick="lpTogglePart(${part})" aria-expanded="${!collapsed}" aria-label="${collapsed?'Expand':'Collapse'} Part ${part}">▾</button>
         <div class="lp-part-title" onclick="lpTogglePart(${part})"><b>Part ${part}</b><small>${indexed.length} topic${indexed.length===1?'':'s'}</small></div>
         <span id="lp-part-duration-${part}" class="lp-agenda-part-duration">${esc(_lpDurationText(partTotals[pi])==='—'?'0 min':_lpDurationText(partTotals[pi]))}</span>
         ${edFull&&partCount>1?`<button type="button" class="btn btn-ghost btn-xs" onclick="lpAgendaPartMove(${part},-1)" ${part===1?'disabled':''} title="Move part up" aria-label="Move part up">↑</button><button type="button" class="btn btn-ghost btn-xs" onclick="lpAgendaPartMove(${part},1)" ${part===partCount?'disabled':''} title="Move part down" aria-label="Move part down">↓</button><button type="button" class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="lpAgendaPartRemove(${part})" title="${indexed.length?'Remove this part and its topics':'Remove this delivery part'}">Remove part</button>`:''}
-      </div>
-      ${collapsed?'':`<div class="lp-part-body"><div class="lp-tbl-scroll"><table class="lp-topic-tbl${edRev?' lp-topic-tbl-edit':''}">${thead}<tbody>${rows||empty}</tbody></table></div>${edFull?`<div class="lp-part-foot"><button type="button" class="lp-add-topic" onclick="lpAgendaAdd(${part})">+ Add Topic</button></div>`:''}</div>`}
+      </div>`}
+      ${collapsed&&!oneList?'':`<div class="lp-part-body"><div class="lp-tbl-scroll"><table class="lp-topic-tbl${edRev?' lp-topic-tbl-edit':''}">${thead}<tbody>${rows||empty}</tbody></table></div>${edFull?`<div class="lp-part-foot"><button type="button" class="lp-add-topic" onclick="lpAgendaAdd(${part})">+ Add ${sltCur?'Module':'Topic'}</button></div>`:''}</div>`}
     </section>`;
   }).join('');
   const agenda=`<div class="card lp-card lp-agenda-card lp-cur-card">
-    <div class="lp-card-hd"><div><span class="lp-card-t">Curriculum &amp; Agenda</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar; actual delivery changes are recorded on the session.</div></div>
+    <div class="lp-card-hd"><div><span class="lp-card-t">${sltCur?'Modules':'Curriculum &amp; Agenda'}</span><div class="lp-muted" style="font-size:11.5px;margin-top:2px">${sltCur?'List the course modules in order with an estimated time for each. The total is used for training hours.':'Organize topics in facilitation order. Session dates and timing are assigned later in Training Calendar; actual delivery changes are recorded on the session.'}</div></div>
       <div class="lp-hd-actions">${partCount>1?`<button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(true)">Expand all</button><button type="button" class="btn btn-ghost btn-sm" onclick="lpExpandAllParts(false)">Collapse all</button>`:''}${edFull?`<button class="btn btn-secondary btn-sm" type="button" onclick="lpAgendaCsvOpen()">⇧&nbsp; Import CSV</button>`:''}</div></div>
     <div class="lp-cur-kpis">
-      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#f5f3ff;color:#7c3aed">${_lpIc(LP_IC.clock)}</span><div><div class="lp-kpi-l">Total Program Duration</div><div class="lp-kpi-v" id="lp-agenda-total">${esc(_lpDurationText(totalAgendaMinutes)==='—'?'0 min':_lpDurationText(totalAgendaMinutes))}</div></div></div>
-      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#eff6ff;color:#2563eb">${_lpIc(LP_IC.layers)}</span><div><div class="lp-kpi-l">Delivery Parts</div><div class="lp-kpi-v" id="lp-agenda-part-count">${partCount}</div></div></div>
-      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#eef2ff;color:#4f46e5">${_lpIc(LP_IC.total)}</span><div><div class="lp-kpi-l">Total Topics</div><div class="lp-kpi-v" id="lp-agenda-topic-count">${totalTopicCount}</div></div></div>
+      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#f5f3ff;color:#7c3aed">${_lpIc(LP_IC.clock)}</span><div><div class="lp-kpi-l">${sltCur?'Estimated Total Time':'Total Program Duration'}</div><div class="lp-kpi-v" id="lp-agenda-total">${esc(_lpDurationText(totalAgendaMinutes)==='—'?'0 min':_lpDurationText(totalAgendaMinutes))}</div></div></div>
+      ${oneList?'':`<div class="lp-kpi"><span class="lp-kpi-ic" style="background:#eff6ff;color:#2563eb">${_lpIc(LP_IC.layers)}</span><div><div class="lp-kpi-l">Delivery Parts</div><div class="lp-kpi-v" id="lp-agenda-part-count">${partCount}</div></div></div>`}
+      <div class="lp-kpi"><span class="lp-kpi-ic" style="background:#eef2ff;color:#4f46e5">${_lpIc(LP_IC.total)}</span><div><div class="lp-kpi-l">${sltCur?'Modules':'Total Topics'}</div><div class="lp-kpi-v" id="lp-agenda-topic-count">${totalTopicCount}</div></div></div>
     </div>
     <div class="lp-parts">${agendaParts}</div>
-    ${edFull&&partCount<30?`<button class="lp-agenda-add-part" type="button" onclick="lpAgendaPartAdd()"><span style="font-size:18px;font-weight:400;line-height:1">+</span> Add another part</button>`:''}
+    ${edFull&&partCount<30&&!sltCur?`<button class="lp-agenda-add-part" type="button" onclick="lpAgendaPartAdd()"><span style="font-size:18px;font-weight:400;line-height:1">+</span> Add another part</button>`:''}
   </div>`;
   /* v5.03 (2026-10-14, per Sandra): Evaluations tab. L1 = on/off only (always the post-training survey; v5.04 per Sandra); L2 item Type and L3 Method use
      default options plus "Other (specify)"; L3 Responsible; L4 Unit. Stored inside the existing
@@ -7302,7 +7304,7 @@ function _lpActivationIssues(p){ // v5.19s (2026-11-16, per Sandra): all activat
   const contributors=(p.contributors||[]).filter(c=>_lpContribCurrent(c));
   if(!contributors.length) A('contrib','Add at least one current Contributor before activation.');
   if(!contributors.some(c=>c.primary)) A('contrib','Mark a Main contributor before activation.');
-  if(!_lpAgendaMinutes(p.agenda)) A('curr','Add a valid agenda before activation.');
+  if(!_lpAgendaMinutes(p.agenda)) A('curr',_lpProgramTypeValue(p.deliveryType)==='SLT'&&p.deliveryType?'Add at least one module with an estimated time before activation.':'Add a valid agenda before activation.');
   const deliveryError=_lpDeliveryPlanError(p); if(deliveryError) A('curr',deliveryError);
   if(_lpProgramTypeValue(p.deliveryType)==='ILT'&&!p.checklistTemplateId) A('delivery','Choose a Default Trainer Checklist before activation.');
   const ec=_lpEvalConfig(p), evaluationError=_lpEvalError(p); if(evaluationError) A('evals',evaluationError);
@@ -7348,7 +7350,7 @@ function _lpReadinessHtml(p){
   const r=_lpReadiness(p), by=k=>r.find(x=>x.k===k), esc=Utils.esc;
   const grp=(label,keys,tab)=>{ const xs=keys.map(by).filter(x=>x&&x.state!=='na'); const miss=xs.filter(x=>x.state==='missing'); const opt=xs.length&&xs.every(x=>x.state==='optional');
     return {label,tab,state:miss.length?'missing':opt?'optional':'done',msgs:miss.flatMap(x=>x.msgs)}; };
-  const g=[grp('Program Information',['info','folder','delivery'],'overview'),grp('Ownership & Team',['own','contrib'],'overview'),grp('Curriculum & Agenda',['curr'],'curriculum'),grp('Evaluations',['evals'],'evals')];
+  const g=[grp('Program Information',['info','folder','delivery'],'overview'),grp('Ownership & Team',['own','contrib'],'overview'),grp(p.deliveryType&&_lpProgramTypeValue(p.deliveryType)==='SLT'?'Modules':'Curriculum & Agenda',['curr'],'curriculum'),grp('Evaluations',['evals'],'evals')];
   const req=g.filter(x=>x.state!=='optional'), done=req.filter(x=>x.state==='done').length, ready=done===req.length;
   const sub={done:'Completed',missing:'Needs attention',optional:'Optional'};
   const ic=st=>st==='done'?'<span class="lp-rd-ic is-done"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>':st==='pending'?'<span class="lp-rd-ic is-pending"></span>':st==='ready'?'<span class="lp-rd-ic is-ready"></span>':`<span class="lp-rd-ic is-${st}"></span>`;
@@ -18252,8 +18254,8 @@ function _tdrRenderTab(s){
     const requiredMismatch=hasClusterRows&&required!=null&&clusterTotals.required!==required;
     const mismatchBanner=requiredMismatch?`
       <div style="background:var(--red-lt);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;color:#991b1b">
-        <div style="font-weight:700;margin-bottom:2px">⚠ Cluster breakdown doesn't add up</div>
-        <div>The Per-Cluster Breakdown's Required column totals <strong>${clusterTotals.required}</strong>, but this session's Required Participants is set to <strong>${required}</strong>. Please review the cluster breakdown so the totals match before submitting.</div>
+        <div style="font-weight:700;margin-bottom:2px">⚠ Department breakdown doesn't add up</div>
+        <div>The Per-Department Breakdown's Required column totals <strong>${clusterTotals.required}</strong>, but this session's Required Participants is set to <strong>${required}</strong>. Please review the cluster breakdown so the totals match before submitting.</div>
       </div>`:'';
     const completionMetrics=`
       ${mismatchBanner}
@@ -18267,7 +18269,7 @@ function _tdrRenderTab(s){
     const completionCard=`
       <div class="card" style="padding:18px 20px;margin-bottom:16px">
         <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Completion Summary</div>
-        <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Completed / In Progress / Not Started are totaled automatically from the Per-Cluster Breakdown below.</div>
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Completed / In Progress / Not Started are totaled automatically from the Per-Department Breakdown below.</div>
         ${completionMetrics}
       </div>`;
 
@@ -18293,7 +18295,7 @@ function _tdrRenderTab(s){
       const rowColor=_tdrCompletionColor(rowRate);
       const overCount=_tdrClusterRowOvercount(row);
       return `<tr ${overCount?'style="background:var(--red-lt)" title="In Progress + Not Started exceeds Required for this cluster"':''}>
-      <td>${clusterEditing?`<input type="text" class="form-control" style="min-width:160px" placeholder="Cluster Head" value="${Utils.esc(row.clusterHead||'')}" ${dis} onblur="_tdrSetClusterField(${i},'clusterHead',this.value)">`:Utils.esc(row.clusterHead||'—')}</td>
+      <td>${clusterEditing?`<select class="form-control" style="min-width:180px" ${dis} onchange="_tdrSetClusterDept(${i},this.value)"><option value="">${row.clusterHead&&!row.departmentId?Utils.esc(row.clusterHead)+' (choose department)':'— Select department —'}</option>${Sel.active(Store.DEPARTMENTS).map(d=>`<option value="${Utils.esc(d.id)}"${d.id===row.departmentId?' selected':''}>${Utils.esc(d.name)}</option>`).join('')}</select>`:Utils.esc(_tdrRowLabel(row))}</td>
       <td ${centerTd}><span style="font-weight:700;color:${rowRate!=null?rowColor.fg:'var(--text3)'}">${rowRate!=null?rowRate+'%':'—'}</span></td>
       <td ${centerTd}>${clusterEditing?`<input type="number" class="form-control" style="width:80px;text-align:center;display:inline-block" min="0" step="1" value="${row.required??''}" ${dis} onblur="_tdrSetClusterField(${i},'required',this.value)">`:(row.required??'—')}</td>
       <td ${centerTd}>${rowReq!=null?rowDone:'—'}</td>
@@ -18305,16 +18307,16 @@ function _tdrRenderTab(s){
     const clusterCard=`
       <div class="card" style="padding:18px 20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-          <div style="font-weight:700;font-size:14.5px">3. Per-Cluster Breakdown</div>
+          <div style="font-weight:700;font-size:14.5px">3. Per-Department Breakdown</div>
           ${clusterEditing?`<div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-secondary" onclick="_tdrAddClusterRow()">+ Add Cluster</button>
+            <button class="btn btn-sm btn-secondary" onclick="_tdrAddClusterRow()">+ Add Department</button>
             <button class="btn btn-sm btn-secondary" onclick="document.getElementById('tdr-cluster-csv-input').click()">⇪ Import CSV</button>
             <input type="file" id="tdr-cluster-csv-input" accept=".csv" style="display:none" onchange="_tdrClusterHandleCSVFile(this.files[0])">
             <button class="btn btn-sm btn-ghost" onclick="_tdrClusterDownloadCSVTemplate()">⇩ Download Template</button>
           </div>`:''}
         </div>
         ${(c.clusterRows||[]).length?`<div class="eval-tbl-wrap"><table class="eval-tbl">
-          <tr><th>Cluster Head</th><th ${centerTh}>Completion Rate</th><th ${centerTh}>Required</th><th ${centerTh}>Completed</th><th ${centerTh}>In Progress</th><th ${centerTh}>Not Started</th><th></th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No clusters yet. Click "+ Add Cluster" to break down completion by cluster.</div>'}
+          <tr><th>Department</th><th ${centerTh}>Completion Rate</th><th ${centerTh}>Required</th><th ${centerTh}>Completed</th><th ${centerTh}>In Progress</th><th ${centerTh}>Not Started</th><th></th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No departments yet. Click "+ Add Department" to break down completion by department. Counts only; no names.</div>'}
       </div>`;
 
     return `${toolbar}${locked?_tdrReopenBlock():''}${l1CardSlt}${completionCard}${clusterCard}${locked?_tdrReopenActionsBar(s):''}`;
@@ -18434,8 +18436,16 @@ function _tdrSetField(field,value){
 // wasn't needed once Completion Rate lives at cluster level, and Completed is now DERIVED (see
 // _tdrClusterRowCompleted) rather than typed. Old records saved before this change may still carry
 // leftover `participants`/`completed` keys in Supabase -- harmless, just unused going forward.
+// v5.19v (2026-11-16, per Sandra; S2): completion rows are per DEPARTMENT (no person names). Older rows keep
+// their Cluster Head text until a department is chosen; choosing one clears the name.
+function _tdrRowLabel(row){ return row.departmentId?(Sel.nameOf(Store.DEPARTMENTS,row.departmentId)||'Department unavailable'):(row.clusterHead||'—'); }
+function _tdrSetClusterDept(i,id){
+  const rows=_tdrReport.content.clusterRows, row=rows[i]; if(!row) return;
+  if(id&&rows.some((r,k)=>k!==i&&r.departmentId===id)){ toast('That department already has a row.','error'); renderTrainingDetail(); return; }
+  row.departmentId=id||null; if(id) row.clusterHead=null; renderTrainingDetail();
+}
 function _tdrAddClusterRow(){
-  _tdrReport.content.clusterRows.push({clusterHead:'',required:null,inProgress:null,notStarted:null});
+  _tdrReport.content.clusterRows.push({departmentId:null,required:null,inProgress:null,notStarted:null});
   renderTrainingDetail();
 }
 function _tdrSetClusterField(i,field,value){
@@ -18489,12 +18499,12 @@ function _tdrClusterTotals(c){
 // Head/Required/In Progress/Not Started are collected -- Completed isn't a column at all since
 // it's derived on render, not stored from the file.
 function _tdrClusterDownloadCSVTemplate(){
-  const csv = 'Cluster Head,Required,In Progress,Not Started\nJuan Dela Cruz,50,10,5\n';
+  const csv = 'Department,Required,In Progress,Not Started\nProduction,50,10,5\n';
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'slt_cluster_breakdown_template.csv';
+  a.download = 'slt_department_breakdown_template.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -18505,21 +18515,25 @@ function _tdrClusterHandleCSVFile(file){
   const reader=new FileReader();
   reader.onload=()=>{
     const {header,rows}=_tdaParseCSV(String(reader.result||''));
-    const headIdx=header.findIndex(h=>h.includes('cluster')||h.includes('head'));
+    const headIdx=header.findIndex(h=>h.includes('department')||h.includes('dept'));
     const reqIdx=header.findIndex(h=>h.includes('required'));
     const ipIdx=header.findIndex(h=>h.includes('progress'));
     const nsIdx=header.findIndex(h=>h.includes('not started')||h.includes('notstarted'));
     if(headIdx===-1){
-      toast('CSV must have a Cluster Head column.','error');
+      toast('CSV must have a Department column (names as listed in Settings → Departments).','error');
       return;
     }
     const toNum=(v)=>(v===undefined||v==='')?null:Number(v);
-    let added=0, skippedBlank=0;
+    let added=0, skippedBlank=0, unknown=[], dup=0;
+    const depts=Sel.active(Store.DEPARTMENTS);
     rows.forEach(cols=>{
-      const clusterHead=(cols[headIdx]||'').trim();
-      if(!clusterHead){ skippedBlank++; return; }
+      const name=(cols[headIdx]||'').trim();
+      if(!name){ skippedBlank++; return; }
+      const d=depts.find(x=>(x.name||'').trim().toLowerCase()===name.toLowerCase());
+      if(!d){ unknown.push(name); return; }
+      if(_tdrReport.content.clusterRows.some(r=>r.departmentId===d.id)){ dup++; return; }
       _tdrReport.content.clusterRows.push({
-        clusterHead,
+        departmentId:d.id,
         required:reqIdx>=0?toNum(cols[reqIdx]):null,
         inProgress:ipIdx>=0?toNum(cols[ipIdx]):null,
         notStarted:nsIdx>=0?toNum(cols[nsIdx]):null
@@ -18527,7 +18541,7 @@ function _tdrClusterHandleCSVFile(file){
       added++;
     });
     renderTrainingDetail();
-    toast(`${added} cluster row(s) imported${skippedBlank?`, ${skippedBlank} row(s) skipped (blank Cluster Head)`:''}.`, added?'success':'warning');
+    toast(`${added} department row(s) imported${skippedBlank?`, ${skippedBlank} blank skipped`:''}${dup?`, ${dup} duplicate skipped`:''}${unknown.length?`, not found: ${unknown.slice(0,3).join(', ')}${unknown.length>3?'…':''}`:''}.`, added&&!unknown.length?'success':'warning');
   };
   reader.readAsText(file);
   document.getElementById('tdr-cluster-csv-input').value='';
@@ -18713,11 +18727,12 @@ function _tdrValidateForSubmit(sess){
   if(grp==='owner'){
     const l1Labels={contentIntuitiveness:'Content Intuitiveness',contentRelevance:'Content Relevance',materialInteractivity:'Material Interactivity',materialDesign:'Material Design',learnerSatisfaction:'Learner Satisfaction',nps:'NPS'};
     Object.keys(l1Labels).forEach(k=>{ if(c[k]===null||c[k]===undefined||c[k]==='') missing.push(l1Labels[k]); });
-    if(!c.clusterRows||!c.clusterRows.length) missing.push('at least one Per-Cluster Breakdown row');
+    if(!c.clusterRows||!c.clusterRows.length) missing.push('at least one Per-Department Breakdown row');
     else{
       const required=sess?.expectedParticipants;
       const totals=_tdrClusterTotals(c);
-      if(required!=null&&totals.required!==required) missing.push('a Per-Cluster Breakdown that reconciles with Required Participants');
+      if(required!=null&&totals.required!==required) missing.push('a Per-Department Breakdown that reconciles with Required Participants');
+      if(c.clusterRows.some(r=>!r.departmentId&&!(r.clusterHead||'').trim())) missing.push('a department on every breakdown row'); // v5.19v
     }
     return missing;
   }
@@ -19610,7 +19625,7 @@ function _tdOverviewSltBlocks(s){
   if(!report){
     return {
       completion:`<div class="card" style="padding:18px 20px;margin-bottom:16px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">2. Completion Metrics</div>${emptyNote}${goToReport}</div>`,
-      cluster:`<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">3. Per-Cluster Data</div>${emptyNote}${goToReport}</div>`,
+      cluster:`<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">3. Per-Department Data</div>${emptyNote}${goToReport}</div>`,
       survey:`<div class="card" style="padding:18px 20px"><div style="font-weight:700;font-size:14.5px;margin-bottom:6px">4. Survey L1 Data</div>${emptyNote}${goToReport}</div>`
     };
   }
@@ -19624,8 +19639,8 @@ function _tdOverviewSltBlocks(s){
   const requiredMismatch=hasClusterRows&&required!=null&&clusterTotals.required!==required;
   const mismatchBanner=requiredMismatch?`
     <div style="background:var(--red-lt);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;color:#991b1b">
-      <div style="font-weight:700;margin-bottom:2px">⚠ Cluster breakdown doesn't add up</div>
-      <div>The Per-Cluster Breakdown's Required column totals <strong>${clusterTotals.required}</strong>, but this session's Required Participants is set to <strong>${required}</strong>.</div>
+      <div style="font-weight:700;margin-bottom:2px">⚠ Department breakdown doesn't add up</div>
+      <div>The Per-Department Breakdown's Required column totals <strong>${clusterTotals.required}</strong>, but this session's Required Participants is set to <strong>${required}</strong>.</div>
     </div>`:'';
   const completion=`<div class="card" style="padding:18px 20px;margin-bottom:16px">
     <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">2. Completion Metrics</div>
@@ -19647,7 +19662,7 @@ function _tdOverviewSltBlocks(s){
     const rowRate=(rowReq!=null&&rowReq>0)?Math.round((rowDone/rowReq)*100):null;
     const rowColor=_tdrCompletionColor(rowRate);
     return `<tr>
-      <td>${Utils.esc(row.clusterHead||'—')}</td>
+      <td>${Utils.esc(_tdrRowLabel(row))}</td>
       <td ${ctd}><span style="font-weight:700;color:${rowRate!=null?rowColor.fg:'var(--text3)'}">${rowRate!=null?rowRate+'%':'—'}</span></td>
       <td ${ctd}>${row.required??'—'}</td>
       <td ${ctd}>${rowReq!=null?rowDone:'—'}</td>
@@ -19656,9 +19671,9 @@ function _tdOverviewSltBlocks(s){
     </tr>`;
   }).join('');
   const cluster=`<div class="card" style="padding:18px 20px">
-    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Per-Cluster Data</div>
+    <div style="font-weight:700;font-size:14.5px;margin-bottom:12px">3. Per-Department Data</div>
     ${clusterRows.length?`<div class="eval-tbl-wrap"><table class="eval-tbl">
-      <tr><th>Cluster Head</th><th ${ctd}>Completion Rate</th><th ${ctd}>Required</th><th ${ctd}>Completed</th><th ${ctd}>In Progress</th><th ${ctd}>Not Started</th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No cluster breakdown recorded yet.</div>'}
+      <tr><th>Department</th><th ${ctd}>Completion Rate</th><th ${ctd}>Required</th><th ${ctd}>Completed</th><th ${ctd}>In Progress</th><th ${ctd}>Not Started</th></tr>${clusterRowsHtml}</table></div>`:'<div style="font-size:12.5px;color:var(--text3)">No cluster breakdown recorded yet.</div>'}
     ${goToReport}
   </div>`;
 
