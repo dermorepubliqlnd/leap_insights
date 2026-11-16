@@ -6680,7 +6680,7 @@ function _lpCurSidebarHtml(p,editRes){
   const team=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Program Ownership &amp; Delivery Team</span>${viewLink}</div>
     ${_lpMetaReady()?`${qd('Program Ownership',p.ownership==='ld'?'<span class="badge" style="background:#dcfce7;color:#15803d">L&amp;D</span>':p.ownership==='non_ld'?'<span class="badge" style="background:#eff6ff;color:#1d4ed8">Non-L&amp;D</span>':'<span class="badge" style="background:#fef3c7;color:#92400e">Not classified</span>')}
     ${p.ownership==='non_ld'?qd('Owning Department',esc(Sel.nameOf(Store.DEPARTMENTS,p.ownerDepartmentId)||'—')):p.ownership==='ld'?qd('Owning Department','L&amp;D'):''}
-    ${people('sme')}${people('facilitator')}`:'<div class="lp-muted" style="font-size:12px">Not available yet.</div>'}</div>`;
+    ${people('sme')}${(p.deliveryType&&_lpProgramTypeValue(p.deliveryType)==='SLT'&&!LpPeopleDB.forFamily(fid,'facilitator').length)?'':people('facilitator')}`:'<div class="lp-muted" style="font-size:12px">Not available yet.</div>'}</div>`;
   if(editRes&&_lpV504Ready()){
     const all=p.learningResources||[];
     const rows=all.map((x,i)=>`<div class="lp-side-res-row">${_lpResIcon(x)}<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><input class="form-control lp-tin" type="text" maxlength="150" value="${esc(x.title||'')}" placeholder="Resource title" oninput="lpResEdit(${i},this.value)"><div style="display:flex;gap:4px"><select class="form-control lp-tin" aria-label="Resource format" onchange="lpResFormat(${i},this.value)">${LP_RES_FORMATS.map(f=>`<option value="${f[0]}"${(x.format||'online')===f[0]?' selected':''}>${esc(f[1])}</option>`).join('')}</select>${x.format==='other'?`<input class="form-control lp-tin" type="text" maxlength="60" value="${esc(x.formatOther||'')}" placeholder="Specify format" oninput="lpResFormatOther(${i},this.value)">`:''}</div></div><button type="button" class="lp-icon-btn" title="Remove resource" aria-label="Remove resource" onclick="lpResRemove(${i})">${_lpIc(LP_IC.x)}</button></div>`).join('');
@@ -6692,7 +6692,7 @@ function _lpCurSidebarHtml(p,editRes){
   const res=(p.learningResources||[]).filter(x=>(x.title||'').trim());
   const resources=`<div class="card lp-card lp-side-card"><div class="lp-card-hd"><span class="lp-card-t">Learning Resources</span>${res.length?`<span class="lp-count-chip" style="background:#eff6ff;color:#1d4ed8">${res.length} resource${res.length===1?'':'s'}</span>`:''}</div>
     ${res.length?res.map(x=>`<div class="lp-res-row">${_lpResIcon(x)}<span class="lp-res-t">${esc(x.title)}<span class="lp-res-f">${esc(_lpResFmtLabel(x))}</span></span><span class="lp-res-d">${x.updatedAt&&!isNaN(new Date(x.updatedAt))?'Updated '+esc(Utils.formatDate(new Date(x.updatedAt).toLocaleDateString('en-CA',{timeZone:'Asia/Manila'}))):''}</span></div>`).join(''):'<div class="lp-muted" style="font-size:12px">No learning resources listed yet.</div>'}
-    <div class="lp-muted" style="font-size:11px;margin-top:8px">Edit resources from Actions → Edit Curriculum or Edit Overview.</div></div>`;
+    <div class="lp-muted" style="font-size:11px;margin-top:8px">Edit resources with Edit on the Overview or Curriculum tab.</div></div>`;
   return team+resources;
 }
 
