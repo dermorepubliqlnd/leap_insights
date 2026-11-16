@@ -7941,7 +7941,7 @@ async function _lpSmartSave(w,before,fail,finish){
     const nextV=/^v\d+$/i.test(before.version||'')?'v'+(Number(before.version.slice(1))+1):(before.version||'v1')+'.1';
     const ask=()=>{
       confirm$('This change needs a new version',`<p>These edits change what is delivered, so they go into a new draft <b>${esc(before.code+' '+nextV)}</b>:</p><ul style="margin:6px 0 10px 18px">${major.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
-        <p class="lp-muted" style="font-size:12.5px">${esc(_lpVerLabel(before))} stays live and schedulable, unchanged. All your other edits on this page go into ${esc(nextV)} too. To change only ${esc(_lpVerLabel(before))} now, choose Go back and undo the items above.</p>
+        <p class="lp-muted" style="font-size:12.5px">${esc(_lpVerLabel(before))} stays live and schedulable, unchanged. All your other edits on this page go into ${esc(nextV)} too. To change only ${esc(_lpVerLabel(before))} now, choose Cancel and undo the items above.</p>
         <label class="form-label" for="lp-sv-start" style="margin-top:8px;display:block">${esc(nextV)} planned start</label><input type="date" class="form-control" id="lp-sv-start" value="${defStart}">
         <div class="lp-muted" style="font-size:12px;margin-top:6px">${fut.length?`${fut.length} upcoming session${fut.length===1?'':'s'} of ${esc(before.version)} run until ${esc(Utils.formatDate(fut[fut.length-1]))}; the new version must start after them.`:'You can change this date when you activate it.'}</div>`,`Create draft ${nextV}`,async()=>{
         const start=document.getElementById('lp-sv-start')?.value||'';
