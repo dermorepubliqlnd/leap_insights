@@ -8080,6 +8080,7 @@ function lpDelete(id){
     const {error}=await sb.from(Store.LEARNING_PROGRAMS).delete().eq('id',id);
     if(error){ _surfaceDbError(error,'Delete'); return; }
     const arr=Cache.data[Store.LEARNING_PROGRAMS]; const i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1);
+    if(Cache.data[Store.LP_REQS]) Cache.data[Store.LP_REQS]=Cache.data[Store.LP_REQS].filter(r=>r.programFamilyId!==id); // v5.19w: the database removes the rule with the program
     AuditLog.record('delete','Learning Program',id,`Deleted program "${p.title}"`);
     if(_lpDetailId===id) _lpDetailId=null;
     renderLearningPrograms(); _syncHashForCurrentView(); toast('Program deleted.','success');
