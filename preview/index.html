@@ -6828,7 +6828,7 @@ function cmpUpdateOpen(){
   const rows=_cmpLines(c.id).map(l=>{ const req=_cmpRequired(l), s=_cmpSnapFor(l); return `<tr><td>${esc(_cmpLineName(l))}</td><td class="n">${req}</td><td class="n"><input type="number" min="0" class="form-control cmp-in cmp-u-done" data-line="${esc(l.id)}" data-req="${req}" value="${s?s.completed:''}"></td><td class="n"><input type="number" min="0" class="form-control cmp-in cmp-u-ex" data-line="${esc(l.id)}" value="${s?s.exempt:0}"></td></tr>`; }).join('');
   _cmpDrawer('Add Update',`${esc(c.name)} · counts by ${_cmpGrp(c)[0].toLowerCase()}, no names`,`<div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-u-asof">As of</label><input id="cmp-u-asof" type="date" class="form-control cal-date" value="${_todayStr()}" max="${_todayStr()}"></div>
       <div class="cmp-f"><label class="cmp-l" for="cmp-u-src">Source</label><select id="cmp-u-src" class="form-control">${CMP_SOURCES.map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('')}</select></div></div>
-    <div class="cmp-csv-row"><button type="button" class="btn btn-secondary btn-sm" onclick="cmpCsvTemplate('update')">Download template</button><label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">Import CSV<input type="file" accept=".csv" hidden onchange="cmpCsvUpdate(this)"></label><span class="cmp-pm">One row per ${_cmpGrp(c)[0].toLowerCase()} with Completed and Exempt. No employee names.</span></div><div id="cmp-csv-msg" class="cmp-note" style="display:none"></div>
+    <div class="cmp-csv-row"><button type="button" class="btn btn-secondary btn-sm" onclick="cmpCsvTemplate('update')">Download template</button><label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">Import CSV<input type="file" accept=".csv" hidden onchange="cmpCsvUpdate(this)"></label><span class="cmp-pm">One row per ${_cmpGrp(c)[0].toLowerCase()} with Completed and Exempt. No employee names.</span></div><div id="cmp-csv-msg" class="cmp-note" style="display:none"></div>${_cmpAttendHelper(c)}
     <table class="cmp-tbl cmp-utbl"><thead><tr><th>${_cmpGrp(c)[0]}</th><th class="n">Required</th><th class="n">Completed</th><th class="n">Exempt</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="cmp-f" style="margin-top:12px"><label class="cmp-l" for="cmp-u-note">Note (optional)</label><input id="cmp-u-note" class="form-control" maxlength="500" placeholder="e.g. Dermorepubliq University export Nov 15, GMP Refresher course"></div>
     <div class="cmp-pm">Numbers are pre-filled from the last update. Exempt = on leave or within the new-hire grace period. If a headcount changed, use Adjust headcount first.</div>`,
@@ -6984,6 +6984,14 @@ function _cmpFollowupHtml(c,t){
   const can=_cmpCanManage(), esc=Utils.esc, done=!!c.followupDoneAt;
   return `<div class="cmp-banner ${done?'tone-ok':'tone-warn'}" style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between"><div><b>On-leave follow-up${done?' · done':''}</b><div>${c.followupNote?esc(c.followupNote):`${t.ex} exempt (on leave or new-hire grace) at close. Revisit them when they return.`}</div>${done?`<div class="cmp-pm">Marked done ${esc(Utils.formatDate(_mnlDateOf(c.followupDoneAt)))}${c.followupDoneBy?' by '+esc(_lpName(c.followupDoneBy)):''}</div>`:''}</div>
     ${can?`<div style="display:flex;gap:6px;flex:0 0 auto"><button type="button" class="btn btn-secondary btn-sm" onclick="cmpFollowupEdit()">Edit note</button><button type="button" class="btn btn-${done?'secondary':'primary'} btn-sm" onclick="cmpFollowupDone(${!done})">${done?'Reopen':'Mark done'}</button></div>`:''}</div>`;
+}
+// v5.19z (2026-11-18, per Sandra: "ok with ILT session attendance"): instructor-led attendance from the Training Calendar is
+// shown as a helper when adding an update. It is never added to the counts automatically (no roster: people could be counted twice).
+function _cmpAttendHelper(c){
+  const done=_cmpSessions(c).filter(s=>s.status==='completed'&&s.deliveryType!=='Self-led'&&s.trainingDate<=_todayStr());
+  if(!done.length) return '';
+  const n=done.reduce((a,s)=>a+_cmpAttended(s),0);
+  return `<div class="cmp-note" style="background:#f8fafc;color:#334155">From the Training Calendar: <b>${done.length}</b> instructor-led session${done.length===1?'':'s'} delivered this cycle, <b>${n}</b> attended. Use this to cross-check; it is not added to the counts. <button type="button" class="lp-link-btn" style="margin:0" onclick="cmpDrawerClose();cmpCalendar('${c.id}')">See sessions</button></div>`;
 }
 function cmpCalendar(cid){
   const c=_cmpCycle(cid); if(!c) return; const ids=_cmpSessions(c).map(s=>s.id);
