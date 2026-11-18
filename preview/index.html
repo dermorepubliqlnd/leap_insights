@@ -6580,7 +6580,7 @@ function _cmpListHtml(){
         <td>${c.status==='planned'?'<span class="cmp-pm">Not open yet</span>':_cmpBar(st.t.pct,c,cs[1])}</td><td>${_cmpTag(cs)}</td><td>${esc(r&&r.ownerId?_lpName(r.ownerId):'—')}</td>
         <td><button type="button" class="cmp-ib" title="View cycle" aria-label="View cycle">${_cmpIc('eye')}</button></td></tr>`; }).join('')}</tbody></table></div><div class="cmp-pm" style="margin-top:8px">The thin dark line in each bar marks the target (95% unless set otherwise).</div>`
     :`<div class="card cmp-empty">${all.length?'No cycles here.':`No compliance cycles yet. Set a program's <b>Compliance Requirement</b> (Mandatory or Compliance), then open a cycle.`}${!all.length&&_cmpCanManage()?` <button type="button" class="btn btn-primary btn-sm" onclick="cmpNewCycle()">Open Cycle</button>`:''}</div>`;
-  return `<div class="cmp-head"><div class="cmp-sub">Required and compliance training, tracked by cycle. Counts by department only; names stay in Litmos and HR.</div>
+  return `<div class="cmp-head"><div class="cmp-sub">Counts by department only; names stay in Litmos and HR.</div>
     <div class="cmp-acts"><input class="form-control cmp-search" placeholder="Search programs or cycles…" value="${esc(_cmp.q)}" oninput="_cmp.q=this.value;clearTimeout(window._cmpQT);window._cmpQT=setTimeout(()=>{renderCompliance();const i=document.querySelector('.cmp-search');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)">${_cmpCanManage()?`<button type="button" class="btn btn-primary" onclick="cmpNewCycle()">${_cmpIc('plus')} Open Cycle</button>`:''}</div></div>${cards}${tabs}${body}`;
 }
 
@@ -6660,10 +6660,14 @@ function _cmpSessionsHtml(c,sess){
   return `<div class="cmp-tw"><table class="cmp-tbl"><thead><tr><th>Session</th><th>Type</th><th>Date</th><th>Status</th><th class="n">Attended</th></tr></thead><tbody>${sess.map(s=>`<tr class="cmp-row" onclick="cmpGoSession('${s.id}')"><td>${esc(s.trainingProgram||'')}<div class="cmp-pm">${esc(s.code||'')}</div></td><td>${esc(s.deliveryType||'')}</td><td>${esc(Utils.formatDate(s.trainingDate))}${s.trainingDate>c.deadline?' <span class="lt-tag tone-warn">After deadline</span>':''}</td><td>${esc(typeof _tdSavedStatusLabel==='function'?_tdSavedStatusLabel(s):s.status||'')}</td><td class="n">${s.status==='completed'?_cmpAttended(s):'—'}</td></tr>`).join('')}</tbody></table></div>
     <div class="cmp-pm" style="margin-top:8px">Attendance is shown as a cross-check only. Completion counts come from the department updates (self-led completions are in Litmos).</div>`;
 }
+function _cmpPretty(t){ // v5.19x: readable history text (dates, sources, reasons, arrows)
+  let x=String(t||'').replace(/\d{4}-\d{2}-\d{2}/g,d=>Utils.formatDate(d)).replace(/ -> /g,' → ');
+  CMP_SOURCES.forEach(([k,l])=>{ x=x.replace(`(${k})`,`(${l})`); }); CMP_REASONS.forEach(([k,l])=>{ x=x.replace(`(${k})`,`(${l.toLowerCase()})`); });
+  return x; }
 function _cmpHistHtml(c){
   const esc=Utils.esc, ev=_cmpT('compliance_events').filter(e=>e.cycleId===c.id).sort((a,b)=>(b.at||'').localeCompare(a.at||''));
   if(!ev.length) return '<div class="card cmp-empty">No history yet.</div>';
-  return `<div class="cmp-tw"><table class="cmp-tbl"><thead><tr><th>Date</th><th>What happened</th><th>By</th></tr></thead><tbody>${ev.map(e=>`<tr><td style="white-space:nowrap">${esc(Utils.formatDate(_mnlDateOf(e.at)))}</td><td>${esc(e.detail||e.action)}</td><td>${esc(e.actorName||'System')}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="cmp-tw"><table class="cmp-tbl"><thead><tr><th>Date</th><th>What happened</th><th>By</th></tr></thead><tbody>${ev.map(e=>`<tr><td style="white-space:nowrap">${esc(Utils.formatDate(_mnlDateOf(e.at)))}</td><td>${esc(_cmpPretty(e.detail||e.action))}</td><td>${esc(e.actorName||'System')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function _cmpChartHtml(c){
   const ups=_cmpUpdates(c.id).slice().reverse(); const tgt=Number(c.targetPct||95);
@@ -6731,8 +6735,8 @@ function cmpNewFill(){
   const r=(Cache.data[Store.LP_REQS]||[]).find(x=>x.id===id), p=_cmpProgram({programFamilyId:r.programFamilyId}), d=_cmpDefaults(r);
   const short=(p.title.match(/\(([^)]+)\)/)||[])[1]||p.title.split(/\s+/).slice(0,3).join(' ');
   el.innerHTML=`<div class="cmp-f"><label class="cmp-l" for="cmp-n-name">Cycle name</label><input id="cmp-n-name" class="form-control" maxlength="80" value="${Utils.esc(short+' '+d.deadline.slice(0,4))}"></div>
-    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-n-start">Cycle starts</label><input id="cmp-n-start" type="date" class="form-control" value="${d.start}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-n-end">Cycle ends</label><input id="cmp-n-end" type="date" class="form-control" value="${d.end}"></div></div>
-    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-n-dl">Deadline</label><input id="cmp-n-dl" type="date" class="form-control" value="${d.deadline}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-n-tgt">Target %</label><input id="cmp-n-tgt" type="number" min="1" max="100" class="form-control" value="95"></div></div>
+    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-n-start">Cycle starts</label><input id="cmp-n-start" type="date" class="form-control cal-date" value="${d.start}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-n-end">Cycle ends</label><input id="cmp-n-end" type="date" class="form-control cal-date" value="${d.end}"></div></div>
+    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-n-dl">Deadline</label><input id="cmp-n-dl" type="date" class="form-control cal-date" value="${d.deadline}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-n-tgt">Target %</label><input id="cmp-n-tgt" type="number" min="1" max="100" class="form-control" value="95"></div></div>
     <div class="cmp-note">Dates come from the rule (${Utils.esc(_lpReqOften(r))}, ${Utils.esc(_lpReqDeadline(r))}). Departments are filled in from "Who must complete": ${Utils.esc(_cmpWho({requirementId:r.id}))}. You enter headcounts next, then open the cycle.</div>`;
   if(typeof _dateFmtSync==='function') try{ _dateFmtSync(); }catch(e){}
 }
@@ -6755,8 +6759,8 @@ async function cmpNewSave(){
 function cmpEditDetails(){
   const c=_cmpCycle(_cmp.id); if(!c||c.status!=='planned') return;
   _cmpDrawer('Edit cycle details',Utils.esc(c.code),`<div class="cmp-f"><label class="cmp-l" for="cmp-e-name">Cycle name</label><input id="cmp-e-name" class="form-control" maxlength="80" value="${Utils.esc(c.name)}"></div>
-    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-e-start">Cycle starts</label><input id="cmp-e-start" type="date" class="form-control" value="${c.periodStart}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-e-end">Cycle ends</label><input id="cmp-e-end" type="date" class="form-control" value="${c.periodEnd}"></div></div>
-    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-e-dl">Deadline</label><input id="cmp-e-dl" type="date" class="form-control" value="${c.deadline}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-e-tgt">Target %</label><input id="cmp-e-tgt" type="number" min="1" max="100" class="form-control" value="${Number(c.targetPct)}"></div></div>`,
+    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-e-start">Cycle starts</label><input id="cmp-e-start" type="date" class="form-control cal-date" value="${c.periodStart}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-e-end">Cycle ends</label><input id="cmp-e-end" type="date" class="form-control cal-date" value="${c.periodEnd}"></div></div>
+    <div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-e-dl">Deadline</label><input id="cmp-e-dl" type="date" class="form-control cal-date" value="${c.deadline}"></div><div class="cmp-f"><label class="cmp-l" for="cmp-e-tgt">Target %</label><input id="cmp-e-tgt" type="number" min="1" max="100" class="form-control" value="${Number(c.targetPct)}"></div></div>`,
     `<button type="button" class="btn btn-secondary" onclick="cmpDrawerClose()">Cancel</button><button type="button" class="btn btn-primary" onclick="cmpEditSave()">Save</button>`);
 }
 async function cmpEditSave(){
@@ -6806,7 +6810,7 @@ async function cmpDelete(){ const c=_cmpCycle(_cmp.id); if(!c||c.status!=='plann
     await AuditLog.record('delete','Compliance',c.id,`Deleted planned compliance cycle ${c.name}`); cmpBack(); toast('Planned cycle deleted.','success'); }); }
 function cmpDeadline(){
   const c=_cmpCycle(_cmp.id); if(!c) return; document.querySelectorAll('.td-viewmenu-wrap.open').forEach(x=>x.classList.remove('open'));
-  _cmpDrawer('Change deadline',`${Utils.esc(c.name)} · now ${Utils.esc(Utils.formatDate(c.deadline))}`,`<div class="cmp-f"><label class="cmp-l" for="cmp-d-new">New deadline</label><input id="cmp-d-new" type="date" class="form-control" value="${c.deadline}"></div>
+  _cmpDrawer('Change deadline',`${Utils.esc(c.name)} · now ${Utils.esc(Utils.formatDate(c.deadline))}`,`<div class="cmp-f"><label class="cmp-l" for="cmp-d-new">New deadline</label><input id="cmp-d-new" type="date" class="form-control cal-date" value="${c.deadline}"></div>
     <div class="cmp-f"><label class="cmp-l" for="cmp-d-why">Reason <span class="req">*</span></label><input id="cmp-d-why" class="form-control" maxlength="500" placeholder="e.g. Plant shutdown in January"></div>
     <div class="cmp-note">Changing the deadline of an open cycle changes its result, so it is logged with the old date, new date and reason.${Auth.isAdmin?' Yours is approved at once (you are the top approver).':''}</div>`,
     `<button type="button" class="btn btn-secondary" onclick="cmpDrawerClose()">Cancel</button><button type="button" class="btn btn-primary" onclick="cmpDeadlineSave()">Change deadline</button>`);
@@ -6820,7 +6824,7 @@ async function cmpDeadlineSave(){
 function cmpUpdateOpen(){
   const c=_cmpCycle(_cmp.id); if(!c||c.status!=='open') return; const esc=Utils.esc;
   const rows=_cmpLines(c.id).map(l=>{ const req=_cmpRequired(l), s=_cmpSnapFor(l); return `<tr><td>${esc(_cmpDept(l.departmentId))}</td><td class="n">${req}</td><td class="n"><input type="number" min="0" class="form-control cmp-in cmp-u-done" data-line="${esc(l.id)}" data-req="${req}" value="${s?s.completed:''}"></td><td class="n"><input type="number" min="0" class="form-control cmp-in cmp-u-ex" data-line="${esc(l.id)}" value="${s?s.exempt:0}"></td></tr>`; }).join('');
-  _cmpDrawer('Add Update',`${esc(c.name)} · counts by department, no names`,`<div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-u-asof">As of</label><input id="cmp-u-asof" type="date" class="form-control" value="${_todayStr()}" max="${_todayStr()}"></div>
+  _cmpDrawer('Add Update',`${esc(c.name)} · counts by department, no names`,`<div class="cmp-f2"><div class="cmp-f"><label class="cmp-l" for="cmp-u-asof">As of</label><input id="cmp-u-asof" type="date" class="form-control cal-date" value="${_todayStr()}" max="${_todayStr()}"></div>
       <div class="cmp-f"><label class="cmp-l" for="cmp-u-src">Source</label><select id="cmp-u-src" class="form-control">${CMP_SOURCES.map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('')}</select></div></div>
     <table class="cmp-tbl cmp-utbl"><thead><tr><th>Department</th><th class="n">Required</th><th class="n">Completed</th><th class="n">Exempt</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="cmp-f" style="margin-top:12px"><label class="cmp-l" for="cmp-u-note">Note (optional)</label><input id="cmp-u-note" class="form-control" maxlength="500" placeholder="e.g. Litmos export Nov 15, GMP Refresher course"></div>
