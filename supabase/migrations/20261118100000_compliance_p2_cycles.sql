@@ -128,7 +128,7 @@ grant execute on function public.comp_can_update(text), public.comp_is_top(), pu
 create or replace function public.comp_line_required(p_line text)
 returns integer language sql stable security definer set search_path = '' as $$
   select coalesce((select a.revised_required from public.compliance_adjustments a
-                    where a.line_id = p_line and a.status = 'approved' order by a.decided_at desc, a.requested_at desc limit 1),
+                    where a.line_id = p_line and a.status = 'approved' order by a.decided_at desc nulls last, a.requested_at desc limit 1),
                   (select l.original_required from public.compliance_lines l where l.id = p_line));
 $$;
 grant execute on function public.comp_line_required(text) to authenticated;
@@ -301,10 +301,10 @@ begin
     end if;
     new.previous_required := public.comp_line_required(new.line_id);
     if new.revised_required = new.previous_required then raise exception 'The new headcount is the same as the current one.' using errcode = '23514'; end if;
-    new.requested_by := auth.uid(); new.requested_at := now();
+    new.requested_by := auth.uid(); new.requested_at := clock_timestamp();
     small := abs(new.revised_required - ln.original_required) <= greatest(1, round(ln.original_required * 0.05)) and today <= c.deadline;
     if small or public.comp_is_top() then
-      new.status := 'approved'; new.decided_by := auth.uid(); new.decided_at := now(); new.self_approved := true;
+      new.status := 'approved'; new.decided_by := auth.uid(); new.decided_at := clock_timestamp(); new.self_approved := true;
     else
       new.status := 'pending'; new.decided_by := null; new.decided_at := null; new.self_approved := false;
     end if;
@@ -318,7 +318,7 @@ begin
   new.id := old.id; new.cycle_id := old.cycle_id; new.line_id := old.line_id; new.previous_required := old.previous_required;
   new.revised_required := old.revised_required; new.reason_code := old.reason_code; new.note := old.note;
   new.requested_by := old.requested_by; new.requested_at := old.requested_at;
-  new.decided_by := auth.uid(); new.decided_at := now(); new.self_approved := false;
+  new.decided_by := auth.uid(); new.decided_at := clock_timestamp(); new.self_approved := false;
   return new;
 end;
 $$;
