@@ -6380,7 +6380,8 @@ function _lpReqWho(r){
   return `Departments: ${esc(d.join(', '))}<br>Levels: ${esc(l.join(', '))} <span class="lp-muted">(people in both)</span>`;
 }
 function _lpReqWhoFull(r){ // v5.20a
-  const base=r.scopeKind==='all'?'All levels · All departments':_lpReqWho(r);
+  const esc=Utils.esc, lv=(r.levelIds||[]).length?r.levelIds.map(_lpReqLevelName).join(', '):'All levels', dp=(r.departmentIds||[]).length?r.departmentIds.map(id=>Sel.nameOf(Store.DEPARTMENTS,id)||'Department unavailable').join(', '):'All departments';
+  const base=r.scopeSource==='audience'?esc(lv+' · '+dp):r.scopeKind==='all'?'Everyone':_lpReqWho(r);
   return (r.scopeSource==='audience'?'Target audience: ':'')+base+(r.scopeSource!=='audience'?' <span class="lp-muted">(own list, set before 18 Nov; editing switches it to the target audience)</span>':'');
 }
 function _lpReqOften(r){ const m=r.recurrenceMonths; return !m?'One-time':m===12?'Every year':m%12===0?`Every ${m/12} years`:`Every ${m} months`; }
