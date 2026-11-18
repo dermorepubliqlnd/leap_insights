@@ -6610,7 +6610,7 @@ function _cmpCycleHtml(c){
   else if(_cmp.tab==='sessions') main=_cmpSessionsHtml(c,sess);
   else if(_cmp.tab==='history') main=_cmpHistHtml(c);
   else main=c.status==='planned'?_cmpPlanHtml(c):_cmpTrackerHtml(c,st,before);
-  const side=c.status==='planned'?`<div class="card cmp-side"><div class="cmp-ch">Before you open</div><ol class="cmp-steps"><li>Check the departments that must complete this program.</li><li>Enter each department's headcount from HR.</li><li>Open the cycle. Headcounts and the rule (${esc(r?_lpReqLabel(r):c.ruleLabel||'')}) are locked from then on; changes go through Adjust headcount.</li></ol></div>`
+  const side=c.status==='planned'?`<div class="card cmp-side"><div class="cmp-ch">Before you open</div><ol class="cmp-steps"><li>Check the ${_cmpGrp(c)[1].replace(/ \(.*\)/,'').toLowerCase()} that must complete this program.</li><li>Enter each one's headcount from HR, or import a CSV.</li><li>Open the cycle. Headcounts and the rule (${esc(r?_lpReqLabel(r):c.ruleLabel||'')}) are locked from then on; changes go through Adjust headcount.</li></ol></div>`
     :`${_cmpChartHtml(c)}${_cmpAttentionHtml(c,st,pending,last,before)}`;
   const banner=c.status==='cancelled'?`<div class="cmp-banner tone-neutral">Cancelled${c.statusReason?': '+esc(c.statusReason):''}</div>`:c.status==='finalized'?`<div class="cmp-banner tone-ok">Finalized ${c.finalizedAt?esc(Utils.formatDate(_mnlDateOf(c.finalizedAt))):''}${c.finalizedBy?' by '+esc(_lpName(c.finalizedBy)):''}. Results are locked.</div>`:'';
   return `<button type="button" class="ov-link" style="padding-left:0" onclick="cmpBack()">← Back to Compliance</button>
