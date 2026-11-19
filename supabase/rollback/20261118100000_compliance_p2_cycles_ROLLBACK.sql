@@ -1,0 +1,21 @@
+-- ROLLBACK for 20261118100000_compliance_p2_cycles (removes only what that migration added)
+drop table if exists public.compliance_events;
+drop table if exists public.compliance_adjustments;
+drop table if exists public.compliance_snapshots;
+drop table if exists public.compliance_updates;
+drop table if exists public.compliance_lines;
+drop table if exists public.compliance_cycles;
+drop function if exists public.compliance_adjustments_log();
+drop function if exists public.compliance_adjustments_guard();
+drop function if exists public.compliance_updates_log();
+drop function if exists public.compliance_snapshots_guard();
+drop function if exists public.compliance_updates_guard();
+drop function if exists public.compliance_lines_guard();
+drop function if exists public.compliance_cycles_log();
+drop function if exists public.compliance_cycles_guard();
+drop function if exists public.comp_line_required(text);
+drop function if exists public.comp_is_top();
+drop function if exists public.comp_can_update(text);
+drop function if exists public.comp_log(text,text,text);
+drop function if exists public.comp_actor_name();
+delete from supabase_migrations.schema_migrations where version = '20261118100000';
