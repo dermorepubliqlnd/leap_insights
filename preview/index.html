@@ -12933,7 +12933,7 @@ const _TD_COL_DEFS=[
   // v5.20d (2026-11-24, per Sandra): session duration in hours (whole session; same total the hour KPIs use)
   {id:'duration', label:'Duration (hrs)', width:120,
     sortVal:s=>{ const h=_tdDurHrs(s); return h==null?-1:h; },
-    cell:s=>{ const h=_tdDurHrs(s); return h==null?'<span style="font-size:13px;color:var(--text3)">—</span>':`<span style="font-size:13px;font-variant-numeric:tabular-nums">${h} ${h===1?'hr':'hrs'}</span>`; }},
+    cell:s=>{ const h=_tdDurHrs(s); return h==null?'<span style="font-size:13px;color:var(--text3)">—</span>':`<span style="font-size:13px;font-variant-numeric:tabular-nums">${h}</span>`; }},
   {id:'audience', label:'Audience', width:160,
     sortVal:s=>((s.audience&&s.audience.length)?_sortedNames(s.audience).join(', '):'').toLowerCase(),
     // Compact Rows (2026-08-11, per Sandra): a session tagged with many audiences wrapped this
