@@ -11711,6 +11711,10 @@ const _TD_COL_DEFS=[
   {id:'date', label:'Date / Period', width:150,
     sortVal:s=>s.trainingDate||'',
     cell:s=>`<span style="font-size:13px">${_tdListDateCell(s)}</span>`},
+  // v5.20d (2026-11-24, per Sandra): session duration in hours (whole session; same total the hour KPIs use)
+  {id:'duration', label:'Duration (hrs)', width:120,
+    sortVal:s=>{ const h=_tdDurHrs(s); return h==null?-1:h; },
+    cell:s=>{ const h=_tdDurHrs(s); return h==null?'<span style="font-size:13px;color:var(--text3)">—</span>':`<span style="font-size:13px;font-variant-numeric:tabular-nums">${h}</span>`; }},
   {id:'audience', label:'Audience', width:160,
     sortVal:s=>((s.audience&&s.audience.length)?_sortedNames(s.audience).join(', '):'').toLowerCase(),
     // Compact Rows (2026-08-11, per Sandra): a session tagged with many audiences wrapped this
@@ -11755,7 +11759,7 @@ const _TD_COL_DEFS=[
 ];
 const _TD_COL_PREFS_KEY='leap_td_col_prefs_v2';
 function _tdDefaultColOrder(){
-  const desired=['select','sid','program','date','person','status','doc','sla','type','audience','recording','eval','l3','created','createdBy'];
+  const desired=['select','sid','program','date','duration','person','status','doc','sla','type','audience','recording','eval','l3','created','createdBy'];
   return desired.filter(id=>_TD_COL_DEFS.some(c=>c.id===id));
 }
 let _tdColOrder=_tdDefaultColOrder();
@@ -11772,6 +11776,7 @@ let _tdFreezeUpTo=null;
   if(saved && Array.isArray(saved.order)){
     const known=new Set(_TD_COL_DEFS.map(c=>c.id));
     let order=saved.order.filter(id=>known.has(id));
+    if(!order.includes('duration')){ const di=order.indexOf('date'); order.splice(di>=0?di+1:order.length,0,'duration'); } // v5.20d: new column sits after Date
     _TD_COL_DEFS.forEach(c=>{ if(!order.includes(c.id)) order.push(c.id); });
     order=order.filter(id=>id!=='select'&&id!=='sid');
     _tdColOrder=['select','sid',...order];
@@ -12854,6 +12859,8 @@ function _tdSessionTotalHours(s){
   const days=_tdWorkDayList(s).length;
   return s.durationBasis==='total'?(Number(s.durationHours)||0):perDay*days;
 }
+// v5.20d (2026-11-24, per Sandra): total session duration in hours for the List view + Excel export (null = not set)
+function _tdDurHrs(s){ if(!s||s.durationHours==null||s.durationHours==='') return null; const h=_tdSessionTotalHours(s); return isFinite(h)?Math.round(h*100)/100:null; }
 function _tdHoursPerDay(s){
   const hours=Number(s.durationHours)||0;
   return s.durationBasis==='total'?hours/Math.max(1,_tdWorkDayList(s).length):hours;
@@ -13830,7 +13837,7 @@ function _tdExportSLA(s,today){
 }
 function _tdExportData(rows){
   const header=['Session ID','Learning Program ID','Version','Batch','Program Title','Delivery Type','Trainer / Owner',
-    'Start Date','End Date','Session Status','Post-Delivery Status','Report Due Date','Report Sent On','Working Days to Submit','Report SLA'];
+    'Start Date','End Date','Duration (Hours)','Session Status','Post-Delivery Status','Report Due Date','Report Sent On','Working Days to Submit','Report SLA'];
   const today=new Date(); today.setHours(0,0,0,0);
   const statusLabel=st=>st==='Completed'?'Delivery Complete':st;
   const body=rows.map(s=>{
@@ -13839,7 +13846,7 @@ function _tdExportData(rows){
     const end=_tdSessionEndDate(s)||start;
     const sla=_tdExportSLA(s,today);
     return [s.code||'',p?.code||'',p?.version||'',s.batchNo||'',s.trainingProgram||'',s.deliveryType||'',
-      (_tdPersonName(s)||'').replace(/^—$/,''),_tdExportDate(start),_tdExportDate(end),
+      (_tdPersonName(s)||'').replace(/^—$/,''),_tdExportDate(start),_tdExportDate(end),_tdDurHrs(s)??'',
       statusLabel(_tdStatus(s)),_tdDocStatusText(s),sla.due,sla.sent,sla.days,sla.result];
   });
   return {header,body};
@@ -13850,12 +13857,12 @@ function _tdExportSheet(data){
   const serial=d=>(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),d.getMinutes(),d.getSeconds())-Date.UTC(1899,11,30))/86400000;
   const body=data.body.map(row=>row.map(v=>v instanceof Date?serial(v):v));
   const ws=XLSX.utils.aoa_to_sheet([data.header,...body]);
-  const fmt={7:'mmm d, yyyy',8:'mmm d, yyyy',11:'mmm d, yyyy',12:'mmm d, yyyy h:mm AM/PM'};
-  data.body.forEach((row,i)=>Object.keys(fmt).forEach(c=>{
+  const fmt={7:'mmm d, yyyy',8:'mmm d, yyyy',12:'mmm d, yyyy',13:'mmm d, yyyy h:mm AM/PM'}; // v5.20d: col 9 = Duration (Hours)
+  data.body.forEach((row,i)=>{ Object.keys(fmt).forEach(c=>{
     if(!(row[c] instanceof Date)) return;
     const cell=ws[XLSX.utils.encode_cell({r:i+1,c:+c})]; if(cell){ cell.t='n'; cell.z=fmt[c]; }
-  }));
-  ws['!cols']=[12,18,8,10,40,12,24,14,14,16,20,15,22,12,24].map(wch=>({wch}));
+  }); const hc=ws[XLSX.utils.encode_cell({r:i+1,c:9})]; if(hc&&typeof row[9]==='number') hc.z='0.##'; });
+  ws['!cols']=[12,18,8,10,40,12,24,14,14,14,16,20,15,22,12,24].map(wch=>({wch}));
   ws['!autofilter']={ref:ws['!ref']};
   return ws;
 }
