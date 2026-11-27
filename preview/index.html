@@ -1741,6 +1741,9 @@
 .td-ilt-stages li[data-schedule=tentative] small{color:#854d0e;font-weight:700}
 .td-ilt-stages li[data-schedule=confirmed] small{color:#166534;font-weight:700}
 .td-ilt-schedule-history{display:flex;flex-wrap:wrap;gap:6px 22px;padding-top:10px;margin-top:10px;border-top:1px solid var(--border-lt);font-size:11.5px;color:var(--text2)}
+.tdckl-status{display:flex;align-items:center;gap:6px}
+.tdckl-status input{width:15px;height:15px;margin:0;flex:none;accent-color:#15803d;cursor:pointer}
+.tdckl-status input:disabled{cursor:default}
 .td-ilt-optional-eval{margin-top:6px}
 .td-ilt-status-badge[data-status=scheduled]{background:#dbeafe;color:#164287;border-color:#7aa2df}
 .td-ilt-status-badge[data-status=completed]{background:#dcfce7;color:#17653a;border-color:#5db584}
@@ -17293,14 +17296,19 @@ function _tdScheduleMilestoneHistory(s){
   </div>`;
 }
 
-function _tdcklVerifiedStatusHtml(it){
+function _tdcklVerifiedStatusHtml(row,it,locked){
   const info=_tdcklStatusInfo(it._status);
   const late=it.completionResult==='late'||it.deadlineMissed||it._automaticEvent?.result==='late';
   const badge=`<span class="badge" style="background:${late?'#fef3c7':info.bg};color:${late?'#854d0e':info.color}">${Utils.esc(it._label)}</span>`;
+  const done=it._status==='completed';
+  const check=it._kind||it.isNA||it.completionState==='waiver_requested'?'':`<input type="checkbox"
+    aria-label="${done?'Completed':'Mark complete'}: ${Utils.esc(it.task)}" ${done?'checked':''}
+    ${locked||done?'disabled':`onclick="event.preventDefault();_tdcklConfirmStatus('${Utils.esc(row.id)}',${it._i},'done',this)"`}>`;
+  const status=`<div class="tdckl-status">${check}${badge}</div>`;
   const events=it._automaticEvent?[...(it.completionEvents||[]),it._automaticEvent]:(it.completionEvents||[]);
-  if(!events.length) return badge;
+  if(!events.length) return status;
   const labels={done:'Done',na:'N/A requested or recorded',approve:'Waiver approved',deny:'Waiver declined',undo:'Reopened',auto:'Recorded by LEAP'};
-  return badge+`<details style="margin-top:4px;font-size:11px">
+  return status+`<details style="margin-top:4px;font-size:11px">
     <summary>History</summary>
     <ul style="margin:4px 0;padding-inline-start:16px">${events.slice().reverse().map(e=>`<li>${labels[e.action]||'Updated'}
       · ${Utils.esc(_tdcklWhen(e.at))}${e.actorId?` · ${Utils.esc(_lpName(e.actorId)||'')}`:''}
@@ -17312,14 +17320,27 @@ function _tdcklVerifiedStatusHtml(it){
 function _tdcklVerifiedActionsHtml(s,row,it,locked){
   if(locked||it._kind) return '';
   const id=Utils.esc(row.id), i=it._i;
-  const button=(label,action)=>`<button type="button" class="btn btn-secondary btn-xs" onclick="_tdcklWriteAction('${id}',${i},'${action}',this)">${label}</button>`;
+  const button=(label,action,handler='_tdcklWriteAction')=>`<button type="button" class="btn btn-secondary btn-xs" onclick="${handler}('${id}',${i},'${action}',this)">${label}</button>`;
   if(it.completionState==='waiver_requested'){
     const canDecide=Auth.user&&it.naRequestedBy!==Auth.user.id&&
       (Auth.user.isAdmin||[s.trainerId,s.coFacilitatorId,s.createdBy].some(id=>_tdIsAboveInChain(id,Auth.user.id)));
     return `<div style="display:flex;gap:4px;flex-wrap:wrap">${canDecide?button('Approve N/A','approve')+button('Decline','deny'):''}${button('Withdraw','undo')}</div>`;
   }
-  if(it.completedOn||it.isNA) return button('Reopen','undo');
-  return `<div style="display:flex;gap:4px;flex-wrap:wrap">${button('Done','done')}${button('N/A','na')}</div>`;
+  if(it.completedOn||it.isNA) return button('Reopen','undo','_tdcklConfirmStatus');
+  return button('N/A','na');
+}
+
+function _tdcklConfirmStatus(rowId,itemIndex,action,button){
+  const item=SessionChecklistDB.byId(rowId)?.items?.[itemIndex];
+  if(!item||_tdcklWritesInFlight.has(rowId)) return;
+  const completing=action==='done';
+  const message=completing?'Did you complete this item today? Choose Continue to record today’s date and time.'
+    :item.isNA?'Reopening clears the N/A status. The previous decision stays in History.'
+    :'Reopening clears the current completion date. The previous completion stays in History. When you mark it complete again, LEAP records a new date and time.';
+  confirm$(completing?'Mark checklist item complete':'Reopen checklist item',
+    `<p><strong>${Utils.esc(item.task)}</strong></p><p>${message}</p>`,
+    'Continue',()=>_tdcklWriteAction(rowId,itemIndex,action,button));
+  if(completing) document.getElementById('mc-ok').className='btn btn-primary';
 }
 
 const _tdcklWritesInFlight=new Set();
@@ -17897,7 +17918,7 @@ function _tdcklBoardHtml(s,row){
         <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}${noteBubble}</td>
         <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${verified&&it._target?Utils.esc(Utils.formatDate(it._target)):_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>
         <td style="padding:6px 4px;vertical-align:top">
-          ${verified?_tdcklVerifiedStatusHtml(it):`<span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>`}
+          ${verified?_tdcklVerifiedStatusHtml(row,it,locked):`<span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>`}
         </td>
         <td style="padding:6px 4px;vertical-align:top;white-space:nowrap">
           ${verified?_tdcklVerifiedActionsHtml(s,row,it,locked):`<input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${(it.isNA||locked)?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">`}
