@@ -21463,7 +21463,8 @@ function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
 .td-ilt-schedule .td-linked-schedule-grid{grid-template-columns:minmax(0,1fr)!important}
 .td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1.25fr) repeat(2,minmax(0,1fr))!important}
 .td-ilt-schedule .td-linked-part-fields input{min-width:0}
-.td-ilt-schedule .td-linked-part-fields input[type=date]{display:flex;align-items:center;flex-wrap:nowrap}
+.td-ilt-schedule .td-linked-part-fields input[type=date]{position:relative;display:flex;align-items:center;flex-wrap:nowrap;padding-inline-end:32px!important}
+.td-ilt-schedule .td-linked-part-fields input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset-inline-end:10px;top:50%;transform:translateY(-50%);margin:0;padding:0;cursor:pointer}
 .td-ilt-progress,.td-ilt-booking{padding:16px 20px}
 .td-ilt-setup h3{font-size:15px;margin:0;font-weight:700;color:var(--text)}
 .td-ilt-progress-body{display:flex;align-items:flex-start;gap:24px}
