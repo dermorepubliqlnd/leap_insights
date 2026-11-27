@@ -4134,7 +4134,9 @@ const _FIELD_MAPS = {
     submittedAt:'submitted_at', approvedBy:'approved_by', approvedAt:'approved_at',
     returnReason:'return_reason', createdAt:'created_at', updatedAt:'updated_at',
     reopenStatus:'reopen_status', reopenRequestedBy:'reopen_requested_by', reopenRequestedAt:'reopen_requested_at',
-    reopenReason:'reopen_reason', reopenDecidedBy:'reopen_decided_by', reopenDecidedAt:'reopen_decided_at'
+    reopenReason:'reopen_reason', reopenDecidedBy:'reopen_decided_by', reopenDecidedAt:'reopen_decided_at',
+    emailSentOn:'email_sent_on', emailLastSentOn:'email_last_sent_on',
+    emailConfirmedBy:'email_confirmed_by', emailConfirmedAt:'email_confirmed_at'
   },
   evaluations:{
     id:'id', code:'code', status:'status', batchNo:'batch_no', trainingDate:'training_date',
@@ -8509,10 +8511,7 @@ function _dashRenderOverview(range,prevRange,key){
 function _dashPendingRequestsItems(){
   const me=Auth.user; if(!me) return [];
   const canSee=(actorId)=>{
-    if(me.isAdmin) return true;
-    if(!actorId) return false;
-    const p=DB.byId(actorId);
-    return !!(p&&p.supervisorId===me.id);
+    return _tdrCanDecide(actorId);
   };
   const items=[];
   TrainingReportsDB.all().forEach(r=>{
@@ -13049,7 +13048,8 @@ function _tdSlaSubmittedAt(s){
     const o=(typeof SmeObsDB!=='undefined'?SmeObsDB.all():[]).filter(x=>x.sessionId===s.id&&x.status==='submitted'&&x.submittedAt).map(x=>x.submittedAt).sort().pop();
     if(!r||!o) return null; return String(r.submittedAt)>String(o)?r.submittedAt:o;
   }
-  const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id); return rep&&rep.submittedAt||null;
+  const rep=TrainingReportsDB.all().find(x=>x.sessionId===s.id);
+  return rep?.emailSentOn||(rep?.status!=='awaiting_email'?rep?.submittedAt:null)||null;
 }
 function _tdSlaOwnerId(s){ return _tdReportWaived(s)?(s.coFacilitatorId||s.trainerId||null):s.trainerId; }
 function _tdPostDeliveryState(s){
@@ -13076,6 +13076,7 @@ function _tdPostDeliveryState(s){
   // remains the one status shown in the list.
   if(!rep) return {label:'Report Pending',bg:'#fef9c3',fg:'#a16207'};
   if(rep.status==='returned') return {label:'Report Returned',bg:'#fee2e2',fg:'#dc2626'};
+  if(rep.status==='awaiting_email') return {label:'Awaiting Email Confirmation',bg:'#fef9c3',fg:'#a16207'};
   if(rep.status==='draft') return {label:'Report Draft',bg:'#fef9c3',fg:'#a16207'};
   if(rep.status!=='submitted' && rep.status!=='approved'){
     return {label:'Report Pending',bg:'#fef9c3',fg:'#a16207'};
@@ -13126,9 +13127,7 @@ function _tdBusinessDaysBetween(startDateStr,endDateStr){
 }
 
 // Report SLA badge for the Training Calendar List view -- org SLA is 2 working days after the
-// session date. Always recomputed against the report's CURRENT submittedAt, so a reopen +
-// resubmit cycle automatically reflects the newest submission with no separate first/last
-// submission tracking needed (2026-07-31, per Sandra's reopen-workflow spec).
+// session date. Use the first confirmed email date for reports in the email workflow.
 function _tdReportSLA(s){
   if(_tdSlaExempt(s)) return '<span style="color:var(--text3)">N/A</span>';
   const rep={submittedAt:_tdSlaSubmittedAt(s)}; // v5.16e
@@ -13829,7 +13828,7 @@ function _tdExportSLA(s,today){
   const rep={submittedAt:_tdSlaSubmittedAt(s)}; // v5.16e: SME-led = survey + observation
   if(rep&&rep.submittedAt){
     const days=_tdBusinessDaysBetween(end,rep.submittedAt);
-    const sent=new Date(rep.submittedAt);
+    const sent=_tdExportDate(String(rep.submittedAt).length===10?rep.submittedAt:_mnlDateOf(rep.submittedAt));
     return {due,sent:isNaN(sent.getTime())?'':sent,days:days??'',result:days==null?'':(days<=2?'On time':'Late')};
   }
   const overdue=due&&today>due;
@@ -13837,7 +13836,7 @@ function _tdExportSLA(s,today){
 }
 function _tdExportData(rows){
   const header=['Session ID','Learning Program ID','Version','Batch','Program Title','Delivery Type','Trainer / Owner',
-    'Start Date','End Date','Duration (Hours)','Session Status','Post-Delivery Status','Report Due Date','Report Sent On','Working Days to Submit','Report SLA'];
+    'Start Date','End Date','Duration (Hours)','Session Status','Post-Delivery Status','Report Due Date','Report SLA Date','Working Days to Submit','Report SLA'];
   const today=new Date(); today.setHours(0,0,0,0);
   const statusLabel=st=>st==='Completed'?'Delivery Complete':st;
   const body=rows.map(s=>{
@@ -13857,7 +13856,7 @@ function _tdExportSheet(data){
   const serial=d=>(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),d.getMinutes(),d.getSeconds())-Date.UTC(1899,11,30))/86400000;
   const body=data.body.map(row=>row.map(v=>v instanceof Date?serial(v):v));
   const ws=XLSX.utils.aoa_to_sheet([data.header,...body]);
-  const fmt={7:'mmm d, yyyy',8:'mmm d, yyyy',12:'mmm d, yyyy',13:'mmm d, yyyy h:mm AM/PM'}; // v5.20d: col 9 = Duration (Hours)
+  const fmt={7:'mmm d, yyyy',8:'mmm d, yyyy',12:'mmm d, yyyy',13:'mmm d, yyyy'}; // v5.20d: col 9 = Duration (Hours)
   data.body.forEach((row,i)=>{ Object.keys(fmt).forEach(c=>{
     if(!(row[c] instanceof Date)) return;
     const cell=ws[XLSX.utils.encode_cell({r:i+1,c:+c})]; if(cell){ cell.t='n'; cell.z=fmt[c]; }
@@ -17917,6 +17916,39 @@ function _tdrNpsLabel(v){
 
 const AGENDA_STATUS={planned:{bg:'#f1f5f9',fg:'#64748b',label:'Pending Delivery'},covered:{bg:'var(--green-lt)',fg:'var(--green)',label:'Covered'},partial:{bg:'var(--amber-lt)',fg:'var(--amber)',label:'Partially Covered'},not_covered:{bg:'var(--red-lt)',fg:'var(--red)',label:'Not Covered'}};
 
+function _tdrCanEdit(s){
+  const me=Auth.user;
+  if(!s||!me||me.isActive===false) return false;
+  const people=[s.trainerId,s.coFacilitatorId,s.ownerId].filter(Boolean);
+  if(!people.length&&s.createdBy) people.push(s.createdBy);
+  return !!me.isAdmin||people.some(id=>id===me.id||_tdIsAboveInChain(id,me.id));
+}
+
+function _tdrCanDecide(requesterId){
+  const me=Auth.user;
+  return !!(me&&me.isActive!==false&&requesterId&&requesterId!==me.id&&
+    (me.isAdmin||_tdIsAboveInChain(requesterId,me.id)));
+}
+
+function _tdrEmailControls(s,canEdit,awaitingEmail){
+  const report=_tdrReport;
+  if(_tdReportWaived(s)||report.content.manualOverride) return '';
+  const legacy=report.status==='submitted'&&!report.emailSentOn;
+  if(!awaitingEmail&&!legacy) return '';
+  const heading=awaitingEmail?'Awaiting Email Confirmation':'Email sent date unconfirmed';
+  if(!canEdit) return `<p role="status">${heading}</p>`;
+  const min=[_tdSessionEndDate(s),report.emailLastSentOn].filter(Boolean).sort().pop()||'';
+  return `<div class="card" style="padding:14px 16px;margin-bottom:16px">
+    <div style="font-weight:600;margin-bottom:8px">${heading}</div>
+    <div style="display:flex;flex-wrap:wrap;align-items:end;gap:8px">
+      <label style="font-size:12px">Sent Date<input id="tdr-email-sent-date" type="date" class="form-control" min="${Utils.esc(min)}" max="${_todayStr()}" required></label>
+      <button type="button" class="btn btn-sm btn-primary" onclick="_tdrConfirmEmailSent(this)">Confirm Email Sent</button>
+      ${awaitingEmail?'<button type="button" class="btn btn-sm btn-secondary" onclick="_tdrReturnToDraft(this)">Edit Report</button>':''}
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:6px">Use the date shown in Outlook Sent Items.</div>
+  </div>`;
+}
+
 function _tdrRenderTab(s){
   _tdrEnsureLoaded(s.id);
   const _tdrNeedsDeliveryGate=_tdFieldGroup(s.deliveryType)==='trainer';
@@ -17933,8 +17965,10 @@ function _tdrRenderTab(s){
     </div>`;
   }
   const c=_tdrReport.content;
-  const locked=_tdrReport.status==='submitted';
-  const readOnly=locked;
+  const locked=['submitted','approved'].includes(_tdrReport.status);
+  const awaitingEmail=_tdrReport.status==='awaiting_email';
+  const canEdit=_tdrCanEdit(s);
+  const readOnly=locked||awaitingEmail||!canEdit;
   const dis=readOnly?'disabled':'';
   const totalParticipants=SessionParticipantsDB.all().filter(r=>r.sessionId===s.id).length;
   const responseRate=(c.responses!=null&&totalParticipants>0)?Math.round((c.responses/totalParticipants)*100):null;
@@ -17952,14 +17986,14 @@ function _tdrRenderTab(s){
         ${locked?`<span style="color:var(--green);font-weight:600">✓ Submitted</span> — read-only${c.manualOverride?` <span style="color:var(--text3)">(logged manually — submitted via email on ${Utils.esc(c.manualSubmittedDate||'—')}, <a href="${Utils.esc(_lpSafeResourceUrl(c.manualReportLink)||'#')}" target="_blank" rel="noopener">report link</a>)</span>`:''}`:_tdrEditMode?`<span style="font-weight:600;color:var(--pri)">Edit mode</span> — ${savedNote}`:savedNote}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${locked?'':`
+        ${readOnly?'':`
           ${_tdrEditMode?`<button class="btn btn-sm btn-secondary" onclick="_tdrSaveDraft()">Save</button>`:`<button class="btn btn-sm btn-secondary" onclick="_tdrToggleEditMode(true)">${_tdIconSvg('edit3','currentColor',13)} Edit</button>`}
           ${_tdrRecEx.requestBtn}
           ${(Auth.user&&(Auth.user.isAdmin||Auth.formAccess(Auth.user).trainerEval)&&_tdrManualOverrideEligible(s))?`<button class="btn btn-sm btn-secondary" onclick="_tdrOpenManualOverride()">✉️ Log as Already Submitted</button>`:''}
-          <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport()">📤 ${_tdReportWaived(s)?'Submit Survey Results':'Submit Report'}</button>
+          <button class="btn btn-sm btn-primary" onclick="_tdrSubmitReport(this)">${_tdReportWaived(s)?'Submit Survey Results':'Ready to Email'}</button>
         `}
       </div>
-    </div>`;
+    </div>${_tdrEmailControls(s,canEdit,awaitingEmail)}${_tdrReport.emailSentOn?`<div class="mp-sub" style="margin-bottom:12px">First email sent ${Utils.formatDate(_tdrReport.emailSentOn)} · self-reported</div>`:''}`;
 
   const l1Editing=!readOnly && _tdrEditMode;
   const _tdrRatingBox=(field,val,max)=>l1Editing
@@ -18521,8 +18555,10 @@ function _tdrAttendanceIssues(sess){
   if(pending>0) issues.push(`${pending} participant(s) still have Pending attendance${multi?' on at least one day':''}`);
   return issues;
 }
-function _tdrSubmitReport(){
+async function _tdrSubmitReport(button){
   const _tdrSess=TrSessionDB.byId(_tdrReport.sessionId);
+  if(!_tdrCanEdit(_tdrSess)) return;
+  if(!['draft','returned'].includes(_tdrReport.status)) return;
   const _tdrSubGrp=_tdFieldGroup(_tdrSess?.deliveryType);
   // Attendance & Performance completeness gate doesn't apply to Self-led (2026-08-07 bugfix, per
   // Sandra): Self-led sessions have no Attendance & Performance tab at all (hidden since Phase59),
@@ -18539,8 +18575,8 @@ function _tdrSubmitReport(){
   }
   // 2026-08-06 (per Sandra): a report cannot be submitted before the session date arrives --
   // same-day submission is allowed (e.g. a session on Aug 10 can be submitted starting Aug 10).
-  if(_tdrSess.trainingDate && _tdrSess.trainingDate>_todayStr()){
-    toast('The Training Report cannot be submitted before the session date. You can submit starting on the day of the session.','error');
+  if(_tdSessionEndDate(_tdrSess)>_todayStr()){
+    toast('The Training Report cannot be submitted before the last day of the session.','error');
     return;
   }
   // Recording Link / Exemption gate doesn't apply to Self-led (2026-08-07, per Sandra): Self-led
@@ -18561,22 +18597,50 @@ function _tdrSubmitReport(){
     toast(`Please complete the following before submitting: ${missing.join(', ')}.`,'error');
     return;
   }
-  confirm$('Submit Report','Once submitted, you will not be able to edit this report. Continue?','Submit Report',async()=>{
-    try{
-      // createdBy repurposed here as "prepared by" -- captured at submit time (not draft creation)
-      // so the Overview page's "Report Prepared By" field reflects who finalized the report.
-      // submittedAt is always stamped fresh on every (re)submit so the Report SLA column always
-      // measures against the CURRENT submission, and reopenStatus is cleared so a future reopen
-      // cycle can be requested again after this resubmission.
-      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdReportWaived(_tdrSess)?{..._tdrReport.content,surveyOnly:true}:_tdrReport.content, createdBy:Auth.user.id,
-        submittedAt:new Date().toISOString(), reopenStatus:null, reopenRequestedBy:null, reopenRequestedAt:null,
-        reopenReason:null, reopenDecidedBy:null, reopenDecidedAt:null};
-      const saved=_tdrReport._isNew?await TrainingReportsDB.create({...patch, id:_tdrReport.id}):await TrainingReportsDB.update(_tdrReport.id,patch);
-      _tdrReport={...saved, content:{...saved.content}, _isNew:false};
+  const surveyOnly=_tdReportWaived(_tdrSess);
+  const patch={
+    sessionId:_tdrReport.sessionId,
+    status:surveyOnly?'submitted':'awaiting_email',
+    content:surveyOnly?{..._tdrReport.content,surveyOnly:true}:_tdrReport.content,
+    createdBy:Auth.user.id,
+    reopenStatus:null,reopenRequestedBy:null,reopenRequestedAt:null,
+    reopenReason:null,reopenDecidedBy:null,reopenDecidedAt:null
+  };
+  if(surveyOnly) patch.submittedAt=new Date().toISOString();
+  await _tdrWriteEmailStep(patch,button,surveyOnly?'Survey results submitted.':'Report ready to email.',_tdrReport._isNew);
+}
+
+async function _tdrWriteEmailStep(patch,button,notice,create=false){
+  const report=_tdrReport;
+  if(button?.disabled) return;
+  if(button) button.disabled=true;
+  try{
+    const saved=create?await TrainingReportsDB.create({...patch,id:report.id}):await TrainingReportsDB.update(report.id,patch);
+    if(_tdrReport?.id===report.id){
+      _tdrReport={...saved,content:{...saved.content},_isNew:false};
+      _tdrEditMode=false;
       renderTrainingDetail();
-      toast('Training report submitted.','success');
-    }catch(e){ /* error already surfaced */ }
-  });
+    }
+    toast(notice,'success');
+  }catch(e){ /* The database error is already shown. */ }
+  finally{ if(button) button.disabled=false; }
+}
+
+async function _tdrConfirmEmailSent(button){
+  const report=_tdrReport,s=TrSessionDB.byId(report.sessionId);
+  if(!_tdrCanEdit(s)||_tdReportWaived(s)||report.content.manualOverride||
+      !(report.status==='awaiting_email'||(report.status==='submitted'&&!report.emailSentOn))) return;
+  const field=document.getElementById('tdr-email-sent-date');
+  if(!field?.reportValidity()) return;
+  const patch={emailLastSentOn:field.value};
+  if(report.status==='awaiting_email') patch.status='submitted';
+  await _tdrWriteEmailStep(patch,button,'Email sent date recorded.');
+}
+
+async function _tdrReturnToDraft(button){
+  const s=TrSessionDB.byId(_tdrReport.sessionId);
+  if(!_tdrCanEdit(s)||_tdrReport.status!=='awaiting_email') return;
+  await _tdrWriteEmailStep({status:'draft'},button,'Report returned to draft.');
 }
 
 // MANUAL REPORT OVERRIDE (2026-08-10, per Sandra; opened up to Trainers 2026-08-11): for past
@@ -18705,7 +18769,6 @@ function _tdManualOverrideReopen(){
    same one-up pattern as the Reopen workflow below, or any admin. ───────────────────────────── */
 function _tdrRecordingExemptionInfo(s,c){
   const ex=c.recordingExemption;
-  const me=Auth.user;
   const hasRecording=!!s.recordingLink;
   let requestBtn='', banner='', approveBtns='';
   if(!hasRecording){
@@ -18716,8 +18779,7 @@ function _tdrRecordingExemptionInfo(s,c){
       }
     } else if(ex.status==='pending'){
       const requester=ex.requestedBy?DB.byId(ex.requestedBy):null;
-      const approverId=requester?requester.supervisorId:null;
-      const canApprove=!!me&&(me.isAdmin||(approverId&&approverId===me.id));
+      const canApprove=_tdrCanEdit(s)&&_tdrCanDecide(ex.requestedBy);
       banner=`<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:#92400e">
         <div style="font-weight:700;margin-bottom:4px">🎥 Recording Exemption Requested — awaiting supervisor approval</div>
         <div>Requested by ${Utils.esc(requester?`${requester.firstName} ${requester.lastName}`:'—')}${ex.requestedAt?` on ${new Date(ex.requestedAt).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'})}`:''} — <strong>${Utils.esc(ex.reason||'')}</strong>: "${Utils.esc(ex.note||'')}"</div>
@@ -18805,7 +18867,7 @@ function _tdrSubmitReopenReason(){
   closeModal('reopen-reason');
   (async()=>{
     try{
-      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted',
         reopenStatus:'pending', reopenRequestedBy:Auth.user.id, reopenRequestedAt:new Date().toISOString(),
         reopenReason:reason, reopenDecidedBy:null, reopenDecidedAt:null};
       const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
@@ -18819,7 +18881,7 @@ function _tdrSubmitReopenReason(){
 function _tdrApproveReopen(){
   confirm$('Approve Reopen','Approve this reopen request? The report will be unlocked for editing (status returns to Draft).','Approve Reopen',async()=>{
     try{
-      const patch={sessionId:_tdrReport.sessionId, status:'draft', content:_tdrReport.content,
+      const patch={sessionId:_tdrReport.sessionId, status:'draft',
         reopenStatus:'approved', reopenDecidedBy:Auth.user.id, reopenDecidedAt:new Date().toISOString()};
       const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
@@ -18832,7 +18894,7 @@ function _tdrApproveReopen(){
 function _tdrDenyReopen(){
   confirm$('Deny Reopen','Deny this reopen request? The report will remain submitted and locked.','Deny Reopen',async()=>{
     try{
-      const patch={sessionId:_tdrReport.sessionId, status:'submitted', content:_tdrReport.content,
+      const patch={sessionId:_tdrReport.sessionId, status:'submitted',
         reopenStatus:'denied', reopenDecidedBy:Auth.user.id, reopenDecidedAt:new Date().toISOString()};
       const saved=await TrainingReportsDB.update(_tdrReport.id,patch);
       _tdrReport={...saved, content:{...saved.content}, _isNew:false};
@@ -18875,20 +18937,16 @@ function _tdSessionOwnerId(s){ return s.ownerId||s.trainerId||null; }
 // Request/Approve/Deny Reopen down to the bottom of the tab instead.
 function _tdrReopenActionsBar(s){
   const rep=_tdrReport;
-  const me=Auth.user;
   if(!rep||rep._isNew||rep.status!=='submitted') return '';
   if(rep.reopenStatus==='pending'){
-    const requester=rep.reopenRequestedBy?DB.byId(rep.reopenRequestedBy):null;
-    const approverId=requester?requester.supervisorId:null;
-    const canApprove=!!me&&(me.isAdmin||(approverId&&approverId===me.id));
+    const canApprove=_tdrCanEdit(s)&&_tdrCanDecide(rep.reopenRequestedBy);
     if(!canApprove) return '';
     return `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
       <button class="btn btn-primary" onclick="_tdrApproveReopen()">Approve Reopen</button>
       <button class="btn btn-ghost" style="color:var(--red)" onclick="_tdrDenyReopen()">Deny Reopen</button>
     </div>`;
   }
-  const ownerId=_tdSessionOwnerId(s);
-  const canRequest=!!me&&(me.isAdmin||(ownerId&&ownerId===me.id));
+  const canRequest=_tdrCanEdit(s);
   if(!canRequest) return '';
   return `<div style="display:flex;justify-content:flex-end;margin-top:16px">
     <button class="btn btn-secondary" onclick="_tdrRequestReopen()">🔓 Request Reopen</button>
