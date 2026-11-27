@@ -1741,9 +1741,19 @@
 .td-ilt-stages li[data-schedule=tentative] small{color:#854d0e;font-weight:700}
 .td-ilt-stages li[data-schedule=confirmed] small{color:#166534;font-weight:700}
 .td-ilt-schedule-history{display:flex;flex-wrap:wrap;gap:6px 22px;padding-top:10px;margin-top:10px;border-top:1px solid var(--border-lt);font-size:11.5px;color:var(--text2)}
-.tdckl-status{display:flex;align-items:center;gap:6px}
-.tdckl-status input{width:15px;height:15px;margin:0;flex:none;accent-color:#15803d;cursor:pointer}
-.tdckl-status input:disabled{cursor:default}
+.tdckl-status{display:flex;align-items:center;gap:6px;font-size:11px}
+.tdckl-check{display:inline-flex;align-items:center;justify-content:center;flex:none;width:27px;height:27px;padding:0;color:#64748b;background:#f1f5f9;border:1px solid #dbe2ea;border-radius:6px}
+button.tdckl-check{cursor:pointer}
+button.tdckl-check:hover{background:#e2e8f0}
+button.tdckl-check:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.tdckl-check.is-done{color:#166534;background:#dcfce7;border-color:#86efac}
+button.tdckl-check.is-done:hover{background:#bbf7d0}
+.tdckl-table-wrap{overflow-x:auto}
+.tdckl-timing{display:inline-block;font-size:11px;white-space:nowrap}
+.tdckl-item-tools{display:flex;align-items:flex-start;gap:4px;margin-top:4px;font-size:11px}
+.tdckl-item-tool{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:5px;background:transparent;color:#475569;cursor:pointer;list-style:none}
+.tdckl-item-tool:hover{background:#e2e8f0}
+.tdckl-item-tool::-webkit-details-marker{display:none}
 .td-ilt-optional-eval{margin-top:6px}
 .td-ilt-status-badge[data-status=scheduled]{background:#dbeafe;color:#164287;border-color:#7aa2df}
 .td-ilt-status-badge[data-status=completed]{background:#dcfce7;color:#17653a;border-color:#5db584}
@@ -17244,25 +17254,26 @@ function _tdcklItemsWithStatus(s,row){
     if(lastEvent?.dueOn&&['done','waived'].includes(it.completionState)) task._target=lastEvent.dueOn;
 
     if(kind==='assessment'&&!_tdaHasAssessment(s)){
-      Object.assign(task,{_status:'na',_label:'N/A · No L2 configured'});
+      Object.assign(task,{_status:'na',_naLabel:'No L2 configured'});
     }else if(kind){
       const at=kind==='report'?(reportDone?report.checklistSubmittedAt:null):(s.status==='completed'?s.deliveryFinalizedAt:null);
       const actor=kind==='report'?report?.checklistSubmittedBy:s.deliveryFinalizedBy;
       const legacy=kind==='report'?reportDone:s.status==='completed'&&!s.deliveryFinalizedAt;
       const late=at&&target&&_mnlDateOf(at)>target;
-      task._label=at?(late?'Late':'On time'):legacy?'Recorded before this workflow':'Tracked automatically';
+      task._timing=at?(late?'Late':'On time'):legacy?'Historical':target&&_todayStr()>target?'Overdue':'Pending';
       task._status=at||legacy?'completed':target&&_todayStr()>target?'pending':'not_started';
       task._automaticEvent=at?{action:'auto',at,actorId:actor,dueOn:target,result:late?'late':'on_time'}:null;
     }else if(it.completionState==='waiver_requested'){
-      task._label=it.deadlineMissed||target&&_todayStr()>target?'N/A requested · Overdue':'N/A requested';
+      task._timing=it.deadlineMissed||target&&_todayStr()>target?'Overdue':'Pending';
       task._status='pending';
     }else if(it.isNA){
-      task._label=it.completionState==='waived'?(it.deadlineMissed?'N/A · Deadline missed':'N/A'):'N/A · Historical';
+      task._timing=it.deadlineMissed?'Deadline missed':'';
+      task._naLabel=it.completionState==='waived'?'N/A':'Historical N/A';
     }else if(it.completedOn){
-      task._label=it.completionResult==='on_time'?'On time':it.completionResult==='late'?'Late':'Self-reported';
+      task._timing=it.completionResult==='on_time'?'On time':it.completionResult==='late'?'Late':'Self-reported';
     }else{
       const overdue=it.deadlineMissed||target&&_todayStr()>target;
-      task._label=overdue?'Overdue':'Open';
+      task._timing=overdue?'Overdue':'Pending';
       task._status=overdue?'pending':'not_started';
     }
     return [task];
@@ -17296,38 +17307,57 @@ function _tdScheduleMilestoneHistory(s){
   </div>`;
 }
 
-function _tdcklVerifiedStatusHtml(row,it,locked){
-  const info=_tdcklStatusInfo(it._status);
-  const late=it.completionResult==='late'||it.deadlineMissed||it._automaticEvent?.result==='late';
-  const badge=`<span class="badge" style="background:${late?'#fef3c7':info.bg};color:${late?'#854d0e':info.color}">${Utils.esc(it._label)}</span>`;
+
+function _tdcklVerifiedStatusHtml(s,row,it,locked){
   const done=it._status==='completed';
-  const check=it._kind||it.isNA||it.completionState==='waiver_requested'?'':`<input type="checkbox"
-    aria-label="${done?'Completed':'Mark complete'}: ${Utils.esc(it.task)}" ${done?'checked':''}
-    ${locked||done?'disabled':`onclick="event.preventDefault();_tdcklConfirmStatus('${Utils.esc(row.id)}',${it._i},'done',this)"`}>`;
-  const status=`<div class="tdckl-status">${check}${badge}</div>`;
+  const waived=it._status==='na'||it.completionState==='waiver_requested';
+  const stamp=it._automaticEvent?.at||(it.completionResult?it.completedOnTs:null);
+  const date=done&&(stamp?_tdcklWhen(stamp):!it._kind&&it.completedOn?Utils.formatDate(it.completedOn):'');
+  const icon=_tdIconSvg('check','currentColor',18);
+  const style=`tdckl-check${done?' is-done':''}`;
+  const name=`Mark complete: ${Utils.esc(it.task)}`;
+  const check=waived?'':locked||it._kind||done
+    ?`<span class="${style}" role="img" aria-label="${done?'Completed':it._kind?'Tracked automatically':'Open'}">${icon}</span>`
+    :`<button type="button" class="${style}" aria-label="${name}" title="${name}"
+      onclick="_tdcklConfirmStatus('${Utils.esc(row.id)}',${it._i},'done',this)">${icon}</button>`;
+  const status=`<div class="tdckl-status">${check}${date?Utils.esc(date):waived?'—':it._kind&&!done?'Automatic':done?'Completed':''}</div>`;
   const events=it._automaticEvent?[...(it.completionEvents||[]),it._automaticEvent]:(it.completionEvents||[]);
-  if(!events.length) return status;
+  const completedBy=it.completionEvents?.findLast(e=>e.action==='done')?.actorId||s.trainerId||s.coFacilitatorId||s.createdBy;
+  const canReopen=done&&!it._kind&&!locked&&Auth.user&&(Auth.user.isAdmin||_tdIsAboveInChain(completedBy,Auth.user.id));
+  const reopen=canReopen?`<button type="button" class="tdckl-item-tool" aria-label="Reopen: ${Utils.esc(it.task)}" title="Reopen" onclick="_tdcklConfirmStatus('${Utils.esc(row.id)}',${it._i},'undo',this)">${_pdpSvg('undo',15)}</button>`:'';
+  if(!events.length&&!reopen) return status;
   const labels={done:'Done',na:'N/A requested or recorded',approve:'Waiver approved',deny:'Waiver declined',undo:'Reopened',auto:'Recorded by LEAP'};
-  return status+`<details style="margin-top:4px;font-size:11px">
-    <summary>History</summary>
+  const history=events.length?`<details>
+    <summary class="tdckl-item-tool" aria-label="View history: ${Utils.esc(it.task)}" title="View history">${_tdIconSvg('filetext','currentColor',15)}</summary>
     <ul style="margin:4px 0;padding-inline-start:16px">${events.slice().reverse().map(e=>`<li>${labels[e.action]||'Updated'}
       · ${Utils.esc(_tdcklWhen(e.at))}${e.actorId?` · ${Utils.esc(_lpName(e.actorId)||'')}`:''}
       ${e.dueOn?` · Due ${Utils.esc(Utils.formatDate(e.dueOn))}`:''}
       ${e.reason?` · ${Utils.esc(e.reason)}`:''}${e.deadlineMissed?' · Deadline missed':''}</li>`).join('')}</ul>
-  </details>`;
+  </details>`:'';
+  return status+`<div class="tdckl-item-tools">${reopen}${history}</div>`;
 }
 
-function _tdcklVerifiedActionsHtml(s,row,it,locked){
-  if(locked||it._kind) return '';
+function _tdcklTimingHtml(it){
+  const timing=it._timing;
+  const color=['Late','Overdue','Deadline missed'].includes(timing)?'#854d0e':timing==='On time'?'#166534':'var(--text2)';
+  return `<span class="tdckl-timing" style="color:${color}">${Utils.esc(timing||'—')}</span>`;
+}
+
+function _tdcklNotApplicableHtml(s,row,it,locked){
   const id=Utils.esc(row.id), i=it._i;
   const button=(label,action,handler='_tdcklWriteAction')=>`<button type="button" class="btn btn-secondary btn-xs" onclick="${handler}('${id}',${i},'${action}',this)">${label}</button>`;
+  if(it._status==='na'){
+    const label=Utils.esc(it._naLabel||'N/A');
+    return locked||it._kind?label:`${label} ${button('Clear','undo','_tdcklConfirmStatus')}`;
+  }
   if(it.completionState==='waiver_requested'){
+    if(locked) return 'Requested';
     const canDecide=Auth.user&&it.naRequestedBy!==Auth.user.id&&
       (Auth.user.isAdmin||[s.trainerId,s.coFacilitatorId,s.createdBy].some(id=>_tdIsAboveInChain(id,Auth.user.id)));
-    return `<div style="display:flex;gap:4px;flex-wrap:wrap">${canDecide?button('Approve N/A','approve')+button('Decline','deny'):''}${button('Withdraw','undo')}</div>`;
+    return `<div style="display:flex;gap:4px;flex-wrap:wrap"><span>Requested</span>
+      ${canDecide?button('Approve','approve')+button('Decline','deny'):''}${button('Withdraw','undo')}</div>`;
   }
-  if(it.completedOn||it.isNA) return button('Reopen','undo','_tdcklConfirmStatus');
-  return button('N/A','na');
+  return locked||it._kind||it._status==='completed'?'—':button('N/A','na');
 }
 
 function _tdcklConfirmStatus(rowId,itemIndex,action,button){
@@ -17908,22 +17938,26 @@ function _tdcklBoardHtml(s,row){
     // is first. See _tdcklPhaseLocked for the exact logic.
     const locked=_tdcklPhaseLocked(s,p.id);
     const rowsHtml=colItems.length?colItems.map(it=>{
-      const iconHtml=_tdcklStatusIconHtml(it._status);
+      const iconHtml=verified?'':_tdcklStatusIconHtml(it._status);
       const completedOnVal=it.completedOn||'';
       const mandatoryMark=it.mandatory?'<span title="Mandatory" style="color:#dc2626;font-weight:700;margin-left:3px">*</span>':'';
       const infoIcon=it.description?`<span title="${Utils.esc(it.description)}" style="display:inline-flex;vertical-align:middle;margin-left:4px;cursor:help"><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#94a3b8" stroke-width="1.6"/><line x1="12" y1="11" x2="12" y2="16.5" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.3" r="1.1" fill="#94a3b8"/></svg></span>`:'';
       const noteBubble=_tdcklNoteBubbleHtml(row.id,it._i,(it.notes||[]).length);
+      const remove=locked||(verified&&(!it.custom||it.completionEvents?.length||it.completedOn||it.isNA||it.notes?.length))?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red);padding:2px 5px" title="Remove item" aria-label="Remove checklist item" onclick="_tdcklDeleteItem('${row.id}',${it._i})">✕</button>`;
       return `<tr>
         <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${it._i+1}</td>
-        <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}${noteBubble}</td>
+        <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}${noteBubble}${verified?remove:''}</td>
         <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${verified&&it._target?Utils.esc(Utils.formatDate(it._target)):_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>
         <td style="padding:6px 4px;vertical-align:top">
-          ${verified?_tdcklVerifiedStatusHtml(row,it,locked):`<span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>`}
+          ${verified?_tdcklVerifiedStatusHtml(s,row,it,locked):`<span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>`}
         </td>
-        <td style="padding:6px 4px;vertical-align:top;white-space:nowrap">
-          ${verified?_tdcklVerifiedActionsHtml(s,row,it,locked):`<input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${(it.isNA||locked)?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">`}
-        </td>
-        <td style="padding:6px 2px;vertical-align:top">${locked||(verified&&(!it.custom||it.completionEvents?.length||it.completedOn||it.isNA||it.notes?.length))?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red);padding:2px 5px" title="Remove item" onclick="_tdcklDeleteItem('${row.id}',${it._i})">✕</button>`}</td>
+        ${verified?`
+          <td style="padding:6px 4px;vertical-align:top">${_tdcklTimingHtml(it)}</td>
+          <td style="padding:6px 4px;vertical-align:top">${_tdcklNotApplicableHtml(s,row,it,locked)}</td>
+        `:`
+          <td style="padding:6px 4px;vertical-align:top;white-space:nowrap"><input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${(it.isNA||locked)?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)"></td>
+          <td style="padding:6px 2px;vertical-align:top">${remove}</td>
+        `}
       </tr>`;
     }).join(''):`<tr><td colspan="6" style="font-size:11.5px;color:var(--text3);padding:10px 4px">No items in this phase.</td></tr>`;
     const lockBadge=locked?`<span title="Locked -- no further edits allowed for this phase" style="display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;margin-left:6px">${_tdIconSvg('lock','#64748b',10)} LOCKED</span>`:'';
@@ -17944,17 +17978,17 @@ function _tdcklBoardHtml(s,row){
         </div>
       </div>
       <div class="card" style="border-radius:0 0 8px 8px;padding:6px 8px 10px">
-        <table style="width:100%;border-collapse:collapse">
+        <div class="tdckl-table-wrap"><table style="width:100%;border-collapse:collapse">
           <thead><tr style="border-bottom:1px solid var(--border-lt)">
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px;width:22px">#</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Checklist Item</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Target Date</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Status</th>
-            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">${verified?'Action':'Completed On'}</th>
-            <th style="padding:4px;width:20px"></th>
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">${verified?'Timing':'Completed On'}</th>
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">${verified?'N/A':''}</th>
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
-        </table>
+        </table></div>
         ${_tdcklAddItemRowHtml(row.id,p.id,locked,locked?_tdcklPhaseLockReason(s,p.id):'')}
       </div>
     </div>`;
@@ -17976,7 +18010,7 @@ function _tdcklBoardHtml(s,row){
         <div style="font-weight:700;font-size:14.5px">Checklist <span style="font-weight:400;color:var(--text3);font-size:12px">— ${Utils.esc(row.templateTitle||'')}</span></div>
         <div style="font-size:11.5px;color:var(--text3);margin-top:2px">Session Date${s.endDate&&s.endDate!==s.trainingDate?'s':''}: ${_tdcklSessionDatesLabel(s)}</div>
       </div>
-      ${_tdcklLegendHtml()}
+      ${verified?'':_tdcklLegendHtml()}
     </div>
     ${summaryRow}
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:14px">${cols}</div>
