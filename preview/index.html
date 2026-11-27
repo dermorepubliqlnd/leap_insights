@@ -16727,8 +16727,11 @@ function tdDetailCancelEdit(){
   guardedLeave(()=>{ _tdDetailEditing=false; renderTrainingDetail(); });
 }
 
-async function tdDetailSave(){
-  const s=TrSessionDB.byId(_tdDetailId); if(!s) return;
+async function tdDetailSave(statusChoice,trigger){
+  const s=TrSessionDB.byId(_tdDetailId); if(!s||_tdDetailSaving) return;
+  const iltSetup=_tdIsLinkedIltSetup(s)&&_tdDetailEditing;
+  const setupStatus=statusChoice==='scheduled'?'scheduled':'tentative';
+  const errs=[];
   // Edit-permission guard (2026-08-13, per Sandra) -- defense in depth alongside the Edit
   // link itself being hidden for view-only users; re-checked here in case of a stale/tampered
   // DOM state (same pattern as the existing "Completed" status guard just below).
@@ -16801,7 +16804,7 @@ async function tdDetailSave(){
     sessionNotes:document.getElementById('tdd-session-notes')?.value.trim()??(s.sessionNotes||''),
     // Report Link / Recording Link / Training Bond Document Link (2026-08-06 Phase62, extended
     // 2026-08-13): captured for every delivery type now, relabeled per type in the UI.
-    recordingLink:document.getElementById('tdd-recording')?.value.trim()||'',
+    recordingLink:document.getElementById('tdd-recording')?.value.trim()??(s.recordingLink||''),
     // Per-assessment table (2026-09-14 redesign, per Sandra): replaces the old session-wide
     // Assessment Type dropdown + Passing Score field entirely -- assessmentType/passingScore are
     // left untouched going forward (legacy columns, no longer read anywhere; _tdaGetAssessments
@@ -16809,7 +16812,7 @@ async function tdDetailSave(){
     // entirely for External (per Sandra, 2026-08-13) -- always empty regardless of draft state.
     assessments:programSession?s.assessments:(grp==='external'?null:(_tddNormalizeAssessRows(_tddAssessRows).length?_tddNormalizeAssessRows(_tddAssessRows):null)),
     modalityId:_tdShowsModality(deliveryType)?(document.getElementById('tdd-modalityid')?.value||null):null,
-    status:document.getElementById('tdd-status')?.value||'scheduled',
+    status:iltSetup?setupStatus:(document.getElementById('tdd-status')?.value||'scheduled'),
     // Mandatory tag (2026-08-06, Phase62): Self-led-only field -- only rendered in the DOM at all
     // when grp==='owner' now, so always optional-chained.
     isMandatory:programSession?s.isMandatory:(document.getElementById('tdd-mandatory')?.checked||false),
@@ -16831,7 +16834,10 @@ async function tdDetailSave(){
   // (the database enforces the same rule; this gives the clearer message first).
   if(programSession&&d.trainingDate&&d.trainingDate!==s.trainingDate){ // v5.19q: released to Live
     const vMsg=_lpVersionDateMsg(LearningProgramDB.byId(s.programId),d.trainingDate);
-    if(vMsg){ toast(vMsg,'error'); return; }
+    if(vMsg){
+      if(iltSetup) errs.push(vMsg);
+      else{ toast(vMsg,'error'); return; }
+    }
   }
   if(grp==='external'){
     const anchor=_tdSessionEndDate(d);
@@ -16845,7 +16851,10 @@ async function tdDetailSave(){
     const v=_rrEl.value;
     d.reportRequired=v==='yes'; d.reportWaiverReason=v==='yes'?null:v;
     d.reportWaiverNote=v==='yes'?null:(document.getElementById('tdd-report-note')?.value.trim()||null);
-    if(v==='other'&&!d.reportWaiverNote){ toast('Add a note explaining why the Training Report is not required.','error'); return; }
+    if(v==='other'&&!d.reportWaiverNote){
+      const message='Add a note explaining why the Training Report is not required.';
+      if(iltSetup) errs.push(message); else{ toast(message,'error'); return; }
+    }
   }
   // L3 due date: recomputed off THIS save's own dates whenever required and not yet completed, so
   // editing End Date later keeps it in sync; frozen once l3CompletedAt is set (a completed
@@ -16868,11 +16877,10 @@ async function tdDetailSave(){
   // First successful save of a program-linked session assigns its permanent batch code. The
   // delivery year comes from the first scheduled delivery part/date. Existing batch codes are
   // never recomputed on later edits, so a previously issued identifier is not silently changed.
-  if(programSession&&!d.batchNo&&d.trainingDate){
+  if(programSession&&!iltSetup&&!d.batchNo&&d.trainingDate){
     const deliveryYear=String(d.trainingDate).slice(0,4);
     d.batchNo=await _tdNextProgramBatchNo(s.programId,deliveryYear,s.id);
   }
-  const errs=[];
   // v5.16 (2026-10-30, per Sandra): a reason is required when a session is cancelled (kept for older cancellations without one)
   if(d.status==='cancelled'){
     const cr=document.getElementById('tdd-cancel-reason')?.value||'', cn=document.getElementById('tdd-cancel-note')?.value.trim()||'';
@@ -16882,7 +16890,7 @@ async function tdDetailSave(){
   } else { d.cancelReason=null; d.cancelNote=null; }
   if(programSession){
     if(deliveryPartDates.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date))) errs.push('Assign a date to every delivery part.');
-    if(new Set(deliveryPartDates.map(x=>x.date)).size!==deliveryPartDates.length) errs.push('Delivery parts need distinct dates.');
+    if(new Set(specificDatesSorted).size!==specificDatesSorted.length) errs.push('Delivery parts need distinct dates.');
     if(deliveryPartDates.some((x,i)=>i>0&&x.date&&deliveryPartDates[i-1].date&&x.date<=deliveryPartDates[i-1].date)) errs.push('Delivery part dates must follow the part order.');
     if(deliveryPartDates.some(x=>!x.startTime||!x.endTime||x.endTime<=x.startTime)) errs.push('Enter a start time for every part. End time is calculated automatically from the program duration.');
     if(deliveryPlan.reduce((sum,x)=>sum+Number(x.minutes||0),0)!==Math.round(Number(s.durationHours||0)*60)) errs.push('Delivery part hours must equal the total program agenda.');
@@ -16894,13 +16902,13 @@ async function tdDetailSave(){
   if(d.status==='tentative'){
     if(!d.deliveryType) errs.push('Please select a Delivery Type.');
     if(!d.trainingProgram) errs.push('Title is required.');
-    if(!d.trainingDate) errs.push('Start Date is required.');
+    if(!d.trainingDate&&!iltSetup) errs.push('Start Date is required.');
     if(d.durationHours==null) errs.push('Duration is required.');
   } else {
   if(!d.deliveryType) errs.push('Please select a Delivery Type.');
   if(!d.trainingProgram) errs.push(grp==='adhoc'?'Task Name is required.':'Training Program / Title is required.');
-  if(grp==='trainer' && !d.batchNo) errs.push('Batch No. is required.');
-  if(!d.trainingDate) errs.push('Start Date is required.');
+  if(grp==='trainer' && !d.batchNo && !iltSetup) errs.push('Batch No. is required.');
+  if(!d.trainingDate&&!iltSetup) errs.push('Start Date is required.');
   if(!d.description&&!programSession) errs.push(grp==='adhoc'?'Notes is required.':'Description is required.');
   // Guest Trainer fallback (Phase38 item 1): either a real system-user Trainer OR a Guest
   // Trainer Name is required for ILT/VILT sessions, not neither (replaces the old unconditional
@@ -16933,7 +16941,7 @@ async function tdDetailSave(){
   // Specific Dates (2026-08-19/20): the range-mode End Date requirement above doesn't apply in
   // this mode (there's no single End Date -- see _tdSessionEndDate), so require at least one
   // picked date instead.
-  if(dateRangeApplies && effectiveDateMode==='specific' && !specificDatesSorted.length) errs.push('Please add at least one session date.');
+  if(dateRangeApplies && effectiveDateMode==='specific' && !specificDatesSorted.length && !iltSetup) errs.push('Please add at least one session date.');
   // Venue field doesn't exist in the DOM at all for Ad-hoc (2026-08-13) -- guard against the
   // element lookup itself, not just its value, since document.getElementById('tdd-venue').value
   // would throw on null for that type.
@@ -16979,7 +16987,11 @@ async function tdDetailSave(){
   // session-wide field.
   _tddAssessRows.forEach((a,i)=>{ if(a.passingScore!=null && a.passingScore!==''&&(Number(a.passingScore)<0||Number(a.passingScore)>100)) errs.push(`Assessment ${i+1}${a.name?` ("${a.name}")`:''}: Passing % must be between 0 and 100.`); });
   const errEl=document.getElementById('tdd-error');
-  if(errs.length){ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; return; }
+  if(errs.length){
+    if(iltSetup) _tdShowSetupIssues([...new Set(errs)]);
+    else{ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; }
+    return;
+  }
   errEl.classList.add('hidden');
 
   // No Checklist Required + an already-started checklist (2026-08-13, per Sandra): switching to
@@ -16992,28 +17004,44 @@ async function tdDetailSave(){
     const doneCount=items.filter(i=>i.completedOn||i.isNA).length;
     const noteCount=items.reduce((n,i)=>n+((i.notes||[]).length),0);
     confirm$('Delete Existing Checklist Data?',`This session already has a checklist in progress ("<strong>${Utils.esc(existingChecklistRow.templateTitle||'a template')}</strong>" — ${items.length} item${items.length!==1?'s':''}, ${doneCount} marked done/N-A${noteCount?`, ${noteCount} note${noteCount!==1?'s':''}`:''}). Switching to <strong>"No Checklist Required"</strong> will permanently delete this checklist and everything on it. This cannot be undone. Continue?`,'Delete & Switch',async()=>{
-      await _tdDetailPerformSave(d,deliveryType,existingChecklistRow);
+      await _tdDetailPerformSave(d,deliveryType,existingChecklistRow,trigger,iltSetup);
     });
     return;
   }
-  await _tdDetailPerformSave(d,deliveryType,null);
+  await _tdDetailPerformSave(d,deliveryType,null,trigger,iltSetup);
 }
-async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete){
-  const saveBtn=document.getElementById('tdd-save-btn'); const origTxt=saveBtn?saveBtn.textContent:'';
+let _tdDetailSaving=false;
+async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete,trigger,iltSetup){
+  if(_tdDetailSaving) return;
+  _tdDetailSaving=true;
+  const saveBtn=trigger||document.getElementById('tdd-save-btn');
+  const origTxt=saveBtn?.textContent||'';
+  const setupButtons=iltSetup?[...document.querySelectorAll('[data-ilt-setup-action]')]:[];
+  setupButtons.forEach(button=>{ button.disabled=true; });
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
+    if(iltSetup&&!d.batchNo){
+      const session=TrSessionDB.byId(_tdDetailId);
+      d.batchNo=await _tdNextProgramBatchNo(session.programId,d.trainingDate.slice(0,4),session.id);
+      if(!d.batchNo) throw new Error('A batch number could not be assigned. Try saving again.');
+    }
     await TrSessionDB.update(_tdDetailId,d);
     if(checklistRowToDelete){
       await SessionChecklistDB.delete(checklistRowToDelete.id);
     }
-    toast('Training updated.','success');
+    toast(iltSetup?(d.status==='tentative'?'Tentative session saved.':'Schedule confirmed.'):'Training updated.','success');
     try{ _cmpSessionWarn(TrSessionDB.byId(_tdDetailId)); }catch(e){} // v5.19x
     disarmLeaveGuard();
     if(_tdDetailId===_tdNewlyCreatedId) _tdNewlyCreatedId=null;
     _tdDetailEditing=false;
     renderTrainingDetail();
-  }catch(e){ /* error already surfaced */ }
-  finally{ if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;} }
+  }catch(e){
+    if(iltSetup) _tdShowSetupIssues([e?.message||'The session could not be saved. Try again.']);
+  }finally{
+    _tdDetailSaving=false;
+    setupButtons.forEach(button=>{ button.disabled=false; });
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;}
+  }
 }
 
 function _tddPlaceholderPanel(icon,title,note){
@@ -20201,6 +20229,13 @@ function renderTrainingDetail(){
   const personName=Utils.esc(_tdPersonName(s));
   const summaryDate=s.dateMode==='specific'?((s.sessionDates||[]).slice().sort().map(Utils.formatDate).join(', ')||Utils.formatDate(s.trainingDate||'')):(s.endDate&&s.endDate!==s.trainingDate?`${Utils.formatDate(s.trainingDate||'')} – ${Utils.formatDate(s.endDate)}`:Utils.formatDate(s.trainingDate||''));
   const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, summaryDate||null, _venueDisplayName(s)||null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
+  const iltSetup=_tdIsLinkedIltSetup(s)&&_tdDetailTab==='overview';
+  const setupProgram=iltSetup?_tdLinkedProgramRecord(s):null;
+  const setupParts=iltSetup?_tdLinkedDeliveryPlan(s,setupProgram).length:0;
+  const setupVersion=iltSetup?_lpSessionVerLabel(s,LearningProgramDB.byId(s.programId))||setupProgram?.version:'';
+  const setupMeta=iltSetup?[setupProgram?.code,setupVersion,_tdLinkedNaturalDuration(Math.round(Number(s.durationHours||0)*60)),`${setupParts} delivery part${setupParts===1?'':'s'}`].filter(Boolean).map(Utils.esc).join(' · '):'';
+  const setupLine=iltSetup?`${setupMeta} · <a href="#" onclick="event.preventDefault();guardedLeave(()=>{showView('learning-programs');lpOpen('${Utils.esc(s.programId)}');})">View Program</a>`:'';
+
 
   // Self-led sessions (2026-08-06, Phase59): no trainer delivers/evaluates a self-led session, so
   // Attendance & Performance and Trainer Evaluation don't apply -- hide both tab buttons entirely
@@ -20259,18 +20294,18 @@ function renderTrainingDetail(){
           <h2 style="margin:0;font-size:20px;font-weight:700">${Utils.esc(s.trainingProgram||'Untitled Training')}</h2>
           ${_tdTypeBadge(s.deliveryType)}
         </div>
-        <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${summaryLine}</div>
+        <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${iltSetup?setupLine:summaryLine}</div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:flex-end">
         <div style="display:flex;align-items:center;gap:8px">
           ${_tdSavedStatusBadge(s)}
         </div>
         ${_tdDetailTab==='overview'&&!_tdDetailEditing&&_tdCanEditSession(s)?`<button type="button" class="btn btn-secondary btn-sm" onclick="tdDetailToggleEdit()">✎ Edit Session</button>`:''}
-        ${_tdDetailTab==='overview'&&_tdDetailEditing?`<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-weight:700">Editing session</span>`:''}
+        ${_tdDetailTab==='overview'&&_tdDetailEditing&&!iltSetup?`<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-weight:700">Editing session</span>`:''}
       </div>
     </div>
-    <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>
-    <div>${tabBody}</div>
+    ${iltSetup&&_tdDetailEditing?'':`<div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>`}
+    <div${iltSetup&&_tdDetailEditing?' style="margin-top:14px"':''}>${tabBody}</div>
   `;
   if(_tdDetailTab==='overview' && _tdDetailEditing){ _tddPopulateEditDropdowns(s,ownerType); _tddToggleTypeFields(); }
 }
@@ -21185,7 +21220,7 @@ function _tdOverviewJourneyBlockHorizontal(s,ownerType){
   </div>`;
 }
 
-function _tdLinkedScheduleCard(s,editing){
+function _tdLinkedScheduleCard(s,editing,iltSetup=false){
   const p=_tdLinkedProgramRecord(s);
   const plan=_tdLinkedDeliveryPlan(s,p);
   const historical=_tdIsHistoricalMappedSession(s);
@@ -21200,7 +21235,7 @@ function _tdLinkedScheduleCard(s,editing){
     if(editing&&!historical){
       return `<div style="border:1px solid var(--border-lt);border-radius:10px;padding:12px 14px;background:#fff">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="font-size:13px">Part ${i+1}</strong><span style="font-size:11.5px;color:var(--text3)">${Utils.esc(_tdLinkedNaturalDuration(minutes))}</span></div>
-        <div style="display:grid;grid-template-columns:1.25fr .9fr .9fr;gap:8px">
+        <div class="td-linked-part-fields" style="display:grid;grid-template-columns:1.25fr .9fr .9fr;gap:8px">
           <label class="form-label" style="font-size:10.5px;margin:0">Date<input type="date" id="tdd-part-date-${i}" class="form-control" style="margin-top:4px;font-size:12px;padding:6px 8px" value="${Utils.esc(date)}"></label>
           <label class="form-label" style="font-size:10.5px;margin:0">Start Time<input type="time" id="tdd-part-start-${i}" class="form-control" style="margin-top:4px;font-size:12px;padding:6px 8px" value="${Utils.esc(start)}" oninput="_tddAutoPartEnd(${i},${minutes})" onchange="_tddAutoPartEnd(${i},${minutes})"></label>
           <label class="form-label" style="font-size:10.5px;margin:0">End Time <span style="font-weight:400;color:var(--text3)">(auto)</span><input type="time" id="tdd-part-end-${i}" class="form-control" style="margin-top:4px;font-size:12px;padding:6px 8px;background:#f8fafc" value="${Utils.esc(end)}" readonly></label>
@@ -21218,7 +21253,7 @@ function _tdLinkedScheduleCard(s,editing){
   }).join('');
   const legacyNote=historical&&!hasPartSchedule?`<div style="font-size:11.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:12px"><strong>Historical mapped session.</strong> Part-level dates and times were not captured in the legacy record.${s.trainingDate?` Original session date: ${Utils.esc(Utils.formatDate(s.trainingDate))}.`:''}</div>`:'';
   return `<div class="card" style="padding:18px 20px">
-    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px"><div style="font-weight:700;font-size:15px">Session Schedule</div><span style="font-size:11.5px;color:var(--text3)">${historical?'Historical schedule reference.':'Set the date and start time for each delivery part.'}</span></div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px"><div style="font-weight:700;font-size:15px">Session Schedule</div><span style="font-size:11.5px;color:var(--text3)">${historical?'Historical schedule reference.':iltSetup?'':'Set the date and start time for each delivery part.'}</span></div>
     ${legacyNote}
     <div class="td-linked-schedule-grid" style="display:grid;grid-template-columns:repeat(${plan.length===1?1:2},minmax(0,1fr));gap:12px">${parts}</div>
   </div>`;
@@ -21244,7 +21279,7 @@ function _tdRecordingAccessHtml(s){
   return `<span style="color:var(--text3);font-weight:500">${_tdIsHistoricalMappedSession(s)?'Not recorded':'Not added'}</span>`;
 }
 
-function _tdLinkedSessionInfoCard(s,editing){
+function _tdLinkedSessionInfoCard(s,editing,iltSetup=false){
   const statusVal=s.status||'tentative';
   const facilitator=_tdPersonName(s)||'Not assigned';
   const cofac=s.coFacilitatorId?_lpName(s.coFacilitatorId):(s.coFacilitatorGuestName||'None');
@@ -21271,20 +21306,35 @@ function _tdLinkedSessionInfoCard(s,editing){
   const isGuest=!s.trainerId&&!!s.guestTrainerName;
   const isGuestCofac=!s.coFacilitatorId&&!!s.coFacilitatorGuestName;
   const field=(label,html)=>`<div><label class="form-label" style="font-size:10.5px;color:var(--text3)">${label}</label>${html}</div>`;
+  const facilitatorControl=`${field('Facilitator',`<select id="tdd-trainer" class="form-control ${isGuest?'hidden':''}" style="${small}" onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select><div id="tdd-guest-name-wrap" class="${isGuest?'':'hidden'}"><input id="tdd-guest-name" class="form-control" style="${small}" value="${Utils.esc(s.guestTrainerName||'')}" placeholder="Guest Facilitator"><button type="button" class="btn btn-ghost btn-xs" onclick="_tddClearGuestTrainer()">Choose from list</button></div>`)}`;
+  const deliveryMethod=`${field('Delivery Method',`<select id="tdd-modalityid" class="form-control" style="${small}"><option value="">— Select —</option></select>`)}`;
+  const venueControl=`${field('Venue / Location',`<select id="tdd-venue" class="form-control" style="${small}" onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" style="${small}" value="${Utils.esc(s.venueOtherName||'')}" placeholder="Enter venue name"></div>`)}`;
+  const audienceControl=`${field('Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],small))}`;
+  const cofacilitator=`${field('Co-Facilitator (Optional)',`<select id="tdd-cofacilitator" class="form-control ${isGuestCofac?'hidden':''}" style="${small}" onchange="_tddCofacSelectChange()"><option value="">— None —</option></select><div id="tdd-cofacilitator-guest-wrap" class="${isGuestCofac?'':'hidden'}"><input id="tdd-cofacilitator-guest-name" class="form-control" style="${small}" value="${Utils.esc(s.coFacilitatorGuestName||'')}" placeholder="Guest Co-Facilitator"><button type="button" class="btn btn-ghost btn-xs" onclick="_tddClearCofacGuest()">Choose from list</button></div>`)}`;
+  const notes=`${field('Session Notes (Optional)',`<textarea id="tdd-session-notes" class="form-control" rows="3" style="${small}" placeholder="Add session-specific notes or context...">${Utils.esc(s.sessionNotes||'')}</textarea>`)}`;
+  if(iltSetup) return `<section class="card td-ilt-booking" aria-labelledby="td-ilt-booking-title">
+    <h3 id="td-ilt-booking-title">Booking Details</h3>
+    <p class="td-ilt-muted">Required to confirm the schedule.</p>
+    <div class="td-ilt-booking-fields">${facilitatorControl}${deliveryMethod}${venueControl}${audienceControl}</div>
+    <details class="td-ilt-optional"${s.coFacilitatorId||s.coFacilitatorGuestName||s.sessionNotes||_tdReportWaived(s)?' open':''}>
+      <summary>Optional Details <span class="td-ilt-muted">· ${_tdReportWaived(s)?'Survey results only':'Training report required'}</span></summary>
+      <div class="td-ilt-booking-fields">${cofacilitator}${field('Training Report',_tdReportReqControl(s,small))}<div class="td-ilt-wide">${notes}</div></div>
+    </details>
+  </section>`;
   return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box">
     <div style="font-weight:700;font-size:15px;margin-bottom:16px">Session Information</div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px">
       ${field('Session ID',`<input class="form-control" style="${small};background:#f1f5f9" value="${Utils.esc(s.code||s.id||'')}" readonly>`)}
       ${field('Batch',`<input class="form-control" style="${small};background:#f1f5f9" value="${Utils.esc(s.batchNo||'Assigned when saved')}" readonly title="Generated automatically as YYYY-### per Learning Program and delivery year"><div style="font-size:10px;color:var(--text3);margin-top:4px">Auto-generated per program and delivery year.</div>`)}
       ${field('Status',`<select id="tdd-status" class="form-control" style="${small}" onchange="_tddStatusChanged()"><option value="tentative" ${statusVal==='tentative'?'selected':''}>Tentative</option><option value="scheduled" ${statusVal==='scheduled'?'selected':''}>Scheduled</option>${statusVal==='completed'?'<option value="completed" selected>Completed</option>':''}<option value="cancelled" ${statusVal==='cancelled'?'selected':''}>Cancelled</option></select>${_tdCancelReasonHtml({...s,status:statusVal},`style="${small}"`)}`)}
-      ${field('Delivery Method',`<select id="tdd-modalityid" class="form-control" style="${small}"><option value="">— Select —</option></select>`)}
-      ${field('Venue / Location',`<select id="tdd-venue" class="form-control" style="${small}" onchange="_toggleVenueOtherWrap('tdd')"><option value="">— Select Venue —</option></select><div class="hidden" id="tdd-venue-other-wrap" style="margin-top:6px"><input type="text" id="tdd-venue-other" class="form-control" style="${small}" value="${Utils.esc(s.venueOtherName||'')}" placeholder="Enter venue name"></div>`)}
-      ${field('Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],small))}
-      ${field('Facilitator',`<select id="tdd-trainer" class="form-control ${isGuest?'hidden':''}" style="${small}" onchange="_tddTrainerSelectChange()"><option value="">— Select Trainer —</option></select><div id="tdd-guest-name-wrap" class="${isGuest?'':'hidden'}"><input id="tdd-guest-name" class="form-control" style="${small}" value="${Utils.esc(s.guestTrainerName||'')}" placeholder="Guest Facilitator"><button type="button" class="btn btn-ghost btn-xs" onclick="_tddClearGuestTrainer()">Choose from list</button></div>`)}
-      ${field('Co-Facilitator (Optional)',`<select id="tdd-cofacilitator" class="form-control ${isGuestCofac?'hidden':''}" style="${small}" onchange="_tddCofacSelectChange()"><option value="">— None —</option></select><div id="tdd-cofacilitator-guest-wrap" class="${isGuestCofac?'':'hidden'}"><input id="tdd-cofacilitator-guest-name" class="form-control" style="${small}" value="${Utils.esc(s.coFacilitatorGuestName||'')}" placeholder="Guest Co-Facilitator"><button type="button" class="btn btn-ghost btn-xs" onclick="_tddClearCofacGuest()">Choose from list</button></div>`)}
+      ${deliveryMethod}
+      ${venueControl}
+      ${audienceControl}
+      ${facilitatorControl}
+      ${cofacilitator}
       <div style="grid-column:span 2">${field((s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Recording Link *':'Recording Link (Optional)',`<input type="url" id="tdd-recording" class="form-control" style="${small}" value="${Utils.esc(s.recordingLink||'')}" placeholder="Enter recording or Teams/Drive link"><div style="font-size:10px;color:var(--text3);margin-top:4px">${(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Required before Delivery Complete.':'Add when a recording is available.'}</div>`)}</div>
       ${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?`<div style="grid-column:span 2">${field('Training Report',_tdReportReqControl(s,small))}</div>`:''}
-      <div style="grid-column:span 2">${field('Session Notes (Optional)',`<textarea id="tdd-session-notes" class="form-control" rows="3" style="${small}" placeholder="Add session-specific notes or context...">${Utils.esc(s.sessionNotes||'')}</textarea>`)}</div>
+      <div style="grid-column:span 2">${notes}</div>
     </div>
     <div class="modal-err hidden" id="tdd-error" style="margin-top:12px"></div>
   </div>`;
@@ -21335,8 +21385,68 @@ function _tdLinkedWorkflowTiles(s){
   </div>`;
 }
 
+function _tdIsLinkedIltSetup(s){
+  return _tdUsesLinkedProgramOverview(s)&&s.deliveryType==='ILT'&&s.status==='tentative';
+}
+
+function _tdShowSetupIssues(issues){
+  const panel=document.getElementById('tdd-error');
+  if(!panel) return;
+  panel.innerHTML=`<strong>Complete these items to save</strong><ul>${issues.map(issue=>`<li>${Utils.esc(issue)}</li>`).join('')}</ul>`;
+  document.getElementById('td-ilt-setup-hint')?.classList.add('hidden');
+  panel.classList.remove('hidden');
+  panel.focus();
+}
+
+function _tdLinkedIltSetup(s,editing){
+  const plan=_tdLinkedDeliveryPlan(s,_tdLinkedProgramRecord(s));
+  const missing=plan.some((_,i)=>!(s.deliveryPartDates?.[i]?.date&&s.deliveryPartDates?.[i]?.startTime));
+  const guidance=missing?(plan.length===1?'Set the date and start time for Part 1.':'Set the date and start time for each delivery part.'):'Complete the booking details to confirm the schedule.';
+  const steps=['Set Up Session','Prepare & Deliver','Report & Email','Follow-up'];
+  const hasReport=!_tdReportWaived(s);
+  const hasFollowup=_tdL3Applicable(s)||_tdL4Applicable(s)||_tdaRetentionItems(s).length||!hasReport;
+  return `<div class="td-ilt-setup" id="tdd-session-info-card">
+    <section class="card td-ilt-progress" aria-labelledby="td-ilt-progress-title">
+      <div class="td-ilt-progress-body"><h3 id="td-ilt-progress-title">Session Progress</h3>
+        <ol class="td-ilt-stages">${steps.filter(step=>step!=='Follow-up'||hasFollowup).map((step,i)=>`<li${i===0?' aria-current="step"':''}><span aria-hidden="true"></span>${step==='Report & Email'&&!hasReport?'Survey Results':step}</li>`).join('')}</ol>
+      </div>
+      <p class="td-ilt-setup-hint" id="td-ilt-setup-hint">${guidance}</p>
+      ${editing?'<div class="td-ilt-issues hidden" id="tdd-error" role="alert" tabindex="-1"></div>':''}
+    </section>
+    ${_tdLinkedScheduleCard(s,editing,true)}
+    ${_tdLinkedSessionInfoCard(s,editing,editing)}
+    ${editing?`<div class="td-ilt-setup-actions">
+      <button type="button" class="btn btn-secondary" data-ilt-setup-action onclick="tdDetailSave('tentative',this)">Save as Tentative</button>
+      <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave('scheduled',this)">Confirm Schedule</button>
+    </div>`:''}
+  </div>`;
+}
+
 function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
   const editing=!!_tdDetailEditing;
+  if(_tdIsLinkedIltSetup(s)) return `<style>
+.td-ilt-setup{display:grid;gap:14px}
+.td-ilt-progress,.td-ilt-booking{padding:16px 20px}
+.td-ilt-setup h3{font-size:15px;margin:0;font-weight:700;color:var(--text)}
+.td-ilt-progress-body{display:flex;align-items:flex-start;gap:24px}
+.td-ilt-progress-body h3{flex:0 0 auto;padding-top:3px}
+.td-ilt-stages{flex:1;display:flex;list-style:none;margin:0;padding:0;min-width:0}
+.td-ilt-stages li{position:relative;flex:1;text-align:center;font-size:12px;color:var(--text2);padding:0 4px}
+.td-ilt-stages li:not(:last-child):after{content:'';position:absolute;background:var(--border);height:2px;top:10px;left:50%;width:100%}
+.td-ilt-stages li span{display:block;position:relative;z-index:1;width:21px;height:21px;margin:0 auto 6px;border:2px solid var(--border);border-radius:50%;background:#fff}
+.td-ilt-stages li[aria-current]{font-weight:700;color:var(--text)}
+.td-ilt-stages li[aria-current] span{background:var(--pri);border-color:var(--pri)}
+.td-ilt-setup-hint{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border-lt);font-size:12px;color:var(--text2)}
+.td-ilt-issues{margin-top:12px;padding:10px 12px;background:#fff7ed;color:#9a3412;border-radius:8px;font-size:12px}
+.td-ilt-issues ul{margin:6px 0 0;padding-left:18px}
+.td-ilt-muted{font-weight:400;font-size:12px;color:var(--text3);margin:4px 0}
+.td-ilt-booking-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin-top:12px}
+.td-ilt-wide{grid-column:1/-1}
+.td-ilt-optional{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:14px}
+.td-ilt-optional summary{cursor:pointer;font-size:12px;font-weight:600}
+.td-ilt-setup-actions{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;gap:8px;padding:12px 0;background:var(--bg,#f1f5f9);border-top:1px solid var(--border)}
+@media(max-width:720px){.td-ilt-progress-body{display:block}.td-ilt-stages{margin-top:12px}.td-ilt-booking-fields,.td-ilt-setup .td-linked-schedule-grid,.td-ilt-setup .td-linked-part-fields{grid-template-columns:1fr!important}}
+</style>${_tdLinkedIltSetup(s,editing)}`;
   return `<style>
     @media(max-width:1100px){.td-linked-main-grid{grid-template-columns:1fr!important}.td-linked-workflow-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
     @media(max-width:720px){.td-linked-workflow-grid,.td-linked-schedule-grid{grid-template-columns:1fr!important}}
