@@ -1740,6 +1740,7 @@
 .td-ilt-stages li[data-schedule=tentative] .td-ilt-stage-dot{background:#fde68a;border-color:#a16207}
 .td-ilt-stages li[data-schedule=tentative] small{color:#854d0e;font-weight:700}
 .td-ilt-stages li[data-schedule=confirmed] small{color:#166534;font-weight:700}
+.td-ilt-schedule-history{display:flex;flex-wrap:wrap;gap:6px 22px;padding-top:10px;margin-top:10px;border-top:1px solid var(--border-lt);font-size:11.5px;color:var(--text2)}
 .td-ilt-optional-eval{margin-top:6px}
 .td-ilt-status-badge[data-status=scheduled]{background:#dbeafe;color:#164287;border-color:#7aa2df}
 .td-ilt-status-badge[data-status=completed]{background:#dcfce7;color:#17653a;border-color:#5db584}
@@ -4094,6 +4095,8 @@ const _FIELD_MAPS = {
     trainingDate:'training_date', venueId:'venue_id', modalityId:'modality_id', recordingLink:'recording_link',
     status:'status', numParticipants:'num_participants', duration:'duration',
     createdAt:'created_at', updatedAt:'updated_at',
+    confirmedAt:'confirmed_at', confirmedBy:'confirmed_by', deliveryFinalizedAt:'delivery_finalized_at',
+    deliveryFinalizedBy:'delivery_finalized_by', checklistScheduleHistory:'checklist_schedule_history',
     // Phase 5 (Training Implementations) foundation columns -- additive, existing Training
     // Sessions module/UI does not read or write these yet.
     deliveryType:'delivery_type', coFacilitatorId:'co_facilitator_id', audience:'audience',
@@ -4222,6 +4225,7 @@ const _FIELD_MAPS = {
     reopenStatus:'reopen_status', reopenRequestedBy:'reopen_requested_by', reopenRequestedAt:'reopen_requested_at',
     reopenReason:'reopen_reason', reopenDecidedBy:'reopen_decided_by', reopenDecidedAt:'reopen_decided_at',
     emailSentOn:'email_sent_on', emailLastSentOn:'email_last_sent_on',
+    checklistSubmittedAt:'checklist_submitted_at', checklistSubmittedBy:'checklist_submitted_by',
     emailConfirmedBy:'email_confirmed_by', emailConfirmedAt:'email_confirmed_at'
   },
   evaluations:{
@@ -15199,13 +15203,9 @@ function _tcSessionChecklistStats(s){
   }
   const row=SessionChecklistDB.all().find(r=>r.sessionId===s.id);
   if(!row) return {applicable:false};
-  const items=(row.items||[]).map(it=>{
-    const phase=it.phase||'pre';
-    const target=_tdcklTargetDate(s,phase,it.timelineDays);
-    return {...it,phase,_target:target,_status:_tdcklComputeStatus(it,target)};
-  });
+  const items=_tdcklItemsWithStatus(s,row);
   const isDone=it=>it._status==='completed'||it._status==='na';
-  const isOverdue=it=>it._status==='pending'; // _tdcklComputeStatus's 'pending' = target date passed, not done/NA
+  const isOverdue=it=>it._status==='pending'&&(!_tdcklUsesVerifiedWorkflow(s)||it.deadlineMissed||!!it._target&&_todayStr()>it._target);
   const isNotStarted=it=>it._status==='not_started';
   const total=items.length;
   const done=items.filter(isDone).length;
@@ -17206,6 +17206,151 @@ const CKTPL_FEATURE_START_DATE='2026-08-01';
 // means "hasn't been decided yet" and fails required-field validation (2026-08-13, per Sandra).
 const CKTPL_NONE_SENTINEL='__NONE__';
 
+
+function _tdcklUsesVerifiedWorkflow(s){
+  return s?.deliveryType==='ILT'&&Object.hasOwn(s,'confirmedAt');
+}
+
+function _tdcklTemplateItemKind(title,it){
+  if((title||'').trim().toLowerCase()!=='standard ilt checklist') return '';
+  const task=(it.task||'').trim().toLowerCase();
+  if((it.phase||'pre')==='pre') return task==='create / confirm training implementation in leap'?'schedule':'';
+  return ({'finalize attendance':'attendance','finalize assessment results':'assessment',
+    'complete & submit training report':'report'})[task]||'';
+}
+
+function _tdcklItemsWithStatus(s,row){
+  const verified=_tdcklUsesVerifiedWorkflow(s);
+  const report=verified?TrainingReportsDB.all().find(r=>r.sessionId===s.id):null;
+  const reportDone=['submitted','approved'].includes(report?.status);
+  return (row?.items||[]).flatMap((it,i)=>{
+    const kind=_tdcklTemplateItemKind(row.templateTitle,it);
+    if(kind==='schedule') return [];
+    const phase=it.phase||'pre';
+    let target=_tdcklTargetDate(s,phase,it.timelineDays);
+    const lastEvent=it.completionEvents?.at(-1);
+    const days=Number(it.timelineDays)||0;
+    if(verified){
+      for(const change of s.checklistScheduleHistory||[]){
+        const prior=_tdcklAddDays(phase==='post'?change.previousEnd:change.previousStart,phase==='post'?days:-days);
+        if(prior&&prior<_mnlDateOf(change.changedAt)&&(!target||prior<target)) target=prior;
+      }
+    }
+    const task={...it,phase,_i:i,_target:target,_status:_tdcklComputeStatus(it,target),_kind:verified?kind:''};
+    if(!verified) return [task];
+    if(lastEvent?.dueOn&&['done','waived'].includes(it.completionState)) task._target=lastEvent.dueOn;
+
+    if(kind==='assessment'&&!_tdaHasAssessment(s)){
+      Object.assign(task,{_status:'na',_label:'N/A · No L2 configured'});
+    }else if(kind){
+      const at=kind==='report'?(reportDone?report.checklistSubmittedAt:null):(s.status==='completed'?s.deliveryFinalizedAt:null);
+      const actor=kind==='report'?report?.checklistSubmittedBy:s.deliveryFinalizedBy;
+      const legacy=kind==='report'?reportDone:s.status==='completed'&&!s.deliveryFinalizedAt;
+      const late=at&&target&&_mnlDateOf(at)>target;
+      task._label=at?(late?'Late':'On time'):legacy?'Recorded before this workflow':'Tracked automatically';
+      task._status=at||legacy?'completed':target&&_todayStr()>target?'pending':'not_started';
+      task._automaticEvent=at?{action:'auto',at,actorId:actor,dueOn:target,result:late?'late':'on_time'}:null;
+    }else if(it.completionState==='waiver_requested'){
+      task._label=it.deadlineMissed||target&&_todayStr()>target?'N/A requested · Overdue':'N/A requested';
+      task._status='pending';
+    }else if(it.isNA){
+      task._label=it.completionState==='waived'?(it.deadlineMissed?'N/A · Deadline missed':'N/A'):'N/A · Historical';
+    }else if(it.completedOn){
+      task._label=it.completionResult==='on_time'?'On time':it.completionResult==='late'?'Late':'Self-reported';
+    }else{
+      const overdue=it.deadlineMissed||target&&_todayStr()>target;
+      task._label=overdue?'Overdue':'Open';
+      task._status=overdue?'pending':'not_started';
+    }
+    return [task];
+  });
+}
+
+function _tdcklCloseoutRemaining(s,row){
+  if(!_tdcklUsesVerifiedWorkflow(s)||!s.deliveryFinalizedAt||s.status!=='completed'||_tdReportWaived(s)||
+    !s.checklistTemplateId||s.checklistTemplateId===CKTPL_NONE_SENTINEL) return [];
+  const checklist=row||SessionChecklistDB.all().find(r=>r.sessionId===s.id);
+  if(!checklist) return ['Open the Trainer Checklist to start post-training closeout'];
+  return _tdcklItemsWithStatus(s,checklist).filter(it=>it.phase==='post'&&
+    (it._status!=='completed'&&it._status!=='na'||it._status==='na'&&it.mandatory&&!it._kind&&it.completionState!=='waived')).map(it=>it.task);
+}
+
+function _tdcklWhen(timestamp){
+  const date=new Date(timestamp);
+  return Number.isNaN(date.getTime())?'Date unavailable':new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',dateStyle:'medium',timeStyle:'short'}).format(date);
+}
+
+function _tdScheduleMilestoneHistory(s){
+  const event=!s.confirmedAt&&s.status!=='tentative'?AuditLog.all().filter(e=>e.module==='Training Session'&&
+    e.entityId===s.id&&e.action==='status_change'&&/^Status changed to scheduled on /.test(e.summary||''))
+    .sort((a,b)=>(a.ts||'').localeCompare(b.ts||''))[0]:null;
+  const info=(label,at,actor)=>`<span><strong>${label}</strong> ${at?Utils.esc(_tdcklWhen(at)):'Date unavailable'}
+    ${actor?` · ${Utils.esc(_lpName(actor)||'')}`:''}</span>`;
+  const confirmed=s.confirmedAt||event?.ts;
+  return `<div class="td-ilt-schedule-history" aria-label="Schedule history">
+    ${info('Created',s.createdAt,s.createdBy)}
+    ${confirmed||s.status==='scheduled'||s.status==='completed'?info(s.confirmedAt||!event?'Confirmed':'First recorded confirmation',confirmed,s.confirmedBy||event?.actorId):''}
+  </div>`;
+}
+
+function _tdcklVerifiedStatusHtml(it){
+  const info=_tdcklStatusInfo(it._status);
+  const late=it.completionResult==='late'||it.deadlineMissed||it._automaticEvent?.result==='late';
+  const badge=`<span class="badge" style="background:${late?'#fef3c7':info.bg};color:${late?'#854d0e':info.color}">${Utils.esc(it._label)}</span>`;
+  const events=it._automaticEvent?[...(it.completionEvents||[]),it._automaticEvent]:(it.completionEvents||[]);
+  if(!events.length) return badge;
+  const labels={done:'Done',na:'N/A requested or recorded',approve:'Waiver approved',deny:'Waiver declined',undo:'Reopened',auto:'Recorded by LEAP'};
+  return badge+`<details style="margin-top:4px;font-size:11px">
+    <summary>History</summary>
+    <ul style="margin:4px 0;padding-inline-start:16px">${events.slice().reverse().map(e=>`<li>${labels[e.action]||'Updated'}
+      · ${Utils.esc(_tdcklWhen(e.at))}${e.actorId?` · ${Utils.esc(_lpName(e.actorId)||'')}`:''}
+      ${e.dueOn?` · Due ${Utils.esc(Utils.formatDate(e.dueOn))}`:''}
+      ${e.reason?` · ${Utils.esc(e.reason)}`:''}${e.deadlineMissed?' · Deadline missed':''}</li>`).join('')}</ul>
+  </details>`;
+}
+
+function _tdcklVerifiedActionsHtml(s,row,it,locked){
+  if(locked||it._kind) return '';
+  const id=Utils.esc(row.id), i=it._i;
+  const button=(label,action)=>`<button type="button" class="btn btn-secondary btn-xs" onclick="_tdcklWriteAction('${id}',${i},'${action}',this)">${label}</button>`;
+  if(it.completionState==='waiver_requested'){
+    const canDecide=Auth.user&&it.naRequestedBy!==Auth.user.id&&
+      (Auth.user.isAdmin||[s.trainerId,s.coFacilitatorId,s.createdBy].some(id=>_tdIsAboveInChain(id,Auth.user.id)));
+    return `<div style="display:flex;gap:4px;flex-wrap:wrap">${canDecide?button('Approve N/A','approve')+button('Decline','deny'):''}${button('Withdraw','undo')}</div>`;
+  }
+  if(it.completedOn||it.isNA) return button('Reopen','undo');
+  return `<div style="display:flex;gap:4px;flex-wrap:wrap">${button('Done','done')}${button('N/A','na')}</div>`;
+}
+
+const _tdcklWritesInFlight=new Set();
+async function _tdcklWriteAction(rowId,itemIndex,action,button,extra={}){
+  const row=SessionChecklistDB.byId(rowId);
+  if(!row||_tdcklWritesInFlight.has(rowId)) return;
+  let reason=null;
+  if(action==='na'){
+    reason=prompt('Why does this checklist item not apply?')?.trim();
+    if(!reason) return;
+  }
+  _tdcklWritesInFlight.add(rowId);
+  if(button) button.disabled=true;
+  try{
+    const {data,error}=await sb.rpc('change_trainer_checklist_item',{
+      p_row:rowId,p_index:itemIndex,p_task:row.items?.[itemIndex]?.task||null,p_action:action,p_reason:reason,...extra
+    });
+    if(error) throw error;
+    const saved=rowToCamel('session_checklists',Array.isArray(data)?data[0]:data);
+    const index=Cache.data.session_checklists.findIndex(r=>r.id===rowId);
+    if(saved&&index>=0) Cache.data.session_checklists[index]=saved;
+    if(_tdDetailId===row.sessionId) renderTrainingDetail();
+  }catch(error){
+    _surfaceDbError(error,'Update checklist item');
+  }finally{
+    _tdcklWritesInFlight.delete(rowId);
+    if(button) button.disabled=false;
+  }
+}
+
+
 // Manual-override banner (2026-08-12, per Sandra) is prepended here rather than threaded through
 // every early-return branch below -- _tdManualOverrideBanner(s) resolves to '' for the vast
 // majority of sessions, so this wrapper is a no-op except for the handful of backfilled sessions
@@ -17250,6 +17395,7 @@ function _tdChecklistRenderTabBody(s){
     }
     // Auto-init (no "Start Checklist" click needed) -- fire the snapshot-create as a side effect
     // of rendering, guarded against double-firing, then re-render once it lands.
+    if(_tdcklUsesVerifiedWorkflow(s)&&!_tdCanEditSession(s)) return '<div class="card" style="padding:18px 20px">The assigned trainer can start this checklist.</div>';
     if(!_tdcklAutoInitInFlight.has(s.id)){
       _tdcklAutoInitInFlight.add(s.id);
       _tdcklInitChecklist(s.id,t.id).finally(()=>{ _tdcklAutoInitInFlight.delete(s.id); });
@@ -17267,6 +17413,7 @@ function _tdChecklistRenderTabBody(s){
     // No dedicated banner needed for that case per Sandra (2026-08-13); left to fall through to
     // the generic "template changed" branch below as a harmless fallback if it's ever hit anyway
     // (e.g. a delete that failed silently).
+    if(_tdcklUsesVerifiedWorkflow(s)) return '';
     if(row.templateId!==s.checklistTemplateId){
       const newT=s.checklistTemplateId?ChecklistTemplateDB.byId(s.checklistTemplateId):null;
       return `<div style="background:var(--amber-lt);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
@@ -17288,7 +17435,7 @@ function _tdChecklistRenderTabBody(s){
     }
     return '';
   })();
-  const backfillBanner=_tdcklBackfillUnlocked(s.id)?`<div style="background:#fef3c7;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:8px">
+  const backfillBanner=!_tdcklUsesVerifiedWorkflow(s)&&_tdcklBackfillUnlocked(s.id)?`<div style="background:#fef3c7;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:8px">
     🔓 <strong>Backfill mode is ON</strong> for this session — the normal lock dates are bypassed so historical data can be entered. An admin can turn this off from Settings &gt; Checklist Backfill.
   </div>`:'';
   return mismatchBanner+backfillBanner+_tdcklBoardHtml(s,row);
@@ -17296,7 +17443,7 @@ function _tdChecklistRenderTabBody(s){
 
 async function _tdcklInitChecklist(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
-  const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]}));
+  const items=(t.items||[]).filter(i=>_tdcklTemplateItemKind(t.title,i)!=='schedule').map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]}));
   try{
     await SessionChecklistDB.create({sessionId,templateId,templateTitle:t.title,items});
     renderTrainingDetail();
@@ -17312,8 +17459,8 @@ async function _tdcklInitChecklist(sessionId,templateId){
 function _tdcklTemplateDrifted(row,template){
   if(!template) return false;
   const norm=i=>({task:(i.task||'').trim(),description:(i.description||'').trim(),timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre'});
-  const rowDefItems=(row.items||[]).filter(i=>!i.custom).map(norm);
-  const tplItems=(template.items||[]).map(norm);
+  const rowDefItems=(row.items||[]).filter(i=>!i.custom&&_tdcklTemplateItemKind(row.templateTitle,i)!=='schedule').map(norm);
+  const tplItems=(template.items||[]).filter(i=>_tdcklTemplateItemKind(template.title,i)!=='schedule').map(norm);
   return JSON.stringify(rowDefItems)!==JSON.stringify(tplItems);
 }
 // Non-destructive counterpart to _tdcklResetToTemplate below: refreshes each item's definitional
@@ -17334,7 +17481,7 @@ function _tdcklSyncTemplateFields(sessionId,templateId){
       return def?{...it,...def}:it;
     });
     const existingTasks=new Set(items.map(it=>(it.task||'').trim()));
-    (t.items||[]).forEach(i=>{
+    (t.items||[]).filter(i=>_tdcklTemplateItemKind(t.title,i)!=='schedule').forEach(i=>{
       const task=(i.task||'').trim();
       if(!existingTasks.has(task)){
         items.push({task,description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]});
@@ -17351,7 +17498,7 @@ function _tdcklResetToTemplate(sessionId,templateId){
   const t=ChecklistTemplateDB.byId(templateId); if(!t) return;
   const row=SessionChecklistDB.all().find(r=>r.sessionId===sessionId); if(!row) return;
   confirm$('Reset Checklist',`Reset this session's checklist to "<strong>${Utils.esc(t.title)}</strong>"? All current progress (statuses and Completed On dates) will be lost.`,'Reset',async()=>{
-    const items=(t.items||[]).map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]}));
+    const items=(t.items||[]).filter(i=>_tdcklTemplateItemKind(t.title,i)!=='schedule').map(i=>({task:i.task||'',description:i.description||'',timelineDays:i.timelineDays!=null?Number(i.timelineDays):0,mandatory:!!i.mandatory,phase:i.phase||'pre',completedOn:null,completedOnTs:null,isNA:false,custom:false,notes:[]}));
     try{
       await SessionChecklistDB.update(row.id,{templateId,templateTitle:t.title,items});
       renderTrainingDetail();
@@ -17445,6 +17592,7 @@ function _tdcklBackfillUnlocked(sessionId){
 }
 function _tdcklPhaseLocked(s,phase){
   if(!s) return false;
+  if(_tdcklUsesVerifiedWorkflow(s)) return !_tdCanEditSession(s)||!['scheduled','completed'].includes(s.status)||(phase==='post'&&_todayStr()<_tdSessionEndDate(s));
   if(_tdcklBackfillUnlocked(s.id)) return false;
   if(phase==='pre'){
     const lockDate=_tdcklAddWorkingDays(s.trainingDate,2);
@@ -17466,6 +17614,7 @@ function _tdcklPhaseLocked(s,phase){
 // submission rather than a date threshold).
 function _tdcklPhaseLockReason(s,phase){
   if(!_tdcklPhaseLocked(s,phase)) return '';
+  if(_tdcklUsesVerifiedWorkflow(s)) return phase==='post'&&_todayStr()<_tdSessionEndDate(s)?Utils.formatDate(_tdSessionEndDate(s)):'';
   if(phase==='pre'){
     const lockDate=_tdcklAddWorkingDays(s.trainingDate,2);
     return lockDate?Utils.formatDate(lockDate):'';
@@ -17631,6 +17780,7 @@ async function _tdcklAddCustomItem(rowId,phase,taskText,timelineDays){
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
   if(_tdcklGuardLocked(row,phase)) return;
   const days=Math.max(0,parseInt(timelineDays,10)||0);
+  if(_tdcklUsesVerifiedWorkflow(TrSessionDB.byId(row.sessionId))) return _tdcklWriteAction(row.id,null,'add',null,{p_task:task,p_phase:phase,p_days:days});
   // Mandatory defaults to true for session-added items (2026-08-13, per Sandra: "since it's been
   // added, it is needed") -- unlike template items, which default to Optional/false.
   const items=[...(row.items||[]),{task,description:'',timelineDays:days,mandatory:true,phase,completedOn:null,completedOnTs:null,isNA:false,custom:true,notes:[]}];
@@ -17647,6 +17797,7 @@ function _tdcklDeleteItem(rowId,itemIndex){
   const row=SessionChecklistDB.byId(rowId); if(!row) return;
   const it=(row.items||[])[itemIndex]; if(!it) return;
   if(_tdcklGuardLocked(row,it.phase||'pre')) return;
+  if(_tdcklUsesVerifiedWorkflow(TrSessionDB.byId(row.sessionId))) return _tdcklWriteAction(row.id,itemIndex,'remove');
   confirm$('Remove Checklist Item',`Remove "<strong>${Utils.esc(it.task)}</strong>" from this session's checklist? This only affects this session -- the Checklist Template itself is unchanged.`,'Remove',async()=>{
     const items=(row.items||[]).filter((_,i)=>i!==itemIndex);
     try{
@@ -17721,8 +17872,8 @@ function _tdcklSessionDatesLabel(s){
 }
 
 function _tdcklBoardHtml(s,row){
-  const items=row.items||[];
-  const withStatus=items.map((it,i)=>({...it,_i:i,_target:_tdcklTargetDate(s,it.phase||'pre',it.timelineDays),_status:_tdcklComputeStatus(it,_tdcklTargetDate(s,it.phase||'pre',it.timelineDays))}));
+  const verified=_tdcklUsesVerifiedWorkflow(s);
+  const withStatus=_tdcklItemsWithStatus(s,row);
   const overallApplicable=withStatus.filter(it=>it._status!=='na').length;
   const overallCompleted=withStatus.filter(it=>it._status==='completed').length;
   const overallPct=overallApplicable>0?Math.round((overallCompleted/overallApplicable)*100):0;
@@ -17744,14 +17895,14 @@ function _tdcklBoardHtml(s,row){
       return `<tr>
         <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${it._i+1}</td>
         <td style="font-size:12.5px;padding:6px 4px;vertical-align:top">${Utils.esc(it.task)}${mandatoryMark}${infoIcon}${noteBubble}</td>
-        <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>
+        <td style="font-size:11px;color:var(--text3);padding:6px 4px;white-space:nowrap;vertical-align:top">${verified&&it._target?Utils.esc(Utils.formatDate(it._target)):_tdcklTargetDateLabel(s,it.phase||'pre',it.timelineDays)}</td>
         <td style="padding:6px 4px;vertical-align:top">
-          <span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>
+          ${verified?_tdcklVerifiedStatusHtml(it):`<span style="display:inline-flex;align-items:center;gap:5px;${locked?'':'cursor:pointer'}" title="${locked?'Locked':(it.isNA?'Marked N/A -- click to un-mark':'Mark as Not Applicable')}" ${locked?'':`onclick="_tdcklToggleNA('${row.id}',${it._i})"`}>${iconHtml}</span>`}
         </td>
         <td style="padding:6px 4px;vertical-align:top;white-space:nowrap">
-          <input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${(it.isNA||locked)?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">
+          ${verified?_tdcklVerifiedActionsHtml(s,row,it,locked):`<input type="date" class="form-control" style="font-size:11px;padding:3px 5px;width:118px" value="${completedOnVal}" ${(it.isNA||locked)?'disabled':''} onchange="_tdcklSetCompletedOn('${row.id}',${it._i},this.value)">`}
         </td>
-        <td style="padding:6px 2px;vertical-align:top">${locked?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red);padding:2px 5px" title="Remove item" onclick="_tdcklDeleteItem('${row.id}',${it._i})">✕</button>`}</td>
+        <td style="padding:6px 2px;vertical-align:top">${locked||(verified&&(!it.custom||it.completionEvents?.length||it.completedOn||it.isNA||it.notes?.length))?'':`<button class="btn btn-sm btn-ghost" style="color:var(--red);padding:2px 5px" title="Remove item" onclick="_tdcklDeleteItem('${row.id}',${it._i})">✕</button>`}</td>
       </tr>`;
     }).join(''):`<tr><td colspan="6" style="font-size:11.5px;color:var(--text3);padding:10px 4px">No items in this phase.</td></tr>`;
     const lockBadge=locked?`<span title="Locked -- no further edits allowed for this phase" style="display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;margin-left:6px">${_tdIconSvg('lock','#64748b',10)} LOCKED</span>`:'';
@@ -17762,6 +17913,7 @@ function _tdcklBoardHtml(s,row){
             ${_tdIconSvg('clipboard',p.color,17)}
             <span style="font-weight:700;font-size:12px;color:${p.color};letter-spacing:.3px">${p.label.toUpperCase()}</span>
             ${lockBadge}
+            ${verified&&locked&&p.id==='post'&&_todayStr()<_tdSessionEndDate(s)?`<span style="font-size:11px;color:var(--text2)">Opens ${Utils.esc(Utils.formatDate(_tdSessionEndDate(s)))}</span>`:''}
           </div>
           <span style="font-size:10.5px;color:var(--text3)">${colItems.length} item${colItems.length!==1?'s':''}</span>
         </div>
@@ -17777,7 +17929,7 @@ function _tdcklBoardHtml(s,row){
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Checklist Item</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Target Date</th>
             <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Status</th>
-            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">Completed On</th>
+            <th style="text-align:left;font-size:10px;color:var(--text3);padding:4px">${verified?'Action':'Completed On'}</th>
             <th style="padding:4px;width:20px"></th>
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
@@ -18019,7 +18171,7 @@ function _tdl3MethodsDisplay(s){
 function _tdClosureStatus(s,report){
   const deliveryDone=s.status==='completed';
   const reportDone=!!report&&(report.status==='approved'||report.status==='submitted');
-  if(deliveryDone&&reportDone&&_tdL3Complete(s)&&_tdL4Complete(s)) return {key:'closed',label:'Fully Closed',bg:'#f0fdf4',fg:'#16a34a'};
+  if(deliveryDone&&reportDone&&_tdL3Complete(s)&&_tdL4Complete(s)&&!_tdcklCloseoutRemaining(s).length) return {key:'closed',label:'Fully Closed',bg:'#f0fdf4',fg:'#16a34a'};
   if(deliveryDone) return {key:'follow_through',label:'Post-Delivery Follow-through',bg:'#f0f9ff',fg:'#0284c7'};
   return {key:'in_progress',label:'Delivery In Progress',bg:'#f1f5f9',fg:'#64748b'};
 }
@@ -19075,6 +19227,7 @@ function _tdaDeliveryCompletionReadiness(s,rows){
     }).length;
     if(missingScores) blockers.push(`${missingScores} participant(s) are missing required L2 assessment score(s).`);
   }
+  if(_tdcklUsesVerifiedWorkflow(s)&&s.status!=='completed'&&_todayStr()<_tdSessionEndDate(s)) blockers.push('Delivery can be finalized on the final scheduled day.');
   const recordingRequired=!!s&&(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s);
   const recordingReady=!recordingRequired||!!String(s.recordingLink||'').trim();
   if(!recordingReady) blockers.push('Add a Recording Link before marking Delivery Complete.');
@@ -20990,7 +21143,7 @@ function _tdSessionFullyClosed(s){
   if(!s||s.status!=='completed') return false;
   const report=TrainingReportsDB.all().find(r=>r.sessionId===s.id);
   const reportDone=!!report&&(report.status==='submitted'||report.status==='approved');
-  return reportDone&&_tdL3Complete(s)&&_tdL4Complete(s)&&(!_tdReportWaived(s)||_smeObsDone(s)); // v5.14e
+  return reportDone&&_tdL3Complete(s)&&_tdL4Complete(s)&&(!_tdReportWaived(s)||_smeObsDone(s))&&!_tdcklCloseoutRemaining(s).length; // v5.14e
 }
 
 function _tdOverviewJourneySteps(s,ownerType){
@@ -21148,8 +21301,7 @@ function _tdOverviewChecklistWidget(s){
       <div style="font-size:12.5px;color:var(--text3);margin-top:6px">Setting up the checklist -- open the Checklist tab to view it.</div>
     </div>`;
   }
-  const items=row.items||[];
-  const withStatus=items.map(it=>({...it,_status:_tdcklComputeStatus(it,_tdcklTargetDate(s,it.phase||'pre',it.timelineDays))}));
+  const withStatus=_tdcklItemsWithStatus(s,row);
   const overallApplicable=withStatus.filter(it=>it._status!=='na').length;
   const overallCompleted=withStatus.filter(it=>it._status==='completed').length;
   const overallPct=overallApplicable>0?Math.round((overallCompleted/overallApplicable)*100):0;
@@ -21445,9 +21597,8 @@ function _tdLinkedWorkflowTiles(s){
   let checklistStatus='Not started';
   if(s.checklistTemplateId===CKTPL_NONE_SENTINEL) checklistStatus='Not required';
   else if(checklistRow){
-    const items=checklistRow.items||[];
-    const applicable=items.filter(it=>_tdcklComputeStatus(it,_tdcklTargetDate(s,it.phase||'pre',it.timelineDays))!=='na');
-    const done=applicable.filter(it=>_tdcklComputeStatus(it,_tdcklTargetDate(s,it.phase||'pre',it.timelineDays))==='completed').length;
+    const applicable=_tdcklItemsWithStatus(s,checklistRow).filter(it=>it._status!=='na');
+    const done=applicable.filter(it=>it._status==='completed').length;
     checklistStatus=applicable.length&&done===applicable.length?'Complete':done?`${done} of ${applicable.length} complete`:'Not started';
   }
   const attendance=byLabel('Attendance');
@@ -21532,8 +21683,9 @@ function _tdLinkedIltProgress(s,editing){
   const plan=_tdLinkedDeliveryPlan(s,_tdLinkedProgramRecord(s));
   const hasSchedule=plan.every((_,i)=>s.deliveryPartDates?.[i]?.date&&s.deliveryPartDates?.[i]?.startTime);
   const checklist=SessionChecklistDB.all().find(row=>row.sessionId===s.id);
-  const checklistItems=(checklist?.items||[]).filter(item=>_tdcklComputeStatus(item,_tdcklTargetDate(s,item.phase||'pre',item.timelineDays))!=='na');
-  const checklistDone=checklistItems.filter(item=>_tdcklComputeStatus(item,_tdcklTargetDate(s,item.phase||'pre',item.timelineDays))==='completed').length;
+  const checklistItems=_tdcklItemsWithStatus(s,checklist).filter(item=>item._status!=='na');
+  const checklistDone=checklistItems.filter(item=>item._status==='completed').length;
+  const checklistCloseout=_tdcklCloseoutRemaining(s,checklist);
   const checklistRequired=!waived&&s.checklistTemplateId!==CKTPL_NONE_SENTINEL;
   const assessment=_tdaHasAssessment(s), l3=_tdL3Applicable(s), l4=_tdL4Applicable(s);
   const scheduleStatus=tentative?'Tentative':cancelled?'Cancelled':'Confirmed';
@@ -21552,13 +21704,15 @@ function _tdLinkedIltProgress(s,editing){
   const today=_todayStr();
   const current=cancelled||_tdSessionFullyClosed(s)?null:tentative?stages[0]:!delivered?
     (stages.find(stage=>!stage.done&&(['attendance','assessments'].includes(stage.tab)||(stage.tab==='checklist'&&(!sessionEnd||sessionEnd>=today))))||attendance):
-    stages.find(stage=>!stage.done&&['report','sme-obs','l3eval','l4eval'].includes(stage.tab));
+    (stages.find(stage=>!stage.done&&['report','sme-obs','l3eval','l4eval'].includes(stage.tab))||
+     (checklistCloseout.length?stages.find(stage=>stage.tab==='checklist'):null));
   let guidance='';
   if(cancelled) guidance='This session is cancelled.';
   else if(tentative) guidance=hasSchedule?'Complete the booking details to confirm the schedule.':plan.length===1?'Set the session date and start time.':'Set the date and start time for each delivery part.';
   else if(!delivered) guidance='Complete delivery from Attendance once its requirements are met.';
   else if(report?.status==='awaiting_email') guidance='Send the report through Outlook, then confirm the sent date in Training Report.';
   else if(!reportDone) guidance=waived?'Submit the survey results.':'Complete the Training Report and mark it ready to email.';
+  else if(checklistCloseout.length) guidance='Before closing, resolve: '+checklistCloseout.join(', ')+'.';
   else if(current) guidance='Complete the remaining program follow-up.';
   else if(_tdSessionFullyClosed(s)) guidance='All session closeout requirements are complete.';
   const canNavigate=stage=>!editing&&!cancelled&&stage.tab&&stage.tab!=='overview'&&visible(stage.tab);
@@ -21573,6 +21727,7 @@ function _tdLinkedIltProgress(s,editing){
         }).join('')}
       </ol>
     </div>
+    ${_tdScheduleMilestoneHistory(s)}
     ${guidance?`<p class="td-ilt-setup-hint" id="td-ilt-setup-hint">${Utils.esc(guidance)}</p>`:''}
     ${!editing&&visible('trainer-eval')?`<button type="button" class="btn btn-ghost btn-xs td-ilt-optional-eval" onclick="tdDetailSwitchTab('trainer-eval')">Trainer Evaluation (optional)</button>`:''}
     ${editing?'<div class="td-ilt-issues hidden" id="tdd-error" role="alert" tabindex="-1"></div>':''}
