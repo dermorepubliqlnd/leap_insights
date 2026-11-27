@@ -16847,7 +16847,13 @@ async function tdDetailSave(statusChoice,trigger){
   }
   // v5.14d (2026-11-10, per Sandra): Training Report required? (only editable before Delivery Complete)
   const _rrEl=document.getElementById('tdd-report-req');
-  if(_rrEl&&!_rrEl.disabled&&(deliveryType==='ILT'||deliveryType==='VILT')){
+  if(iltSetup){
+    const reportMode=_tdIltFacilitatorReportMode(trainerSelVal);
+    const isSmeLed=reportMode==='sme_led'&&!!d.guestTrainerName;
+    d.reportRequired=!isSmeLed;
+    d.reportWaiverReason=isSmeLed?'sme_led':null;
+    d.reportWaiverNote=null;
+  }else if(_rrEl&&!_rrEl.disabled&&(deliveryType==='ILT'||deliveryType==='VILT')){
     const v=_rrEl.value;
     d.reportRequired=v==='yes'; d.reportWaiverReason=v==='yes'?null:v;
     d.reportWaiverNote=v==='yes'?null:(document.getElementById('tdd-report-note')?.value.trim()||null);
@@ -20230,11 +20236,8 @@ function renderTrainingDetail(){
   const summaryDate=s.dateMode==='specific'?((s.sessionDates||[]).slice().sort().map(Utils.formatDate).join(', ')||Utils.formatDate(s.trainingDate||'')):(s.endDate&&s.endDate!==s.trainingDate?`${Utils.formatDate(s.trainingDate||'')} – ${Utils.formatDate(s.endDate)}`:Utils.formatDate(s.trainingDate||''));
   const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, summaryDate||null, _venueDisplayName(s)||null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
   const iltSetup=_tdIsLinkedIltSetup(s)&&_tdDetailTab==='overview';
-  const setupProgram=iltSetup?_tdLinkedProgramRecord(s):null;
-  const setupParts=iltSetup?_tdLinkedDeliveryPlan(s,setupProgram).length:0;
-  const setupVersion=iltSetup?_lpSessionVerLabel(s,LearningProgramDB.byId(s.programId))||setupProgram?.version:'';
-  const setupMeta=iltSetup?[setupProgram?.code,setupVersion,_tdLinkedNaturalDuration(Math.round(Number(s.durationHours||0)*60)),`${setupParts} delivery part${setupParts===1?'':'s'}`].filter(Boolean).map(Utils.esc).join(' · '):'';
-  const setupLine=iltSetup?`${setupMeta} · <a href="#" onclick="event.preventDefault();guardedLeave(()=>{showView('learning-programs');lpOpen('${Utils.esc(s.programId)}');})">View Program</a>`:'';
+  const setupVersion=iltSetup?_lpSessionVerLabel(s,LearningProgramDB.byId(s.programId))||_tdLinkedProgramRecord(s)?.version:'';
+  const setupLine=iltSetup?`${setupVersion?`${Utils.esc(setupVersion)} · `:''}<a href="#" onclick="event.preventDefault();guardedLeave(()=>{showView('learning-programs');lpOpen('${Utils.esc(s.programId)}');})">View Program</a>`:'';
 
 
   // Self-led sessions (2026-08-06, Phase59): no trainer delivers/evaluates a self-led session, so
@@ -20290,16 +20293,17 @@ function renderTrainingDetail(){
     </div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
       <div>
-        <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <h2 style="margin:0;font-size:20px;font-weight:700">${Utils.esc(s.trainingProgram||'Untitled Training')}</h2>
           ${_tdTypeBadge(s.deliveryType)}
+          ${iltSetup?_tdSavedStatusBadge(s):''}
         </div>
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${iltSetup?setupLine:summaryLine}</div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-        <div style="display:flex;align-items:center;gap:8px">
+        ${iltSetup?'':`<div style="display:flex;align-items:center;gap:8px">
           ${_tdSavedStatusBadge(s)}
-        </div>
+        </div>`}
         ${_tdDetailTab==='overview'&&!_tdDetailEditing&&_tdCanEditSession(s)?`<button type="button" class="btn btn-secondary btn-sm" onclick="tdDetailToggleEdit()">✎ Edit Session</button>`:''}
         ${_tdDetailTab==='overview'&&_tdDetailEditing&&!iltSetup?`<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-weight:700">Editing session</span>`:''}
       </div>
@@ -20307,7 +20311,11 @@ function renderTrainingDetail(){
     ${iltSetup&&_tdDetailEditing?'':`<div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>`}
     <div${iltSetup&&_tdDetailEditing?' style="margin-top:14px"':''}>${tabBody}</div>
   `;
-  if(_tdDetailTab==='overview' && _tdDetailEditing){ _tddPopulateEditDropdowns(s,ownerType); _tddToggleTypeFields(); }
+  if(_tdDetailTab==='overview' && _tdDetailEditing){
+    _tddPopulateEditDropdowns(s,ownerType);
+    _tddToggleTypeFields();
+    _tddSyncIltSetupReport();
+  }
 }
 
 function _tddInfoRow(label,value){
@@ -21298,7 +21306,7 @@ function _tdLinkedSessionInfoCard(s,editing,iltSetup=false){
     return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box">
       <div style="font-weight:700;font-size:15px;margin-bottom:16px">Session Information</div>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 16px">
-        ${item('Session ID',s.code||s.id)}${item('Batch',s.batchNo||'Assigned when saved')}${item('Status',_tdSavedStatusLabel(s))}${item('Delivery Method',modality)}${item('Venue / Location',venue)}${item('Audience',audience)}${item('Facilitator',facilitator)}${item('Co-Facilitator',cofac)}${htmlItem('Recording',recordingHtml)}${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?htmlItem('Training Report',Utils.esc(_tdReportReqLabel(s))):''}${notesHtml}
+        ${item('Session ID',s.code||s.id)}${item('Batch',s.batchNo||'Assigned when saved')}${_tdIsLinkedIltSetup(s)?'':item('Status',_tdSavedStatusLabel(s))}${item('Delivery Method',modality)}${item('Venue / Location',venue)}${item('Audience',audience)}${item('Facilitator',facilitator)}${item('Co-Facilitator',cofac)}${htmlItem('Recording',recordingHtml)}${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?htmlItem('Training Report',Utils.esc(_tdReportReqLabel(s))):''}${notesHtml}
       </div>
     </div>`;
   }
@@ -21316,9 +21324,12 @@ function _tdLinkedSessionInfoCard(s,editing,iltSetup=false){
     <h3 id="td-ilt-booking-title">Booking Details</h3>
     <p class="td-ilt-muted">Required to confirm the schedule.</p>
     <div class="td-ilt-booking-fields">${facilitatorControl}${deliveryMethod}${venueControl}${audienceControl}</div>
-    <details class="td-ilt-optional"${s.coFacilitatorId||s.coFacilitatorGuestName||s.sessionNotes||_tdReportWaived(s)?' open':''}>
-      <summary>Optional Details <span class="td-ilt-muted">· ${_tdReportWaived(s)?'Survey results only':'Training report required'}</span></summary>
-      <div class="td-ilt-booking-fields">${cofacilitator}${field('Training Report',_tdReportReqControl(s,small))}<div class="td-ilt-wide">${notes}</div></div>
+    <label class="td-ilt-report-field form-label">Training Report
+      <input id="tdd-ilt-report-mode" class="form-control" type="text" readonly style="background:#f1f5f9;color:var(--text2)">
+    </label>
+    <details class="td-ilt-optional"${s.coFacilitatorId||s.coFacilitatorGuestName||s.sessionNotes?' open':''}>
+      <summary>Optional Details</summary>
+      <div class="td-ilt-booking-fields">${cofacilitator}<div class="td-ilt-wide">${notes}</div></div>
     </details>
   </section>`;
   return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box">
@@ -21389,6 +21400,20 @@ function _tdIsLinkedIltSetup(s){
   return _tdUsesLinkedProgramOverview(s)&&s.deliveryType==='ILT'&&s.status==='tentative';
 }
 
+function _tdIltFacilitatorReportMode(selectedFacilitator){
+  if(!selectedFacilitator) return '';
+  return selectedFacilitator==='__SME__'?'sme_led':'yes';
+}
+
+function _tddSyncIltSetupReport(){
+  const control=document.getElementById('tdd-ilt-report-mode');
+  if(!control) return;
+  const mode=_tdIltFacilitatorReportMode(document.getElementById('tdd-trainer')?.value);
+  control.value=mode==='sme_led'?'SME-led (survey results only)':mode==='yes'?'Required (trainer submits report)':'Set by facilitator selection';
+  const step=document.getElementById('td-ilt-report-step');
+  if(step) step.textContent=mode==='sme_led'?'Survey Results':'Report & Email';
+}
+
 function _tdShowSetupIssues(issues){
   const panel=document.getElementById('tdd-error');
   if(!panel) return;
@@ -21408,7 +21433,7 @@ function _tdLinkedIltSetup(s,editing){
   return `<div class="td-ilt-setup" id="tdd-session-info-card">
     <section class="card td-ilt-progress" aria-labelledby="td-ilt-progress-title">
       <div class="td-ilt-progress-body"><h3 id="td-ilt-progress-title">Session Progress</h3>
-        <ol class="td-ilt-stages">${steps.filter(step=>step!=='Follow-up'||hasFollowup).map((step,i)=>`<li${i===0?' aria-current="step"':''}><span aria-hidden="true"></span>${step==='Report & Email'&&!hasReport?'Survey Results':step}</li>`).join('')}</ol>
+        <ol class="td-ilt-stages">${steps.filter(step=>step!=='Follow-up'||hasFollowup).map((step,i)=>`<li${i===0?' aria-current="step"':''}><span aria-hidden="true"></span>${step==='Report & Email'?`<b id="td-ilt-report-step" style="font-weight:inherit">${hasReport?step:'Survey Results'}</b>`:step}</li>`).join('')}</ol>
       </div>
       <p class="td-ilt-setup-hint" id="td-ilt-setup-hint">${guidance}</p>
       ${editing?'<div class="td-ilt-issues hidden" id="tdd-error" role="alert" tabindex="-1"></div>':''}
@@ -21433,6 +21458,7 @@ function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
 .td-ilt-schedule .td-linked-schedule-grid{grid-template-columns:minmax(0,1fr)!important}
 .td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1.25fr) repeat(2,minmax(0,1fr))!important}
 .td-ilt-schedule .td-linked-part-fields input{min-width:0}
+.td-ilt-schedule .td-linked-part-fields input[type=date]{display:flex;align-items:center;flex-wrap:nowrap}
 .td-ilt-progress,.td-ilt-booking{padding:16px 20px}
 .td-ilt-setup h3{font-size:15px;margin:0;font-weight:700;color:var(--text)}
 .td-ilt-progress-body{display:flex;align-items:flex-start;gap:24px}
@@ -21448,6 +21474,8 @@ function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
 .td-ilt-issues ul{margin:6px 0 0;padding-left:18px}
 .td-ilt-muted{font-weight:400;font-size:12px;color:var(--text3);margin:4px 0}
 .td-ilt-booking-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin-top:12px}
+.td-ilt-report-field{display:block;margin-top:12px}
+.td-ilt-report-field input{margin-top:4px}
 .td-ilt-wide{grid-column:1/-1}
 .td-ilt-optional{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:14px}
 .td-ilt-optional summary{cursor:pointer;font-size:12px;font-weight:600}
@@ -22467,6 +22495,7 @@ function _tddTrainerSelectChange(){
   const sel=document.getElementById('tdd-trainer');
   if(sel && sel.value==='__SME__') _tddShowGuestTrainerInput('');
   _tddRefreshCofacExclusion();
+  _tddSyncIltSetupReport();
 }
 // Keeps the Co-Facilitator dropdown in sync with whichever Trainer is currently selected (Phase R,
 // 2026-08-12, per Sandra): re-runs whenever the Trainer select changes, rebuilding the option list
@@ -22489,6 +22518,7 @@ function _tddClearGuestTrainer(){
   if(inp) inp.value='';
   if(wrap) wrap.classList.add('hidden');
   if(sel){ sel.classList.remove('hidden'); sel.value=''; }
+  _tddSyncIltSetupReport();
 }
 
 // Same Guest fallback swap pattern applied to Co-Facilitator (Phase46, 2026-08-06, per Sandra):
