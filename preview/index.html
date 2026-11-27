@@ -1694,6 +1694,9 @@
 .td-ilt-setup{display:grid;gap:14px;container:ilt-setup / inline-size}
 .td-ilt-setup-columns{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:14px;align-items:start}
 .td-ilt-schedule{min-width:0;container:ilt-schedule / inline-size}
+.td-ilt-schedule-column{display:grid;gap:14px;min-width:0}
+.td-ilt-program-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:14px;font-size:12.5px}
+.td-ilt-program-fields small{display:block;margin-bottom:4px;color:var(--text2)}
 .td-ilt-schedule .td-linked-schedule-grid{grid-template-columns:minmax(0,1fr)!important}
 .td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1.25fr) repeat(2,minmax(0,1fr))!important}
 .td-ilt-schedule .td-linked-part-fields input{min-width:0}
@@ -1734,6 +1737,9 @@
 .td-ilt-stages li button{position:relative;z-index:2;display:block;width:100%;border:0;background:none;font:inherit;color:inherit;cursor:pointer;padding:0}
 .td-ilt-stages li button:hover .td-ilt-stage-name,.td-ilt-stages li button:focus-visible .td-ilt-stage-name{text-decoration:underline}
 .td-ilt-stages li small{display:block;margin-top:3px;color:var(--text2);font-size:10px}
+.td-ilt-stages li[data-schedule=tentative] .td-ilt-stage-dot{background:#fde68a;border-color:#a16207}
+.td-ilt-stages li[data-schedule=tentative] small{color:#854d0e;font-weight:700}
+.td-ilt-stages li[data-schedule=confirmed] small{color:#166534;font-weight:700}
 .td-ilt-optional-eval{margin-top:6px}
 .td-ilt-status-badge[data-status=scheduled]{background:#dbeafe;color:#164287;border-color:#7aa2df}
 .td-ilt-status-badge[data-status=completed]{background:#dcfce7;color:#17653a;border-color:#5db584}
@@ -15894,8 +15900,12 @@ function _tdCalBorderStyle(s,fg){
 function _tdCalTentativeLabel(s){
   return _tdStatus(s)==='Tentative'?'<span style="flex-shrink:0;font-size:9px;font-weight:700">Tentative</span>':'';
 }
+function _tdCalSessionColors(s){
+  if(s.status==='tentative') return {bg:'#fef3c7',fg:'#854d0e'};
+  return TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
+}
 function _tdCalChipHtml(s){
-  const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
+  const c=_tdCalSessionColors(s);
   const venueName=_venueDisplayName(s);
   const person=_tdPersonName(s);
   return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3;border:${_tdCalBorderStyle(s,c.fg)};box-sizing:border-box">
@@ -16065,7 +16075,7 @@ function renderTDCalendar(rows){
         const s=b.s;
         const spanCols=(b.clampedEnd-b.clampedStart)+1;
         const isStartCapped=b.clampedStart===b.startIdx, isEndCapped=b.clampedEnd===b.endIdx;
-        const bc=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
+        const bc=_tdCalSessionColors(s);
         const radius=`${isStartCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isEndCapped?'10px':'0'} ${isStartCapped?'10px':'0'}`;
         const top=20+b.lane*BAR_H;
         const barVenueName=_venueDisplayName(s);
@@ -16116,7 +16126,7 @@ function renderTDCalendar(rows){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         ${_tdAddTrainingButtonHtml()}
-        <div>${legend}${markerLegend}</div>${_cmpCalFilterHtml()}
+        <div><span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text2);margin-right:14px"><span style="width:9px;height:9px;border-radius:50%;background:#fde68a;border:1px solid #a16207;display:inline-block"></span>Tentative</span>${legend}${markerLegend}</div>${_cmpCalFilterHtml()}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <button class="btn btn-sm btn-secondary" onclick="tdCalPrev()">‹</button>
@@ -17073,10 +17083,11 @@ async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete,trigger,
   if(_tdDetailSaving) return;
   _tdDetailSaving=true;
   const saveBtn=trigger||document.getElementById('tdd-save-btn');
-  const origTxt=saveBtn?.textContent||'';
+  const saveLabel=saveBtn?.querySelector('[data-save-label]')||saveBtn;
+  const origTxt=saveLabel?.textContent||'';
   const setupButtons=iltLayout?[...document.querySelectorAll('[data-ilt-setup-action]')]:[];
   setupButtons.forEach(button=>{ button.disabled=true; });
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+  if(saveBtn){saveBtn.disabled=true;saveLabel.textContent='Saving…';}
   try{
     if(iltSetup&&!d.batchNo){
       const session=TrSessionDB.byId(_tdDetailId);
@@ -17098,7 +17109,7 @@ async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete,trigger,
   }finally{
     _tdDetailSaving=false;
     setupButtons.forEach(button=>{ button.disabled=false; });
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origTxt;}
+    if(saveBtn){saveBtn.disabled=false;saveLabel.textContent=origTxt;}
   }
 }
 
@@ -21228,16 +21239,29 @@ function _tdMappedProgramRef(s){
 
 function _tdLinkedProgramSummaryCard(s,condensed=false){
   const p=_tdLinkedProgramRecord(s);
+  const category=p?.category||Sel.nameOf(Store.CATEGORIES,p?.categoryId)||s.category||'—';
   const plan=_tdLinkedDeliveryPlan(s,p);
   const topicCount=(p?.agenda||[]).length;
-  const checklistName=s.checklistTemplateId===CKTPL_NONE_SENTINEL?'No checklist required':ChecklistTemplateDB.byId(s.checklistTemplateId)?.title||ChecklistTemplateDB.byId(p?.checklistTemplateId)?.title||'No default checklist';
   const typeLabel=['SLT','Self-led'].includes(p?.deliveryType)?'Self-led':'Instructor-led';
   const totalMin=Math.round(Number(s.durationHours||p?.durationHours||0)*60);
   const evalPlan=s.evaluationPlan||_lpEvalConfig(p||{});
   const evalLevels=[['L1',!!evalPlan?.l1],['L2',!!evalPlan?.l2?.enabled],['L3',!!evalPlan?.l3?.enabled],['L4',!!evalPlan?.l4?.enabled]].filter(x=>x[1]).map(x=>x[0]);
   const evalChips=evalLevels.length?evalLevels.map(level=>`<span class="badge" style="background:#eef2ff;color:#4338ca;font-weight:700">${level}</span>`).join(''):'<span style="color:var(--text3)">None configured</span>';
+  if(condensed){
+    const folder=_lpSafeResourceUrl(p?.resourceUrl??LearningProgramDB.byId(s.programId)?.resourceUrl);
+    return `<section class="card" style="padding:18px 20px" aria-labelledby="td-ilt-program-title">
+      <h3 id="td-ilt-program-title" style="font-size:15px;margin:0 0 14px">Program Details</h3>
+      <div class="td-ilt-program-fields">
+        <div><small>Learning Program Category</small><strong>${Utils.esc(category)}</strong></div>
+        <div><small>Program Resources</small>${folder?`<a class="lp-resource-link" href="${Utils.esc(folder)}" target="_blank" rel="noopener noreferrer">Open program folder ↗</a>`:'No folder linked'}</div>
+        <div><small>Program Structure</small><strong>${plan.length} Delivery Part${plan.length===1?'':'s'} · ${topicCount} Topic${topicCount===1?'':'s'}</strong></div>
+        <div><small>Evaluations Applied</small><div style="display:flex;gap:5px;flex-wrap:wrap">${evalChips}</div></div>
+      </div>
+    </section>`;
+  }
+  const checklistName=s.checklistTemplateId===CKTPL_NONE_SENTINEL?'No checklist required':ChecklistTemplateDB.byId(s.checklistTemplateId)?.title||ChecklistTemplateDB.byId(p?.checklistTemplateId)?.title||'No default checklist';
   return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box;text-align:left">
-    <div style="font-weight:700;font-size:15px;margin-bottom:16px;text-align:left">${condensed?'Program Details':Utils.esc(p?.title||s.trainingProgram||'Learning Program')}</div>
+    <div style="font-weight:700;font-size:15px;margin-bottom:16px;text-align:left">${Utils.esc(p?.title||s.trainingProgram||'Learning Program')}</div>
     <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(220px,.9fr);gap:20px;align-items:start;text-align:left">
       <div style="text-align:left">
         <div style="font-size:12px;color:var(--text3);margin-bottom:12px;text-align:left">${Utils.esc(p?.code||'—')} · ${Utils.esc(_lpSessionVerLabel(s,LearningProgramDB.byId(s.programId))||p?.version||'v1')}${(()=>{const cr=_lpCreditedContributors(s);return cr.length?` · Credited: ${Utils.esc(cr.map(c=>_lpName(c.profileId)+(_lpContribWork(c).length?' ('+_lpContribWork(c).map(k=>LP_WORK.find(y=>y[0]===k)[1]).join(' + ')+')':'')).join(', '))}`:'';})()}</div>
@@ -21250,7 +21274,7 @@ function _tdLinkedProgramSummaryCard(s,condensed=false){
           <span style="color:var(--text3);display:block;font-size:10.5px;margin-bottom:2px">Program Structure</span>
           <strong style="font-size:12.5px;color:var(--text2)">${plan.length} Delivery Part${plan.length===1?'':'s'} · ${topicCount} Topic${topicCount===1?'':'s'}</strong>
         </div>
-        ${condensed?'':`<button type="button" class="btn btn-ghost btn-sm" style="padding-left:0;justify-content:flex-start;text-align:left" onclick="showView('learning-programs');lpOpen('${Utils.esc(s.programId)}')">View program →</button>`}
+        <button type="button" class="btn btn-ghost btn-sm" style="padding-left:0;justify-content:flex-start;text-align:left" onclick="showView('learning-programs');lpOpen('${Utils.esc(s.programId)}')">View program →</button>
       </div>
       <div style="border-left:1px solid var(--border-lt);padding-left:20px;display:grid;gap:12px;font-size:12.5px;color:var(--text2);text-align:left">
         <div><span style="color:var(--text3);display:block;font-size:10.5px;margin-bottom:2px">Default Trainer Checklist</span><strong>${Utils.esc(checklistName)}</strong></div>
@@ -21293,9 +21317,10 @@ function _tdLinkedScheduleCard(s,editing,iltSetup=false){
     const date=saved.date||(!historical&&plan.length===1?s.trainingDate:'')||'';
     const start=saved.startTime||'';
     const end=start?_tddCalcEndTime(start,minutes):(saved.endTime||'');
+    const partHeader=plan.length>1?`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="font-size:13px">Part ${i+1}</strong><span style="font-size:11.5px;color:var(--text3)">${Utils.esc(_tdLinkedNaturalDuration(minutes))}</span></div>`:'';
     if(editing&&!historical){
       return `<div style="border:1px solid var(--border-lt);border-radius:10px;padding:12px 14px;background:#fff">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="font-size:13px">Part ${i+1}</strong><span style="font-size:11.5px;color:var(--text3)">${Utils.esc(_tdLinkedNaturalDuration(minutes))}</span></div>
+        ${partHeader}
         <div class="td-linked-part-fields" style="display:grid;grid-template-columns:1.25fr .9fr .9fr;gap:8px">
           <label class="form-label" style="font-size:10.5px;margin:0">Date<input type="date" id="tdd-part-date-${i}" class="form-control" style="margin-top:4px;font-size:12px;padding:6px 8px" value="${Utils.esc(date)}"></label>
           <label class="form-label" style="font-size:10.5px;margin:0">Start Time<input type="time" id="tdd-part-start-${i}" class="form-control" style="margin-top:4px;font-size:12px;padding:6px 8px" value="${Utils.esc(start)}" oninput="_tddAutoPartEnd(${i},${minutes})" onchange="_tddAutoPartEnd(${i},${minutes})"></label>
@@ -21304,7 +21329,7 @@ function _tdLinkedScheduleCard(s,editing,iltSetup=false){
       </div>`;
     }
     return `<div style="border:1px solid var(--border-lt);border-radius:10px;padding:12px 14px;background:#fff">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="font-size:13px">Part ${i+1}</strong><span style="font-size:11.5px;color:var(--text3)">${Utils.esc(_tdLinkedNaturalDuration(minutes))}</span></div>
+      ${partHeader}
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         <div><span style="font-size:10px;color:var(--text3);display:block">Date</span><strong style="font-size:12.5px">${date?Utils.formatDate(date):'Not recorded'}</strong></div>
         <div><span style="font-size:10px;color:var(--text3);display:block">Start</span><strong style="font-size:12.5px">${Utils.esc(start||'Not recorded')}</strong></div>
@@ -21511,7 +21536,8 @@ function _tdLinkedIltProgress(s,editing){
   const checklistDone=checklistItems.filter(item=>_tdcklComputeStatus(item,_tdcklTargetDate(s,item.phase||'pre',item.timelineDays))==='completed').length;
   const checklistRequired=!waived&&s.checklistTemplateId!==CKTPL_NONE_SENTINEL;
   const assessment=_tdaHasAssessment(s), l3=_tdL3Applicable(s), l4=_tdL4Applicable(s);
-  const stages=[{name:'Scheduled',tab:'overview',done:!tentative&&!cancelled,detail:tentative?'Tentative':cancelled?'Cancelled':''}];
+  const scheduleStatus=tentative?'Tentative':cancelled?'Cancelled':'Confirmed';
+  const stages=[{name:'Schedule',tab:'overview',done:!tentative&&!cancelled,detail:scheduleStatus}];
   if(checklistRequired) stages.push({name:'Checklist',tab:'checklist',done:!!checklistItems.length&&checklistDone===checklistItems.length,detail:checklistItems.length?`${checklistDone} of ${checklistItems.length} complete`:''});
   const attendance={name:'Attendance',tab:'attendance',done:done('Attendance'),detail:delivered?'Delivery Complete':''};
   stages.push(attendance);
@@ -21529,7 +21555,7 @@ function _tdLinkedIltProgress(s,editing){
     stages.find(stage=>!stage.done&&['report','sme-obs','l3eval','l4eval'].includes(stage.tab));
   let guidance='';
   if(cancelled) guidance='This session is cancelled.';
-  else if(tentative) guidance=hasSchedule?'Complete the booking details to confirm the schedule.':plan.length===1?'Set the date and start time for Part 1.':'Set the date and start time for each delivery part.';
+  else if(tentative) guidance=hasSchedule?'Complete the booking details to confirm the schedule.':plan.length===1?'Set the session date and start time.':'Set the date and start time for each delivery part.';
   else if(!delivered) guidance='Complete delivery from Attendance once its requirements are met.';
   else if(report?.status==='awaiting_email') guidance='Send the report through Outlook, then confirm the sent date in Training Report.';
   else if(!reportDone) guidance=waived?'Submit the survey results.':'Complete the Training Report and mark it ready to email.';
@@ -21543,7 +21569,7 @@ function _tdLinkedIltProgress(s,editing){
           const state=stage===current?'current':stage.done?'complete':'pending';
           const name=stage.tab==='report'?`<span class="td-ilt-stage-name" id="td-ilt-report-step" data-initial-mode="${waived?'sme_led':'yes'}">${Utils.esc(stage.name)}</span>`:`<span class="td-ilt-stage-name">${Utils.esc(stage.name)}</span>`;
           const label=`<span class="td-ilt-stage-dot" aria-hidden="true">${state==='complete'?'✓':''}</span>${name}${stage.detail?`<small>${Utils.esc(stage.detail)}</small>`:''}`;
-          return `<li data-stage="${state}"${stage===current?' aria-current="step"':''}>${canNavigate(stage)?`<button type="button" onclick="tdDetailSwitchTab('${stage.tab}')">${label}</button>`:`<div>${label}</div>`}</li>`;
+          return `<li data-stage="${state}"${stage.tab==='overview'?` data-schedule="${scheduleStatus.toLowerCase()}"`:''}${stage===current?' aria-current="step"':''}>${canNavigate(stage)?`<button type="button" onclick="tdDetailSwitchTab('${stage.tab}')">${label}</button>`:`<div>${label}</div>`}</li>`;
         }).join('')}
       </ol>
     </div>
@@ -21557,23 +21583,26 @@ function _tdLinkedIltSetup(s,editing){
   return `<div class="td-ilt-setup" id="tdd-session-info-card">
     ${_tdLinkedIltProgress(s,editing)}
     <div class="td-ilt-setup-columns">
-      <div class="td-ilt-schedule">${_tdLinkedScheduleCard(s,editing,true)}</div>
+      <div class="td-ilt-schedule-column">
+        <div class="td-ilt-schedule">${_tdLinkedScheduleCard(s,editing,true)}</div>
+        ${_tdLinkedProgramSummaryCard(s,true)}
+      </div>
       ${_tdLinkedSessionInfoCard(s,editing,true)}
     </div>
-    ${s.status==='tentative'?'':_tdLinkedProgramSummaryCard(s,true)}
   </div>`;
 }
 
 function _tdLinkedIltSetupActions(s,editing,canEdit){
   if(!canEdit) return '';
+  const icon=name=>_tdIconSvg(name,'currentColor',15);
   return `<div class="td-ilt-setup-actions">
     ${editing?(s.status==='tentative'?`
-      <button type="button" class="btn btn-secondary" data-ilt-setup-action onclick="tdDetailSave('tentative',this)">Save as Tentative</button>
-      <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave('scheduled',this)">Confirm Schedule</button>
+      <button type="button" class="btn btn-secondary" data-ilt-setup-action onclick="tdDetailSave('tentative',this)">${icon('clock')}<span data-save-label>Save as Tentative</span></button>
+      <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave('scheduled',this)">${icon('calendar')}<span data-save-label>Confirm Schedule</span></button>
     `:`
-      <button type="button" class="btn btn-secondary" onclick="tdDetailCancelEdit()">Cancel</button>
-      <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave(undefined,this)">Save Changes</button>
-    `):`<button type="button" class="btn btn-secondary" onclick="tdDetailToggleEdit()">Edit Session</button>`}
+      <button type="button" class="btn btn-secondary" onclick="tdDetailCancelEdit()">${icon('x')}Cancel</button>
+      <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave(undefined,this)">${icon('check')}<span data-save-label>Save Changes</span></button>
+    `):`<button type="button" class="btn btn-secondary" onclick="tdDetailToggleEdit()">${icon('edit3')}Edit Session</button>`}
   </div>`;
 }
 
