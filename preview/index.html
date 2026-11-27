@@ -21413,8 +21413,10 @@ function _tdLinkedIltSetup(s,editing){
       <p class="td-ilt-setup-hint" id="td-ilt-setup-hint">${guidance}</p>
       ${editing?'<div class="td-ilt-issues hidden" id="tdd-error" role="alert" tabindex="-1"></div>':''}
     </section>
-    ${_tdLinkedScheduleCard(s,editing,true)}
-    ${_tdLinkedSessionInfoCard(s,editing,editing)}
+    <div class="td-ilt-setup-columns">
+      <div class="td-ilt-schedule">${_tdLinkedScheduleCard(s,editing,true)}</div>
+      ${_tdLinkedSessionInfoCard(s,editing,editing)}
+    </div>
     ${editing?`<div class="td-ilt-setup-actions">
       <button type="button" class="btn btn-secondary" data-ilt-setup-action onclick="tdDetailSave('tentative',this)">Save as Tentative</button>
       <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave('scheduled',this)">Confirm Schedule</button>
@@ -21425,7 +21427,12 @@ function _tdLinkedIltSetup(s,editing){
 function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
   const editing=!!_tdDetailEditing;
   if(_tdIsLinkedIltSetup(s)) return `<style>
-.td-ilt-setup{display:grid;gap:14px}
+.td-ilt-setup{display:grid;gap:14px;container:ilt-setup / inline-size}
+.td-ilt-setup-columns{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:14px;align-items:start}
+.td-ilt-schedule{min-width:0;container:ilt-schedule / inline-size}
+.td-ilt-schedule .td-linked-schedule-grid{grid-template-columns:minmax(0,1fr)!important}
+.td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1.25fr) repeat(2,minmax(0,1fr))!important}
+.td-ilt-schedule .td-linked-part-fields input{min-width:0}
 .td-ilt-progress,.td-ilt-booking{padding:16px 20px}
 .td-ilt-setup h3{font-size:15px;margin:0;font-weight:700;color:var(--text)}
 .td-ilt-progress-body{display:flex;align-items:flex-start;gap:24px}
@@ -21445,7 +21452,10 @@ function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
 .td-ilt-optional{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:14px}
 .td-ilt-optional summary{cursor:pointer;font-size:12px;font-weight:600}
 .td-ilt-setup-actions{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;gap:8px;padding:12px 0;background:var(--bg,#f1f5f9);border-top:1px solid var(--border)}
-@media(max-width:720px){.td-ilt-progress-body{display:block}.td-ilt-stages{margin-top:12px}.td-ilt-booking-fields,.td-ilt-setup .td-linked-schedule-grid,.td-ilt-setup .td-linked-part-fields{grid-template-columns:1fr!important}}
+@container ilt-setup (max-width:850px){.td-ilt-setup-columns{grid-template-columns:minmax(0,1fr)}}
+@container ilt-schedule (max-width:520px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}.td-ilt-schedule .td-linked-part-fields label:first-child{grid-column:1/-1}}
+@container ilt-schedule (max-width:360px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1fr)!important}}
+@media(max-width:720px){.td-ilt-setup-columns,.td-ilt-booking-fields{grid-template-columns:minmax(0,1fr)}.td-ilt-progress-body{display:block}.td-ilt-stages{margin-top:12px}}
 </style>${_tdLinkedIltSetup(s,editing)}`;
   return `<style>
     @media(max-width:1100px){.td-linked-main-grid{grid-template-columns:1fr!important}.td-linked-workflow-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
