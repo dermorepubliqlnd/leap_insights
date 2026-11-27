@@ -15841,12 +15841,15 @@ function _tdCalStatusIcon(s,color){
 function _tdCalBorderStyle(s,fg){
   return _tdStatus(s)==='Tentative'?`1.5px dashed ${fg}`:'1px solid transparent';
 }
+function _tdCalTentativeLabel(s){
+  return _tdStatus(s)==='Tentative'?'<span style="flex-shrink:0;font-size:9px;font-weight:700">Tentative</span>':'';
+}
 function _tdCalChipHtml(s){
   const c=TD_TYPE_COLORS[s.deliveryType]||{bg:'#f1f5f9',fg:'#64748b'};
   const venueName=_venueDisplayName(s);
   const person=_tdPersonName(s);
   return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="cursor:pointer;background:${c.bg};color:${c.fg};font-size:10px;padding:3px 6px;border-radius:4px;margin-top:2px;line-height:1.3;border:${_tdCalBorderStyle(s,c.fg)};box-sizing:border-box">
-    <div style="font-weight:600;white-space:normal;word-break:break-word;display:flex;align-items:center;gap:3px">${_tdCalStatusIcon(s,c.fg)}<span>${Utils.esc(s.trainingProgram||s.code||'')}</span></div>
+    <div style="font-weight:600;white-space:normal;word-break:break-word;display:flex;flex-wrap:wrap;align-items:center;gap:3px">${_tdCalStatusIcon(s,c.fg)}<span>${Utils.esc(s.trainingProgram||s.code||'')}</span>${_tdCalTentativeLabel(s)}</div>
     <div style="font-size:9px;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(person)}${venueName?' · '+Utils.esc(venueName):''}</div>${(()=>{ const cc=_cmpCycleForSession(s); return cc?`<div style="font-size:9px;font-weight:700;color:#6d28d9;margin-top:1px" title="This session counts toward ${Utils.esc(cc.name)} (deadline ${Utils.esc(Utils.formatDate(cc.deadline))})">Counts toward ${Utils.esc(cc.name)}</div>`:''; })()}
   </div>`;
 }
@@ -16010,7 +16013,7 @@ function renderTDCalendar(rows){
       const isToday=dateStr===todayStr;
       const dayEvs=byDate[dateStr]||[];
       const shown=dayEvs.slice(0,CHIP_CAP);
-      const more=dayEvs.length-shown.length;
+      const more=dayEvs.slice(CHIP_CAP);
       const barsHereHtml=(barsByStartCol[c]||[]).map(b=>{
         const s=b.s;
         const spanCols=(b.clampedEnd-b.clampedStart)+1;
@@ -16021,7 +16024,7 @@ function renderTDCalendar(rows){
         const barVenueName=_venueDisplayName(s);
         const barPerson=_tdPersonName(s);
         return `<div onclick="openTrainingDetail('${s.id}')" title="${Utils.esc(_tdCalTitle(s))}" style="position:absolute;top:${top}px;left:0;width:calc(${spanCols} * 100%);z-index:2;pointer-events:auto;cursor:pointer;background:${bc.bg};color:${bc.fg};font-size:10px;font-weight:600;padding:3px 8px;white-space:normal;word-break:break-word;border-radius:${radius};box-sizing:border-box;line-height:1.3;border:${_tdCalBorderStyle(s,bc.fg)}">
-          <div style="display:flex;align-items:center;gap:3px">${_tdCalStatusIcon(s,bc.fg)}<span>${Utils.esc(s.trainingProgram||s.code||'')}${s.batchNo?` · ${Utils.esc(s.batchNo)}`:''}</span></div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:3px">${_tdCalStatusIcon(s,bc.fg)}<span>${Utils.esc(s.trainingProgram||s.code||'')}${s.batchNo?` · ${Utils.esc(s.batchNo)}`:''}</span>${_tdCalTentativeLabel(s)}</div>
           <div style="font-size:9px;font-weight:400;opacity:.85;white-space:normal;word-break:break-word">${Utils.esc(barPerson)}${barVenueName?' · '+Utils.esc(barVenueName):''}</div>
         </div>`;
       }).join('');
@@ -16051,7 +16054,7 @@ function renderTDCalendar(rows){
         ${cmpHtml}
         ${retHtml}
         ${l3Html}
-        <div style="${dimStyle}">${shown.map(_tdCalChipHtml).join('')}${more>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">+${more} more</div>`:''}</div>
+        <div style="${dimStyle}">${shown.map(_tdCalChipHtml).join('')}${more.length?`<details style="margin-top:2px"><summary style="font-size:10px;color:var(--pri);cursor:pointer">+${more.length} more</summary>${more.map(_tdCalChipHtml).join('')}</details>`:''}</div>
       </div>`;
     }
   }
