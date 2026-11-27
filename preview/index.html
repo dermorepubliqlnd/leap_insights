@@ -20236,8 +20236,7 @@ function renderTrainingDetail(){
   const summaryDate=s.dateMode==='specific'?((s.sessionDates||[]).slice().sort().map(Utils.formatDate).join(', ')||Utils.formatDate(s.trainingDate||'')):(s.endDate&&s.endDate!==s.trainingDate?`${Utils.formatDate(s.trainingDate||'')} – ${Utils.formatDate(s.endDate)}`:Utils.formatDate(s.trainingDate||''));
   const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, summaryDate||null, _venueDisplayName(s)||null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
   const iltSetup=_tdIsLinkedIltSetup(s)&&_tdDetailTab==='overview';
-  const setupVersion=iltSetup?_lpSessionVerLabel(s,LearningProgramDB.byId(s.programId))||_tdLinkedProgramRecord(s)?.version:'';
-  const setupLine=iltSetup?`${setupVersion?`${Utils.esc(setupVersion)} · `:''}<a href="#" onclick="event.preventDefault();guardedLeave(()=>{showView('learning-programs');lpOpen('${Utils.esc(s.programId)}');})">View Program</a>`:'';
+  const setupLine=iltSetup?`<a href="#" onclick="event.preventDefault();guardedLeave(()=>{showView('learning-programs');lpOpen('${Utils.esc(s.programId)}');})">View Program</a>`:'';
 
 
   // Self-led sessions (2026-08-06, Phase59): no trainer delivers/evaluates a self-led session, so
@@ -20295,8 +20294,7 @@ function renderTrainingDetail(){
       <div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <h2 style="margin:0;font-size:20px;font-weight:700">${Utils.esc(s.trainingProgram||'Untitled Training')}</h2>
-          ${_tdTypeBadge(s.deliveryType)}
-          ${iltSetup?_tdSavedStatusBadge(s):''}
+          ${iltSetup?`<span class="td-ilt-badge td-ilt-type-badge">ILT</span><span class="td-ilt-badge td-ilt-status-badge">${Utils.esc(_tdSavedStatusLabel(s))}</span>`:_tdTypeBadge(s.deliveryType)}
         </div>
         <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${iltSetup?setupLine:summaryLine}</div>
       </div>
@@ -20304,7 +20302,8 @@ function renderTrainingDetail(){
         ${iltSetup?'':`<div style="display:flex;align-items:center;gap:8px">
           ${_tdSavedStatusBadge(s)}
         </div>`}
-        ${_tdDetailTab==='overview'&&!_tdDetailEditing&&_tdCanEditSession(s)?`<button type="button" class="btn btn-secondary btn-sm" onclick="tdDetailToggleEdit()">✎ Edit Session</button>`:''}
+        ${iltSetup?_tdLinkedIltSetupActions(_tdDetailEditing,_tdCanEditSession(s)):
+          _tdDetailTab==='overview'&&!_tdDetailEditing&&_tdCanEditSession(s)?`<button type="button" class="btn btn-secondary btn-sm" onclick="tdDetailToggleEdit()">✎ Edit Session</button>`:''}
         ${_tdDetailTab==='overview'&&_tdDetailEditing&&!iltSetup?`<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-weight:700">Editing session</span>`:''}
       </div>
     </div>
@@ -21442,10 +21441,16 @@ function _tdLinkedIltSetup(s,editing){
       <div class="td-ilt-schedule">${_tdLinkedScheduleCard(s,editing,true)}</div>
       ${_tdLinkedSessionInfoCard(s,editing,editing)}
     </div>
-    ${editing?`<div class="td-ilt-setup-actions">
+  </div>`;
+}
+
+function _tdLinkedIltSetupActions(editing,canEdit){
+  if(!canEdit) return '';
+  return `<div class="td-ilt-setup-actions">
+    ${editing?`
       <button type="button" class="btn btn-secondary" data-ilt-setup-action onclick="tdDetailSave('tentative',this)">Save as Tentative</button>
       <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave('scheduled',this)">Confirm Schedule</button>
-    </div>`:''}
+    `:`<button type="button" class="btn btn-secondary" onclick="tdDetailToggleEdit()">Edit Session</button>`}
   </div>`;
 }
 
@@ -21479,7 +21484,11 @@ function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
 .td-ilt-wide{grid-column:1/-1}
 .td-ilt-optional{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:14px}
 .td-ilt-optional summary{cursor:pointer;font-size:12px;font-weight:600}
-.td-ilt-setup-actions{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;gap:8px;padding:12px 0;background:var(--bg,#f1f5f9);border-top:1px solid var(--border)}
+.td-ilt-badge{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;line-height:1.3}
+.td-ilt-type-badge{background:#17438a;color:#fff}
+.td-ilt-status-badge{background:#ffe5a0;color:#593400;border-color:#b27808}
+.td-ilt-setup-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.td-ilt-setup-actions .btn{min-width:143px;min-height:36px;justify-content:center;font-size:13px;white-space:nowrap}
 @container ilt-setup (max-width:850px){.td-ilt-setup-columns{grid-template-columns:minmax(0,1fr)}}
 @container ilt-schedule (max-width:520px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}.td-ilt-schedule .td-linked-part-fields label:first-child{grid-column:1/-1}}
 @container ilt-schedule (max-width:360px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1fr)!important}}
