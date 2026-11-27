@@ -1690,6 +1690,56 @@
     .seg-btn-group .btn{border-radius:8px!important;border:none!important}
   </style>
 <style>/* v5.15-v5.16 release (2026-11-10, per Sandra): in-app Knowledge Base (v5.17) stays preview-only; live keeps LEAP_KB.html */ html:not(.is-preview) .nav-item[data-view="knowledge-base"]{display:none} html:not(.is-preview) .nav-item[data-view="qa-calibration"]{display:none} html:not(.is-preview) .nav-item[data-view="compliance"]{display:none} html.is-preview .js-kb-file{display:none}</style>
+<style>
+.td-ilt-setup{display:grid;gap:14px;container:ilt-setup / inline-size}
+.td-ilt-setup-columns{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:14px;align-items:start}
+.td-ilt-schedule{min-width:0;container:ilt-schedule / inline-size}
+.td-ilt-schedule .td-linked-schedule-grid{grid-template-columns:minmax(0,1fr)!important}
+.td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1.25fr) repeat(2,minmax(0,1fr))!important}
+.td-ilt-schedule .td-linked-part-fields input{min-width:0}
+.td-ilt-schedule .td-linked-part-fields input[type=date]{position:relative;display:flex;align-items:center;flex-wrap:nowrap;padding-inline-end:32px!important}
+.td-ilt-schedule .td-linked-part-fields input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset-inline-end:10px;top:50%;transform:translateY(-50%);margin:0;padding:0;cursor:pointer}
+.td-ilt-progress,.td-ilt-booking{padding:16px 20px}
+.td-ilt-setup h3{font-size:15px;margin:0;font-weight:700;color:var(--text)}
+.td-ilt-progress-body{display:flex;align-items:flex-start;gap:24px}
+.td-ilt-progress-body h3{flex:0 0 auto;padding-top:3px}
+.td-ilt-stages{flex:1;display:flex;list-style:none;margin:0;padding:0;min-width:0}
+.td-ilt-stages li{position:relative;flex:1;text-align:center;font-size:12px;color:var(--text2);padding:0 4px}
+.td-ilt-stages li:not(:last-child):after{content:'';position:absolute;background:var(--border);height:2px;top:10px;left:50%;width:100%}
+.td-ilt-stage-dot{display:block;position:relative;z-index:1;width:21px;height:21px;margin:0 auto 6px;border:2px solid var(--border);border-radius:50%;background:#fff}
+.td-ilt-stages li[aria-current]{font-weight:700;color:var(--text)}
+.td-ilt-stages li[aria-current] .td-ilt-stage-dot{background:var(--pri);border-color:var(--pri)}
+.td-ilt-setup-hint{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border-lt);font-size:12px;color:var(--text2)}
+.td-ilt-issues{margin-top:12px;padding:10px 12px;background:#fff7ed;color:#9a3412;border-radius:8px;font-size:12px}
+.td-ilt-issues ul{margin:6px 0 0;padding-left:18px}
+.td-ilt-muted{font-weight:400;font-size:12px;color:var(--text3);margin:4px 0}
+.td-ilt-booking-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin-top:12px}
+.td-ilt-report-field{display:block;margin-top:12px}
+.td-ilt-report-value{display:block;margin-top:4px;padding:7px 9px;color:#243448;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-weight:600}
+.td-ilt-wide{grid-column:1/-1}
+.td-ilt-optional{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:14px}
+.td-ilt-optional summary{cursor:pointer;font-size:12px;font-weight:600}
+.td-ilt-badge{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;line-height:1.3}
+.td-ilt-type-badge{background:#17438a;color:#fff}
+.td-ilt-status-badge{background:#ffe5a0;color:#593400;border-color:#b27808}
+.td-ilt-setup-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.td-ilt-setup-actions .btn{min-width:143px;min-height:36px;justify-content:center;font-size:13px;white-space:nowrap}
+@container ilt-setup (max-width:850px){.td-ilt-setup-columns{grid-template-columns:minmax(0,1fr)}}
+@container ilt-schedule (max-width:520px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}.td-ilt-schedule .td-linked-part-fields label:first-child{grid-column:1/-1}}
+@container ilt-schedule (max-width:360px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1fr)!important}}
+@media(max-width:720px){.td-ilt-setup-columns,.td-ilt-booking-fields{grid-template-columns:minmax(0,1fr)}.td-ilt-progress-body{display:block}.td-ilt-stages{margin-top:12px}}
+.td-ilt-stage-name{display:block}
+.td-ilt-stage-dot{line-height:17px;text-align:center}
+.td-ilt-stages li[data-stage=complete] .td-ilt-stage-dot{background:#15803d;border-color:#15803d;color:#fff}
+.td-ilt-stages li button{position:relative;z-index:2;display:block;width:100%;border:0;background:none;font:inherit;color:inherit;cursor:pointer;padding:0}
+.td-ilt-stages li button:hover .td-ilt-stage-name,.td-ilt-stages li button:focus-visible .td-ilt-stage-name{text-decoration:underline}
+.td-ilt-stages li small{display:block;margin-top:3px;color:var(--text2);font-size:10px}
+.td-ilt-optional-eval{margin-top:6px}
+.td-ilt-status-badge[data-status=scheduled]{background:#dbeafe;color:#164287;border-color:#7aa2df}
+.td-ilt-status-badge[data-status=completed]{background:#dcfce7;color:#17653a;border-color:#5db584}
+.td-ilt-status-badge[data-status=cancelled]{background:#fee2e2;color:#991b1b;border-color:#e98a8a}
+@container ilt-setup (max-width:650px){.td-ilt-stages{flex-wrap:wrap;gap:10px}.td-ilt-stages li{flex:1 0 96px}.td-ilt-stages li:after{display:none}}
+</style>
 </head>
 <body>
 
@@ -16729,7 +16779,8 @@ function tdDetailCancelEdit(){
 
 async function tdDetailSave(statusChoice,trigger){
   const s=TrSessionDB.byId(_tdDetailId); if(!s||_tdDetailSaving) return;
-  const iltSetup=_tdIsLinkedIltSetup(s)&&_tdDetailEditing;
+  const iltLayout=_tdIsLinkedIltSession(s)&&_tdDetailEditing;
+  const iltSetup=iltLayout&&s.status==='tentative';
   const setupStatus=statusChoice==='scheduled'?'scheduled':'tentative';
   const errs=[];
   // Edit-permission guard (2026-08-13, per Sandra) -- defense in depth alongside the Edit
@@ -16812,7 +16863,7 @@ async function tdDetailSave(statusChoice,trigger){
     // entirely for External (per Sandra, 2026-08-13) -- always empty regardless of draft state.
     assessments:programSession?s.assessments:(grp==='external'?null:(_tddNormalizeAssessRows(_tddAssessRows).length?_tddNormalizeAssessRows(_tddAssessRows):null)),
     modalityId:_tdShowsModality(deliveryType)?(document.getElementById('tdd-modalityid')?.value||null):null,
-    status:iltSetup?setupStatus:(document.getElementById('tdd-status')?.value||'scheduled'),
+    status:iltSetup?setupStatus:(document.getElementById('tdd-status')?.value||s.status||'scheduled'),
     // Mandatory tag (2026-08-06, Phase62): Self-led-only field -- only rendered in the DOM at all
     // when grp==='owner' now, so always optional-chained.
     isMandatory:programSession?s.isMandatory:(document.getElementById('tdd-mandatory')?.checked||false),
@@ -16835,7 +16886,7 @@ async function tdDetailSave(statusChoice,trigger){
   if(programSession&&d.trainingDate&&d.trainingDate!==s.trainingDate){ // v5.19q: released to Live
     const vMsg=_lpVersionDateMsg(LearningProgramDB.byId(s.programId),d.trainingDate);
     if(vMsg){
-      if(iltSetup) errs.push(vMsg);
+      if(iltLayout) errs.push(vMsg);
       else{ toast(vMsg,'error'); return; }
     }
   }
@@ -16847,7 +16898,8 @@ async function tdDetailSave(statusChoice,trigger){
   }
   // v5.14d (2026-11-10, per Sandra): Training Report required? (only editable before Delivery Complete)
   const _rrEl=document.getElementById('tdd-report-req');
-  if(iltSetup){
+  const changedFacilitator=(d.trainerId||'')!==(s.trainerId||'')||(d.guestTrainerName||'')!==(s.guestTrainerName||'');
+  if(iltSetup||(iltLayout&&changedFacilitator&&_tdIltReportModeCanFollowFacilitator(s))){
     const reportMode=_tdIltFacilitatorReportMode(trainerSelVal);
     const isSmeLed=reportMode==='sme_led'&&!!d.guestTrainerName;
     d.reportRequired=!isSmeLed;
@@ -16859,7 +16911,7 @@ async function tdDetailSave(statusChoice,trigger){
     d.reportWaiverNote=v==='yes'?null:(document.getElementById('tdd-report-note')?.value.trim()||null);
     if(v==='other'&&!d.reportWaiverNote){
       const message='Add a note explaining why the Training Report is not required.';
-      if(iltSetup) errs.push(message); else{ toast(message,'error'); return; }
+      if(iltLayout) errs.push(message); else{ toast(message,'error'); return; }
     }
   }
   // L3 due date: recomputed off THIS save's own dates whenever required and not yet completed, so
@@ -16994,7 +17046,7 @@ async function tdDetailSave(statusChoice,trigger){
   _tddAssessRows.forEach((a,i)=>{ if(a.passingScore!=null && a.passingScore!==''&&(Number(a.passingScore)<0||Number(a.passingScore)>100)) errs.push(`Assessment ${i+1}${a.name?` ("${a.name}")`:''}: Passing % must be between 0 and 100.`); });
   const errEl=document.getElementById('tdd-error');
   if(errs.length){
-    if(iltSetup) _tdShowSetupIssues([...new Set(errs)]);
+    if(iltLayout) _tdShowSetupIssues([...new Set(errs)]);
     else{ errEl.textContent=errs[0]; errEl.classList.remove('hidden'); errEl.style.display='block'; }
     return;
   }
@@ -17010,19 +17062,19 @@ async function tdDetailSave(statusChoice,trigger){
     const doneCount=items.filter(i=>i.completedOn||i.isNA).length;
     const noteCount=items.reduce((n,i)=>n+((i.notes||[]).length),0);
     confirm$('Delete Existing Checklist Data?',`This session already has a checklist in progress ("<strong>${Utils.esc(existingChecklistRow.templateTitle||'a template')}</strong>" — ${items.length} item${items.length!==1?'s':''}, ${doneCount} marked done/N-A${noteCount?`, ${noteCount} note${noteCount!==1?'s':''}`:''}). Switching to <strong>"No Checklist Required"</strong> will permanently delete this checklist and everything on it. This cannot be undone. Continue?`,'Delete & Switch',async()=>{
-      await _tdDetailPerformSave(d,deliveryType,existingChecklistRow,trigger,iltSetup);
+      await _tdDetailPerformSave(d,deliveryType,existingChecklistRow,trigger,iltSetup,iltLayout);
     });
     return;
   }
-  await _tdDetailPerformSave(d,deliveryType,null,trigger,iltSetup);
+  await _tdDetailPerformSave(d,deliveryType,null,trigger,iltSetup,iltLayout);
 }
 let _tdDetailSaving=false;
-async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete,trigger,iltSetup){
+async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete,trigger,iltSetup,iltLayout){
   if(_tdDetailSaving) return;
   _tdDetailSaving=true;
   const saveBtn=trigger||document.getElementById('tdd-save-btn');
   const origTxt=saveBtn?.textContent||'';
-  const setupButtons=iltSetup?[...document.querySelectorAll('[data-ilt-setup-action]')]:[];
+  const setupButtons=iltLayout?[...document.querySelectorAll('[data-ilt-setup-action]')]:[];
   setupButtons.forEach(button=>{ button.disabled=true; });
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
   try{
@@ -17042,7 +17094,7 @@ async function _tdDetailPerformSave(d,deliveryType,checklistRowToDelete,trigger,
     _tdDetailEditing=false;
     renderTrainingDetail();
   }catch(e){
-    if(iltSetup) _tdShowSetupIssues([e?.message||'The session could not be saved. Try again.']);
+    if(iltLayout) _tdShowSetupIssues([e?.message||'The session could not be saved. Try again.']);
   }finally{
     _tdDetailSaving=false;
     setupButtons.forEach(button=>{ button.disabled=false; });
@@ -20235,8 +20287,10 @@ function renderTrainingDetail(){
   const personName=Utils.esc(_tdPersonName(s));
   const summaryDate=s.dateMode==='specific'?((s.sessionDates||[]).slice().sort().map(Utils.formatDate).join(', ')||Utils.formatDate(s.trainingDate||'')):(s.endDate&&s.endDate!==s.trainingDate?`${Utils.formatDate(s.trainingDate||'')} – ${Utils.formatDate(s.endDate)}`:Utils.formatDate(s.trainingDate||''));
   const summaryLine=[s.batchNo?`Batch ${s.batchNo}`:null, summaryDate||null, _venueDisplayName(s)||null].filter(Boolean).map(Utils.esc).join(' &nbsp;·&nbsp; ');
-  const iltSetup=_tdIsLinkedIltSetup(s)&&_tdDetailTab==='overview';
-  const setupLine=iltSetup?`<a href="#" onclick="event.preventDefault();guardedLeave(()=>{showView('learning-programs');lpOpen('${Utils.esc(s.programId)}');})">View Program</a>`:'';
+  const iltSession=_tdIsLinkedIltSession(s);
+  const iltOverview=iltSession&&_tdDetailTab==='overview';
+  const iltSetup=iltOverview&&s.status==='tentative';
+  const setupLine=iltSession?`<a href="#" onclick="event.preventDefault();guardedLeave(()=>{showView('learning-programs');lpOpen('${Utils.esc(s.programId)}');})">View Program</a>`:'';
 
 
   // Self-led sessions (2026-08-06, Phase59): no trainer delivers/evaluates a self-led session, so
@@ -20294,17 +20348,17 @@ function renderTrainingDetail(){
       <div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <h2 style="margin:0;font-size:20px;font-weight:700">${Utils.esc(s.trainingProgram||'Untitled Training')}</h2>
-          ${iltSetup?`<span class="td-ilt-badge td-ilt-type-badge">ILT</span><span class="td-ilt-badge td-ilt-status-badge">${Utils.esc(_tdSavedStatusLabel(s))}</span>`:_tdTypeBadge(s.deliveryType)}
+          ${iltSession?`<span class="td-ilt-badge td-ilt-type-badge">ILT</span><span class="td-ilt-badge td-ilt-status-badge" data-status="${Utils.esc(s.status)}">${Utils.esc(_tdSavedStatusLabel(s))}</span>`:_tdTypeBadge(s.deliveryType)}
         </div>
-        <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${iltSetup?setupLine:summaryLine}</div>
+        <div style="font-size:12.5px;color:var(--text3);margin-top:4px">${iltSession?setupLine:summaryLine}</div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-        ${iltSetup?'':`<div style="display:flex;align-items:center;gap:8px">
+        ${iltSession?'':`<div style="display:flex;align-items:center;gap:8px">
           ${_tdSavedStatusBadge(s)}
         </div>`}
-        ${iltSetup?_tdLinkedIltSetupActions(_tdDetailEditing,_tdCanEditSession(s)):
+        ${iltOverview?_tdLinkedIltSetupActions(s,_tdDetailEditing,_tdCanEditSession(s)):
           _tdDetailTab==='overview'&&!_tdDetailEditing&&_tdCanEditSession(s)?`<button type="button" class="btn btn-secondary btn-sm" onclick="tdDetailToggleEdit()">✎ Edit Session</button>`:''}
-        ${_tdDetailTab==='overview'&&_tdDetailEditing&&!iltSetup?`<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-weight:700">Editing session</span>`:''}
+        ${_tdDetailTab==='overview'&&_tdDetailEditing&&!iltOverview?`<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-weight:700">Editing session</span>`:''}
       </div>
     </div>
     ${iltSetup&&_tdDetailEditing?'':`<div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:14px 0 16px;flex-wrap:wrap">${tabsHtml}</div>`}
@@ -20312,8 +20366,8 @@ function renderTrainingDetail(){
   `;
   if(_tdDetailTab==='overview' && _tdDetailEditing){
     _tddPopulateEditDropdowns(s,ownerType);
-    _tddToggleTypeFields();
     _tddSyncIltSetupReport();
+    _tddToggleTypeFields();
   }
 }
 
@@ -21172,7 +21226,7 @@ function _tdMappedProgramRef(s){
   return `<div style="margin:-6px 0 14px;font-size:12px;color:var(--text3)">Counted under <b style="color:var(--text2)">${Utils.esc(p.code||'Learning Program')} · ${Utils.esc(p.version||'v1')}</b> as a mapped implementation · <a href="javascript:void(0)" onclick="showView('learning-programs');lpOpen('${Utils.esc(p.id)}')" style="color:var(--pri);text-decoration:none;font-weight:600">View program →</a></div>`;
 }
 
-function _tdLinkedProgramSummaryCard(s){
+function _tdLinkedProgramSummaryCard(s,condensed=false){
   const p=_tdLinkedProgramRecord(s);
   const plan=_tdLinkedDeliveryPlan(s,p);
   const topicCount=(p?.agenda||[]).length;
@@ -21183,7 +21237,7 @@ function _tdLinkedProgramSummaryCard(s){
   const evalLevels=[['L1',!!evalPlan?.l1],['L2',!!evalPlan?.l2?.enabled],['L3',!!evalPlan?.l3?.enabled],['L4',!!evalPlan?.l4?.enabled]].filter(x=>x[1]).map(x=>x[0]);
   const evalChips=evalLevels.length?evalLevels.map(level=>`<span class="badge" style="background:#eef2ff;color:#4338ca;font-weight:700">${level}</span>`).join(''):'<span style="color:var(--text3)">None configured</span>';
   return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box;text-align:left">
-    <div style="font-weight:700;font-size:15px;margin-bottom:16px;text-align:left">${Utils.esc(p?.title||s.trainingProgram||'Learning Program')}</div>
+    <div style="font-weight:700;font-size:15px;margin-bottom:16px;text-align:left">${condensed?'Program Details':Utils.esc(p?.title||s.trainingProgram||'Learning Program')}</div>
     <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(220px,.9fr);gap:20px;align-items:start;text-align:left">
       <div style="text-align:left">
         <div style="font-size:12px;color:var(--text3);margin-bottom:12px;text-align:left">${Utils.esc(p?.code||'—')} · ${Utils.esc(_lpSessionVerLabel(s,LearningProgramDB.byId(s.programId))||p?.version||'v1')}${(()=>{const cr=_lpCreditedContributors(s);return cr.length?` · Credited: ${Utils.esc(cr.map(c=>_lpName(c.profileId)+(_lpContribWork(c).length?' ('+_lpContribWork(c).map(k=>LP_WORK.find(y=>y[0]===k)[1]).join(' + ')+')':'')).join(', '))}`:'';})()}</div>
@@ -21196,7 +21250,7 @@ function _tdLinkedProgramSummaryCard(s){
           <span style="color:var(--text3);display:block;font-size:10.5px;margin-bottom:2px">Program Structure</span>
           <strong style="font-size:12.5px;color:var(--text2)">${plan.length} Delivery Part${plan.length===1?'':'s'} · ${topicCount} Topic${topicCount===1?'':'s'}</strong>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" style="padding-left:0;justify-content:flex-start;text-align:left" onclick="showView('learning-programs');lpOpen('${Utils.esc(s.programId)}')">View program →</button>
+        ${condensed?'':`<button type="button" class="btn btn-ghost btn-sm" style="padding-left:0;justify-content:flex-start;text-align:left" onclick="showView('learning-programs');lpOpen('${Utils.esc(s.programId)}')">View program →</button>`}
       </div>
       <div style="border-left:1px solid var(--border-lt);padding-left:20px;display:grid;gap:12px;font-size:12.5px;color:var(--text2);text-align:left">
         <div><span style="color:var(--text3);display:block;font-size:10.5px;margin-bottom:2px">Default Trainer Checklist</span><strong>${Utils.esc(checklistName)}</strong></div>
@@ -21286,12 +21340,13 @@ function _tdRecordingAccessHtml(s){
   return `<span style="color:var(--text3);font-weight:500">${_tdIsHistoricalMappedSession(s)?'Not recorded':'Not added'}</span>`;
 }
 
-function _tdLinkedSessionInfoCard(s,editing,iltSetup=false){
+function _tdLinkedSessionInfoCard(s,editing,iltLayout=false){
+  const iltSetup=iltLayout&&s.status==='tentative';
   const statusVal=s.status||'tentative';
   const facilitator=_tdPersonName(s)||'Not assigned';
   const cofac=s.coFacilitatorId?_lpName(s.coFacilitatorId):(s.coFacilitatorGuestName||'None');
   const venue=_venueDisplayName(s)||'Not selected';
-  const modality=Sel.nameOf(Store.MODALITIES,s.modalityId)||'Not selected';
+  const modality=Sel.nameOf(Store.MODALS,s.modalityId)||'Not selected';
   const audience=(s.audience||[]).join(', ')||'Not selected';
   if(!editing){
     const item=(label,val)=>`<div><div style="font-size:10.5px;color:var(--text3);margin-bottom:3px">${label}</div><div style="font-size:12.5px;font-weight:600;color:var(--text)">${Utils.esc(val||'—')}</div></div>`;
@@ -21305,7 +21360,7 @@ function _tdLinkedSessionInfoCard(s,editing,iltSetup=false){
     return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box">
       <div style="font-weight:700;font-size:15px;margin-bottom:16px">Session Information</div>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 16px">
-        ${item('Session ID',s.code||s.id)}${item('Batch',s.batchNo||'Assigned when saved')}${_tdIsLinkedIltSetup(s)?'':item('Status',_tdSavedStatusLabel(s))}${item('Delivery Method',modality)}${item('Venue / Location',venue)}${item('Audience',audience)}${item('Facilitator',facilitator)}${item('Co-Facilitator',cofac)}${htmlItem('Recording',recordingHtml)}${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?htmlItem('Training Report',Utils.esc(_tdReportReqLabel(s))):''}${notesHtml}
+        ${item('Session ID',s.code||s.id)}${item('Batch',s.batchNo||'Assigned when saved')}${iltLayout?'':item('Status',_tdSavedStatusLabel(s))}${item('Delivery Method',modality)}${item('Venue / Location',venue)}${item('Audience',audience)}${item('Facilitator',facilitator)}${item('Co-Facilitator',cofac)}${htmlItem('Recording',recordingHtml)}${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?htmlItem('Training Report',Utils.esc(_tdReportReqLabel(s))):''}${notesHtml}
       </div>
     </div>`;
   }
@@ -21319,16 +21374,21 @@ function _tdLinkedSessionInfoCard(s,editing,iltSetup=false){
   const audienceControl=`${field('Audience',_audienceMultiSelectHtml('tdd-audience',s.audience||[],small))}`;
   const cofacilitator=`${field('Co-Facilitator (Optional)',`<select id="tdd-cofacilitator" class="form-control ${isGuestCofac?'hidden':''}" style="${small}" onchange="_tddCofacSelectChange()"><option value="">— None —</option></select><div id="tdd-cofacilitator-guest-wrap" class="${isGuestCofac?'':'hidden'}"><input id="tdd-cofacilitator-guest-name" class="form-control" style="${small}" value="${Utils.esc(s.coFacilitatorGuestName||'')}" placeholder="Guest Co-Facilitator"><button type="button" class="btn btn-ghost btn-xs" onclick="_tddClearCofacGuest()">Choose from list</button></div>`)}`;
   const notes=`${field('Session Notes (Optional)',`<textarea id="tdd-session-notes" class="form-control" rows="3" style="${small}" placeholder="Add session-specific notes or context...">${Utils.esc(s.sessionNotes||'')}</textarea>`)}`;
-  if(iltSetup) return `<section class="card td-ilt-booking" aria-labelledby="td-ilt-booking-title">
+  const statusControl=`${field('Status',`<select id="tdd-status" class="form-control" style="${small}" onchange="_tddStatusChanged()"><option value="tentative" ${statusVal==='tentative'?'selected':''}>Tentative</option><option value="scheduled" ${statusVal==='scheduled'?'selected':''}>Scheduled</option>${statusVal==='completed'?'<option value="completed" selected>Completed</option>':''}<option value="cancelled" ${statusVal==='cancelled'?'selected':''}>Cancelled</option></select>${_tdCancelReasonHtml({...s,status:statusVal},`style="${small}"`)}`)}`;
+  const recordingControl=`<div style="grid-column:span 2">${field((s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Recording Link *':'Recording Link (Optional)',`<input type="url" id="tdd-recording" class="form-control" style="${small}" value="${Utils.esc(s.recordingLink||'')}" placeholder="Enter recording or Teams/Drive link"><div style="font-size:10px;color:var(--text3);margin-top:4px">${(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Required before Delivery Complete.':'Add when a recording is available.'}</div>`)}</div>`;
+  const facilitatorAtLoad=s.trainerId||(isGuest?'__SME__':'');
+  const initialReportLabel=iltSetup?_tdIltReportModeLabel(_tdIltFacilitatorReportMode(facilitatorAtLoad)):_tdReportReqLabel(s);
+  if(iltLayout) return `<section class="card td-ilt-booking" aria-labelledby="td-ilt-booking-title">
     <h3 id="td-ilt-booking-title">Booking Details</h3>
-    <p class="td-ilt-muted">Required to confirm the schedule.</p>
+    ${iltSetup?'<p class="td-ilt-muted">Required to confirm the schedule.</p>':''}
     <div class="td-ilt-booking-fields">${facilitatorControl}${deliveryMethod}${venueControl}${audienceControl}</div>
-    <label class="td-ilt-report-field form-label">Training Report
-      <input id="tdd-ilt-report-mode" class="form-control" type="text" readonly style="background:#f1f5f9;color:var(--text2)">
-    </label>
-    <details class="td-ilt-optional"${s.coFacilitatorId||s.coFacilitatorGuestName||s.sessionNotes?' open':''}>
+    <div class="td-ilt-report-field"><span class="form-label">Training Report</span>
+      <output id="tdd-ilt-report-mode" class="td-ilt-report-value" aria-label="Training Report" data-facilitator="${Utils.esc(facilitatorAtLoad)}" data-initial="${Utils.esc(initialReportLabel)}" data-follow="${iltSetup?'always':_tdIltReportModeCanFollowFacilitator(s)?'change':'no'}">${Utils.esc(initialReportLabel)}</output>
+    </div>
+    ${iltSetup?'':`<div class="td-ilt-booking-fields">${recordingControl}</div>`}
+    <details class="td-ilt-optional"${s.coFacilitatorId||s.coFacilitatorGuestName||s.sessionNotes||s.status==='cancelled'?' open':''}>
       <summary>Optional Details</summary>
-      <div class="td-ilt-booking-fields">${cofacilitator}<div class="td-ilt-wide">${notes}</div></div>
+      <div class="td-ilt-booking-fields">${cofacilitator}${iltSetup?'':statusControl}<div class="td-ilt-wide">${notes}</div></div>
     </details>
   </section>`;
   return `<div class="card" style="padding:18px 20px;height:100%;box-sizing:border-box">
@@ -21336,13 +21396,13 @@ function _tdLinkedSessionInfoCard(s,editing,iltSetup=false){
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px">
       ${field('Session ID',`<input class="form-control" style="${small};background:#f1f5f9" value="${Utils.esc(s.code||s.id||'')}" readonly>`)}
       ${field('Batch',`<input class="form-control" style="${small};background:#f1f5f9" value="${Utils.esc(s.batchNo||'Assigned when saved')}" readonly title="Generated automatically as YYYY-### per Learning Program and delivery year"><div style="font-size:10px;color:var(--text3);margin-top:4px">Auto-generated per program and delivery year.</div>`)}
-      ${field('Status',`<select id="tdd-status" class="form-control" style="${small}" onchange="_tddStatusChanged()"><option value="tentative" ${statusVal==='tentative'?'selected':''}>Tentative</option><option value="scheduled" ${statusVal==='scheduled'?'selected':''}>Scheduled</option>${statusVal==='completed'?'<option value="completed" selected>Completed</option>':''}<option value="cancelled" ${statusVal==='cancelled'?'selected':''}>Cancelled</option></select>${_tdCancelReasonHtml({...s,status:statusVal},`style="${small}"`)}`)}
+      ${statusControl}
       ${deliveryMethod}
       ${venueControl}
       ${audienceControl}
       ${facilitatorControl}
       ${cofacilitator}
-      <div style="grid-column:span 2">${field((s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Recording Link *':'Recording Link (Optional)',`<input type="url" id="tdd-recording" class="form-control" style="${small}" value="${Utils.esc(s.recordingLink||'')}" placeholder="Enter recording or Teams/Drive link"><div style="font-size:10px;color:var(--text3);margin-top:4px">${(s.deliveryType==='ILT'||s.deliveryType==='VILT')&&!_tdReportWaived(s)?'Required before Delivery Complete.':'Add when a recording is available.'}</div>`)}</div>
+      ${recordingControl}
       ${(s.deliveryType==='ILT'||s.deliveryType==='VILT')?`<div style="grid-column:span 2">${field('Training Report',_tdReportReqControl(s,small))}</div>`:''}
       <div style="grid-column:span 2">${notes}</div>
     </div>
@@ -21395,8 +21455,8 @@ function _tdLinkedWorkflowTiles(s){
   </div>`;
 }
 
-function _tdIsLinkedIltSetup(s){
-  return _tdUsesLinkedProgramOverview(s)&&s.deliveryType==='ILT'&&s.status==='tentative';
+function _tdIsLinkedIltSession(s){
+  return _tdUsesLinkedProgramOverview(s)&&s.deliveryType==='ILT';
 }
 
 function _tdIltFacilitatorReportMode(selectedFacilitator){
@@ -21404,13 +21464,25 @@ function _tdIltFacilitatorReportMode(selectedFacilitator){
   return selectedFacilitator==='__SME__'?'sme_led':'yes';
 }
 
+function _tdIltReportModeLabel(mode){
+  if(mode==='sme_led') return 'SME-led (survey results only)';
+  return mode==='yes'?'Required (trainer submits report)':'Set by facilitator selection';
+}
+
+function _tdIltReportModeCanFollowFacilitator(s){
+  return s.status==='scheduled'&&!TrainingReportsDB.all().some(r=>r.sessionId===s.id&&['awaiting_email','submitted','approved'].includes(r.status));
+}
+
 function _tddSyncIltSetupReport(){
   const control=document.getElementById('tdd-ilt-report-mode');
   if(!control) return;
-  const mode=_tdIltFacilitatorReportMode(document.getElementById('tdd-trainer')?.value);
-  control.value=mode==='sme_led'?'SME-led (survey results only)':mode==='yes'?'Required (trainer submits report)':'Set by facilitator selection';
+  const facilitator=document.getElementById('tdd-trainer')?.value||'';
+  const {follow,initial,facilitator:original}=control.dataset;
+  const useSelection=follow==='always'||(follow==='change'&&facilitator!==original);
+  const mode=_tdIltFacilitatorReportMode(facilitator);
+  control.textContent=useSelection?_tdIltReportModeLabel(mode):initial;
   const step=document.getElementById('td-ilt-report-step');
-  if(step) step.textContent=mode==='sme_led'?'Survey Results':'Report & Email';
+  if(step) step.textContent=(useSelection?mode==='sme_led':step.dataset.initialMode==='sme_led')?'Survey Results':'Training Report';
 }
 
 function _tdShowSetupIssues(issues){
@@ -21422,79 +21494,92 @@ function _tdShowSetupIssues(issues){
   panel.focus();
 }
 
-function _tdLinkedIltSetup(s,editing){
+function _tdLinkedIltProgress(s,editing){
+  const tabs=_tdVisibleDetailTabs(s,!!_tdManualOverrideReport(s),_tdFieldGroup(s.deliveryType));
+  const visible=id=>tabs.some(tab=>tab.id===id);
+  const tentative=s.status==='tentative', cancelled=s.status==='cancelled';
+  const waived=_tdReportWaived(s), delivered=s.status==='completed';
+  const report=TrainingReportsDB.all().find(row=>row.sessionId===s.id);
+  const reportDone=['submitted','approved'].includes(report?.status);
+  const reportLabel=waived?'Survey Results':'Training Report';
+  const journey=_tdOverviewJourneySteps(s,false);
+  const done=label=>journey.find(step=>step.label===label)?.state==='done';
   const plan=_tdLinkedDeliveryPlan(s,_tdLinkedProgramRecord(s));
-  const missing=plan.some((_,i)=>!(s.deliveryPartDates?.[i]?.date&&s.deliveryPartDates?.[i]?.startTime));
-  const guidance=missing?(plan.length===1?'Set the date and start time for Part 1.':'Set the date and start time for each delivery part.'):'Complete the booking details to confirm the schedule.';
-  const steps=['Set Up Session','Prepare & Deliver','Report & Email','Follow-up'];
-  const hasReport=!_tdReportWaived(s);
-  const hasFollowup=_tdL3Applicable(s)||_tdL4Applicable(s)||_tdaRetentionItems(s).length||!hasReport;
+  const hasSchedule=plan.every((_,i)=>s.deliveryPartDates?.[i]?.date&&s.deliveryPartDates?.[i]?.startTime);
+  const checklist=SessionChecklistDB.all().find(row=>row.sessionId===s.id);
+  const checklistItems=(checklist?.items||[]).filter(item=>_tdcklComputeStatus(item,_tdcklTargetDate(s,item.phase||'pre',item.timelineDays))!=='na');
+  const checklistDone=checklistItems.filter(item=>_tdcklComputeStatus(item,_tdcklTargetDate(s,item.phase||'pre',item.timelineDays))==='completed').length;
+  const checklistRequired=!waived&&s.checklistTemplateId!==CKTPL_NONE_SENTINEL;
+  const assessment=_tdaHasAssessment(s), l3=_tdL3Applicable(s), l4=_tdL4Applicable(s);
+  const stages=[{name:'Scheduled',tab:'overview',done:!tentative&&!cancelled,detail:tentative?'Tentative':cancelled?'Cancelled':''}];
+  if(checklistRequired) stages.push({name:'Checklist',tab:'checklist',done:!!checklistItems.length&&checklistDone===checklistItems.length,detail:checklistItems.length?`${checklistDone} of ${checklistItems.length} complete`:''});
+  const attendance={name:'Attendance',tab:'attendance',done:done('Attendance'),detail:delivered?'Delivery Complete':''};
+  stages.push(attendance);
+  if(assessment) stages.push({name:'L2 Assessments',tab:'assessments',done:done('L2 Assessments')});
+  stages.push({name:reportLabel,tab:'report',done:reportDone,
+    detail:report?.status==='awaiting_email'?'Awaiting Email Confirmation':reportDone?(waived?'Submitted':report.emailSentOn?'Email confirmed':'Submitted'):report?.status==='draft'?'Draft':''});
+  if(waived) stages.push({name:'SME Observation',tab:'sme-obs',done:_smeObsDone(s)});
+  if(l3) stages.push({name:'L3',tab:'l3eval',done:_tdL3Complete(s)});
+  if(l4) stages.push({name:'L4',tab:'l4eval',done:_tdL4Complete(s)});
+  stages.push({name:'Fully Closed',done:_tdSessionFullyClosed(s)});
+  const sessionEnd=_tdSessionEndDate(s);
+  const today=_todayStr();
+  const current=cancelled||_tdSessionFullyClosed(s)?null:tentative?stages[0]:!delivered?
+    (stages.find(stage=>!stage.done&&(['attendance','assessments'].includes(stage.tab)||(stage.tab==='checklist'&&(!sessionEnd||sessionEnd>=today))))||attendance):
+    stages.find(stage=>!stage.done&&['report','sme-obs','l3eval','l4eval'].includes(stage.tab));
+  let guidance='';
+  if(cancelled) guidance='This session is cancelled.';
+  else if(tentative) guidance=hasSchedule?'Complete the booking details to confirm the schedule.':plan.length===1?'Set the date and start time for Part 1.':'Set the date and start time for each delivery part.';
+  else if(!delivered) guidance='Complete delivery from Attendance once its requirements are met.';
+  else if(report?.status==='awaiting_email') guidance='Send the report through Outlook, then confirm the sent date in Training Report.';
+  else if(!reportDone) guidance=waived?'Submit the survey results.':'Complete the Training Report and mark it ready to email.';
+  else if(current) guidance='Complete the remaining program follow-up.';
+  else if(_tdSessionFullyClosed(s)) guidance='All session closeout requirements are complete.';
+  const canNavigate=stage=>!editing&&!cancelled&&stage.tab&&stage.tab!=='overview'&&visible(stage.tab);
+  return `<section class="card td-ilt-progress" aria-labelledby="td-ilt-progress-title">
+    <div class="td-ilt-progress-body"><h3 id="td-ilt-progress-title">Session Progress</h3>
+      <ol class="td-ilt-stages">
+        ${stages.map(stage=>{
+          const state=stage===current?'current':stage.done?'complete':'pending';
+          const name=stage.tab==='report'?`<span class="td-ilt-stage-name" id="td-ilt-report-step" data-initial-mode="${waived?'sme_led':'yes'}">${Utils.esc(stage.name)}</span>`:`<span class="td-ilt-stage-name">${Utils.esc(stage.name)}</span>`;
+          const label=`<span class="td-ilt-stage-dot" aria-hidden="true">${state==='complete'?'✓':''}</span>${name}${stage.detail?`<small>${Utils.esc(stage.detail)}</small>`:''}`;
+          return `<li data-stage="${state}"${stage===current?' aria-current="step"':''}>${canNavigate(stage)?`<button type="button" onclick="tdDetailSwitchTab('${stage.tab}')">${label}</button>`:`<div>${label}</div>`}</li>`;
+        }).join('')}
+      </ol>
+    </div>
+    ${guidance?`<p class="td-ilt-setup-hint" id="td-ilt-setup-hint">${Utils.esc(guidance)}</p>`:''}
+    ${!editing&&visible('trainer-eval')?`<button type="button" class="btn btn-ghost btn-xs td-ilt-optional-eval" onclick="tdDetailSwitchTab('trainer-eval')">Trainer Evaluation (optional)</button>`:''}
+    ${editing?'<div class="td-ilt-issues hidden" id="tdd-error" role="alert" tabindex="-1"></div>':''}
+  </section>`;
+}
+
+function _tdLinkedIltSetup(s,editing){
   return `<div class="td-ilt-setup" id="tdd-session-info-card">
-    <section class="card td-ilt-progress" aria-labelledby="td-ilt-progress-title">
-      <div class="td-ilt-progress-body"><h3 id="td-ilt-progress-title">Session Progress</h3>
-        <ol class="td-ilt-stages">${steps.filter(step=>step!=='Follow-up'||hasFollowup).map((step,i)=>`<li${i===0?' aria-current="step"':''}><span aria-hidden="true"></span>${step==='Report & Email'?`<b id="td-ilt-report-step" style="font-weight:inherit">${hasReport?step:'Survey Results'}</b>`:step}</li>`).join('')}</ol>
-      </div>
-      <p class="td-ilt-setup-hint" id="td-ilt-setup-hint">${guidance}</p>
-      ${editing?'<div class="td-ilt-issues hidden" id="tdd-error" role="alert" tabindex="-1"></div>':''}
-    </section>
+    ${_tdLinkedIltProgress(s,editing)}
     <div class="td-ilt-setup-columns">
       <div class="td-ilt-schedule">${_tdLinkedScheduleCard(s,editing,true)}</div>
-      ${_tdLinkedSessionInfoCard(s,editing,editing)}
+      ${_tdLinkedSessionInfoCard(s,editing,true)}
     </div>
+    ${s.status==='tentative'?'':_tdLinkedProgramSummaryCard(s,true)}
   </div>`;
 }
 
-function _tdLinkedIltSetupActions(editing,canEdit){
+function _tdLinkedIltSetupActions(s,editing,canEdit){
   if(!canEdit) return '';
   return `<div class="td-ilt-setup-actions">
-    ${editing?`
+    ${editing?(s.status==='tentative'?`
       <button type="button" class="btn btn-secondary" data-ilt-setup-action onclick="tdDetailSave('tentative',this)">Save as Tentative</button>
       <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave('scheduled',this)">Confirm Schedule</button>
-    `:`<button type="button" class="btn btn-secondary" onclick="tdDetailToggleEdit()">Edit Session</button>`}
+    `:`
+      <button type="button" class="btn btn-secondary" onclick="tdDetailCancelEdit()">Cancel</button>
+      <button type="button" class="btn btn-primary" data-ilt-setup-action onclick="tdDetailSave(undefined,this)">Save Changes</button>
+    `):`<button type="button" class="btn btn-secondary" onclick="tdDetailToggleEdit()">Edit Session</button>`}
   </div>`;
 }
 
 function _tdLinkedProgramSessionOverview(s,ownerType,personLabel,personName){
   const editing=!!_tdDetailEditing;
-  if(_tdIsLinkedIltSetup(s)) return `<style>
-.td-ilt-setup{display:grid;gap:14px;container:ilt-setup / inline-size}
-.td-ilt-setup-columns{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:14px;align-items:start}
-.td-ilt-schedule{min-width:0;container:ilt-schedule / inline-size}
-.td-ilt-schedule .td-linked-schedule-grid{grid-template-columns:minmax(0,1fr)!important}
-.td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1.25fr) repeat(2,minmax(0,1fr))!important}
-.td-ilt-schedule .td-linked-part-fields input{min-width:0}
-.td-ilt-schedule .td-linked-part-fields input[type=date]{position:relative;display:flex;align-items:center;flex-wrap:nowrap;padding-inline-end:32px!important}
-.td-ilt-schedule .td-linked-part-fields input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset-inline-end:10px;top:50%;transform:translateY(-50%);margin:0;padding:0;cursor:pointer}
-.td-ilt-progress,.td-ilt-booking{padding:16px 20px}
-.td-ilt-setup h3{font-size:15px;margin:0;font-weight:700;color:var(--text)}
-.td-ilt-progress-body{display:flex;align-items:flex-start;gap:24px}
-.td-ilt-progress-body h3{flex:0 0 auto;padding-top:3px}
-.td-ilt-stages{flex:1;display:flex;list-style:none;margin:0;padding:0;min-width:0}
-.td-ilt-stages li{position:relative;flex:1;text-align:center;font-size:12px;color:var(--text2);padding:0 4px}
-.td-ilt-stages li:not(:last-child):after{content:'';position:absolute;background:var(--border);height:2px;top:10px;left:50%;width:100%}
-.td-ilt-stages li span{display:block;position:relative;z-index:1;width:21px;height:21px;margin:0 auto 6px;border:2px solid var(--border);border-radius:50%;background:#fff}
-.td-ilt-stages li[aria-current]{font-weight:700;color:var(--text)}
-.td-ilt-stages li[aria-current] span{background:var(--pri);border-color:var(--pri)}
-.td-ilt-setup-hint{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border-lt);font-size:12px;color:var(--text2)}
-.td-ilt-issues{margin-top:12px;padding:10px 12px;background:#fff7ed;color:#9a3412;border-radius:8px;font-size:12px}
-.td-ilt-issues ul{margin:6px 0 0;padding-left:18px}
-.td-ilt-muted{font-weight:400;font-size:12px;color:var(--text3);margin:4px 0}
-.td-ilt-booking-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin-top:12px}
-.td-ilt-report-field{display:block;margin-top:12px}
-.td-ilt-report-field input{margin-top:4px}
-.td-ilt-wide{grid-column:1/-1}
-.td-ilt-optional{border-top:1px solid var(--border-lt);padding-top:10px;margin-top:14px}
-.td-ilt-optional summary{cursor:pointer;font-size:12px;font-weight:600}
-.td-ilt-badge{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;line-height:1.3}
-.td-ilt-type-badge{background:#17438a;color:#fff}
-.td-ilt-status-badge{background:#ffe5a0;color:#593400;border-color:#b27808}
-.td-ilt-setup-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.td-ilt-setup-actions .btn{min-width:143px;min-height:36px;justify-content:center;font-size:13px;white-space:nowrap}
-@container ilt-setup (max-width:850px){.td-ilt-setup-columns{grid-template-columns:minmax(0,1fr)}}
-@container ilt-schedule (max-width:520px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}.td-ilt-schedule .td-linked-part-fields label:first-child{grid-column:1/-1}}
-@container ilt-schedule (max-width:360px){.td-ilt-schedule .td-linked-part-fields{grid-template-columns:minmax(0,1fr)!important}}
-@media(max-width:720px){.td-ilt-setup-columns,.td-ilt-booking-fields{grid-template-columns:minmax(0,1fr)}.td-ilt-progress-body{display:block}.td-ilt-stages{margin-top:12px}}
-</style>${_tdLinkedIltSetup(s,editing)}`;
+  if(_tdIsLinkedIltSession(s)) return _tdLinkedIltSetup(s,editing);
   return `<style>
     @media(max-width:1100px){.td-linked-main-grid{grid-template-columns:1fr!important}.td-linked-workflow-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
     @media(max-width:720px){.td-linked-workflow-grid,.td-linked-schedule-grid{grid-template-columns:1fr!important}}
